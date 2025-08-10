@@ -21,117 +21,22 @@
             --light: #ecf0f1;
             --dark: #34495e;
         }
-        
-        body {
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            background-color: #f5f7fa;
-            color: #333;
-        }
-        
-        .navbar-main {
-            background-color: white;
-            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
-            padding: 15px 0;
-        }
-        
-        .navbar-brand {
-            font-weight: 700;
-            color: var(--primary);
-            font-size: 1.5rem;
-        }
-        
-        .nav-link {
-            color: var(--dark);
-            font-weight: 500;
-            margin: 0 5px;
-            padding: 8px 15px !important;
-            border-radius: 5px;
-            transition: all 0.3s;
-        }
-        
-        .nav-link:hover, .nav-link.active {
-            background-color: rgba(52, 152, 219, 0.1);
-            color: var(--secondary);
-        }
-        
-        .nav-link i {
-            margin-right: 8px;
-            width: 20px;
-            text-align: center;
-        }
-        
-        .page-header {
-            background: linear-gradient(135deg, var(--primary) 0%, var(--secondary) 100%);
-            color: white;
-            padding: 30px 0;
-            margin-bottom: 30px;
-            border-radius: 0 0 10px 10px;
-        }
-        
-        .card {
-            border: none;
-            border-radius: 10px;
-            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.05);
-            transition: transform 0.3s, box-shadow 0.3s;
-            margin-bottom: 25px;
-        }
-        
-        .card:hover {
-            transform: translateY(-5px);
-            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.1);
-        }
-        
-        .card-header {
-            background-color: white;
-            border-bottom: 1px solid rgba(0, 0, 0, 0.05);
-            font-weight: 600;
-            padding: 15px 20px;
-            border-radius: 10px 10px 0 0 !important;
-        }
-        
-        .stat-card {
-            padding: 20px;
-            border-radius: 10px;
-            color: white;
-            text-align: center;
-            position: relative;
-            overflow: hidden;
-        }
-        
-        .stat-card .number {
-            font-size: 2.2rem;
-            font-weight: 700;
-            margin-bottom: 5px;
-        }
-        
-        .chart-container {
-            position: relative;
-            height: 400px;
-            margin-bottom: 30px;
-        }
-        
-        .badge-status {
-            padding: 5px 10px;
-            border-radius: 20px;
-            font-weight: 500;
-        }
-        
-        .btn-action {
-            padding: 5px 12px;
-            font-size: 0.85rem;
-            border-radius: 5px;
-            font-weight: 500;
-        }
-        
-        @media (max-width: 768px) {
-            .stat-card .number {
-                font-size: 1.8rem;
-            }
-            
-            .navbar-brand {
-                font-size: 1.2rem;
-            }
-        }
+        body {font-family:'Segoe UI',Tahoma,Geneva,Verdana,sans-serif;background-color:#f5f7fa;color:#333;}
+        .navbar-main{background-color:white;box-shadow:0 2px 10px rgba(0,0,0,0.1);padding:15px 0;}
+        .navbar-brand{font-weight:700;color:var(--primary);font-size:1.5rem;}
+        .nav-link{color:var(--dark);font-weight:500;margin:0 5px;padding:8px 15px !important;border-radius:5px;transition:all .3s;}
+        .nav-link:hover,.nav-link.active{background-color:rgba(52,152,219,.1);color:var(--secondary);}
+        .nav-link i{margin-right:8px;width:20px;text-align:center;}
+        .page-header{background:linear-gradient(135deg,var(--primary) 0%,var(--secondary) 100%);color:white;padding:30px 0;margin-bottom:30px;border-radius:0 0 10px 10px;}
+        .card{border:none;border-radius:10px;box-shadow:0 5px 15px rgba(0,0,0,.05);transition:transform .3s,box-shadow .3s;margin-bottom:25px;}
+        .card:hover{transform:translateY(-5px);box-shadow:0 10px 25px rgba(0,0,0,.1);}
+        .card-header{background-color:white;border-bottom:1px solid rgba(0,0,0,.05);font-weight:600;padding:15px 20px;border-radius:10px 10px 0 0 !important;}
+        .stat-card{padding:20px;border-radius:10px;color:white;text-align:center;position:relative;overflow:hidden;}
+        .stat-card .number{font-size:2.2rem;font-weight:700;margin-bottom:5px;}
+        .chart-container{position:relative;height:400px;margin-bottom:30px;}
+        .badge-status{padding:5px 10px;border-radius:20px;font-weight:500;}
+        .btn-action{padding:5px 12px;font-size:.85rem;border-radius:5px;font-weight:500;}
+        @media (max-width:768px){.stat-card .number{font-size:1.8rem}.navbar-brand{font-size:1.2rem}}
     </style>
 </head>
 <body>
@@ -147,47 +52,15 @@
             </button>
             <div class="collapse navbar-collapse" id="navbarMain">
                 <ul class="navbar-nav me-auto mb-2 mb-lg-0">
-                    <li class="nav-item">
-                        <a class="nav-link active" href="#dashboard">
-                            <i class="fas fa-tachometer-alt"></i>
-                            Dashboard
-                        </a>
-                    </li>
-                    <li class="nav-item">
-                        <a class="nav-link" href="#pendaftaran">
-                            <i class="fas fa-user-plus"></i>
-                            Pendaftaran
-                        </a>
-                    </li>
-                    <li class="nav-item">
-                        <a class="nav-link" href="#tca-call">
-                            <i class="fas fa-phone"></i>
-                            TCA Call
-                        </a>
-                    </li>
-                    <li class="nav-item">
-                        <a class="nav-link" href="#first-visit">
-                            <i class="fas fa-calendar-check"></i>
-                            First Visit
-                        </a>
-                    </li>
-                    <li class="nav-item">
-                        <a class="nav-link" href="#second-visit">
-                            <i class="fas fa-calendar-check"></i>
-                            Second Visit
-                        </a>
-                    </li>
-                    <li class="nav-item">
-                        <a class="nav-link" href="#selesai">
-                            <i class="fas fa-check-circle"></i>
-                            Selesai
-                        </a>
-                    </li>
+                    <li class="nav-item"><a class="nav-link active" href="#dashboard"><i class="fas fa-tachometer-alt"></i>Dashboard</a></li>
+                    <li class="nav-item"><a class="nav-link" href="#pendaftaran"><i class="fas fa-user-plus"></i>Pendaftaran</a></li>
+                    <li class="nav-item"><a class="nav-link" href="#tca-call"><i class="fas fa-phone"></i>TCA Call</a></li>
+                    <li class="nav-item"><a class="nav-link" href="#first-visit"><i class="fas fa-calendar-check"></i>First Visit</a></li>
+                    <li class="nav-item"><a class="nav-link" href="#second-visit"><i class="fas fa-calendar-check"></i>Second Visit</a></li>
+                    <li class="nav-item"><a class="nav-link" href="#selesai"><i class="fas fa-check-circle"></i>Selesai</a></li>
                 </ul>
                 <div class="d-flex align-items-center">
-                    <span class="badge bg-primary">
-                        <i class="fas fa-user-shield me-1"></i> Staff Mode
-                    </span>
+                    <span class="badge bg-primary"><i class="fas fa-user-shield me-1"></i> Staff Mode</span>
                 </div>
             </div>
         </div>
@@ -215,13 +88,7 @@
     <main class="container">
         <!-- Dashboard Section -->
         <section id="dashboard" class="mb-5">
-            <div class="row mb-4">
-                <div class="col">
-                    <h2 class="h4"><i class="fas fa-tachometer-alt me-2"></i>Dashboard</h2>
-                </div>
-            </div>
-            
-            <!-- Stats Cards -->
+            <div class="row mb-4"><div class="col"><h2 class="h4"><i class="fas fa-tachometer-alt me-2"></i>Dashboard</h2></div></div>
             <div class="row g-4 mb-4">
                 <div class="col-md-6 col-lg-3">
                     <div class="stat-card" style="background: linear-gradient(135deg, var(--secondary) 0%, #2980b9 100%);">
@@ -252,14 +119,12 @@
                     </div>
                 </div>
             </div>
-            
+
             <!-- TCA Call Hari Ini -->
             <div class="row mb-5">
                 <div class="col-12">
                     <div class="card">
-                        <div class="card-header">
-                            <i class="fas fa-phone me-2"></i>Pesakit Perlu Dihubungi Hari Ini
-                        </div>
+                        <div class="card-header"><i class="fas fa-phone me-2"></i>Pesakit Perlu Dihubungi Hari Ini</div>
                         <div class="card-body">
                             <div class="table-responsive">
                                 <table class="table table-hover">
@@ -274,9 +139,7 @@
                                         </tr>
                                     </thead>
                                     <tbody id="tcaCallTable">
-                                        <tr>
-                                            <td colspan="6" class="text-center text-muted">Memuat data...</td>
-                                        </tr>
+                                        <tr><td colspan="6" class="text-center text-muted">Memuat data...</td></tr>
                                     </tbody>
                                 </table>
                             </div>
@@ -284,14 +147,12 @@
                     </div>
                 </div>
             </div>
-            
+
             <!-- Statistik 3D -->
             <div class="row">
                 <div class="col-12">
                     <div class="card">
-                        <div class="card-header">
-                            <i class="fas fa-chart-bar me-2"></i>Statistik Pesakit Selesai
-                        </div>
+                        <div class="card-header"><i class="fas fa-chart-bar me-2"></i>Statistik Pesakit Selesai</div>
                         <div class="card-body">
                             <div class="row mb-3">
                                 <div class="col-md-4">
@@ -302,9 +163,7 @@
                                     </select>
                                 </div>
                             </div>
-                            <div class="chart-container">
-                                <canvas id="stats3dChart"></canvas>
-                            </div>
+                            <div class="chart-container"><canvas id="stats3dChart"></canvas></div>
                         </div>
                     </div>
                 </div>
@@ -313,12 +172,7 @@
 
         <!-- Pendaftaran Section -->
         <section id="pendaftaran" class="mb-5 d-none">
-            <div class="row mb-4">
-                <div class="col">
-                    <h2 class="h4"><i class="fas fa-user-plus me-2"></i>Pendaftaran Pesakit Baru</h2>
-                </div>
-            </div>
-            
+            <div class="row mb-4"><div class="col"><h2 class="h4"><i class="fas fa-user-plus me-2"></i>Pendaftaran Pesakit Baru</h2></div></div>
             <div class="card">
                 <div class="card-body">
                     <form id="formPendaftaran">
@@ -348,9 +202,7 @@
                                 <input type="time" class="form-control" id="masaTCA" required>
                             </div>
                             <div class="col-12">
-                                <button type="submit" class="btn btn-primary">
-                                    <i class="fas fa-save me-2"></i>Daftar Pesakit
-                                </button>
+                                <button type="submit" class="btn btn-primary"><i class="fas fa-save me-2"></i>Daftar Pesakit</button>
                             </div>
                         </div>
                     </form>
@@ -360,12 +212,7 @@
 
         <!-- TCA Call Section -->
         <section id="tca-call" class="mb-5 d-none">
-            <div class="row mb-4">
-                <div class="col">
-                    <h2 class="h4"><i class="fas fa-phone me-2"></i>Senarai TCA Call</h2>
-                </div>
-            </div>
-            
+            <div class="row mb-4"><div class="col"><h2 class="h4"><i class="fas fa-phone me-2"></i>Senarai TCA Call</h2></div></div>
             <div class="card">
                 <div class="card-body">
                     <div class="table-responsive">
@@ -381,9 +228,7 @@
                                 </tr>
                             </thead>
                             <tbody id="tcaCallList">
-                                <tr>
-                                    <td colspan="6" class="text-center text-muted">Memuat data...</td>
-                                </tr>
+                                <tr><td colspan="6" class="text-center text-muted">Memuat data...</td></tr>
                             </tbody>
                         </table>
                     </div>
@@ -393,12 +238,7 @@
 
         <!-- First Visit Section -->
         <section id="first-visit" class="mb-5 d-none">
-            <div class="row mb-4">
-                <div class="col">
-                    <h2 class="h4"><i class="fas fa-calendar-check me-2"></i>First Visit</h2>
-                </div>
-            </div>
-            
+            <div class="row mb-4"><div class="col"><h2 class="h4"><i class="fas fa-calendar-check me-2"></i>First Visit</h2></div></div>
             <div class="card">
                 <div class="card-body">
                     <div class="table-responsive">
@@ -413,9 +253,7 @@
                                 </tr>
                             </thead>
                             <tbody id="firstVisitList">
-                                <tr>
-                                    <td colspan="5" class="text-center text-muted">Memuat data...</td>
-                                </tr>
+                                <tr><td colspan="5" class="text-center text-muted">Memuat data...</td></tr>
                             </tbody>
                         </table>
                     </div>
@@ -425,12 +263,7 @@
 
         <!-- Second Visit Section -->
         <section id="second-visit" class="mb-5 d-none">
-            <div class="row mb-4">
-                <div class="col">
-                    <h2 class="h4"><i class="fas fa-calendar-check me-2"></i>Second Visit</h2>
-                </div>
-            </div>
-            
+            <div class="row mb-4"><div class="col"><h2 class="h4"><i class="fas fa-calendar-check me-2"></i>Second Visit</h2></div></div>
             <div class="card">
                 <div class="card-body">
                     <div class="table-responsive">
@@ -445,9 +278,7 @@
                                 </tr>
                             </thead>
                             <tbody id="secondVisitList">
-                                <tr>
-                                    <td colspan="5" class="text-center text-muted">Memuat data...</td>
-                                </tr>
+                                <tr><td colspan="5" class="text-center text-muted">Memuat data...</td></tr>
                             </tbody>
                         </table>
                     </div>
@@ -457,12 +288,7 @@
 
         <!-- Selesai Section -->
         <section id="selesai" class="mb-5 d-none">
-            <div class="row mb-4">
-                <div class="col">
-                    <h2 class="h4"><i class="fas fa-check-circle me-2"></i>Pesakit Selesai</h2>
-                </div>
-            </div>
-            
+            <div class="row mb-4"><div class="col"><h2 class="h4"><i class="fas fa-check-circle me-2"></i>Pesakit Selesai</h2></div></div>
             <div class="card">
                 <div class="card-body">
                     <div class="table-responsive">
@@ -477,22 +303,18 @@
                                 </tr>
                             </thead>
                             <tbody id="completedTable">
-                                <tr>
-                                    <td colspan="5" class="text-center text-muted">Memuat data...</td>
-                                </tr>
+                                <tr><td colspan="5" class="text-center text-muted">Memuat data...</td></tr>
                             </tbody>
                         </table>
                     </div>
                 </div>
             </div>
-            
+
             <!-- Grafik 3D -->
             <div class="row mt-4">
                 <div class="col-12">
                     <div class="card">
-                        <div class="card-header">
-                            <i class="fas fa-chart-bar me-2"></i>Statistik Pesakit Selesai
-                        </div>
+                        <div class="card-header"><i class="fas fa-chart-bar me-2"></i>Statistik Pesakit Selesai</div>
                         <div class="card-body">
                             <div class="row mb-3">
                                 <div class="col-md-4">
@@ -503,9 +325,7 @@
                                     </select>
                                 </div>
                             </div>
-                            <div class="chart-container">
-                                <canvas id="completed3dChart"></canvas>
-                            </div>
+                            <div class="chart-container"><canvas id="completed3dChart"></canvas></div>
                         </div>
                     </div>
                 </div>
@@ -517,78 +337,78 @@
     <footer class="footer mt-5 py-3 bg-light">
         <div class="container">
             <div class="row">
-                <div class="col-md-6">
-                    <p class="mb-0">&copy; 2023 Klinik SihatSokmo. Untuk kegunaan dalaman sahaja.</p>
-                </div>
-                <div class="col-md-6 text-md-end">
-                    <p class="mb-0">Versi 1.2.0</p>
-                </div>
+                <div class="col-md-6"><p class="mb-0">&copy; 2023 Klinik SihatSokmo. Untuk kegunaan dalaman sahaja.</p></div>
+                <div class="col-md-6 text-md-end"><p class="mb-0">Versi 1.2.0</p></div>
             </div>
         </div>
     </footer>
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
     <script>
-        // Konfigurasi
+        // === KONFIGURASI ===
         const CONFIG = {
             SCRIPT_URL: 'https://script.google.com/macros/s/AKfycbx6TKE0vDDPO3-36cY7xjacAbGL0HIRKCrORNm-sED9y5NpIeIUk9gyrpiWy-S7vbc/exec'
         };
-        
-        // Variabel global untuk chart
+
+        // === PEMBANTU FETCH TANPA CORS PRE-FLIGHT ===
+        // GET ringkas
+        const getJSON = async (paramsObj = {}) => {
+            const qs = new URLSearchParams(paramsObj).toString();
+            const url = qs ? `${CONFIG.SCRIPT_URL}?${qs}` : CONFIG.SCRIPT_URL;
+            const res = await fetch(url, { method: 'GET' });
+            return res.json();
+        };
+
+        // POST ringkas (x-www-form-urlencoded) → tiada preflight/OPTIONS
+        const postForm = async (paramsObj = {}) => {
+            const body = new URLSearchParams(paramsObj);
+            const res = await fetch(CONFIG.SCRIPT_URL, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                body
+            });
+            return res.json();
+        };
+
+        // === VAR GLOBAL CHART ===
         let stats3dChart, completed3dChart;
-        
-        // Inisialisasi
-        document.addEventListener('DOMContentLoaded', function() {
+
+        // === INIT ===
+        document.addEventListener('DOMContentLoaded', () => {
             initDate();
             setupNavigation();
             loadDashboardData();
             loadStatistics('3months');
             loadCompletedStatistics('3months');
-            
-            // Form pendaftaran
-            document.getElementById('formPendaftaran').addEventListener('submit', function(e) {
+
+            document.getElementById('formPendaftaran').addEventListener('submit', (e) => {
                 e.preventDefault();
                 daftarPesakit();
             });
-            
-            // Statistik period change (dashboard)
-            document.getElementById('statPeriod').addEventListener('change', function() {
+
+            document.getElementById('statPeriod').addEventListener('change', function () {
                 loadStatistics(this.value);
             });
-            
-            // Statistik period change (selesai page)
-            document.getElementById('statPeriodCompleted').addEventListener('change', function() {
+            document.getElementById('statPeriodCompleted').addEventListener('change', function () {
                 loadCompletedStatistics(this.value);
             });
         });
-        
+
         function initDate() {
             const options = { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' };
             document.getElementById('current-date').textContent = new Date().toLocaleDateString('ms-MY', options);
         }
-        
+
         function setupNavigation() {
-            // Handle navigation
             document.querySelectorAll('.nav-link').forEach(link => {
-                link.addEventListener('click', function(e) {
+                link.addEventListener('click', function (e) {
                     e.preventDefault();
-                    
-                    // Hide all sections
-                    document.querySelectorAll('main section').forEach(section => {
-                        section.classList.add('d-none');
-                    });
-                    
-                    // Show selected section
+                    document.querySelectorAll('main section').forEach(s => s.classList.add('d-none'));
                     const target = this.getAttribute('href');
                     document.querySelector(target).classList.remove('d-none');
-                    
-                    // Update active link
-                    document.querySelectorAll('.nav-link').forEach(navLink => {
-                        navLink.classList.remove('active');
-                    });
+                    document.querySelectorAll('.nav-link').forEach(n => n.classList.remove('active'));
                     this.classList.add('active');
-                    
-                    // Load data if needed
+
                     if (target === '#dashboard') {
                         loadDashboardData();
                         loadStatistics(document.getElementById('statPeriod').value);
@@ -600,417 +420,296 @@
                         loadSecondVisitData();
                     } else if (target === '#selesai') {
                         loadCompletedData();
-                        loadCompletedStatistics('3months');
+                        loadCompletedStatistics(document.getElementById('statPeriodCompleted').value);
                     }
                 });
             });
         }
-        
+
+        // === DASHBOARD ===
         async function loadDashboardData() {
             try {
-                const response = await fetch(`${CONFIG.SCRIPT_URL}?action=getDashboardData`);
-                const data = await response.json();
-                
+                const data = await getJSON({ action: 'getDashboardData' });
                 if (data.status === 'success') {
                     document.getElementById('totalDaftar').textContent = data.data.totalDaftar;
                     document.getElementById('totalFirstVisit').textContent = data.data.totalFirstVisit;
                     document.getElementById('totalSecondVisit').textContent = data.data.totalSecondVisit;
                     document.getElementById('totalSelesai').textContent = data.data.totalSelesai;
-                    
-                    // Load TCA Call for today
                     loadTCACallData();
                 }
-            } catch (error) {
-                console.error('Error loading dashboard data:', error);
+            } catch (err) {
+                console.error('Error loadDashboardData:', err);
                 alert('Gagal memuat data dashboard');
             }
         }
-        
+
         async function loadStatistics(period) {
             try {
-                const response = await fetch(`${CONFIG.SCRIPT_URL}?action=getStatistics&period=${period}`);
-                const data = await response.json();
-                
+                const data = await getJSON({ action: 'getStatistics', period });
                 if (data.status === 'success') {
                     update3dChart(data.data, period, 'stats3dChart');
                 }
-            } catch (error) {
-                console.error('Error loading statistics:', error);
+            } catch (err) {
+                console.error('Error loadStatistics:', err);
             }
         }
-        
+
         async function loadCompletedStatistics(period) {
             try {
-                const response = await fetch(`${CONFIG.SCRIPT_URL}?action=getStatistics&period=${period}`);
-                const data = await response.json();
-                
+                const data = await getJSON({ action: 'getStatistics', period });
                 if (data.status === 'success') {
                     update3dChart(data.data, period, 'completed3dChart');
                 }
-            } catch (error) {
-                console.error('Error loading completed statistics:', error);
+            } catch (err) {
+                console.error('Error loadCompletedStatistics:', err);
             }
         }
-        
+
         function update3dChart(data, period, chartId) {
             const ctx = document.getElementById(chartId).getContext('2d');
-            
-            // Destroy previous chart if exists
-            if (chartId === 'stats3dChart' && stats3dChart) {
-                stats3dChart.destroy();
-            } else if (chartId === 'completed3dChart' && completed3dChart) {
-                completed3dChart.destroy();
-            }
-            
-            const labels = data.map(item => item.label);
-            const counts = data.map(item => item.count);
-            
-            // Generate colors for each bar
-            const backgroundColors = [];
-            for (let i = 0; i < counts.length; i++) {
-                const hue = (i * 30) % 360;
-                backgroundColors.push(`hsla(${hue}, 70%, 50%, 0.7)`);
-            }
-            
+
+            if (chartId === 'stats3dChart' && stats3dChart) stats3dChart.destroy();
+            if (chartId === 'completed3dChart' && completed3dChart) completed3dChart.destroy();
+
+            const labels = data.map(i => i.label);
+            const counts = data.map(i => i.count);
+            const backgroundColors = counts.map((_, i) => `hsla(${(i * 30) % 360}, 70%, 50%, 0.7)`);
+
             const newChart = new Chart(ctx, {
                 type: 'bar',
                 data: {
-                    labels: labels,
-                    datasets: [{
-                        label: 'Jumlah Pesakit Selesai',
-                        data: counts,
-                        backgroundColor: backgroundColors,
-                        borderColor: 'rgba(0, 0, 0, 0.1)',
-                        borderWidth: 1
-                    }]
+                    labels,
+                    datasets: [{ label: 'Jumlah Pesakit Selesai', data: counts, backgroundColor: backgroundColors, borderColor: 'rgba(0,0,0,0.1)', borderWidth: 1 }]
                 },
                 options: {
-                    responsive: true,
-                    maintainAspectRatio: false,
+                    responsive: true, maintainAspectRatio: false,
                     plugins: {
-                        title: {
-                            display: true,
-                            text: `Statistik Pesakit Selesai (${getPeriodLabel(period)})`,
-                            font: {
-                                size: 16
-                            }
-                        },
-                        legend: {
-                            display: false
-                        },
-                        datalabels: {
-                            display: false
-                        },
-                        tooltip: {
-                            callbacks: {
-                                label: function(context) {
-                                    return `Pesakit: ${context.raw}`;
-                                }
-                            }
-                        }
+                        title: { display: true, text: `Statistik Pesakit Selesai (${getPeriodLabel(period)})`, font: { size: 16 } },
+                        legend: { display: false },
+                        datalabels: { display: false },
+                        tooltip: { callbacks: { label: (ctx) => `Pesakit: ${ctx.raw}` } },
+                        '3d': { enabled: true, alpha: 15, beta: 15, depth: 50, viewDistance: 25 }
                     },
                     scales: {
-                        y: {
-                            beginAtZero: true,
-                            title: {
-                                display: true,
-                                text: 'Jumlah Pesakit'
-                            }
-                        },
-                        x: {
-                            title: {
-                                display: true,
-                                text: 'Bulan/Tahun'
-                            }
-                        }
+                        y: { beginAtZero: true, title: { display: true, text: 'Jumlah Pesakit' } },
+                        x: { title: { display: true, text: 'Bulan/Tahun' } }
                     },
-                    animation: {
-                        duration: 2000
-                    },
-                    layout: {
-                        padding: {
-                            top: 20,
-                            right: 20,
-                            bottom: 20,
-                            left: 20
-                        }
-                    },
-                    plugins: {
-                        '3d': {
-                            enabled: true,
-                            alpha: 15,
-                            beta: 15,
-                            depth: 50,
-                            viewDistance: 25
-                        }
-                    }
+                    animation: { duration: 2000 },
+                    layout: { padding: { top: 20, right: 20, bottom: 20, left: 20 } }
                 }
             });
-            
-            if (chartId === 'stats3dChart') {
-                stats3dChart = newChart;
-            } else {
-                completed3dChart = newChart;
-            }
+
+            if (chartId === 'stats3dChart') stats3dChart = newChart;
+            else completed3dChart = newChart;
         }
-        
-        function getPeriodLabel(period) {
-            switch(period) {
-                case '3months': return '3 Bulan Terakhir';
-                case '6months': return '6 Bulan Terakhir';
-                case '12months': return '12 Bulan Terakhir';
-                default: return period;
-            }
+
+        function getPeriodLabel(p) {
+            if (p === '3months') return '3 Bulan Terakhir';
+            if (p === '6months') return '6 Bulan Terakhir';
+            if (p === '12months') return '12 Bulan Terakhir';
+            return p;
         }
-        
+
+        // === SENARAI TCA CALL HARI INI (Dashboard) ===
         async function loadTCACallData() {
             try {
-                const response = await fetch(`${CONFIG.SCRIPT_URL}?action=getTCACall`);
-                const data = await response.json();
-                
-                const tableBody = document.getElementById('tcaCallList');
+                const data = await getJSON({ action: 'getTCACall' });
+                const tableBody = document.getElementById('tcaCallTable');
                 tableBody.innerHTML = '';
-                
+
                 if (data.status === 'success' && data.data.length > 0) {
-                    data.data.forEach(pesakit => {
-                        const row = document.createElement('tr');
-                        row.innerHTML = `
-                            <td>${pesakit.nama}</td>
-                            <td>${pesakit.noIC}</td>
-                            <td>${pesakit.noTelefon}</td>
-                            <td>${pesakit.tarikhTCA}</td>
-                            <td><span class="badge bg-warning">${pesakit.status}</span></td>
+                    data.data.forEach(p => {
+                        const tr = document.createElement('tr');
+                        tr.innerHTML = `
+                            <td>${p.nama}</td>
+                            <td>${p.noIC}</td>
+                            <td>${p.noTelefon}</td>
+                            <td>${p.tarikhTCA}</td>
+                            <td><span class="badge bg-warning">${p.status}</span></td>
                             <td>
-                                <button class="btn btn-sm btn-primary btn-action" onclick="handleCall('${pesakit.noTelefon}')">
+                                <button class="btn btn-sm btn-primary btn-action" onclick="handleCall('${p.noTelefon}')">
                                     <i class="fas fa-phone me-1"></i> Call
                                 </button>
                             </td>
                         `;
-                        tableBody.appendChild(row);
+                        tableBody.appendChild(tr);
                     });
                 } else {
-                    tableBody.innerHTML = `
-                        <tr>
-                            <td colspan="6" class="text-center text-muted">Tiada pesakit perlu dihubungi hari ini</td>
-                        </tr>
-                    `;
+                    tableBody.innerHTML = `<tr><td colspan="6" class="text-center text-muted">Tiada pesakit perlu dihubungi hari ini</td></tr>`;
                 }
-            } catch (error) {
-                console.error('Error loading TCA call data:', error);
+            } catch (err) {
+                console.error('Error loadTCACallData:', err);
             }
         }
-        
+
         function handleCall(phoneNumber) {
-            // Implementasi panggilan telefon
-            alert(`Memanggil nomor: ${phoneNumber}`);
-            // Untuk implementasi sebenar, anda boleh gunakan:
             // window.open(`tel:${phoneNumber}`);
+            alert(`Memanggil nombor: ${phoneNumber}`);
         }
-        
+
+        // === FIRST VISIT ===
         async function loadFirstVisitData() {
             try {
-                const response = await fetch(`${CONFIG.SCRIPT_URL}?action=getFirstVisit`);
-                const data = await response.json();
-                
-                const tableBody = document.getElementById('firstVisitList');
-                tableBody.innerHTML = '';
-                
+                const data = await getJSON({ action: 'getFirstVisit' });
+                const tbody = document.getElementById('firstVisitList');
+                tbody.innerHTML = '';
                 if (data.status === 'success' && data.data.length > 0) {
-                    data.data.forEach(pesakit => {
-                        const row = document.createElement('tr');
-                        row.innerHTML = `
-                            <td>${pesakit.nama}</td>
-                            <td>${pesakit.noIC}</td>
-                            <td>${pesakit.tarikhTCA}</td>
+                    data.data.forEach(p => {
+                        const hadir = p.status === 'HADIR';
+                        const tr = document.createElement('tr');
+                        tr.innerHTML = `
+                            <td>${p.nama}</td>
+                            <td>${p.noIC}</td>
+                            <td>${p.tarikhTCA}</td>
+                            <td><span class="badge ${hadir ? 'bg-success' : 'bg-warning'}">${hadir ? 'Hadir' : 'Belum Hadir'}</span></td>
                             <td>
-                                <span class="badge ${pesakit.status === 'HADIR' ? 'bg-success' : 'bg-warning'}">
-                                    ${pesakit.status === 'HADIR' ? 'Hadir' : 'Belum Hadir'}
-                                </span>
-                            </td>
-                            <td>
-                                ${pesakit.status === 'HADIR' ? 
-                                    `<button class="btn btn-sm btn-success btn-action" onclick="setSecondVisit('${pesakit.noIC}')">
-                                        <i class="fas fa-check me-1"></i> Tetapkan Second Visit
-                                    </button>` : 
-                                    `<button class="btn btn-sm btn-danger btn-action" onclick="handleCall('${pesakit.noTelefon}')">
-                                        <i class="fas fa-phone me-1"></i> Hubungi
-                                    </button>`}
+                                ${hadir
+                                    ? `<button class="btn btn-sm btn-success btn-action" onclick="setSecondVisit('${p.id}')">
+                                         <i class="fas fa-check me-1"></i> Tetapkan Second Visit
+                                       </button>`
+                                    : `<button class="btn btn-sm btn-danger btn-action" onclick="handleCall('${p.noTelefon}')">
+                                         <i class="fas fa-phone me-1"></i> Hubungi
+                                       </button>`}
                             </td>
                         `;
-                        tableBody.appendChild(row);
+                        tbody.appendChild(tr);
                     });
                 } else {
-                    tableBody.innerHTML = `
-                        <tr>
-                            <td colspan="5" class="text-center text-muted">Tiada data First Visit</td>
-                        </tr>
-                    `;
+                    tbody.innerHTML = `<tr><td colspan="5" class="text-center text-muted">Tiada data First Visit</td></tr>`;
                 }
-            } catch (error) {
-                console.error('Error loading first visit data:', error);
+            } catch (err) {
+                console.error('Error loadFirstVisitData:', err);
             }
         }
-        
-        async function setSecondVisit(noIC) {
+
+        // Tetap Second Visit (gunakan ID/timestamp baris)
+        async function setSecondVisit(id) {
             try {
-                const response = await fetch(`${CONFIG.SCRIPT_URL}?action=setSecondVisit&noIC=${noIC}`);
-                const result = await response.json();
-                
+                const result = await postForm({ action: 'updateStatus', op: 'secondVisit', id, staff: 'SYSTEM' });
                 if (result.status === 'success') {
-                    alert('Second Visit berhasil ditetapkan');
+                    alert('Second Visit berjaya ditetapkan');
                     loadFirstVisitData();
                     loadSecondVisitData();
                 } else {
                     throw new Error(result.message || 'Gagal menetapkan Second Visit');
                 }
-            } catch (error) {
-                console.error('Error setting second visit:', error);
-                alert('Error: ' + error.message);
+            } catch (err) {
+                console.error('Error setSecondVisit:', err);
+                alert('Error: ' + err.message);
             }
         }
-        
+
+        // === SECOND VISIT ===
         async function loadSecondVisitData() {
             try {
-                const response = await fetch(`${CONFIG.SCRIPT_URL}?action=getSecondVisit`);
-                const data = await response.json();
-                
-                const tableBody = document.getElementById('secondVisitList');
-                tableBody.innerHTML = '';
-                
+                const data = await getJSON({ action: 'getSecondVisit' });
+                const tbody = document.getElementById('secondVisitList');
+                tbody.innerHTML = '';
                 if (data.status === 'success' && data.data.length > 0) {
-                    data.data.forEach(pesakit => {
-                        const row = document.createElement('tr');
-                        row.innerHTML = `
-                            <td>${pesakit.nama}</td>
-                            <td>${pesakit.noIC}</td>
-                            <td>${pesakit.tarikhTCA}</td>
+                    data.data.forEach(p => {
+                        const hadir = p.status === 'HADIR';
+                        const tr = document.createElement('tr');
+                        tr.innerHTML = `
+                            <td>${p.nama}</td>
+                            <td>${p.noIC}</td>
+                            <td>${p.tarikhTCA}</td>
+                            <td><span class="badge ${hadir ? 'bg-success' : 'bg-warning'}">${hadir ? 'Hadir' : 'Belum Hadir'}</span></td>
                             <td>
-                                <span class="badge ${pesakit.status === 'HADIR' ? 'bg-success' : 'bg-warning'}">
-                                    ${pesakit.status === 'HADIR' ? 'Hadir' : 'Belum Hadir'}
-                                </span>
-                            </td>
-                            <td>
-                                ${pesakit.status === 'HADIR' ? 
-                                    `<button class="btn btn-sm btn-success btn-action" onclick="markAsCompleted('${pesakit.noIC}')">
-                                        <i class="fas fa-check me-1"></i> Tandakan Selesai
-                                    </button>` : 
-                                    `<button class="btn btn-sm btn-danger btn-action" onclick="handleCall('${pesakit.noTelefon}')">
-                                        <i class="fas fa-phone me-1"></i> Hubungi
-                                    </button>`}
+                                ${hadir
+                                    ? `<button class="btn btn-sm btn-success btn-action" onclick="markAsCompleted('${p.id}')">
+                                         <i class="fas fa-check me-1"></i> Tandakan Selesai
+                                       </button>`
+                                    : `<button class="btn btn-sm btn-danger btn-action" onclick="handleCall('${p.noTelefon}')">
+                                         <i class="fas fa-phone me-1"></i> Hubungi
+                                       </button>`}
                             </td>
                         `;
-                        tableBody.appendChild(row);
+                        tbody.appendChild(tr);
                     });
                 } else {
-                    tableBody.innerHTML = `
-                        <tr>
-                            <td colspan="5" class="text-center text-muted">Tiada data Second Visit</td>
-                        </tr>
-                    `;
+                    tbody.innerHTML = `<tr><td colspan="5" class="text-center text-muted">Tiada data Second Visit</td></tr>`;
                 }
-            } catch (error) {
-                console.error('Error loading second visit data:', error);
+            } catch (err) {
+                console.error('Error loadSecondVisitData:', err);
             }
         }
-        
-        async function markAsCompleted(noIC) {
+
+        async function markAsCompleted(id) {
             try {
-                const response = await fetch(`${CONFIG.SCRIPT_URL}?action=markAsCompleted&noIC=${noIC}`);
-                const result = await response.json();
-                
+                const result = await postForm({ action: 'updateStatus', op: 'selesai', id, staff: 'SYSTEM' });
                 if (result.status === 'success') {
-                    alert('Pesakit berhasil ditandakan sebagai selesai');
+                    alert('Pesakit berjaya ditandakan sebagai selesai');
                     loadSecondVisitData();
                     loadCompletedData();
                     loadDashboardData();
                 } else {
                     throw new Error(result.message || 'Gagal menandakan selesai');
                 }
-            } catch (error) {
-                console.error('Error marking as completed:', error);
-                alert('Error: ' + error.message);
+            } catch (err) {
+                console.error('Error markAsCompleted:', err);
+                alert('Error: ' + err.message);
             }
         }
-        
+
+        // === COMPLETED ===
         async function loadCompletedData() {
             try {
-                const response = await fetch(`${CONFIG.SCRIPT_URL}?action=getCompleted`);
-                const data = await response.json();
-                
-                const tableBody = document.getElementById('completedTable');
-                tableBody.innerHTML = '';
-                
+                // Selaraskan action kepada 'getCompleted' (alias disediakan di back-end)
+                const data = await getJSON({ action: 'getCompleted' });
+                const tbody = document.getElementById('completedTable');
+                tbody.innerHTML = '';
                 if (data.status === 'success' && data.data.length > 0) {
-                    data.data.forEach(pesakit => {
-                        const row = document.createElement('tr');
-                        row.innerHTML = `
-                            <td>${pesakit.nama}</td>
-                            <td>${pesakit.noIC}</td>
-                            <td>${pesakit.noTelefon}</td>
-                            <td>${pesakit.tarikhDaftar}</td>
-                            <td>${pesakit.tarikhSelesai}</td>
+                    data.data.forEach(p => {
+                        const tr = document.createElement('tr');
+                        tr.innerHTML = `
+                            <td>${p.nama}</td>
+                            <td>${p.noIC}</td>
+                            <td>${p.noTelefon}</td>
+                            <td>${p.tarikhDaftar}</td>
+                            <td>${p.tarikhSelesai}</td>
                         `;
-                        tableBody.appendChild(row);
+                        tbody.appendChild(tr);
                     });
                 } else {
-                    tableBody.innerHTML = `
-                        <tr>
-                            <td colspan="5" class="text-center text-muted">Tiada data pesakit selesai</td>
-                        </tr>
-                    `;
+                    tbody.innerHTML = `<tr><td colspan="5" class="text-center text-muted">Tiada data pesakit selesai</td></tr>`;
                 }
-            } catch (error) {
-                console.error('Error loading completed data:', error);
+            } catch (err) {
+                console.error('Error loadCompletedData:', err);
             }
         }
-        
-       async function daftarPesakit() {
-  const formData = {
-    namaPesakit: document.getElementById('namaPesakit').value,
-    noIC: document.getElementById('noIC').value,
-    noTelefon: document.getElementById('noTelefon').value,
-    namaStaff: document.getElementById('namaStaff').value,
-    tarikhTCA: document.getElementById('tarikhTCA').value,
-    masaTCA: document.getElementById('masaTCA').value,
-    action: 'daftarPesakit' // Tambahkan ini
-  };
 
-  // Validasi data
-  if (!formData.namaPesakit || !formData.noIC || !formData.noTelefon || 
-      !formData.namaStaff || !formData.tarikhTCA || !formData.masaTCA) {
-    alert('Sila isi semua maklumat yang diperlukan');
-    return;
-  }
+        // === DAFTAR PESAKIT (POST TANPA CORS) ===
+        async function daftarPesakit() {
+            const formData = {
+                action: 'daftarPesakit',
+                namaPesakit: document.getElementById('namaPesakit').value.trim(),
+                noIC: document.getElementById('noIC').value.trim(),
+                noTelefon: document.getElementById('noTelefon').value.trim(),
+                namaStaff: document.getElementById('namaStaff').value.trim(),
+                tarikhTCA: document.getElementById('tarikhTCA').value,
+                masaTCA: document.getElementById('masaTCA').value
+            };
 
-  try {
-    // Gunakan proxy CORS jika diperlukan
-    const PROXY_URL = 'https://cors-anywhere.herokuapp.com/';
-    const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbx6TKE0vDDPO3-36cY7xjacAbGL0HIRKCrORNm-sED9y5NpIeIUk9gyrpiWy-S7vbc/exec';
-    
-    const response = await fetch(PROXY_URL + SCRIPT_URL, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'X-Requested-With': 'XMLHttpRequest' // Diperlukan oleh CORS Anywhere
-      },
-      body: JSON.stringify(formData)
-    });
-    
-    const result = await response.json();
-    
-    if (result.status === 'success') {
-      alert('Pendaftaran berjaya!');
-      document.getElementById('formPendaftaran').reset();
-      loadDashboardData();
-      loadTCACallData();
-    } else {
-      throw new Error(result.message || 'Gagal mendaftar pesakit');
-    }
-  } catch (error) {
-    console.error('Error:', error);
-    alert('Error: ' + error.message);
-  }
-}
+            if (!formData.namaPesakit || !formData.noIC || !formData.noTelefon || !formData.namaStaff || !formData.tarikhTCA || !formData.masaTCA) {
+                alert('Sila isi semua maklumat yang diperlukan');
+                return;
+            }
+
+            try {
+                const result = await postForm(formData);
+                if (result.status === 'success') {
+                    alert('Pendaftaran berjaya!');
+                    document.getElementById('formPendaftaran').reset();
+                    loadDashboardData();
+                    loadTCACallData();
+                } else {
+                    throw new Error(result.message || 'Gagal mendaftar pesakit');
+                }
+            } catch (err) {
+                console.error('Error daftarPesakit:', err);
+                alert('Error: ' + err.message);
+            }
+        }
     </script>
 </body>
 </html>
