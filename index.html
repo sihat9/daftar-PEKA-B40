@@ -964,55 +964,62 @@
             }
         }
         
-        function daftarPesakit(data) {
+        async function daftarPesakit() {
+  const formData = {
+    namaPesakit: document.getElementById('namaPesakit').value,
+    noIC: document.getElementById('noIC').value,
+    noTelefon: document.getElementById('noTelefon').value,
+    namaStaff: document.getElementById('namaStaff').value,
+    tarikhTCA: document.getElementById('tarikhTCA').value,
+    masaTCA: document.getElementById('masaTCA').value
+  };
+
+  // Validasi data
+  if (!formData.namaPesakit || !formData.noIC || !formData.noTelefon || 
+      !formData.namaStaff || !formData.tarikhTCA || !formData.masaTCA) {
+    alert('Sila isi semua maklumat yang diperlukan');
+    return;
+  }
+
   try {
-    const ss = SpreadsheetApp.getActiveSpreadsheet();
-    const sheet = ss.getSheetByName(SHEET_NAME.PESAKIT);
-    
-    // Debug 1: Periksa apakah sheet ditemukan
-    if (!sheet) {
-      return {status: 'error', message: 'Sheet tidak ditemukan'};
+    // Gunakan google.script.run jika dihosting dalam Google Apps Script
+    if (typeof google !== 'undefined' && google.script.run) {
+      google.script.run
+        .withSuccessHandler(function(result) {
+          alert('Pendaftaran pesakit berjaya!');
+          document.getElementById('formPendaftaran').reset();
+          loadDashboardData();
+          loadTCACallData();
+        })
+        .withFailureHandler(function(error) {
+          alert('Error: ' + error.message);
+        })
+        .daftarPesakit(formData);
+    } 
+    // Jika dihosting di luar (GitHub Pages)
+    else {
+      const response = await fetch(`${CONFIG.SCRIPT_URL}?action=daftarPesakit`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(formData)
+      });
+      
+      const result = await response.json();
+      
+      if (result.status === 'success') {
+        alert('Pendaftaran berjaya!');
+        document.getElementById('formPendaftaran').reset();
+        loadDashboardData();
+        loadTCACallData();
+      } else {
+        throw new Error(result.message || 'Gagal mendaftar pesakit');
+      }
     }
-    
-    const now = new Date();
-    
-    // Debug 2: Log data yang diterima
-    console.log('Data received:', JSON.stringify(data));
-    
-    const newRow = [
-      Utilities.formatDate(now, 'GMT+8', 'dd/MM/yyyy HH:mm:ss'),
-      data.namaPesakit || '',
-      data.noIC || '',
-      data.noTelefon || '',
-      data.namaStaff || '',
-      Utilities.formatDate(now, 'GMT+8', 'dd/MM/yyyy'),
-      data.tarikhTCA || '',
-      data.masaTCA || '',
-      'TCA CALL',
-      '', // First Visit Date
-      '', // First Visit Status
-      '', // Second Visit Date
-      '', // Second Visit Status
-      '', // Tarikh Selesai
-      'AKTIF'
-    ];
-    
-    // Debug 3: Log row yang akan dimasukkan
-    console.log('New row:', newRow);
-    
-    sheet.appendRow(newRow);
-    
-    // Debug 4: Verifikasi data masuk
-    const lastRow = sheet.getLastRow();
-    const insertedData = sheet.getRange(lastRow, 1, 1, 15).getValues()[0];
-    console.log('Inserted data:', insertedData);
-    
-    logAktiviti(data.namaStaff, 'DAFTAR_PESAKIT', `Daftar pesakit baru: ${data.namaPesakit}`);
-    
-    return {status: 'success', message: 'Pesakit berjaya didaftarkan'};
   } catch (error) {
-    console.error('Error in daftarPesakit:', error);
-    return {status: 'error', message: error.message};
+    console.error('Error:', error);
+    alert('Error: ' + error.message);
   }
 }
     </script>
