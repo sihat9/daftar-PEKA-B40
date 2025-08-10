@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-<title>Sistem PEKA B40 - Klinik SihatSokmo</title>
+<title>Sistem Tracker PEKA B40 - Klinik SihatSokmo</title>
 
 <!-- Bootstrap & Icons -->
 <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
@@ -314,7 +314,7 @@ body{font-family:'Segoe UI',Tahoma,Geneva,Verdana,sans-serif;background:#f5f7fa;
   <!-- Selesai -->
   <section id="selesai" class="mb-4 d-none">
     <div class="d-flex justify-content-between align-items-center mb-2">
-      <h2 class="h5 m-0"><i class="fas fa-check-circle me-2"></i>Pesakit Selesai</h2>
+      <h2 class="h5 m-0"><i class="fas a-check-circle me-2"></i>Pesakit Selesai</h2>
       <input class="form-control form-control-sm searchbar" id="searchCompleted" placeholder="Cari nama/IC/telefon…"/>
     </div>
     <div class="card mb-3"><div class="card-body">
@@ -365,7 +365,7 @@ body{font-family:'Segoe UI',Tahoma,Geneva,Verdana,sans-serif;background:#f5f7fa;
       <button class="btn-close" data-bs-dismiss="modal"></button>
     </div>
     <div class="modal-body">
-      <input type="hidden" id="retcaId">
+      <input type="hidden" id="retcaIC">
       <div class="mb-3"><label class="form-label">Tarikh TCA Baharu</label><input type="date" id="retcaDate" class="form-control" required></div>
       <div class="mb-2"><label class="form-label">Masa TCA Baharu</label><input type="time" id="retcaTime" class="form-control" required></div>
       <small class="text-muted">Status pesakit akan ditukar kepada <b>TCA CALL</b>.</small>
@@ -385,7 +385,7 @@ body{font-family:'Segoe UI',Tahoma,Geneva,Verdana,sans-serif;background:#f5f7fa;
       <button class="btn-close" data-bs-dismiss="modal"></button>
     </div>
     <div class="modal-body">
-      <input type="hidden" id="secondTcaId">
+      <input type="hidden" id="secondTcaIC">
       <div class="mb-3"><label class="form-label">Tarikh TCA Second Visit</label><input type="date" id="secondTcaDate" class="form-control" required></div>
       <div class="mb-2"><label class="form-label">Masa TCA</label><input type="time" id="secondTcaTime" class="form-control" required></div>
       <small class="text-muted">Pesakit akan muncul dalam senarai <b>Second Visit</b> dengan TCA yang ditetapkan.</small>
@@ -405,7 +405,7 @@ body{font-family:'Segoe UI',Tahoma,Geneva,Verdana,sans-serif;background:#f5f7fa;
       <button class="btn-close" data-bs-dismiss="modal"></button>
     </div>
     <div class="modal-body">
-      <input type="hidden" id="pdpaId">
+      <input type="hidden" id="pdpaIC">
       <input type="file" id="pdpaFile" class="form-control" accept="application/pdf,image/*" />
       <div class="form-text">Muat naik PDF / imej borang PDPA pesakit.</div>
     </div>
@@ -422,7 +422,7 @@ body{font-family:'Segoe UI',Tahoma,Geneva,Verdana,sans-serif;background:#f5f7fa;
 <footer class="footer mt-4 py-3 bg-light">
   <div class="container"><div class="d-flex justify-content-between">
     <div>&copy; 2025 Klinik SihatSokmo. Untuk kegunaan Klinik sahaja.</div>
-    <div>Versi 2.2.0</div>
+    <div>Versi 2.2.1</div>
   </div></div>
 </footer>
 
@@ -764,7 +764,7 @@ async function loadTCACallData(){
     const renderRow = (p) => {
       const msisdn = normalizeMsisdnMY(p.noTelefon||'');
       return `
-      <tr data-id="${p.id}">
+      <tr data-ic="${p.noIC}">
         <td>${p.nama}</td>
         <td>${p.noIC}</td>
         <td class="mini-actions">
@@ -774,7 +774,7 @@ async function loadTCACallData(){
         </td>
         <td>${p.tarikhTCA}</td>
         <td><span class="badge bg-warning">${p.status}</span></td>
-        <td class="mini-actions"><button class="btn btn-sm btn-primary" onclick="openRetcaModal('${p.id}')"><i class="fa-solid fa-calendar-plus"></i> Re-TCA</button></td>
+        <td class="mini-actions"><button class="btn btn-sm btn-primary" onclick="openRetcaModal('${p.noIC}')"><i class="fa-solid fa-calendar-plus"></i> Re-TCA</button></td>
       </tr>`;
     };
 
@@ -809,23 +809,23 @@ async function loadFirstVisitData(){
             <div class="d-flex flex-wrap gap-1">
               <a class="btn btn-sm btn-outline-success" target="_blank" href="https://drive.google.com/file/d/${p.pdpaFileId}/preview"><i class="fa-solid fa-eye"></i> Lihat</a>
               <a class="btn btn-sm btn-outline-primary" target="_blank" href="https://drive.google.com/uc?export=download&id=${p.pdpaFileId}"><i class="fa-solid fa-download"></i> Muat Turun</a>
-              <button class="btn btn-sm btn-outline-danger" onclick="deletePDPA('${p.id}')"><i class="fa-solid fa-trash"></i> Padam</button>
+              <button class="btn btn-sm btn-outline-danger" onclick="deletePDPA('${p.noIC}')"><i class="fa-solid fa-trash"></i> Padam</button>
             </div>`;
         } else {
-          pdpaHTML = hadir ? `<button class="btn btn-sm btn-outline-primary" onclick="openPDPA('${p.id}')"><i class="fa-solid fa-file-arrow-up"></i> Upload</button>`
+          pdpaHTML = hadir ? `<button class="btn btn-sm btn-outline-primary" onclick="openPDPA('${p.noIC}')"><i class="fa-solid fa-file-arrow-up"></i> Upload</button>`
                            : `<span class="text-muted">-</span>`;
         }
 
         const row = `
-        <tr data-id="${p.id}">
+        <tr data-ic="${p.noIC}">
           <td>${p.nama}</td>
           <td>${p.noIC}</td>
           <td>${p.tarikhTCA||'-'}</td>
           <td>${pdpaHTML}</td>
           <td><span class="badge ${hadir?'bg-success':'bg-warning'}">${hadir?'Hadir':'Belum Hadir'}</span></td>
           <td class="mini-actions">
-            ${within && !hadir ? `<button class="btn btn-sm btn-success" onclick="markFirstVisit('${p.id}')"><i class="fa-solid fa-circle-check"></i> Hadir</button>` : ''}
-            ${!hadir ? `<button class="btn btn-sm btn-primary" onclick="openRetcaModal('${p.id}')"><i class="fa-solid fa-calendar-plus"></i> Re-TCA</button>` : ''}
+            ${within && !hadir ? `<button class="btn btn-sm btn-success" onclick="markFirstVisit('${p.noIC}')"><i class="fa-solid fa-circle-check"></i> Hadir</button>` : ''}
+            ${!hadir ? `<button class="btn btn-sm btn-primary" onclick="openRetcaModal('${p.noIC}')"><i class="fa-solid fa-calendar-plus"></i> Re-TCA</button>` : ''}
             ${msisdn ? `
               <a class="btn btn-sm btn-outline-secondary" href="${telHref(msisdn)}"><i class="fa-solid fa-phone"></i></a>
               <a class="btn btn-sm btn-outline-success" target="_blank" href="${waHref(msisdn)}"><i class="fa-brands fa-whatsapp"></i></a>` : ''}
@@ -850,7 +850,7 @@ async function loadLabFollowUp(){
         const badge = p.labStatus==='DONE' ? 'bg-success' : (p.labStatus==='REPEAT' ? 'bg-danger' : (p.labStatus==='IN_PROCESS' ? 'bg-warning' : 'bg-secondary'));
         const label = p.labStatus || 'PENDING';
         const row = `
-        <tr data-id="${p.id}">
+        <tr data-ic="${p.noIC}">
           <td>${p.nama}</td>
           <td>${p.noIC}</td>
           <td class="mini-actions">
@@ -862,9 +862,9 @@ async function loadLabFollowUp(){
           <td>${p.daysSince}</td>
           <td><span class="badge ${badge}">${label}</span></td>
           <td class="mini-actions">
-            <button class="btn btn-sm btn-success" onclick="openSecondTca('${p.id}')"><i class="fa-solid fa-square-check"></i> Result selesai & berjaya call</button>
-            <button class="btn btn-sm btn-warning" onclick="markLabStatus('${p.id}','IN_PROCESS')"><i class="fa-solid fa-hourglass-half"></i> Result in process</button>
-            <button class="btn btn-sm btn-danger" onclick="markLabStatus('${p.id}','REPEAT')"><i class="fa-solid fa-rotate-left"></i> Repeat sample</button>
+            <button class="btn btn-sm btn-success" onclick="openSecondTca('${p.noIC}')"><i class="fa-solid fa-square-check"></i> Result selesai & berjaya call</button>
+            <button class="btn btn-sm btn-warning" onclick="markLabStatus('${p.noIC}','IN_PROCESS')"><i class="fa-solid fa-hourglass-half"></i> Result in process</button>
+            <button class="btn btn-sm btn-danger" onclick="markLabStatus('${p.noIC}','REPEAT')"><i class="fa-solid fa-rotate-left"></i> Repeat sample</button>
           </td>
         </tr>`;
         tbody.insertAdjacentHTML('beforeend', row);
@@ -895,14 +895,14 @@ async function loadSecondVisitData(){
           : `<span class="text-danger">PDPA tiada</span>`;
 
         const row = `
-        <tr data-id="${p.id}">
+        <tr data-ic="${p.noIC}">
           <td>${p.nama}</td>
           <td>${p.noIC}</td>
           <td>${p.tarikhTCA||'-'}</td>
           <td>${pdpaHTML}</td>
           <td><span class="badge ${hadir?'bg-success':'bg-warning'}">${hadir?'Hadir':'Belum Hadir'}</span></td>
           <td class="mini-actions">
-            ${within && !hadir ? `<button class="btn btn-sm btn-success" onclick="markSecondVisitHadir('${p.id}')"><i class="fa-solid fa-circle-check"></i> Hadir</button>` : ''}
+            ${within && !hadir ? `<button class="btn btn-sm btn-success" onclick="markSecondVisitHadir('${p.noIC}')"><i class="fa-solid fa-circle-check"></i> Hadir</button>` : ''}
             ${msisdn ? `
               <a class="btn btn-sm btn-outline-secondary" href="${telHref(msisdn)}"><i class="fa-solid fa-phone"></i></a>
               <a class="btn btn-sm btn-outline-success" target="_blank" href="${waHref(msisdn)}"><i class="fa-brands fa-whatsapp"></i></a>` : ''}
@@ -930,9 +930,9 @@ async function loadCompletedData(){
               <a class="btn btn-sm btn-outline-primary" target="_blank" href="https://drive.google.com/uc?export=download&id=${p.pdpaFileId}"><i class="fa-solid fa-download"></i> Muat Turun</a>
             </div>`
           : `<span class="text-muted">-</span>`;
-        const row = `<tr data-id="${p.id}">
+        const row = `<tr data-ic="${p.noIC}">
           <td>${p.nama}</td><td>${p.noIC}</td><td>${msisdn}</td><td>${pdpaHTML}</td><td>${p.tarikhDaftar}</td><td>${p.tarikhSelesai}</td>
-          <td><button class="btn btn-sm btn-outline-secondary" onclick="archivePatient('${p.id}')"><i class="fa-solid fa-box-archive"></i> Arkib</button></td>
+          <td><button class="btn btn-sm btn-outline-secondary" onclick="archivePatient('${p.noIC}')"><i class="fa-solid fa-box-archive"></i> Arkib</button></td>
         </tr>`;
         tbody.insertAdjacentHTML('beforeend', row);
       });
@@ -950,9 +950,9 @@ async function loadArchivedData(){
     if (data.status==='success' && data.data.length>0){
       data.data.forEach(p=>{
         const msisdn = normalizeMsisdnMY(p.noTelefon||'');
-        const row = `<tr data-id="${p.id}">
+        const row = `<tr data-ic="${p.noIC}">
           <td>${p.nama}</td><td>${p.noIC}</td><td>${msisdn}</td><td>${p.tarikhDaftar}</td><td>${p.tarikhSelesai}</td><td>${p.archivedAt||'-'}</td>
-          <td><button class="btn btn-sm btn-outline-primary" onclick="restorePatient('${p.id}')"><i class="fa-solid fa-rotate-left"></i> Pulihkan</button></td>
+          <td><button class="btn btn-sm btn-outline-primary" onclick="restorePatient('${p.noIC}')"><i class="fa-solid fa-rotate-left"></i> Pulihkan</button></td>
         </tr>`;
         tbody.insertAdjacentHTML('beforeend', row);
       });
@@ -966,20 +966,20 @@ async function loadArchivedData(){
    ACTIONS
 ======================= */
 // First Visit hadir → wajib PDPA
-async function markFirstVisit(id){
+async function markFirstVisit(noIC){
   try{
-    const res = await postForm({ action:'updateStatus', op:'firstVisit', id, staff:'SYSTEM' }, { msg:'Merekod Hadir (First Visit)…' });
+    const res = await postForm({ action:'updateStatus', op:'firstVisit', noIC, staff:'SYSTEM' }, { msg:'Merekod Hadir (First Visit)…' });
     if (res.status==='success'){
       showToast('Berjaya','Hadir (First Visit) direkodkan. Sila muat naik PDPA sekarang.', 'success');
-      openPDPA(id); // wajib PDPA
+      openPDPA(noIC); // wajib PDPA
       loadFirstVisitData(); loadLabFollowUp(); loadSecondVisitData(); loadDashboardData();
     } else throw new Error(res.message||'Gagal rekod hadir');
   }catch(e){ showToast('Ralat', e.message, 'danger'); }
 }
 
-async function markSecondVisitHadir(id){
+async function markSecondVisitHadir(noIC){
   try{
-    const res = await postForm({ action:'updateStatus', op:'secondVisitHadir', id, staff:'SYSTEM' }, { msg:'Menandakan Hadir (Second Visit)…' });
+    const res = await postForm({ action:'updateStatus', op:'secondVisitHadir', noIC, staff:'SYSTEM' }, { msg:'Menandakan Hadir (Second Visit)…' });
     if (res.status==='success'){
       showToast('Berjaya','Second Visit selesai → dipindahkan ke Selesai','success');
       loadSecondVisitData(); loadCompletedData(); loadDashboardData();
@@ -987,19 +987,19 @@ async function markSecondVisitHadir(id){
   }catch(e){ showToast('Ralat', e.message, 'danger'); }
 }
 
-function openRetcaModal(id){
-  document.getElementById('retcaId').value = id;
+function openRetcaModal(noIC){
+  document.getElementById('retcaIC').value = noIC;
   document.getElementById('retcaDate').value = '';
   document.getElementById('retcaTime').value = '';
   retcaModal.show();
 }
 async function submitRetca(){
-  const id = document.getElementById('retcaId').value;
+  const noIC = document.getElementById('retcaIC').value;
   const tarikhTCA = document.getElementById('retcaDate').value;
   const masaTCA = document.getElementById('retcaTime').value;
-  if (!id || !tarikhTCA || !masaTCA) return showToast('Ralat','Sila lengkapkan tarikh & masa','danger');
+  if (!noIC || !tarikhTCA || !masaTCA) return showToast('Ralat','Sila lengkapkan tarikh & masa','danger');
   try{
-    const res = await postForm({ action:'updateStatus', op:'retca', id, tarikhTCA, masaTCA, staff:'SYSTEM' }, { msg:'Mendaftar TCA semula…' });
+    const res = await postForm({ action:'updateStatus', op:'retca', noIC, tarikhTCA, masaTCA, staff:'SYSTEM' }, { msg:'Mendaftar TCA semula…' });
     if (res.status==='success'){
       retcaModal.hide();
       showToast('Berjaya','TCA baharu disimpan','success');
@@ -1009,21 +1009,21 @@ async function submitRetca(){
 }
 
 /* Follow-up → set TCA second visit (server semak PDPA wajib wujud) */
-function openSecondTca(id){
-  document.getElementById('secondTcaId').value = id;
+function openSecondTca(noIC){
+  document.getElementById('secondTcaIC').value = noIC;
   document.getElementById('secondTcaDate').value = '';
   document.getElementById('secondTcaTime').value = '';
   secondTcaModal.show();
 }
 async function submitSecondTca(){
-  const id = document.getElementById('secondTcaId').value;
+  const noIC = document.getElementById('secondTcaIC').value;
   const date = document.getElementById('secondTcaDate').value;
   const time = document.getElementById('secondTcaTime').value;
   if (!date || !time) { showToast('Ralat','Sila isi tarikh & masa TCA','danger'); return; }
   try{
-    const a = await postForm({ action:'updatePatient', id, tarikhTCA:date, masaTCA:time, staff:'SYSTEM' }, { msg:'Menetapkan TCA Second Visit…' });
+    const a = await postForm({ action:'updatePatient', noIC, tarikhTCA:date, masaTCA:time, staff:'SYSTEM' }, { msg:'Menetapkan TCA Second Visit…' });
     if (a.status!=='success') throw new Error(a.message||'Gagal tetapkan TCA');
-    const b = await postForm({ action:'updateLabStatus', id, status:'DONE', staff:'SYSTEM' }, { msg:'Mengemas kini status follow-up…' });
+    const b = await postForm({ action:'updateLabStatus', noIC, status:'DONE', staff:'SYSTEM' }, { msg:'Mengemas kini status follow-up…' });
     if (b.status!=='success') throw new Error(b.message||'Gagal set follow-up DONE');
 
     secondTcaModal.hide();
@@ -1031,9 +1031,9 @@ async function submitSecondTca(){
     loadLabFollowUp(); loadSecondVisitData(); loadDashboardData();
   }catch(e){ showToast('Ralat', e.message, 'danger'); }
 }
-async function markLabStatus(id, status){
+async function markLabStatus(noIC, status){
   try{
-    const res = await postForm({ action:'updateLabStatus', id, status, staff:'SYSTEM' }, { msg:'Mengemas kini status follow-up…' });
+    const res = await postForm({ action:'updateLabStatus', noIC, status, staff:'SYSTEM' }, { msg:'Mengemas kini status follow-up…' });
     if (res.status==='success'){
       showToast('Follow-up', `Status ditetapkan (${status==='IN_PROCESS'?'In Process':'Repeat Sample'}) — jangan lupa follow-up.`, 'warning');
       loadLabFollowUp(); loadDashboardData();
@@ -1042,20 +1042,20 @@ async function markLabStatus(id, status){
 }
 
 /* PDPA (upload + fallback + delete) */
-function openPDPA(id){
-  document.getElementById('pdpaId').value = id;
+function openPDPA(noIC){
+  document.getElementById('pdpaIC').value = noIC;
   document.getElementById('pdpaFile').value = '';
   pdpaModal.show();
 }
 async function uploadPDPA(){
-  const id = document.getElementById('pdpaId').value;
+  const noIC = document.getElementById('pdpaIC').value;
   const file = document.getElementById('pdpaFile').files[0];
   if (!file) { showToast('Ralat','Sila pilih fail PDPA','danger'); return; }
 
   // 1) cuba multipart
   const fd = new FormData();
   fd.append('action','uploadPDPA');
-  fd.append('id', id);
+  fd.append('noIC', noIC);
   fd.append('staff', 'SYSTEM');
   fd.append('pdpa', file, file.name);
 
@@ -1082,7 +1082,7 @@ async function uploadPDPA(){
       method: 'POST',
       headers: { 'Content-Type':'application/x-www-form-urlencoded' },
       body: new URLSearchParams({
-        action: 'uploadPDPA', id, staff:'SYSTEM',
+        action: 'uploadPDPA', noIC, staff:'SYSTEM',
         fileBase64: pure64, fileName: file.name, fileType: file.type || 'application/octet-stream'
       })
     });
@@ -1106,10 +1106,10 @@ function fileToBase64(file){
     fr.readAsDataURL(file);
   });
 }
-async function deletePDPA(id){
+async function deletePDPA(noIC){
   if (!confirm('Padam PDPA untuk pesakit ini?')) return;
   try{
-    const res = await postForm({ action:'deletePDPA', id, staff:'SYSTEM' }, { msg:'Memadam PDPA…' });
+    const res = await postForm({ action:'deletePDPA', noIC, staff:'SYSTEM' }, { msg:'Memadam PDPA…' });
     if (res.status==='success'){
       showToast('Berjaya','PDPA dipadam. Anda boleh upload semula jika perlu.','success');
       loadFirstVisitData(); loadSecondVisitData(); loadCompletedData();
@@ -1118,20 +1118,20 @@ async function deletePDPA(id){
 }
 
 /* Arkib */
-async function archivePatient(id){
+async function archivePatient(noIC){
   if (!confirm('Arkibkan rekod pesakit ini?')) return;
   try{
-    const res = await postForm({ action:'archivePatient', id, staff:'SYSTEM' }, { msg:'Mengarkib rekod…' });
+    const res = await postForm({ action:'archivePatient', noIC, staff:'SYSTEM' }, { msg:'Mengarkib rekod…' });
     if (res.status==='success'){
       showToast('Arkib','Rekod telah diarkibkan','success');
       loadCompletedData();
     } else throw new Error(res.message||'Gagal arkib');
   }catch(e){ showToast('Ralat', e.message, 'danger'); }
 }
-async function restorePatient(id){
+async function restorePatient(noIC){
   if (!confirm('Pulihkan rekod ini ke senarai utama?')) return;
   try{
-    const res = await postForm({ action:'restorePatient', id, staff:'SYSTEM' }, { msg:'Memulihkan rekod…' });
+    const res = await postForm({ action:'restorePatient', noIC, staff:'SYSTEM' }, { msg:'Memulihkan rekod…' });
     if (res.status==='success'){
       showToast('Pulih','Rekod telah dipulihkan','success');
       loadArchivedData(); loadCompletedData(); loadDashboardData();
@@ -1158,7 +1158,7 @@ async function daftarPesakit(){
   try{
     const result = await postForm(formData, { msg:'Mendaftar pesakit…' });
     if (result.status==='success'){
-      showToast('Berjaya','Pendaftaran pesakit berjaya','success');
+      showToast('Berjaya','Pendaftaran pesakit berjaya (IC sebagai kunci, tiada duplikasi)','success');
       document.getElementById('formPendaftaran').reset();
       loadDashboardData(); loadTCACallData();
     } else throw new Error(result.message||'Gagal mendaftar pesakit');
