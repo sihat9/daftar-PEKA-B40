@@ -964,46 +964,57 @@
             }
         }
         
-        async function daftarPesakit() {
-            const formData = {
-                namaPesakit: document.getElementById('namaPesakit').value,
-                noIC: document.getElementById('noIC').value,
-                noTelefon: document.getElementById('noTelefon').value,
-                namaStaff: document.getElementById('namaStaff').value,
-                tarikhTCA: document.getElementById('tarikhTCA').value,
-                masaTCA: document.getElementById('masaTCA').value
-            };
-
-            // Validasi data
-            if (!formData.namaPesakit || !formData.noIC || !formData.noTelefon || 
-                !formData.namaStaff || !formData.tarikhTCA || !formData.masaTCA) {
-                alert('Sila isi semua maklumat yang diperlukan');
-                return;
-            }
-
-            try {
-                // Gunakan mode 'no-cors' untuk bypass CORS
-                const response = await fetch(`${CONFIG.SCRIPT_URL}?action=daftarPesakit`, {
-                    method: 'POST',
-                    mode: 'no-cors',
-                    headers: {
-                        'Content-Type': 'application/json',
-                    },
-                    body: JSON.stringify(formData)
-                });
-                
-                // Walaupun mode no-cors, kita anggap berjaya
-                alert('Permintaan dihantar. Sila refresh untuk lihat perubahan.');
-                document.getElementById('formPendaftaran').reset();
-                setTimeout(() => {
-                    loadDashboardData();
-                    loadTCACallData();
-                }, 2000);
-            } catch (error) {
-                console.error('Error:', error);
-                alert('Error: ' + error.message);
-            }
-        }
+        function daftarPesakit(data) {
+  try {
+    const ss = SpreadsheetApp.getActiveSpreadsheet();
+    const sheet = ss.getSheetByName(SHEET_NAME.PESAKIT);
+    
+    // Debug 1: Periksa apakah sheet ditemukan
+    if (!sheet) {
+      return {status: 'error', message: 'Sheet tidak ditemukan'};
+    }
+    
+    const now = new Date();
+    
+    // Debug 2: Log data yang diterima
+    console.log('Data received:', JSON.stringify(data));
+    
+    const newRow = [
+      Utilities.formatDate(now, 'GMT+8', 'dd/MM/yyyy HH:mm:ss'),
+      data.namaPesakit || '',
+      data.noIC || '',
+      data.noTelefon || '',
+      data.namaStaff || '',
+      Utilities.formatDate(now, 'GMT+8', 'dd/MM/yyyy'),
+      data.tarikhTCA || '',
+      data.masaTCA || '',
+      'TCA CALL',
+      '', // First Visit Date
+      '', // First Visit Status
+      '', // Second Visit Date
+      '', // Second Visit Status
+      '', // Tarikh Selesai
+      'AKTIF'
+    ];
+    
+    // Debug 3: Log row yang akan dimasukkan
+    console.log('New row:', newRow);
+    
+    sheet.appendRow(newRow);
+    
+    // Debug 4: Verifikasi data masuk
+    const lastRow = sheet.getLastRow();
+    const insertedData = sheet.getRange(lastRow, 1, 1, 15).getValues()[0];
+    console.log('Inserted data:', insertedData);
+    
+    logAktiviti(data.namaStaff, 'DAFTAR_PESAKIT', `Daftar pesakit baru: ${data.namaPesakit}`);
+    
+    return {status: 'success', message: 'Pesakit berjaya didaftarkan'};
+  } catch (error) {
+    console.error('Error in daftarPesakit:', error);
+    return {status: 'error', message: error.message};
+  }
+}
     </script>
 </body>
 </html>
