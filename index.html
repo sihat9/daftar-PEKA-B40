@@ -964,14 +964,15 @@
             }
         }
         
-        async function daftarPesakit() {
+       async function daftarPesakit() {
   const formData = {
     namaPesakit: document.getElementById('namaPesakit').value,
     noIC: document.getElementById('noIC').value,
     noTelefon: document.getElementById('noTelefon').value,
     namaStaff: document.getElementById('namaStaff').value,
     tarikhTCA: document.getElementById('tarikhTCA').value,
-    masaTCA: document.getElementById('masaTCA').value
+    masaTCA: document.getElementById('masaTCA').value,
+    action: 'daftarPesakit' // Tambahkan ini
   };
 
   // Validasi data
@@ -982,40 +983,28 @@
   }
 
   try {
-    // Gunakan google.script.run jika dihosting dalam Google Apps Script
-    if (typeof google !== 'undefined' && google.script.run) {
-      google.script.run
-        .withSuccessHandler(function(result) {
-          alert('Pendaftaran pesakit berjaya!');
-          document.getElementById('formPendaftaran').reset();
-          loadDashboardData();
-          loadTCACallData();
-        })
-        .withFailureHandler(function(error) {
-          alert('Error: ' + error.message);
-        })
-        .daftarPesakit(formData);
-    } 
-    // Jika dihosting di luar (GitHub Pages)
-    else {
-      const response = await fetch(`${CONFIG.SCRIPT_URL}?action=daftarPesakit`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(formData)
-      });
-      
-      const result = await response.json();
-      
-      if (result.status === 'success') {
-        alert('Pendaftaran berjaya!');
-        document.getElementById('formPendaftaran').reset();
-        loadDashboardData();
-        loadTCACallData();
-      } else {
-        throw new Error(result.message || 'Gagal mendaftar pesakit');
-      }
+    // Gunakan proxy CORS jika diperlukan
+    const PROXY_URL = 'https://cors-anywhere.herokuapp.com/';
+    const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbx6TKE0vDDPO3-36cY7xjacAbGL0HIRKCrORNm-sED9y5NpIeIUk9gyrpiWy-S7vbc/exec';
+    
+    const response = await fetch(PROXY_URL + SCRIPT_URL, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-Requested-With': 'XMLHttpRequest' // Diperlukan oleh CORS Anywhere
+      },
+      body: JSON.stringify(formData)
+    });
+    
+    const result = await response.json();
+    
+    if (result.status === 'success') {
+      alert('Pendaftaran berjaya!');
+      document.getElementById('formPendaftaran').reset();
+      loadDashboardData();
+      loadTCACallData();
+    } else {
+      throw new Error(result.message || 'Gagal mendaftar pesakit');
     }
   } catch (error) {
     console.error('Error:', error);
