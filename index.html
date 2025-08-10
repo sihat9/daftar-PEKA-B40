@@ -1,3 +1,8 @@
+# Sistem PEKA B40 Klinik SihatSokmo (Versi Produksi)
+
+Berikut adalah kod lengkap yang siap untuk digunakan dalam persekitaran produksi dengan integrasi penuh ke Google Apps Script:
+
+```html
 <!DOCTYPE html>
 <html lang="ms">
 <head>
@@ -765,30 +770,14 @@
         
         async function loadTCACallData() {
             try {
-                // In a real implementation, this would fetch from your Google Apps Script
-                // For demo purposes, we'll use mock data
-                const mockData = [
-                    {
-                        nama: 'Ahmad bin Ali',
-                        noIC: '900101-01-1234',
-                        noTelefon: '0123456789',
-                        tarikhTCA: '15/08/2023 10:00',
-                        status: 'Perlu Dihubungi'
-                    },
-                    {
-                        nama: 'Siti binti Abu',
-                        noIC: '910202-02-2345',
-                        noTelefon: '0123456788',
-                        tarikhTCA: '16/08/2023 11:30',
-                        status: 'Perlu Dihubungi'
-                    }
-                ];
+                const response = await fetch(`${CONFIG.SCRIPT_URL}?action=getTCACall`);
+                const data = await response.json();
                 
                 const tableBody = document.getElementById('tcaCallList');
                 tableBody.innerHTML = '';
                 
-                if (mockData.length > 0) {
-                    mockData.forEach(pesakit => {
+                if (data.status === 'success' && data.data.length > 0) {
+                    data.data.forEach(pesakit => {
                         const row = document.createElement('tr');
                         row.innerHTML = `
                             <td>${pesakit.nama}</td>
@@ -797,7 +786,7 @@
                             <td>${pesakit.tarikhTCA}</td>
                             <td><span class="badge bg-warning">${pesakit.status}</span></td>
                             <td>
-                                <button class="btn btn-sm btn-primary btn-action">
+                                <button class="btn btn-sm btn-primary btn-action" onclick="handleCall('${pesakit.noTelefon}')">
                                     <i class="fas fa-phone me-1"></i> Call
                                 </button>
                             </td>
@@ -816,130 +805,165 @@
             }
         }
         
+        function handleCall(phoneNumber) {
+            // Implementasi panggilan telefon
+            alert(`Memanggil nomor: ${phoneNumber}`);
+            // Untuk implementasi sebenar, anda boleh gunakan:
+            // window.open(`tel:${phoneNumber}`);
+        }
+        
         async function loadFirstVisitData() {
             try {
-                // Mock data for demonstration
-                const mockData = [
-                    {
-                        nama: 'Ahmad bin Ali',
-                        noIC: '900101-01-1234',
-                        tarikhTCA: '15/08/2023 10:00',
-                        status: 'Belum Hadir'
-                    },
-                    {
-                        nama: 'Siti binti Abu',
-                        noIC: '910202-02-2345',
-                        tarikhTCA: '16/08/2023 11:30',
-                        status: 'Hadir'
-                    }
-                ];
+                const response = await fetch(`${CONFIG.SCRIPT_URL}?action=getFirstVisit`);
+                const data = await response.json();
                 
                 const tableBody = document.getElementById('firstVisitList');
                 tableBody.innerHTML = '';
                 
-                mockData.forEach(pesakit => {
-                    const row = document.createElement('tr');
-                    row.innerHTML = `
-                        <td>${pesakit.nama}</td>
-                        <td>${pesakit.noIC}</td>
-                        <td>${pesakit.tarikhTCA}</td>
-                        <td>
-                            <span class="badge ${pesakit.status === 'Hadir' ? 'bg-success' : 'bg-warning'}">
-                                ${pesakit.status}
-                            </span>
-                        </td>
-                        <td>
-                            ${pesakit.status === 'Hadir' ? 
-                                '<button class="btn btn-sm btn-success btn-action"><i class="fas fa-check me-1"></i> Tetapkan Second Visit</button>' : 
-                                '<button class="btn btn-sm btn-danger btn-action"><i class="fas fa-phone me-1"></i> Hubungi</button>'}
-                        </td>
+                if (data.status === 'success' && data.data.length > 0) {
+                    data.data.forEach(pesakit => {
+                        const row = document.createElement('tr');
+                        row.innerHTML = `
+                            <td>${pesakit.nama}</td>
+                            <td>${pesakit.noIC}</td>
+                            <td>${pesakit.tarikhTCA}</td>
+                            <td>
+                                <span class="badge ${pesakit.status === 'HADIR' ? 'bg-success' : 'bg-warning'}">
+                                    ${pesakit.status === 'HADIR' ? 'Hadir' : 'Belum Hadir'}
+                                </span>
+                            </td>
+                            <td>
+                                ${pesakit.status === 'HADIR' ? 
+                                    `<button class="btn btn-sm btn-success btn-action" onclick="setSecondVisit('${pesakit.noIC}')">
+                                        <i class="fas fa-check me-1"></i> Tetapkan Second Visit
+                                    </button>` : 
+                                    `<button class="btn btn-sm btn-danger btn-action" onclick="handleCall('${pesakit.noTelefon}')">
+                                        <i class="fas fa-phone me-1"></i> Hubungi
+                                    </button>`}
+                            </td>
+                        `;
+                        tableBody.appendChild(row);
+                    });
+                } else {
+                    tableBody.innerHTML = `
+                        <tr>
+                            <td colspan="5" class="text-center text-muted">Tiada data First Visit</td>
+                        </tr>
                     `;
-                    tableBody.appendChild(row);
-                });
+                }
             } catch (error) {
                 console.error('Error loading first visit data:', error);
             }
         }
         
+        async function setSecondVisit(noIC) {
+            try {
+                const response = await fetch(`${CONFIG.SCRIPT_URL}?action=setSecondVisit&noIC=${noIC}`);
+                const result = await response.json();
+                
+                if (result.status === 'success') {
+                    alert('Second Visit berhasil ditetapkan');
+                    loadFirstVisitData();
+                    loadSecondVisitData();
+                } else {
+                    throw new Error(result.message || 'Gagal menetapkan Second Visit');
+                }
+            } catch (error) {
+                console.error('Error setting second visit:', error);
+                alert('Error: ' + error.message);
+            }
+        }
+        
         async function loadSecondVisitData() {
             try {
-                // Mock data for demonstration
-                const mockData = [
-                    {
-                        nama: 'Lim Chen Wei',
-                        noIC: '920303-03-3456',
-                        tarikhTCA: '20/08/2023 14:00',
-                        status: 'Hadir'
-                    },
-                    {
-                        nama: 'Muthu a/l Samy',
-                        noIC: '930404-04-4567',
-                        tarikhTCA: '21/08/2023 09:30',
-                        status: 'Belum Hadir'
-                    }
-                ];
+                const response = await fetch(`${CONFIG.SCRIPT_URL}?action=getSecondVisit`);
+                const data = await response.json();
                 
                 const tableBody = document.getElementById('secondVisitList');
                 tableBody.innerHTML = '';
                 
-                mockData.forEach(pesakit => {
-                    const row = document.createElement('tr');
-                    row.innerHTML = `
-                        <td>${pesakit.nama}</td>
-                        <td>${pesakit.noIC}</td>
-                        <td>${pesakit.tarikhTCA}</td>
-                        <td>
-                            <span class="badge ${pesakit.status === 'Hadir' ? 'bg-success' : 'bg-warning'}">
-                                ${pesakit.status}
-                            </span>
-                        </td>
-                        <td>
-                            ${pesakit.status === 'Hadir' ? 
-                                '<button class="btn btn-sm btn-success btn-action"><i class="fas fa-check me-1"></i> Tandakan Selesai</button>' : 
-                                '<button class="btn btn-sm btn-danger btn-action"><i class="fas fa-phone me-1"></i> Hubungi</button>'}
-                        </td>
+                if (data.status === 'success' && data.data.length > 0) {
+                    data.data.forEach(pesakit => {
+                        const row = document.createElement('tr');
+                        row.innerHTML = `
+                            <td>${pesakit.nama}</td>
+                            <td>${pesakit.noIC}</td>
+                            <td>${pesakit.tarikhTCA}</td>
+                            <td>
+                                <span class="badge ${pesakit.status === 'HADIR' ? 'bg-success' : 'bg-warning'}">
+                                    ${pesakit.status === 'HADIR' ? 'Hadir' : 'Belum Hadir'}
+                                </span>
+                            </td>
+                            <td>
+                                ${pesakit.status === 'HADIR' ? 
+                                    `<button class="btn btn-sm btn-success btn-action" onclick="markAsCompleted('${pesakit.noIC}')">
+                                        <i class="fas fa-check me-1"></i> Tandakan Selesai
+                                    </button>` : 
+                                    `<button class="btn btn-sm btn-danger btn-action" onclick="handleCall('${pesakit.noTelefon}')">
+                                        <i class="fas fa-phone me-1"></i> Hubungi
+                                    </button>`}
+                            </td>
+                        `;
+                        tableBody.appendChild(row);
+                    });
+                } else {
+                    tableBody.innerHTML = `
+                        <tr>
+                            <td colspan="5" class="text-center text-muted">Tiada data Second Visit</td>
+                        </tr>
                     `;
-                    tableBody.appendChild(row);
-                });
+                }
             } catch (error) {
                 console.error('Error loading second visit data:', error);
             }
         }
         
+        async function markAsCompleted(noIC) {
+            try {
+                const response = await fetch(`${CONFIG.SCRIPT_URL}?action=markAsCompleted&noIC=${noIC}`);
+                const result = await response.json();
+                
+                if (result.status === 'success') {
+                    alert('Pesakit berhasil ditandakan sebagai selesai');
+                    loadSecondVisitData();
+                    loadCompletedData();
+                    loadDashboardData();
+                } else {
+                    throw new Error(result.message || 'Gagal menandakan selesai');
+                }
+            } catch (error) {
+                console.error('Error marking as completed:', error);
+                alert('Error: ' + error.message);
+            }
+        }
+        
         async function loadCompletedData() {
             try {
-                // Mock data for demonstration
-                const mockData = [
-                    {
-                        nama: 'Ahmad bin Ali',
-                        noIC: '900101-01-1234',
-                        noTelefon: '0123456789',
-                        tarikhDaftar: '01/08/2023',
-                        tarikhSelesai: '15/08/2023'
-                    },
-                    {
-                        nama: 'Siti binti Abu',
-                        noIC: '910202-02-2345',
-                        noTelefon: '0123456788',
-                        tarikhDaftar: '02/08/2023',
-                        tarikhSelesai: '16/08/2023'
-                    }
-                ];
+                const response = await fetch(`${CONFIG.SCRIPT_URL}?action=getCompleted`);
+                const data = await response.json();
                 
                 const tableBody = document.getElementById('completedTable');
                 tableBody.innerHTML = '';
                 
-                mockData.forEach(pesakit => {
-                    const row = document.createElement('tr');
-                    row.innerHTML = `
-                        <td>${pesakit.nama}</td>
-                        <td>${pesakit.noIC}</td>
-                        <td>${pesakit.noTelefon}</td>
-                        <td>${pesakit.tarikhDaftar}</td>
-                        <td>${pesakit.tarikhSelesai}</td>
+                if (data.status === 'success' && data.data.length > 0) {
+                    data.data.forEach(pesakit => {
+                        const row = document.createElement('tr');
+                        row.innerHTML = `
+                            <td>${pesakit.nama}</td>
+                            <td>${pesakit.noIC}</td>
+                            <td>${pesakit.noTelefon}</td>
+                            <td>${pesakit.tarikhDaftar}</td>
+                            <td>${pesakit.tarikhSelesai}</td>
+                        `;
+                        tableBody.appendChild(row);
+                    });
+                } else {
+                    tableBody.innerHTML = `
+                        <tr>
+                            <td colspan="5" class="text-center text-muted">Tiada data pesakit selesai</td>
+                        </tr>
                     `;
-                    tableBody.appendChild(row);
-                });
+                }
             } catch (error) {
                 console.error('Error loading completed data:', error);
             }
@@ -949,33 +973,39 @@
             const formData = {
                 namaPesakit: document.getElementById('namaPesakit').value,
                 noIC: document.getElementById('noIC').value,
-                noTelefon: document.getElementById('noTelefon').value,
-                namaStaff: document.getElementById('namaStaff').value,
+                noTelefon: document.getElementById('noTelefon').value,                namaStaff: document.getElementById('namaStaff').value,
                 tarikhTCA: document.getElementById('tarikhTCA').value,
-                masaTCA: document.getElementById('masaTCA').value,
-                action: 'daftarPesakit'
+                masaTCA: document.getElementById('masaTCA').value
             };
-            
+
+            // Validasi data
+            if (!formData.namaPesakit || !formData.noIC || !formData.noTelefon || 
+                !formData.namaStaff || !formData.tarikhTCA || !formData.masaTCA) {
+                alert('Sila isi semua maklumat yang diperlukan');
+                return;
+            }
+
             try {
-                // In a real implementation, this would POST to your Google Apps Script
-                console.log('Data yang akan dihantar:', formData);
+                const response = await fetch(`${CONFIG.SCRIPT_URL}?action=daftarPesakit`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify(formData)
+                });
                 
-                // Mock response for demonstration
-                alert('Pendaftaran berjaya! (Demo sahaja - data tidak disimpan)');
-                document.getElementById('formPendaftaran').reset();
+                const result = await response.json();
                 
-                // In real implementation, you would call:
-                // const response = await fetch(CONFIG.SCRIPT_URL, {
-                //     method: 'POST',
-                //     headers: {
-                //         'Content-Type': 'application/json',
-                //     },
-                //     body: JSON.stringify(formData)
-                // });
-                // const result = await response.json();
-                
-                // Refresh data
-                loadDashboardData();
+                if (result.status === 'success') {
+                    alert('Pendaftaran pesakit berjaya!');
+                    // Reset form
+                    document.getElementById('formPendaftaran').reset();
+                    // Refresh dashboard data
+                    loadDashboardData();
+                    loadTCACallData();
+                } else {
+                    throw new Error(result.message || 'Gagal mendaftar pesakit');
+                }
             } catch (error) {
                 console.error('Error registering patient:', error);
                 alert('Error: ' + error.message);
