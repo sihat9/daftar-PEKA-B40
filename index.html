@@ -1,0 +1,986 @@
+<!DOCTYPE html>
+<html lang="ms">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sistem PEKA B40 - Klinik SihatSokmo</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.0/font/bootstrap-icons.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2.0.0"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-3d@0.1.0"></script>
+    <style>
+        :root {
+            --primary: #2c3e50;
+            --secondary: #3498db;
+            --success: #27ae60;
+            --info: #00b894;
+            --warning: #f39c12;
+            --danger: #e74c3c;
+            --light: #ecf0f1;
+            --dark: #34495e;
+        }
+        
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: #f5f7fa;
+            color: #333;
+        }
+        
+        .navbar-main {
+            background-color: white;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+            padding: 15px 0;
+        }
+        
+        .navbar-brand {
+            font-weight: 700;
+            color: var(--primary);
+            font-size: 1.5rem;
+        }
+        
+        .nav-link {
+            color: var(--dark);
+            font-weight: 500;
+            margin: 0 5px;
+            padding: 8px 15px !important;
+            border-radius: 5px;
+            transition: all 0.3s;
+        }
+        
+        .nav-link:hover, .nav-link.active {
+            background-color: rgba(52, 152, 219, 0.1);
+            color: var(--secondary);
+        }
+        
+        .nav-link i {
+            margin-right: 8px;
+            width: 20px;
+            text-align: center;
+        }
+        
+        .page-header {
+            background: linear-gradient(135deg, var(--primary) 0%, var(--secondary) 100%);
+            color: white;
+            padding: 30px 0;
+            margin-bottom: 30px;
+            border-radius: 0 0 10px 10px;
+        }
+        
+        .card {
+            border: none;
+            border-radius: 10px;
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.05);
+            transition: transform 0.3s, box-shadow 0.3s;
+            margin-bottom: 25px;
+        }
+        
+        .card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.1);
+        }
+        
+        .card-header {
+            background-color: white;
+            border-bottom: 1px solid rgba(0, 0, 0, 0.05);
+            font-weight: 600;
+            padding: 15px 20px;
+            border-radius: 10px 10px 0 0 !important;
+        }
+        
+        .stat-card {
+            padding: 20px;
+            border-radius: 10px;
+            color: white;
+            text-align: center;
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .stat-card .number {
+            font-size: 2.2rem;
+            font-weight: 700;
+            margin-bottom: 5px;
+        }
+        
+        .chart-container {
+            position: relative;
+            height: 400px;
+            margin-bottom: 30px;
+        }
+        
+        .badge-status {
+            padding: 5px 10px;
+            border-radius: 20px;
+            font-weight: 500;
+        }
+        
+        .btn-action {
+            padding: 5px 12px;
+            font-size: 0.85rem;
+            border-radius: 5px;
+            font-weight: 500;
+        }
+        
+        @media (max-width: 768px) {
+            .stat-card .number {
+                font-size: 1.8rem;
+            }
+            
+            .navbar-brand {
+                font-size: 1.2rem;
+            }
+        }
+    </style>
+</head>
+<body>
+    <!-- Navbar -->
+    <nav class="navbar navbar-expand-lg navbar-main sticky-top">
+        <div class="container">
+            <a class="navbar-brand" href="#dashboard">
+                <i class="fas fa-clinic-medical me-2"></i>
+                Klinik SihatSokmo
+            </a>
+            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarMain">
+                <span class="navbar-toggler-icon"></span>
+            </button>
+            <div class="collapse navbar-collapse" id="navbarMain">
+                <ul class="navbar-nav me-auto mb-2 mb-lg-0">
+                    <li class="nav-item">
+                        <a class="nav-link active" href="#dashboard">
+                            <i class="fas fa-tachometer-alt"></i>
+                            Dashboard
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="#pendaftaran">
+                            <i class="fas fa-user-plus"></i>
+                            Pendaftaran
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="#tca-call">
+                            <i class="fas fa-phone"></i>
+                            TCA Call
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="#first-visit">
+                            <i class="fas fa-calendar-check"></i>
+                            First Visit
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="#second-visit">
+                            <i class="fas fa-calendar-check"></i>
+                            Second Visit
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="#selesai">
+                            <i class="fas fa-check-circle"></i>
+                            Selesai
+                        </a>
+                    </li>
+                </ul>
+                <div class="d-flex align-items-center">
+                    <span class="badge bg-primary">
+                        <i class="fas fa-user-shield me-1"></i> Staff Mode
+                    </span>
+                </div>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Header -->
+    <header class="page-header">
+        <div class="container">
+            <div class="row align-items-center">
+                <div class="col-md-6">
+                    <h1><i class="fas fa-heartbeat me-2"></i> Sistem PEKA B40</h1>
+                    <p class="mb-0">Sistem pengurusan pesakit untuk program saringan kesihatan B40</p>
+                </div>
+                <div class="col-md-6 text-md-end mt-3 mt-md-0">
+                    <span class="badge bg-light text-dark fs-6 p-2">
+                        <i class="fas fa-calendar-day me-1"></i> 
+                        <span id="current-date"></span>
+                    </span>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <!-- Main Content -->
+    <main class="container">
+        <!-- Dashboard Section -->
+        <section id="dashboard" class="mb-5">
+            <div class="row mb-4">
+                <div class="col">
+                    <h2 class="h4"><i class="fas fa-tachometer-alt me-2"></i>Dashboard</h2>
+                </div>
+            </div>
+            
+            <!-- Stats Cards -->
+            <div class="row g-4 mb-4">
+                <div class="col-md-6 col-lg-3">
+                    <div class="stat-card" style="background: linear-gradient(135deg, var(--secondary) 0%, #2980b9 100%);">
+                        <div class="number" id="totalDaftar">0</div>
+                        <div class="label">Pesakit Daftar</div>
+                        <i class="fas fa-users position-absolute" style="bottom: 20px; right: 20px; opacity: 0.2; font-size: 3rem;"></i>
+                    </div>
+                </div>
+                <div class="col-md-6 col-lg-3">
+                    <div class="stat-card" style="background: linear-gradient(135deg, var(--warning) 0%, #e67e22 100%);">
+                        <div class="number" id="totalFirstVisit">0</div>
+                        <div class="label">First Visit</div>
+                        <i class="fas fa-calendar-check position-absolute" style="bottom: 20px; right: 20px; opacity: 0.2; font-size: 3rem;"></i>
+                    </div>
+                </div>
+                <div class="col-md-6 col-lg-3">
+                    <div class="stat-card" style="background: linear-gradient(135deg, #9b59b6 0%, #8e44ad 100%);">
+                        <div class="number" id="totalSecondVisit">0</div>
+                        <div class="label">Second Visit</div>
+                        <i class="fas fa-calendar-check position-absolute" style="bottom: 20px; right: 20px; opacity: 0.2; font-size: 3rem;"></i>
+                    </div>
+                </div>
+                <div class="col-md-6 col-lg-3">
+                    <div class="stat-card" style="background: linear-gradient(135deg, var(--success) 0%, #16a085 100%);">
+                        <div class="number" id="totalSelesai">0</div>
+                        <div class="label">Selesai</div>
+                        <i class="fas fa-check-circle position-absolute" style="bottom: 20px; right: 20px; opacity: 0.2; font-size: 3rem;"></i>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- TCA Call Hari Ini -->
+            <div class="row mb-5">
+                <div class="col-12">
+                    <div class="card">
+                        <div class="card-header">
+                            <i class="fas fa-phone me-2"></i>Pesakit Perlu Dihubungi Hari Ini
+                        </div>
+                        <div class="card-body">
+                            <div class="table-responsive">
+                                <table class="table table-hover">
+                                    <thead>
+                                        <tr>
+                                            <th>Nama Pesakit</th>
+                                            <th>No IC</th>
+                                            <th>No Telefon</th>
+                                            <th>Tarikh TCA</th>
+                                            <th>Status</th>
+                                            <th>Tindakan</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="tcaCallTable">
+                                        <tr>
+                                            <td colspan="6" class="text-center text-muted">Memuat data...</td>
+                                        </tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Statistik 3D -->
+            <div class="row">
+                <div class="col-12">
+                    <div class="card">
+                        <div class="card-header">
+                            <i class="fas fa-chart-bar me-2"></i>Statistik Pesakit Selesai
+                        </div>
+                        <div class="card-body">
+                            <div class="row mb-3">
+                                <div class="col-md-4">
+                                    <select id="statPeriod" class="form-select">
+                                        <option value="3months">3 Bulan Terakhir</option>
+                                        <option value="6months">6 Bulan Terakhir</option>
+                                        <option value="12months">12 Bulan Terakhir</option>
+                                    </select>
+                                </div>
+                            </div>
+                            <div class="chart-container">
+                                <canvas id="stats3dChart"></canvas>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Pendaftaran Section -->
+        <section id="pendaftaran" class="mb-5 d-none">
+            <div class="row mb-4">
+                <div class="col">
+                    <h2 class="h4"><i class="fas fa-user-plus me-2"></i>Pendaftaran Pesakit Baru</h2>
+                </div>
+            </div>
+            
+            <div class="card">
+                <div class="card-body">
+                    <form id="formPendaftaran">
+                        <div class="row g-3">
+                            <div class="col-md-6">
+                                <label for="namaPesakit" class="form-label">Nama Penuh Pesakit</label>
+                                <input type="text" class="form-control" id="namaPesakit" required>
+                            </div>
+                            <div class="col-md-6">
+                                <label for="noIC" class="form-label">Nombor IC</label>
+                                <input type="text" class="form-control" id="noIC" required>
+                            </div>
+                            <div class="col-md-6">
+                                <label for="noTelefon" class="form-label">Nombor Telefon</label>
+                                <input type="tel" class="form-control" id="noTelefon" required>
+                            </div>
+                            <div class="col-md-6">
+                                <label for="namaStaff" class="form-label">Nama Staff</label>
+                                <input type="text" class="form-control" id="namaStaff" required>
+                            </div>
+                            <div class="col-md-6">
+                                <label for="tarikhTCA" class="form-label">Tarikh TCA</label>
+                                <input type="date" class="form-control" id="tarikhTCA" required>
+                            </div>
+                            <div class="col-md-6">
+                                <label for="masaTCA" class="form-label">Masa TCA</label>
+                                <input type="time" class="form-control" id="masaTCA" required>
+                            </div>
+                            <div class="col-12">
+                                <button type="submit" class="btn btn-primary">
+                                    <i class="fas fa-save me-2"></i>Daftar Pesakit
+                                </button>
+                            </div>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </section>
+
+        <!-- TCA Call Section -->
+        <section id="tca-call" class="mb-5 d-none">
+            <div class="row mb-4">
+                <div class="col">
+                    <h2 class="h4"><i class="fas fa-phone me-2"></i>Senarai TCA Call</h2>
+                </div>
+            </div>
+            
+            <div class="card">
+                <div class="card-body">
+                    <div class="table-responsive">
+                        <table class="table table-hover">
+                            <thead>
+                                <tr>
+                                    <th>Nama Pesakit</th>
+                                    <th>No IC</th>
+                                    <th>No Telefon</th>
+                                    <th>Tarikh TCA</th>
+                                    <th>Status</th>
+                                    <th>Tindakan</th>
+                                </tr>
+                            </thead>
+                            <tbody id="tcaCallList">
+                                <tr>
+                                    <td colspan="6" class="text-center text-muted">Memuat data...</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- First Visit Section -->
+        <section id="first-visit" class="mb-5 d-none">
+            <div class="row mb-4">
+                <div class="col">
+                    <h2 class="h4"><i class="fas fa-calendar-check me-2"></i>First Visit</h2>
+                </div>
+            </div>
+            
+            <div class="card">
+                <div class="card-body">
+                    <div class="table-responsive">
+                        <table class="table table-hover">
+                            <thead>
+                                <tr>
+                                    <th>Nama Pesakit</th>
+                                    <th>No IC</th>
+                                    <th>Tarikh TCA</th>
+                                    <th>Status</th>
+                                    <th>Tindakan</th>
+                                </tr>
+                            </thead>
+                            <tbody id="firstVisitList">
+                                <tr>
+                                    <td colspan="5" class="text-center text-muted">Memuat data...</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Second Visit Section -->
+        <section id="second-visit" class="mb-5 d-none">
+            <div class="row mb-4">
+                <div class="col">
+                    <h2 class="h4"><i class="fas fa-calendar-check me-2"></i>Second Visit</h2>
+                </div>
+            </div>
+            
+            <div class="card">
+                <div class="card-body">
+                    <div class="table-responsive">
+                        <table class="table table-hover">
+                            <thead>
+                                <tr>
+                                    <th>Nama Pesakit</th>
+                                    <th>No IC</th>
+                                    <th>Tarikh TCA</th>
+                                    <th>Status</th>
+                                    <th>Tindakan</th>
+                                </tr>
+                            </thead>
+                            <tbody id="secondVisitList">
+                                <tr>
+                                    <td colspan="5" class="text-center text-muted">Memuat data...</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Selesai Section -->
+        <section id="selesai" class="mb-5 d-none">
+            <div class="row mb-4">
+                <div class="col">
+                    <h2 class="h4"><i class="fas fa-check-circle me-2"></i>Pesakit Selesai</h2>
+                </div>
+            </div>
+            
+            <div class="card">
+                <div class="card-body">
+                    <div class="table-responsive">
+                        <table class="table table-hover">
+                            <thead>
+                                <tr>
+                                    <th>Nama Pesakit</th>
+                                    <th>No IC</th>
+                                    <th>No Telefon</th>
+                                    <th>Tarikh Daftar</th>
+                                    <th>Tarikh Selesai</th>
+                                </tr>
+                            </thead>
+                            <tbody id="completedTable">
+                                <tr>
+                                    <td colspan="5" class="text-center text-muted">Memuat data...</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Grafik 3D -->
+            <div class="row mt-4">
+                <div class="col-12">
+                    <div class="card">
+                        <div class="card-header">
+                            <i class="fas fa-chart-bar me-2"></i>Statistik Pesakit Selesai
+                        </div>
+                        <div class="card-body">
+                            <div class="row mb-3">
+                                <div class="col-md-4">
+                                    <select id="statPeriodCompleted" class="form-select">
+                                        <option value="3months">3 Bulan Terakhir</option>
+                                        <option value="6months">6 Bulan Terakhir</option>
+                                        <option value="12months">12 Bulan Terakhir</option>
+                                    </select>
+                                </div>
+                            </div>
+                            <div class="chart-container">
+                                <canvas id="completed3dChart"></canvas>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <!-- Footer -->
+    <footer class="footer mt-5 py-3 bg-light">
+        <div class="container">
+            <div class="row">
+                <div class="col-md-6">
+                    <p class="mb-0">&copy; 2023 Klinik SihatSokmo. Untuk kegunaan dalaman sahaja.</p>
+                </div>
+                <div class="col-md-6 text-md-end">
+                    <p class="mb-0">Versi 1.2.0</p>
+                </div>
+            </div>
+        </div>
+    </footer>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        // Konfigurasi
+        const CONFIG = {
+            SCRIPT_URL: 'https://script.google.com/macros/s/AKfycbx6TKE0vDDPO3-36cY7xjacAbGL0HIRKCrORNm-sED9y5NpIeIUk9gyrpiWy-S7vbc/exec'
+        };
+        
+        // Variabel global untuk chart
+        let stats3dChart, completed3dChart;
+        
+        // Inisialisasi
+        document.addEventListener('DOMContentLoaded', function() {
+            initDate();
+            setupNavigation();
+            loadDashboardData();
+            loadStatistics('3months');
+            loadCompletedStatistics('3months');
+            
+            // Form pendaftaran
+            document.getElementById('formPendaftaran').addEventListener('submit', function(e) {
+                e.preventDefault();
+                daftarPesakit();
+            });
+            
+            // Statistik period change (dashboard)
+            document.getElementById('statPeriod').addEventListener('change', function() {
+                loadStatistics(this.value);
+            });
+            
+            // Statistik period change (selesai page)
+            document.getElementById('statPeriodCompleted').addEventListener('change', function() {
+                loadCompletedStatistics(this.value);
+            });
+        });
+        
+        function initDate() {
+            const options = { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' };
+            document.getElementById('current-date').textContent = new Date().toLocaleDateString('ms-MY', options);
+        }
+        
+        function setupNavigation() {
+            // Handle navigation
+            document.querySelectorAll('.nav-link').forEach(link => {
+                link.addEventListener('click', function(e) {
+                    e.preventDefault();
+                    
+                    // Hide all sections
+                    document.querySelectorAll('main section').forEach(section => {
+                        section.classList.add('d-none');
+                    });
+                    
+                    // Show selected section
+                    const target = this.getAttribute('href');
+                    document.querySelector(target).classList.remove('d-none');
+                    
+                    // Update active link
+                    document.querySelectorAll('.nav-link').forEach(navLink => {
+                        navLink.classList.remove('active');
+                    });
+                    this.classList.add('active');
+                    
+                    // Load data if needed
+                    if (target === '#dashboard') {
+                        loadDashboardData();
+                        loadStatistics(document.getElementById('statPeriod').value);
+                    } else if (target === '#tca-call') {
+                        loadTCACallData();
+                    } else if (target === '#first-visit') {
+                        loadFirstVisitData();
+                    } else if (target === '#second-visit') {
+                        loadSecondVisitData();
+                    } else if (target === '#selesai') {
+                        loadCompletedData();
+                        loadCompletedStatistics('3months');
+                    }
+                });
+            });
+        }
+        
+        async function loadDashboardData() {
+            try {
+                const response = await fetch(`${CONFIG.SCRIPT_URL}?action=getDashboardData`);
+                const data = await response.json();
+                
+                if (data.status === 'success') {
+                    document.getElementById('totalDaftar').textContent = data.data.totalDaftar;
+                    document.getElementById('totalFirstVisit').textContent = data.data.totalFirstVisit;
+                    document.getElementById('totalSecondVisit').textContent = data.data.totalSecondVisit;
+                    document.getElementById('totalSelesai').textContent = data.data.totalSelesai;
+                    
+                    // Load TCA Call for today
+                    loadTCACallData();
+                }
+            } catch (error) {
+                console.error('Error loading dashboard data:', error);
+                alert('Gagal memuat data dashboard');
+            }
+        }
+        
+        async function loadStatistics(period) {
+            try {
+                const response = await fetch(`${CONFIG.SCRIPT_URL}?action=getStatistics&period=${period}`);
+                const data = await response.json();
+                
+                if (data.status === 'success') {
+                    update3dChart(data.data, period, 'stats3dChart');
+                }
+            } catch (error) {
+                console.error('Error loading statistics:', error);
+            }
+        }
+        
+        async function loadCompletedStatistics(period) {
+            try {
+                const response = await fetch(`${CONFIG.SCRIPT_URL}?action=getStatistics&period=${period}`);
+                const data = await response.json();
+                
+                if (data.status === 'success') {
+                    update3dChart(data.data, period, 'completed3dChart');
+                }
+            } catch (error) {
+                console.error('Error loading completed statistics:', error);
+            }
+        }
+        
+        function update3dChart(data, period, chartId) {
+            const ctx = document.getElementById(chartId).getContext('2d');
+            
+            // Destroy previous chart if exists
+            if (chartId === 'stats3dChart' && stats3dChart) {
+                stats3dChart.destroy();
+            } else if (chartId === 'completed3dChart' && completed3dChart) {
+                completed3dChart.destroy();
+            }
+            
+            const labels = data.map(item => item.label);
+            const counts = data.map(item => item.count);
+            
+            // Generate colors for each bar
+            const backgroundColors = [];
+            for (let i = 0; i < counts.length; i++) {
+                const hue = (i * 30) % 360;
+                backgroundColors.push(`hsla(${hue}, 70%, 50%, 0.7)`);
+            }
+            
+            const newChart = new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: labels,
+                    datasets: [{
+                        label: 'Jumlah Pesakit Selesai',
+                        data: counts,
+                        backgroundColor: backgroundColors,
+                        borderColor: 'rgba(0, 0, 0, 0.1)',
+                        borderWidth: 1
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        title: {
+                            display: true,
+                            text: `Statistik Pesakit Selesai (${getPeriodLabel(period)})`,
+                            font: {
+                                size: 16
+                            }
+                        },
+                        legend: {
+                            display: false
+                        },
+                        datalabels: {
+                            display: false
+                        },
+                        tooltip: {
+                            callbacks: {
+                                label: function(context) {
+                                    return `Pesakit: ${context.raw}`;
+                                }
+                            }
+                        }
+                    },
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            title: {
+                                display: true,
+                                text: 'Jumlah Pesakit'
+                            }
+                        },
+                        x: {
+                            title: {
+                                display: true,
+                                text: 'Bulan/Tahun'
+                            }
+                        }
+                    },
+                    animation: {
+                        duration: 2000
+                    },
+                    layout: {
+                        padding: {
+                            top: 20,
+                            right: 20,
+                            bottom: 20,
+                            left: 20
+                        }
+                    },
+                    plugins: {
+                        '3d': {
+                            enabled: true,
+                            alpha: 15,
+                            beta: 15,
+                            depth: 50,
+                            viewDistance: 25
+                        }
+                    }
+                }
+            });
+            
+            if (chartId === 'stats3dChart') {
+                stats3dChart = newChart;
+            } else {
+                completed3dChart = newChart;
+            }
+        }
+        
+        function getPeriodLabel(period) {
+            switch(period) {
+                case '3months': return '3 Bulan Terakhir';
+                case '6months': return '6 Bulan Terakhir';
+                case '12months': return '12 Bulan Terakhir';
+                default: return period;
+            }
+        }
+        
+        async function loadTCACallData() {
+            try {
+                // In a real implementation, this would fetch from your Google Apps Script
+                // For demo purposes, we'll use mock data
+                const mockData = [
+                    {
+                        nama: 'Ahmad bin Ali',
+                        noIC: '900101-01-1234',
+                        noTelefon: '0123456789',
+                        tarikhTCA: '15/08/2023 10:00',
+                        status: 'Perlu Dihubungi'
+                    },
+                    {
+                        nama: 'Siti binti Abu',
+                        noIC: '910202-02-2345',
+                        noTelefon: '0123456788',
+                        tarikhTCA: '16/08/2023 11:30',
+                        status: 'Perlu Dihubungi'
+                    }
+                ];
+                
+                const tableBody = document.getElementById('tcaCallList');
+                tableBody.innerHTML = '';
+                
+                if (mockData.length > 0) {
+                    mockData.forEach(pesakit => {
+                        const row = document.createElement('tr');
+                        row.innerHTML = `
+                            <td>${pesakit.nama}</td>
+                            <td>${pesakit.noIC}</td>
+                            <td>${pesakit.noTelefon}</td>
+                            <td>${pesakit.tarikhTCA}</td>
+                            <td><span class="badge bg-warning">${pesakit.status}</span></td>
+                            <td>
+                                <button class="btn btn-sm btn-primary btn-action">
+                                    <i class="fas fa-phone me-1"></i> Call
+                                </button>
+                            </td>
+                        `;
+                        tableBody.appendChild(row);
+                    });
+                } else {
+                    tableBody.innerHTML = `
+                        <tr>
+                            <td colspan="6" class="text-center text-muted">Tiada pesakit perlu dihubungi hari ini</td>
+                        </tr>
+                    `;
+                }
+            } catch (error) {
+                console.error('Error loading TCA call data:', error);
+            }
+        }
+        
+        async function loadFirstVisitData() {
+            try {
+                // Mock data for demonstration
+                const mockData = [
+                    {
+                        nama: 'Ahmad bin Ali',
+                        noIC: '900101-01-1234',
+                        tarikhTCA: '15/08/2023 10:00',
+                        status: 'Belum Hadir'
+                    },
+                    {
+                        nama: 'Siti binti Abu',
+                        noIC: '910202-02-2345',
+                        tarikhTCA: '16/08/2023 11:30',
+                        status: 'Hadir'
+                    }
+                ];
+                
+                const tableBody = document.getElementById('firstVisitList');
+                tableBody.innerHTML = '';
+                
+                mockData.forEach(pesakit => {
+                    const row = document.createElement('tr');
+                    row.innerHTML = `
+                        <td>${pesakit.nama}</td>
+                        <td>${pesakit.noIC}</td>
+                        <td>${pesakit.tarikhTCA}</td>
+                        <td>
+                            <span class="badge ${pesakit.status === 'Hadir' ? 'bg-success' : 'bg-warning'}">
+                                ${pesakit.status}
+                            </span>
+                        </td>
+                        <td>
+                            ${pesakit.status === 'Hadir' ? 
+                                '<button class="btn btn-sm btn-success btn-action"><i class="fas fa-check me-1"></i> Tetapkan Second Visit</button>' : 
+                                '<button class="btn btn-sm btn-danger btn-action"><i class="fas fa-phone me-1"></i> Hubungi</button>'}
+                        </td>
+                    `;
+                    tableBody.appendChild(row);
+                });
+            } catch (error) {
+                console.error('Error loading first visit data:', error);
+            }
+        }
+        
+        async function loadSecondVisitData() {
+            try {
+                // Mock data for demonstration
+                const mockData = [
+                    {
+                        nama: 'Lim Chen Wei',
+                        noIC: '920303-03-3456',
+                        tarikhTCA: '20/08/2023 14:00',
+                        status: 'Hadir'
+                    },
+                    {
+                        nama: 'Muthu a/l Samy',
+                        noIC: '930404-04-4567',
+                        tarikhTCA: '21/08/2023 09:30',
+                        status: 'Belum Hadir'
+                    }
+                ];
+                
+                const tableBody = document.getElementById('secondVisitList');
+                tableBody.innerHTML = '';
+                
+                mockData.forEach(pesakit => {
+                    const row = document.createElement('tr');
+                    row.innerHTML = `
+                        <td>${pesakit.nama}</td>
+                        <td>${pesakit.noIC}</td>
+                        <td>${pesakit.tarikhTCA}</td>
+                        <td>
+                            <span class="badge ${pesakit.status === 'Hadir' ? 'bg-success' : 'bg-warning'}">
+                                ${pesakit.status}
+                            </span>
+                        </td>
+                        <td>
+                            ${pesakit.status === 'Hadir' ? 
+                                '<button class="btn btn-sm btn-success btn-action"><i class="fas fa-check me-1"></i> Tandakan Selesai</button>' : 
+                                '<button class="btn btn-sm btn-danger btn-action"><i class="fas fa-phone me-1"></i> Hubungi</button>'}
+                        </td>
+                    `;
+                    tableBody.appendChild(row);
+                });
+            } catch (error) {
+                console.error('Error loading second visit data:', error);
+            }
+        }
+        
+        async function loadCompletedData() {
+            try {
+                // Mock data for demonstration
+                const mockData = [
+                    {
+                        nama: 'Ahmad bin Ali',
+                        noIC: '900101-01-1234',
+                        noTelefon: '0123456789',
+                        tarikhDaftar: '01/08/2023',
+                        tarikhSelesai: '15/08/2023'
+                    },
+                    {
+                        nama: 'Siti binti Abu',
+                        noIC: '910202-02-2345',
+                        noTelefon: '0123456788',
+                        tarikhDaftar: '02/08/2023',
+                        tarikhSelesai: '16/08/2023'
+                    }
+                ];
+                
+                const tableBody = document.getElementById('completedTable');
+                tableBody.innerHTML = '';
+                
+                mockData.forEach(pesakit => {
+                    const row = document.createElement('tr');
+                    row.innerHTML = `
+                        <td>${pesakit.nama}</td>
+                        <td>${pesakit.noIC}</td>
+                        <td>${pesakit.noTelefon}</td>
+                        <td>${pesakit.tarikhDaftar}</td>
+                        <td>${pesakit.tarikhSelesai}</td>
+                    `;
+                    tableBody.appendChild(row);
+                });
+            } catch (error) {
+                console.error('Error loading completed data:', error);
+            }
+        }
+        
+        async function daftarPesakit() {
+            const formData = {
+                namaPesakit: document.getElementById('namaPesakit').value,
+                noIC: document.getElementById('noIC').value,
+                noTelefon: document.getElementById('noTelefon').value,
+                namaStaff: document.getElementById('namaStaff').value,
+                tarikhTCA: document.getElementById('tarikhTCA').value,
+                masaTCA: document.getElementById('masaTCA').value,
+                action: 'daftarPesakit'
+            };
+            
+            try {
+                // In a real implementation, this would POST to your Google Apps Script
+                console.log('Data yang akan dihantar:', formData);
+                
+                // Mock response for demonstration
+                alert('Pendaftaran berjaya! (Demo sahaja - data tidak disimpan)');
+                document.getElementById('formPendaftaran').reset();
+                
+                // In real implementation, you would call:
+                // const response = await fetch(CONFIG.SCRIPT_URL, {
+                //     method: 'POST',
+                //     headers: {
+                //         'Content-Type': 'application/json',
+                //     },
+                //     body: JSON.stringify(formData)
+                // });
+                // const result = await response.json();
+                
+                // Refresh data
+                loadDashboardData();
+            } catch (error) {
+                console.error('Error registering patient:', error);
+                alert('Error: ' + error.message);
+            }
+        }
+    </script>
+</body>
+</html>
