@@ -304,8 +304,8 @@ body{font-family:'Segoe UI',Tahoma,Geneva,Verdana,sans-serif;background:#f5f7fa;
     <div class="card"><div class="card-body">
       <div class="table-responsive">
         <table class="table table-hover align-middle">
-          <thead class="table-light"><tr><th>Nama Pesakit</th><th>No IC</th><th>Tarikh TCA</th><th>Status</th><th>Tindakan</th></tr></thead>
-          <tbody id="secondVisitList"><tr><td colspan="5" class="text-center text-muted">Memuat data...</td></tr></tbody>
+          <thead class="table-light"><tr><th>Nama Pesakit</th><th>No IC</th><th>Tarikh TCA</th><th>PDPA</th><th>Status</th><th>Tindakan</th></tr></thead>
+          <tbody id="secondVisitList"><tr><td colspan="6" class="text-center text-muted">Memuat data...</td></tr></tbody>
         </table>
       </div>
     </div></div>
@@ -320,8 +320,8 @@ body{font-family:'Segoe UI',Tahoma,Geneva,Verdana,sans-serif;background:#f5f7fa;
     <div class="card mb-3"><div class="card-body">
       <div class="table-responsive">
         <table class="table table-hover align-middle">
-          <thead class="table-light"><tr><th>Nama Pesakit</th><th>No IC</th><th>No Telefon</th><th>Tarikh Daftar</th><th>Tarikh Selesai</th><th>Tindakan</th></tr></thead>
-          <tbody id="completedTable"><tr><td colspan="6" class="text-center text-muted">Memuat data...</td></tr></tbody>
+          <thead class="table-light"><tr><th>Nama Pesakit</th><th>No IC</th><th>No Telefon</th><th>PDPA</th><th>Tarikh Daftar</th><th>Tarikh Selesai</th><th>Tindakan</th></tr></thead>
+          <tbody id="completedTable"><tr><td colspan="7" class="text-center text-muted">Memuat data...</td></tr></tbody>
         </table>
       </div>
     </div></div>
@@ -421,8 +421,8 @@ body{font-family:'Segoe UI',Tahoma,Geneva,Verdana,sans-serif;background:#f5f7fa;
 
 <footer class="footer mt-4 py-3 bg-light">
   <div class="container"><div class="d-flex justify-content-between">
-    <div>&copy; 2025 Klinik SihatSokmo. Untuk kegunaan dalaman sahaja.</div>
-    <div>Versi 2.1.0</div>
+    <div>&copy; 2025 Klinik SihatSokmo. Untuk kegunaan Klinik sahaja.</div>
+    <div>Versi 2.2.0</div>
   </div></div>
 </footer>
 
@@ -526,7 +526,7 @@ let retcaModal, secondTcaModal, pdpaModal;
    INIT
 ======================= */
 document.addEventListener('DOMContentLoaded', () => {
-  // logo (dengan fallback kecil)
+  // logo + fallback
   const logoEl = document.getElementById('brandLogo');
   logoEl.src = CONFIG.LOGO_URL;
   logoEl.onerror = () => {
@@ -802,7 +802,7 @@ async function loadFirstVisitData(){
         const within = isWithin24hOfDate(p.tarikhTCA);
         const msisdn = normalizeMsisdnMY(p.noTelefon||'');
 
-        // PDPA UI: jika wujud, hanya View/Download/Delete; jika tiada, boleh Upload
+        // PDPA UI
         let pdpaHTML = '';
         if (p.pdpaFileId){
           pdpaHTML = `
@@ -812,7 +812,8 @@ async function loadFirstVisitData(){
               <button class="btn btn-sm btn-outline-danger" onclick="deletePDPA('${p.id}')"><i class="fa-solid fa-trash"></i> Padam</button>
             </div>`;
         } else {
-          pdpaHTML = `<button class="btn btn-sm btn-outline-primary" onclick="openPDPA('${p.id}')"><i class="fa-solid fa-file-arrow-up"></i> Upload</button>`;
+          pdpaHTML = hadir ? `<button class="btn btn-sm btn-outline-primary" onclick="openPDPA('${p.id}')"><i class="fa-solid fa-file-arrow-up"></i> Upload</button>`
+                           : `<span class="text-muted">-</span>`;
         }
 
         const row = `
@@ -884,14 +885,24 @@ async function loadSecondVisitData(){
         const hadir = p.status==='HADIR';
         const within = isWithin24hOfDate(p.tarikhTCA);
         const msisdn = normalizeMsisdnMY(p.noTelefon||'');
+
+        // PDPA view-only
+        let pdpaHTML = p.pdpaFileId
+          ? `<div class="d-flex flex-wrap gap-1">
+              <a class="btn btn-sm btn-outline-success" target="_blank" href="https://drive.google.com/file/d/${p.pdpaFileId}/preview"><i class="fa-solid fa-eye"></i> Lihat</a>
+              <a class="btn btn-sm btn-outline-primary" target="_blank" href="https://drive.google.com/uc?export=download&id=${p.pdpaFileId}"><i class="fa-solid fa-download"></i> Muat Turun</a>
+            </div>`
+          : `<span class="text-danger">PDPA tiada</span>`;
+
         const row = `
         <tr data-id="${p.id}">
           <td>${p.nama}</td>
           <td>${p.noIC}</td>
           <td>${p.tarikhTCA||'-'}</td>
+          <td>${pdpaHTML}</td>
           <td><span class="badge ${hadir?'bg-success':'bg-warning'}">${hadir?'Hadir':'Belum Hadir'}</span></td>
           <td class="mini-actions">
-            ${within && !hadir ? `<button class="btn btn-sm btn-success" onclick="markCompleted('${p.id}')"><i class="fa-solid fa-circle-check"></i> Hadir</button>` : ''}
+            ${within && !hadir ? `<button class="btn btn-sm btn-success" onclick="markSecondVisitHadir('${p.id}')"><i class="fa-solid fa-circle-check"></i> Hadir</button>` : ''}
             ${msisdn ? `
               <a class="btn btn-sm btn-outline-secondary" href="${telHref(msisdn)}"><i class="fa-solid fa-phone"></i></a>
               <a class="btn btn-sm btn-outline-success" target="_blank" href="${waHref(msisdn)}"><i class="fa-brands fa-whatsapp"></i></a>` : ''}
@@ -900,7 +911,7 @@ async function loadSecondVisitData(){
         tbody.insertAdjacentHTML('beforeend', row);
       });
     } else {
-      tbody.innerHTML = `<tr><td colspan="5" class="text-center text-muted">Tiada data Second Visit</td></tr>`;
+      tbody.innerHTML = `<tr><td colspan="6" class="text-center text-muted">Tiada data Second Visit</td></tr>`;
     }
   }catch(e){ console.error(e); }
 }
@@ -913,14 +924,20 @@ async function loadCompletedData(){
     if (data.status==='success' && data.data.length>0){
       data.data.forEach(p=>{
         const msisdn = normalizeMsisdnMY(p.noTelefon||'');
+        const pdpaHTML = p.pdpaFileId
+          ? `<div class="d-flex flex-wrap gap-1">
+              <a class="btn btn-sm btn-outline-success" target="_blank" href="https://drive.google.com/file/d/${p.pdpaFileId}/preview"><i class="fa-solid fa-eye"></i> Lihat</a>
+              <a class="btn btn-sm btn-outline-primary" target="_blank" href="https://drive.google.com/uc?export=download&id=${p.pdpaFileId}"><i class="fa-solid fa-download"></i> Muat Turun</a>
+            </div>`
+          : `<span class="text-muted">-</span>`;
         const row = `<tr data-id="${p.id}">
-          <td>${p.nama}</td><td>${p.noIC}</td><td>${msisdn}</td><td>${p.tarikhDaftar}</td><td>${p.tarikhSelesai}</td>
+          <td>${p.nama}</td><td>${p.noIC}</td><td>${msisdn}</td><td>${pdpaHTML}</td><td>${p.tarikhDaftar}</td><td>${p.tarikhSelesai}</td>
           <td><button class="btn btn-sm btn-outline-secondary" onclick="archivePatient('${p.id}')"><i class="fa-solid fa-box-archive"></i> Arkib</button></td>
         </tr>`;
         tbody.insertAdjacentHTML('beforeend', row);
       });
     } else {
-      tbody.innerHTML = `<tr><td colspan="6" class="text-center text-muted">Tiada data pesakit selesai</td></tr>`;
+      tbody.innerHTML = `<tr><td colspan="7" class="text-center text-muted">Tiada data pesakit selesai</td></tr>`;
     }
   }catch(e){ console.error(e); }
 }
@@ -954,20 +971,19 @@ async function markFirstVisit(id){
     const res = await postForm({ action:'updateStatus', op:'firstVisit', id, staff:'SYSTEM' }, { msg:'Merekod Hadir (First Visit)…' });
     if (res.status==='success'){
       showToast('Berjaya','Hadir (First Visit) direkodkan. Sila muat naik PDPA sekarang.', 'success');
-      // Auto buka PDPA modal (wajib)
-      openPDPA(id);
+      openPDPA(id); // wajib PDPA
       loadFirstVisitData(); loadLabFollowUp(); loadSecondVisitData(); loadDashboardData();
     } else throw new Error(res.message||'Gagal rekod hadir');
   }catch(e){ showToast('Ralat', e.message, 'danger'); }
 }
 
-async function markCompleted(id){
+async function markSecondVisitHadir(id){
   try{
-    const res = await postForm({ action:'updateStatus', op:'selesai', id, staff:'SYSTEM' }, { msg:'Menandakan selesai…' });
+    const res = await postForm({ action:'updateStatus', op:'secondVisitHadir', id, staff:'SYSTEM' }, { msg:'Menandakan Hadir (Second Visit)…' });
     if (res.status==='success'){
-      showToast('Berjaya','Pesakit ditandakan selesai','success');
+      showToast('Berjaya','Second Visit selesai → dipindahkan ke Selesai','success');
       loadSecondVisitData(); loadCompletedData(); loadDashboardData();
-    } else throw new Error(res.message||'Gagal menandakan selesai');
+    } else throw new Error(res.message||'Gagal menandakan hadir');
   }catch(e){ showToast('Ralat', e.message, 'danger'); }
 }
 
@@ -992,7 +1008,7 @@ async function submitRetca(){
   }catch(e){ showToast('Ralat', e.message, 'danger'); }
 }
 
-/* Follow-up → set TCA second visit (server akan semak PDPA wajib wujud) */
+/* Follow-up → set TCA second visit (server semak PDPA wajib wujud) */
 function openSecondTca(id){
   document.getElementById('secondTcaId').value = id;
   document.getElementById('secondTcaDate').value = '';
@@ -1096,7 +1112,7 @@ async function deletePDPA(id){
     const res = await postForm({ action:'deletePDPA', id, staff:'SYSTEM' }, { msg:'Memadam PDPA…' });
     if (res.status==='success'){
       showToast('Berjaya','PDPA dipadam. Anda boleh upload semula jika perlu.','success');
-      loadFirstVisitData();
+      loadFirstVisitData(); loadSecondVisitData(); loadCompletedData();
     } else throw new Error(res.message||'Gagal padam PDPA');
   }catch(e){ showToast('Ralat', e.message, 'danger'); }
 }
