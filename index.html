@@ -62,6 +62,20 @@ body{font-family:'Segoe UI',Tahoma,Geneva,Verdana,sans-serif;background:#f5f7fa;
 .loader-progress span:nth-child(3){animation-delay:.4s}
 @keyframes blink{0%,100%{opacity:.2}50%{opacity:1}}
 @media (max-width:768px){ .navbar-brand{font-size:1rem} .stat-card .number{font-size:1.6rem} }
+
+/* Log Calls Drawer */
+.logcalls-toggle{
+  position:fixed; right:10px; top:50%; transform:translateY(-50%);
+  z-index:1081; writing-mode:vertical-rl; text-orientation:mixed; border-radius:10px;
+}
+#logCallsDrawer{
+  position:fixed; right:0; top:0; height:100vh; width:min(33vw, 480px);
+  max-width:100%; background:#fff; box-shadow: -8px 0 24px rgba(0,0,0,.12);
+  transform:translateX(100%); transition:transform .25s ease; z-index:1082; display:flex; flex-direction:column;
+}
+#logCallsDrawer.open{ transform:translateX(0); }
+#logCallsHeader{ padding:14px 16px; border-bottom:1px solid rgba(0,0,0,.08); display:flex; align-items:center; justify-content:space-between }
+#logCallsBody{ overflow:auto; padding:12px 16px; }
 </style>
 </head>
 <body>
@@ -74,6 +88,35 @@ body{font-family:'Segoe UI',Tahoma,Geneva,Verdana,sans-serif;background:#f5f7fa;
     <div class="loader-progress"><span></span><span></span><span></span></div>
   </div>
 </div>
+
+<!-- Log Calls Toggle & Drawer -->
+<button id="logCallsToggle" class="btn btn-primary logcalls-toggle"><i class="fa-solid fa-phone-volume me-1"></i>Log Calls</button>
+<aside id="logCallsDrawer" aria-hidden="true">
+  <div id="logCallsHeader">
+    <div class="d-flex align-items-center gap-2">
+      <i class="fa-solid fa-clipboard-list"></i>
+      <strong>Log Calls</strong>
+    </div>
+    <button class="btn btn-sm btn-outline-secondary" onclick="toggleLogCalls(false)"><i class="fa-solid fa-xmark"></i></button>
+  </div>
+  <div class="p-2 border-bottom">
+    <input id="searchCallLogs" class="form-control form-control-sm" placeholder="Cari nama pesakit / staff / telefon / IC…" />
+  </div>
+  <div id="logCallsBody">
+    <div class="table-responsive">
+      <table class="table table-sm table-hover align-middle">
+        <thead class="table-light">
+          <tr>
+            <th>Masa</th><th>Staff</th><th>Nama Pesakit</th><th>No IC</th><th>Telefon</th>
+          </tr>
+        </thead>
+        <tbody id="logCallsTable">
+          <tr><td colspan="5" class="text-center text-muted">Memuat log…</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</aside>
 
 <!-- Navbar -->
 <nav class="navbar navbar-expand-lg navbar-main sticky-top">
@@ -97,7 +140,9 @@ body{font-family:'Segoe UI',Tahoma,Geneva,Verdana,sans-serif;background:#f5f7fa;
         <li class="nav-item"><a class="nav-link" href="#selesai"><i class="fas fa-check-circle"></i> Selesai</a></li>
         <li class="nav-item"><a class="nav-link" href="#arkib"><i class="fa-solid fa-box-archive"></i> Arkib</a></li>
       </ul>
-      <span class="badge bg-primary"><i class="fas fa-user-shield me-1"></i> Staff</span>
+      <button id="activeStaffBadge" class="badge bg-primary border-0" type="button" onclick="openStaffModal()">
+        <i class="fas fa-user-shield me-1"></i><span id="activeStaffText">Staff</span>
+      </button>
     </div>
   </div>
 </nav>
@@ -227,7 +272,7 @@ body{font-family:'Segoe UI',Tahoma,Geneva,Verdana,sans-serif;background:#f5f7fa;
           <div class="col-md-6"><label class="form-label">Nama Penuh Pesakit</label><input id="namaPesakit" class="form-control" required></div>
           <div class="col-md-6"><label class="form-label">Nombor IC</label><input id="noIC" class="form-control" required></div>
           <div class="col-md-6"><label class="form-label">Nombor Telefon</label><input id="noTelefon" class="form-control" type="tel" required placeholder="cth: 0123456789 atau 60123456789"></div>
-          <div class="col-md-6"><label class="form-label">Nama Staff</label><input id="namaStaff" class="form-control" required></div>
+          <div class="col-md-6"><label class="form-label">Nama Staff</label><input id="namaStaff" class="form-control" placeholder="Auto isi dari Staff Aktif"></div>
           <div class="col-md-6"><label class="form-label">Tarikh TCA</label><input id="tarikhTCA" class="form-control" type="date" required></div>
           <div class="col-md-6"><label class="form-label">Masa TCA</label><input id="masaTCA" class="form-control" type="time" required></div>
           <div class="col-12"><button class="btn btn-primary"><i class="fas fa-save me-1"></i>Daftar Pesakit</button></div>
@@ -305,14 +350,20 @@ body{font-family:'Segoe UI',Tahoma,Geneva,Verdana,sans-serif;background:#f5f7fa;
   <!-- Selesai -->
   <section id="selesai" class="mb-4 d-none">
     <div class="d-flex justify-content-between align-items-center mb-2">
-      <h2 class="h5 m-0"><i class="fas a-check-circle me-2"></i>Pesakit Selesai</h2>
+      <h2 class="h5 m-0"><i class="fas fa-check-circle me-2"></i>Pesakit Selesai</h2>
       <input class="form-control form-control-sm searchbar" id="searchCompleted" placeholder="Cari nama/IC/telefon…"/>
     </div>
     <div class="card mb-3"><div class="card-body">
       <div class="table-responsive">
         <table class="table table-hover align-middle">
-          <thead class="table-light"><tr><th>Nama Pesakit</th><th>No IC</th><th>No Telefon</th><th>PDPA</th><th>Tarikh Daftar</th><th>Tarikh Selesai</th><th>Tindakan</th></tr></thead>
-          <tbody id="completedTable"><tr><td colspan="7" class="text-center text-muted">Memuat data...</td></tr></tbody>
+          <thead class="table-light">
+            <tr>
+              <th>Nama Pesakit</th><th>No IC</th><th>No Telefon</th><th>PDPA</th>
+              <th>Tarikh Daftar</th><th>Tarikh First Visit</th><th>Tarikh Lab Report Completed</th><th>Tarikh Second Visit</th><th>Tarikh Selesai</th>
+              <th>Tindakan</th>
+            </tr>
+          </thead>
+          <tbody id="completedTable"><tr><td colspan="10" class="text-center text-muted">Memuat data...</td></tr></tbody>
         </table>
       </div>
     </div></div>
@@ -348,7 +399,7 @@ body{font-family:'Segoe UI',Tahoma,Geneva,Verdana,sans-serif;background:#f5f7fa;
 
 </main>
 
-<!-- Modals -->
+<!-- Modal Re-TCA -->
 <div class="modal fade" id="retcaModal" tabindex="-1" aria-hidden="true">
   <div class="modal-dialog modal-dialog-centered"><div class="modal-content">
     <div class="modal-header"><h5 class="modal-title"><i class="fa-solid fa-calendar-plus me-2"></i>Daftar TCA Semula</h5><button class="btn-close" data-bs-dismiss="modal"></button></div>
@@ -362,6 +413,7 @@ body{font-family:'Segoe UI',Tahoma,Geneva,Verdana,sans-serif;background:#f5f7fa;
   </div></div>
 </div>
 
+<!-- Modal Set Second Visit TCA (+ Staff) -->
 <div class="modal fade" id="secondTcaModal" tabindex="-1" aria-hidden="true">
   <div class="modal-dialog modal-dialog-centered"><div class="modal-content">
     <div class="modal-header"><h5 class="modal-title"><i class="fa-solid fa-calendar-check me-2"></i>Tetapkan TCA Second Visit</h5><button class="btn-close" data-bs-dismiss="modal"></button></div>
@@ -369,12 +421,17 @@ body{font-family:'Segoe UI',Tahoma,Geneva,Verdana,sans-serif;background:#f5f7fa;
       <input type="hidden" id="secondTcaIC">
       <div class="mb-3"><label class="form-label">Tarikh TCA Second Visit</label><input type="date" id="secondTcaDate" class="form-control" required></div>
       <div class="mb-2"><label class="form-label">Masa TCA</label><input type="time" id="secondTcaTime" class="form-control" required></div>
-      <small class="text-muted">Pesakit akan muncul dalam senarai <b>Second Visit</b> dengan TCA yang ditetapkan.</small>
+      <div class="alert alert-light border mt-3 py-2">
+        <i class="fa-solid fa-user-shield me-1"></i> Nama Staff Aktif: <strong id="activeStaffInModal">-</strong>
+        <button class="btn btn-sm btn-outline-primary ms-2" onclick="openStaffModal()">Tukar</button>
+        <div class="small text-muted mt-1">Apabila disimpan, sistem akan log “Result complete & berjaya call” bersama nama staff & masa automatik.</div>
+      </div>
     </div>
     <div class="modal-footer"><button class="btn btn-secondary" data-bs-dismiss="modal">Batal</button><button class="btn btn-primary" id="btnSubmitSecondTca"><i class="fa-solid fa-floppy-disk me-1"></i>Simpan</button></div>
   </div></div>
 </div>
 
+<!-- Modal Upload PDPA -->
 <div class="modal fade" id="pdpaModal" tabindex="-1" aria-hidden="true">
   <div class="modal-dialog modal-dialog-centered"><div class="modal-content">
     <div class="modal-header"><h5 class="modal-title"><i class="fa-solid fa-file-arrow-up me-2"></i>Muat Naik Borang PDPA</h5><button class="btn-close" data-bs-dismiss="modal"></button></div>
@@ -387,13 +444,29 @@ body{font-family:'Segoe UI',Tahoma,Geneva,Verdana,sans-serif;background:#f5f7fa;
   </div></div>
 </div>
 
+<!-- Modal Tetapkan Staff Aktif -->
+<div class="modal fade" id="staffModal" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered"><div class="modal-content">
+    <div class="modal-header"><h5 class="modal-title"><i class="fa-solid fa-user-shield me-2"></i>Tetapkan Nama Staff Aktif</h5><button class="btn-close" data-bs-dismiss="modal"></button></div>
+    <div class="modal-body">
+      <label class="form-label">Nama Staff</label>
+      <input id="staffNameInput" class="form-control" placeholder="cth: Pn Aisyah / En Hafiz" />
+      <div class="form-text">Nama ini akan direkod dalam log setiap tindakan.</div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-secondary" data-bs-dismiss="modal">Batal</button>
+      <button class="btn btn-primary" id="btnSaveStaff">Simpan</button>
+    </div>
+  </div></div>
+</div>
+
 <!-- Toasts -->
 <div class="toasts" id="toastContainer"></div>
 
 <footer class="footer mt-4 py-3 bg-light">
   <div class="container"><div class="d-flex justify-content-between">
     <div>&copy; 2025 Klinik SihatSokmo. Untuk kegunaan Klinik sahaja.</div>
-    <div>Versi 2.3.0</div>
+    <div>Versi 2.4.0</div>
   </div></div>
 </footer>
 
@@ -405,7 +478,7 @@ body{font-family:'Segoe UI',Tahoma,Geneva,Verdana,sans-serif;background:#f5f7fa;
 const CONFIG = {
   SCRIPT_URL: 'https://script.google.com/macros/s/AKfycbx6TKE0vDDPO3-36cY7xjacAbGL0HIRKCrORNm-sED9y5NpIeIUk9gyrpiWy-S7vbc/exec',
   LOGO_URL: 'https://github.com/sihat9/mari-jalan-dengan-doktor/blob/main/img/logo-kss.png?raw=true',
-  CACHE_TTL_MS: 20000 // 20s cache untuk bacaan
+  CACHE_TTL_MS: 20000 // cache 20s
 };
 
 /* =======================
@@ -448,7 +521,6 @@ async function getJSON(params={}, opts={}){
   const url = qs ? `${CONFIG.SCRIPT_URL}?${qs}` : CONFIG.SCRIPT_URL;
   const ckey = key || url;
 
-  // cache hit
   const hit = cacheGet(ckey);
   if (hit) return hit;
 
@@ -475,8 +547,7 @@ async function postForm(params={}, opts={}){
       headers:{ 'Content-Type':'application/x-www-form-urlencoded' },
       body
     });
-    // invalidate related caches
-    _cache.clear();
+    _cache.clear(); // invalidate
     return await res.json();
   } finally { if (!silent) hideLoader(); }
 }
@@ -522,6 +593,22 @@ function showToast(title, message, variant='primary'){
 }
 
 /* =======================
+   STAFF AKTIF
+======================= */
+let staffModal;
+function getCurrentStaff(){ return (localStorage.getItem('ACTIVE_STAFF')||'').trim() || 'STAFF'; }
+function setCurrentStaff(name){ localStorage.setItem('ACTIVE_STAFF', (name||'').trim()); updateStaffBadge(); }
+function updateStaffBadge(){
+  const n = getCurrentStaff();
+  document.getElementById('activeStaffText').textContent = n;
+  const input = document.getElementById('namaStaff'); if (input && !input.value) input.value = n;
+}
+function openStaffModal(){
+  document.getElementById('staffNameInput').value = getCurrentStaff()==='STAFF'?'':getCurrentStaff();
+  staffModal.show();
+}
+
+/* =======================
    GLOBALS
 ======================= */
 let stats3dChart, completed3dChart;
@@ -556,11 +643,14 @@ document.addEventListener('DOMContentLoaded', () => {
   setupSearchBars();
   setupExports();
   setupExcel();
+  setupLogCallsUI();
 
-  // Initial load (selari)
+  updateStaffBadge();
+
+  // Initial load selari
   Promise.allSettled([
     loadDashboardData(),
-    loadStatistics('3months').then(()=>prefetchCharts()),  // ensure charts after need
+    loadStatistics('3months'),
     loadCompletedStatistics('3months')
   ]);
 
@@ -632,8 +722,6 @@ function ensureCharts(){
     document.head.appendChild(s1);
   });
 }
-function prefetchCharts(){ ensureCharts().catch(()=>{}); }
-
 async function loadStatistics(period){
   try{
     await ensureCharts();
@@ -766,7 +854,7 @@ async function daftarFromExcel(rowId, encNama, encIC, msisdn){
   try{
     const res = await postForm({
       action:'daftarPesakit', namaPesakit:nama, noIC: ic, noTelefon: msisdn,
-      namaStaff: document.getElementById('namaStaff')?.value || 'SYSTEM', tarikhTCA: date, masaTCA: time
+      namaStaff: document.getElementById('namaStaff')?.value || getCurrentStaff(), tarikhTCA: date, masaTCA: time
     }, { msg:'Mendaftar pesakit…' });
     if (res.status==='success'){
       showToast('Berjaya',`Pesakit ${nama} didaftarkan ke TCA`, 'success');
@@ -888,7 +976,7 @@ async function loadLabFollowUp(){
           <td>${p.daysSince}</td>
           <td><span class="badge ${badge}">${label}</span></td>
           <td class="mini-actions">
-            <button class="btn btn-sm btn-success" onclick="openSecondTca('${p.noIC}')"><i class="fa-solid fa-square-check"></i> Result selesai & berjaya call</button>
+            <button class="btn btn-sm btn-success" onclick="openSecondTca('${p.noIC}', '${encodeURIComponent(p.nama||'')}')"><i class="fa-solid fa-square-check"></i> Result selesai & berjaya call</button>
             <button class="btn btn-sm btn-warning" onclick="markLabStatus('${p.noIC}','IN_PROCESS')"><i class="fa-solid fa-hourglass-half"></i> Result in process</button>
             <button class="btn btn-sm btn-danger" onclick="markLabStatus('${p.noIC}','REPEAT')"><i class="fa-solid fa-rotate-left"></i> Repeat sample</button>
           </td>
@@ -948,13 +1036,25 @@ async function loadCompletedData(){
               <a class="btn btn-sm btn-outline-primary" target="_blank" href="https://drive.google.com/uc?export=download&id=${p.pdpaFileId}"><i class="fa-solid fa-download"></i> Muat Turun</a>
             </div>`
           : `<span class="text-muted">-</span>`;
+        const firstVisit = p.firstVisitDate || p.tarikhFirstVisit || '-';
+        const labDone    = p.labDoneDate || p.labCompletedAt || '-';
+        const secondVis  = p.secondVisitDate || p.tarikhSecondVisit || '-';
+        const selesai    = p.tarikhSelesai || p.completedAt || '-';
         rows.push(`<tr data-ic="${p.noIC}">
-          <td>${p.nama}</td><td>${p.noIC}</td><td>${msisdn}</td><td>${pdpaHTML}</td><td>${p.tarikhDaftar}</td><td>${p.tarikhSelesai}</td>
+          <td>${p.nama}</td>
+          <td>${p.noIC}</td>
+          <td>${msisdn}</td>
+          <td>${pdpaHTML}</td>
+          <td>${p.tarikhDaftar||'-'}</td>
+          <td>${firstVisit}</td>
+          <td>${labDone}</td>
+          <td>${secondVis}</td>
+          <td>${selesai}</td>
           <td><button class="btn btn-sm btn-outline-secondary" onclick="archivePatient('${p.noIC}')"><i class="fa-solid fa-box-archive"></i> Arkib</button></td>
         </tr>`);
       });
     }
-    tbody.innerHTML = rows.length ? rows.join('') : `<tr><td colspan="7" class="text-center text-muted">Tiada data pesakit selesai</td></tr>`;
+    tbody.innerHTML = rows.length ? rows.join('') : `<tr><td colspan="10" class="text-center text-muted">Tiada data pesakit selesai</td></tr>`;
   }catch(e){ console.error(e); }
 }
 
@@ -977,11 +1077,56 @@ async function loadArchivedData(){
 }
 
 /* =======================
+   LOG CALLS (drawer)
+======================= */
+let logCallsOpenedOnce = false;
+function setupLogCallsUI(){
+  document.getElementById('logCallsToggle').addEventListener('click', ()=>toggleLogCalls());
+  const search = document.getElementById('searchCallLogs');
+  let to=null;
+  search.addEventListener('input', ()=>{
+    clearTimeout(to);
+    to = setTimeout(()=>{ loadCallLogs(search.value.trim()); }, 200);
+  });
+}
+function toggleLogCalls(force){
+  const drawer = document.getElementById('logCallsDrawer');
+  const open = typeof force==='boolean' ? force : !drawer.classList.contains('open');
+  if (open){
+    drawer.classList.add('open');
+    drawer.setAttribute('aria-hidden','false');
+    if (!logCallsOpenedOnce){ loadCallLogs(); logCallsOpenedOnce = true; }
+  } else {
+    drawer.classList.remove('open');
+    drawer.setAttribute('aria-hidden','true');
+  }
+}
+async function loadCallLogs(q=''){
+  try{
+    const data = await getJSON({ action:'getCallLogs', q }, { msg:'Memuat log panggilan…', key:`logs-${q}` });
+    const tbody = document.getElementById('logCallsTable');
+    const rows=[];
+    if (data.status==='success' && data.data.length){
+      data.data.forEach(l=>{
+        rows.push(`<tr>
+          <td>${l.time||l.timestamp||'-'}</td>
+          <td>${l.staff||'-'}</td>
+          <td>${l.nama||l.namaPesakit||'-'}</td>
+          <td>${l.noIC||'-'}</td>
+          <td>${normalizeMsisdnMY(l.noTelefon||'')}</td>
+        </tr>`);
+      });
+    }
+    tbody.innerHTML = rows.length ? rows.join('') : `<tr><td colspan="5" class="text-center text-muted">Tiada log ditemui</td></tr>`;
+  }catch(e){ console.error(e); }
+}
+
+/* =======================
    ACTIONS
 ======================= */
 async function markFirstVisit(noIC){
   try{
-    const res = await postForm({ action:'updateStatus', op:'firstVisit', noIC, staff:'SYSTEM' }, { msg:'Merekod Hadir (First Visit)…' });
+    const res = await postForm({ action:'updateStatus', op:'firstVisit', noIC, staff:getCurrentStaff() }, { msg:'Merekod Hadir (First Visit)…' });
     if (res.status==='success'){
       showToast('Berjaya','Hadir (First Visit) direkodkan. Sila muat naik PDPA sekarang.', 'success');
       openPDPA(noIC);
@@ -991,7 +1136,7 @@ async function markFirstVisit(noIC){
 }
 async function markSecondVisitHadir(noIC){
   try{
-    const res = await postForm({ action:'updateStatus', op:'secondVisitHadir', noIC, staff:'SYSTEM' }, { msg:'Menandakan Hadir (Second Visit)…' });
+    const res = await postForm({ action:'updateStatus', op:'secondVisitHadir', noIC, staff:getCurrentStaff() }, { msg:'Menandakan Hadir (Second Visit)…' });
     if (res.status==='success'){
       showToast('Berjaya','Second Visit selesai → dipindahkan ke Selesai','success');
       loadSecondVisitData(); loadCompletedData(); loadDashboardData();
@@ -1011,7 +1156,7 @@ async function submitRetca(){
   const masaTCA = document.getElementById('retcaTime').value;
   if (!noIC || !tarikhTCA || !masaTCA) return showToast('Ralat','Sila lengkapkan tarikh & masa','danger');
   try{
-    const res = await postForm({ action:'updateStatus', op:'retca', noIC, tarikhTCA, masaTCA, staff:'SYSTEM' }, { msg:'Mendaftar TCA semula…' });
+    const res = await postForm({ action:'updateStatus', op:'retca', noIC, tarikhTCA, masaTCA, staff:getCurrentStaff() }, { msg:'Mendaftar TCA semula…' });
     if (res.status==='success'){
       retcaModal.hide();
       showToast('Berjaya','TCA baharu disimpan','success');
@@ -1020,31 +1165,44 @@ async function submitRetca(){
   }catch(e){ showToast('Ralat', e.message, 'danger'); }
 }
 
-/* Follow-up → set TCA second visit */
+/* Follow-up → set TCA second visit + LOG CALL */
 function openSecondTca(noIC){
   document.getElementById('secondTcaIC').value = noIC;
   document.getElementById('secondTcaDate').value = '';
   document.getElementById('secondTcaTime').value = '';
+  document.getElementById('activeStaffInModal').textContent = getCurrentStaff();
   secondTcaModal.show();
 }
 async function submitSecondTca(){
   const noIC = document.getElementById('secondTcaIC').value;
   const date = document.getElementById('secondTcaDate').value;
   const time = document.getElementById('secondTcaTime').value;
+  const staff = getCurrentStaff();
   if (!date || !time) { showToast('Ralat','Sila isi tarikh & masa TCA','danger'); return; }
   try{
-    const a = await postForm({ action:'updatePatient', noIC, tarikhTCA:date, masaTCA:time, staff:'SYSTEM' }, { msg:'Menetapkan TCA Second Visit…' });
+    // 1) set TCA Second Visit
+    const a = await postForm({ action:'updatePatient', noIC, tarikhTCA:date, masaTCA:time, staff }, { msg:'Menetapkan TCA Second Visit…' });
     if (a.status!=='success') throw new Error(a.message||'Gagal tetapkan TCA');
-    const b = await postForm({ action:'updateLabStatus', noIC, status:'DONE', staff:'SYSTEM' }, { msg:'Mengemas kini status follow-up…' });
+
+    // 2) set follow-up DONE
+    const b = await postForm({ action:'updateLabStatus', noIC, status:'DONE', staff }, { msg:'Mengemas kini status follow-up…' });
     if (b.status!=='success') throw new Error(b.message||'Gagal set follow-up DONE');
+
+    // 3) LOG panggilan (masa automatik server — optional pass client time)
+    const nowISO = new Date().toISOString();
+    const c = await postForm({ action:'logCall', event:'LAB_COMPLETE_CALL', noIC, staff, clientTimeISO: nowISO }, { msg:'Merekod log panggilan…' });
+    if (c.status!=='success') console.warn('Log call gagal:', c.message);
+
     secondTcaModal.hide();
-    showToast('Berjaya','TCA Second Visit ditetapkan & follow-up ditanda selesai','success');
+    showToast('Berjaya','TCA Second Visit ditetapkan, follow-up selesai & log direkod','success');
     loadLabFollowUp(); loadSecondVisitData(); loadDashboardData();
+    if (document.getElementById('logCallsDrawer').classList.contains('open')) loadCallLogs(document.getElementById('searchCallLogs').value.trim());
   }catch(e){ showToast('Ralat', e.message, 'danger'); }
 }
+
 async function markLabStatus(noIC, status){
   try{
-    const res = await postForm({ action:'updateLabStatus', noIC, status, staff:'SYSTEM' }, { msg:'Mengemas kini status follow-up…' });
+    const res = await postForm({ action:'updateLabStatus', noIC, status, staff:getCurrentStaff() }, { msg:'Mengemas kini status follow-up…' });
     if (res.status==='success'){
       showToast('Follow-up', `Status ditetapkan (${status==='IN_PROCESS'?'In Process':'Repeat Sample'}) — jangan lupa follow-up.`, 'warning');
       loadLabFollowUp(); loadDashboardData();
@@ -1066,7 +1224,7 @@ async function uploadPDPA(){
   const fd = new FormData();
   fd.append('action','uploadPDPA');
   fd.append('noIC', noIC);
-  fd.append('staff', 'SYSTEM');
+  fd.append('staff', getCurrentStaff());
   fd.append('pdpa', file, file.name);
 
   showLoader('Memuat naik PDPA…');
@@ -1080,7 +1238,7 @@ async function uploadPDPA(){
     const base64 = await fileToBase64(file); const pure64 = base64.split(',').pop();
     res = await fetch(CONFIG.SCRIPT_URL, {
       method: 'POST', headers: { 'Content-Type':'application/x-www-form-urlencoded' },
-      body: new URLSearchParams({ action:'uploadPDPA', noIC, staff:'SYSTEM', fileBase64:pure64, fileName:file.name, fileType:file.type || 'application/octet-stream' })
+      body: new URLSearchParams({ action:'uploadPDPA', noIC, staff:getCurrentStaff(), fileBase64:pure64, fileName:file.name, fileType:file.type || 'application/octet-stream' })
     });
     json = await res.json();
     if (json.status === 'success'){ pdpaModal.hide(); showToast('Berjaya','PDPA dimuat naik (fallback)','success'); _cache.clear(); loadFirstVisitData(); }
@@ -1094,7 +1252,7 @@ function fileToBase64(file){
 async function deletePDPA(noIC){
   if (!confirm('Padam PDPA untuk pesakit ini?')) return;
   try{
-    const res = await postForm({ action:'deletePDPA', noIC, staff:'SYSTEM' }, { msg:'Memadam PDPA…' });
+    const res = await postForm({ action:'deletePDPA', noIC, staff:getCurrentStaff() }, { msg:'Memadam PDPA…' });
     if (res.status==='success'){
       showToast('Berjaya','PDPA dipadam. Anda boleh upload semula jika perlu.','success');
       _cache.clear(); loadFirstVisitData(); loadSecondVisitData(); loadCompletedData();
@@ -1106,7 +1264,7 @@ async function deletePDPA(noIC){
 async function archivePatient(noIC){
   if (!confirm('Arkibkan rekod pesakit ini?')) return;
   try{
-    const res = await postForm({ action:'archivePatient', noIC, staff:'SYSTEM' }, { msg:'Mengarkib rekod…' });
+    const res = await postForm({ action:'archivePatient', noIC, staff:getCurrentStaff() }, { msg:'Mengarkib rekod…' });
     if (res.status==='success'){ showToast('Arkib','Rekod telah diarkibkan','success'); _cache.clear(); loadCompletedData(); }
     else throw new Error(res.message||'Gagal arkib');
   }catch(e){ showToast('Ralat', e.message, 'danger'); }
@@ -1114,7 +1272,7 @@ async function archivePatient(noIC){
 async function restorePatient(noIC){
   if (!confirm('Pulihkan rekod ini ke senarai utama?')) return;
   try{
-    const res = await postForm({ action:'restorePatient', noIC, staff:'SYSTEM' }, { msg:'Memulihkan rekod…' });
+    const res = await postForm({ action:'restorePatient', noIC, staff:getCurrentStaff() }, { msg:'Memulihkan rekod…' });
     if (res.status==='success'){ showToast('Pulih','Rekod telah dipulihkan','success'); _cache.clear(); loadArchivedData(); loadCompletedData(); loadDashboardData(); }
     else throw new Error(res.message||'Gagal pulih');
   }catch(e){ showToast('Ralat', e.message, 'danger'); }
@@ -1127,11 +1285,11 @@ async function daftarPesakit(){
     namaPesakit: document.getElementById('namaPesakit').value.trim(),
     noIC:        document.getElementById('noIC').value.trim(),
     noTelefon:   normalizeMsisdnMY(document.getElementById('noTelefon').value.trim()),
-    namaStaff:   document.getElementById('namaStaff').value.trim() || 'SYSTEM',
+    namaStaff:   (document.getElementById('namaStaff').value.trim() || getCurrentStaff()),
     tarikhTCA:   document.getElementById('tarikhTCA').value,
     masaTCA:     document.getElementById('masaTCA').value
   };
-  if (!formData.namaPesakit || !formData.noIC || !formData.noTelefon || !formData.namaStaff || !formData.tarikhTCA || !formData.masaTCA){
+  if (!formData.namaPesakit || !formData.noIC || !formData.noTelefon || !formData.tarikhTCA || !formData.masaTCA){
     showToast('Ralat','Sila isi semua maklumat yang diperlukan','danger'); return;
   }
   try{
@@ -1139,6 +1297,7 @@ async function daftarPesakit(){
     if (result.status==='success'){
       showToast('Berjaya','Pendaftaran pesakit berjaya (IC sebagai kunci, tiada duplikasi)','success');
       document.getElementById('formPendaftaran').reset();
+      document.getElementById('namaStaff').value = getCurrentStaff();
       _cache.clear(); loadDashboardData(); loadTCACallData();
     } else throw new Error(result.message||'Gagal mendaftar pesakit');
   }catch(e){ showToast('Ralat', e.message, 'danger'); }
@@ -1148,8 +1307,15 @@ async function exportCompletedCSV(){
   try{
     const data = await getJSON({ action:'getCompleted' }, { msg:'Menjana CSV…', key:'done' });
     if (data.status!=='success' || !data.data.length) { showToast('Makluman','Tiada data untuk diexport','warning'); return; }
-    const header = ['Nama','NoIC','Telefon','TarikhDaftar','TarikhSelesai'];
-    const rows = data.data.map(x=>[ x.nama, x.noIC, normalizeMsisdnMY(x.noTelefon||''), x.tarikhDaftar, x.tarikhSelesai ]);
+    const header = ['Nama','NoIC','Telefon','TarikhDaftar','FirstVisit','LabReportCompleted','SecondVisit','Selesai'];
+    const rows = data.data.map(x=>[
+      x.nama, x.noIC, normalizeMsisdnMY(x.noTelefon||''),
+      x.tarikhDaftar||'',
+      (x.firstVisitDate||x.tarikhFirstVisit||''),
+      (x.labDoneDate||x.labCompletedAt||''),
+      (x.secondVisitDate||x.tarikhSecondVisit||''),
+      (x.tarikhSelesai||x.completedAt||'')
+    ]);
     const csv = [header, ...rows].map(r=>r.map(v=>`"${String(v||'').replace(/"/g,'""')}"`).join(',')).join('\r\n');
     const blob = new Blob([csv], { type:'text/csv;charset=utf-8;' });
     const url = URL.createObjectURL(blob);
@@ -1169,6 +1335,16 @@ function setupModals(){
 
   pdpaModal = new bootstrap.Modal(document.getElementById('pdpaModal'));
   document.getElementById('btnUploadPDPA').addEventListener('click', uploadPDPA);
+
+  staffModal = new bootstrap.Modal(document.getElementById('staffModal'));
+  document.getElementById('btnSaveStaff').addEventListener('click', ()=>{
+    const name = document.getElementById('staffNameInput').value.trim();
+    if (!name){ showToast('Ralat','Sila masukkan nama staff','danger'); return; }
+    setCurrentStaff(name);
+    document.getElementById('activeStaffInModal').textContent = getCurrentStaff();
+    staffModal.hide();
+    showToast('Staff Aktif',`Ditukar kepada ${getCurrentStaff()}`,'success');
+  });
 }
 </script>
 </body>
