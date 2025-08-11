@@ -5,6 +5,12 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
 <title>Sistem Tracker PEKA B40 - Klinik SihatSokmo</title>
 
+<!-- Preconnect untuk laju -->
+<link rel="preconnect" href="https://cdn.jsdelivr.net">
+<link rel="dns-prefetch" href="https://cdn.jsdelivr.net">
+<link rel="preconnect" href="https://cdnjs.cloudflare.com">
+<link rel="dns-prefetch" href="https://cdnjs.cloudflare.com">
+
 <!-- Bootstrap & Icons -->
 <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.0/font/bootstrap-icons.css">
@@ -34,6 +40,8 @@ body{font-family:'Segoe UI',Tahoma,Geneva,Verdana,sans-serif;background:#f5f7fa;
 .card-header{background:#fff;border-bottom:1px solid rgba(0,0,0,.06);font-weight:600;padding:14px 18px;border-radius:14px 14px 0 0!important}
 .stat-card{padding:18px;border-radius:14px;color:#fff;text-align:center;position:relative;overflow:hidden}
 .stat-card .number{font-size:1.9rem;font-weight:800}
+.stat-link{cursor:pointer;transition:.2s}
+.stat-link:hover{transform:translateY(-2px); box-shadow:0 12px 24px rgba(0,0,0,.10)}
 .table td,.table th{vertical-align:middle}
 .searchbar{max-width:360px}
 .mini-actions .btn{margin-right:6px;margin-bottom:6px}
@@ -116,7 +124,7 @@ body{font-family:'Segoe UI',Tahoma,Geneva,Verdana,sans-serif;background:#f5f7fa;
   <div class="container">
     <div class="row align-items-center g-2">
       <div class="col-md-6">
-        <h1 class="h4 m-0"><i class="fas fa-heartbeat me-2"></i> Sistem TRacKer PEKA B40</h1>
+        <h1 class="h4 m-0"><i class="fas fa-heartbeat me-2"></i> Sistem Tracker PEKA B40</h1>
         <div class="small opacity-75">Sistem pengurusan pesakit untuk program saringan kesihatan PEKA B40</div>
       </div>
       <div class="col-md-6 text-md-end">
@@ -139,32 +147,32 @@ body{font-family:'Segoe UI',Tahoma,Geneva,Verdana,sans-serif;background:#f5f7fa;
 
     <div class="row g-3 mb-3">
       <div class="col-md-2">
-        <div class="stat-card" style="background:linear-gradient(135deg,var(--secondary),#2980b9)">
+        <div class="stat-card stat-link" data-target="#tca-call" style="background:linear-gradient(135deg,var(--secondary),#2980b9)">
           <div class="number" id="totalDaftar">0</div><div class="small">Aktif</div>
         </div>
       </div>
       <div class="col-md-2">
-        <div class="stat-card" style="background:linear-gradient(135deg,var(--warning),#e67e22)">
+        <div class="stat-card stat-link" data-target="#first-visit" style="background:linear-gradient(135deg,var(--warning),#e67e22)">
           <div class="number" id="totalFirstVisit">0</div><div class="small">First Visit (Pending)</div>
         </div>
       </div>
       <div class="col-md-2">
-        <div class="stat-card" style="background:linear-gradient(135deg,#9b59b6,#8e44ad)">
+        <div class="stat-card stat-link" data-target="#second-visit" style="background:linear-gradient(135deg,#9b59b6,#8e44ad)">
           <div class="number" id="totalSecondVisit">0</div><div class="small">Second Visit (Pending)</div>
         </div>
       </div>
       <div class="col-md-2">
-        <div class="stat-card" style="background:linear-gradient(135deg,var(--success),#16a085)">
+        <div class="stat-card stat-link" data-target="#selesai" style="background:linear-gradient(135deg,var(--success),#16a085)">
           <div class="number" id="totalSelesai">0</div><div class="small">Selesai</div>
         </div>
       </div>
       <div class="col-md-2">
-        <div class="stat-card" style="background:linear-gradient(135deg,#8e44ad,#6c5ce7)">
+        <div class="stat-card stat-link" data-target="#lab-followup" style="background:linear-gradient(135deg,#8e44ad,#6c5ce7)">
           <div class="number" id="labFollowUpDue">0</div><div class="small">Result > 3 Hari</div>
         </div>
       </div>
       <div class="col-md-2">
-        <div class="stat-card" style="background:linear-gradient(135deg,#d35400,#c0392b)">
+        <div class="stat-card stat-link" data-target="#lab-followup" style="background:linear-gradient(135deg,#d35400,#c0392b)">
           <div class="number" id="labFollowUpPending">0</div><div class="small">Perlu Follow-up</div>
         </div>
       </div>
@@ -314,7 +322,7 @@ body{font-family:'Segoe UI',Tahoma,Geneva,Verdana,sans-serif;background:#f5f7fa;
   <!-- Selesai -->
   <section id="selesai" class="mb-4 d-none">
     <div class="d-flex justify-content-between align-items-center mb-2">
-      <h2 class="h5 m-0"><i class="fas a-check-circle me-2"></i>Pesakit Selesai</h2>
+      <h2 class="h5 m-0"><i class="fas fa-check-circle me-2"></i>Pesakit Selesai</h2>
       <input class="form-control form-control-sm searchbar" id="searchCompleted" placeholder="Cari nama/IC/telefon…"/>
     </div>
     <div class="card mb-3"><div class="card-body">
@@ -422,7 +430,7 @@ body{font-family:'Segoe UI',Tahoma,Geneva,Verdana,sans-serif;background:#f5f7fa;
 <footer class="footer mt-4 py-3 bg-light">
   <div class="container"><div class="d-flex justify-content-between">
     <div>&copy; 2025 Klinik SihatSokmo. Untuk kegunaan Klinik sahaja.</div>
-    <div>Versi 2.2.1</div>
+    <div>Versi 2.3.0</div>
   </div></div>
 </footer>
 
@@ -446,21 +454,30 @@ function showLoader(msg='Memproses permintaan anda…'){
 function hideLoader(){ document.getElementById('appLoader').style.display = 'none'; }
 
 /* =======================
+   STORE CACHE RINGAN
+======================= */
+const Store = {
+  version: null,
+  setVersion(v){ this.version=v; try{ sessionStorage.setItem('version', v);}catch(e){} },
+  getVersion(){ if(this.version!=null) return this.version; try{ this.version=sessionStorage.getItem('version'); return this.version; }catch(e){ return null; } }
+};
+
+/* =======================
    NETWORK HELPERS
 ======================= */
-const getJSON = async (params={}, opts={}) => {
-  const { silent=false, msg='Memuat data…' } = opts;
+async function getJSON(params={}, {msg='Memuat data…'}={}){
   const qs = new URLSearchParams(params).toString();
   const url = qs ? `${CONFIG.SCRIPT_URL}?${qs}` : CONFIG.SCRIPT_URL;
-  if (!silent) showLoader(msg);
+  showLoader(msg);
   try{
     const res = await fetch(url, { method:'GET' });
-    return await res.json();
-  } finally { if (!silent) hideLoader(); }
-};
-const postForm = async (params={}, opts={}) => {
-  const { silent=false, msg='Menyimpan data…' } = opts;
-  if (!silent) showLoader(msg);
+    const json = await res.json();
+    if (json && json.version) Store.setVersion(json.version);
+    return json;
+  } finally { hideLoader(); }
+}
+async function postForm(params={}, {msg='Menyimpan data…'}={}){
+  showLoader(msg);
   try{
     const body = new URLSearchParams(params);
     const res = await fetch(CONFIG.SCRIPT_URL, {
@@ -468,9 +485,13 @@ const postForm = async (params={}, opts={}) => {
       headers:{ 'Content-Type':'application/x-www-form-urlencoded' },
       body
     });
-    return await res.json();
-  } finally { if (!silent) hideLoader(); }
-};
+    const json = await res.json();
+    if (json && json.version) Store.setVersion(json.version);
+    // bersihkan cache local apabila ada perubahan
+    sessionStorage.clear();
+    return json;
+  } finally { hideLoader(); }
+}
 
 /* =======================
    UTIL
@@ -525,7 +546,7 @@ let retcaModal, secondTcaModal, pdpaModal;
 /* =======================
    INIT
 ======================= */
-document.addEventListener('DOMContentLoaded', () => {
+document.addEventListener('DOMContentLoaded', async () => {
   // logo + fallback
   const logoEl = document.getElementById('brandLogo');
   logoEl.src = CONFIG.LOGO_URL;
@@ -548,8 +569,52 @@ document.addEventListener('DOMContentLoaded', () => {
   setupSearchBars();
   setupExports();
   setupExcel();
+  setupStatCardLinks();
 
-  loadDashboardData();
+  // BOOTSTRAP: laju → dapat dashboard + TCA sekaligus
+  try{
+    const boot = await getJSON({ action:'bootstrap' }, { msg:'Memuat papan pemuka…' });
+    if (boot.status==='success'){
+      const d = boot.dashboard || {};
+      totalDaftar.textContent = d.totalDaftar || 0;
+      totalFirstVisit.textContent = d.totalFirstVisit || 0;
+      totalSecondVisit.textContent = d.totalSecondVisit || 0;
+      totalSelesai.textContent = d.totalSelesai || 0;
+      labFollowUpDue.textContent = d.labFollowUpDue || 0;
+      labFollowUpPending.textContent = d.labFollowUpPending || 0;
+
+      // Isi TCA (dashboard)
+      const tb = document.getElementById('tcaCallTable');
+      tb.innerHTML = '';
+      const list = boot.tcaToday || [];
+      if (!list.length){
+        tb.innerHTML = `<tr><td colspan="6" class="text-center text-muted">Tiada pesakit perlu dihubungi hari ini</td></tr>`;
+      } else {
+        list.forEach(p=>{
+          const msisdn = normalizeMsisdnMY(p.noTelefon||'');
+          const tr = `
+            <tr data-ic="${p.noIC}">
+              <td>${p.nama}</td>
+              <td>${p.noIC}</td>
+              <td class="mini-actions">
+                <a class="btn btn-sm btn-outline-secondary" href="${telHref(msisdn)}"><i class="fa-solid fa-phone"></i> Call</a>
+                <a class="btn btn-sm btn-outline-success" target="_blank" href="${waHref(msisdn)}"><i class="fa-brands fa-whatsapp"></i> WhatsApp</a>
+                <div class="small text-muted mt-1">${msisdn}</div>
+              </td>
+              <td>${p.tarikhTCA||''} ${p.masaTCA||''}</td>
+              <td><span class="badge bg-warning">${p.status||'TCA CALL'}</span></td>
+              <td class="mini-actions"><button class="btn btn-sm btn-primary" onclick="openRetcaModal('${p.noIC}')"><i class="fa-solid fa-calendar-plus"></i> Re-TCA</button></td>
+            </tr>`;
+          tb.insertAdjacentHTML('beforeend', tr);
+        });
+      }
+    }
+  }catch(e){
+    // fallback normal
+    await loadDashboardData();
+  }
+
+  // Statistik awal
   loadStatistics('3months');
   loadCompletedStatistics('3months');
 });
@@ -558,21 +623,7 @@ function setupNavigation(){
   document.querySelectorAll('.nav-link').forEach(a=>{
     a.addEventListener('click',(e)=>{
       e.preventDefault();
-      document.querySelectorAll('main section').forEach(s=>s.classList.add('d-none'));
-      const target = a.getAttribute('href');
-      document.querySelector(target).classList.remove('d-none');
-      document.querySelectorAll('.nav-link').forEach(n=>n.classList.remove('active'));
-      a.classList.add('active');
-
-      if (target==='#dashboard'){ loadDashboardData(); loadStatistics(document.getElementById('statPeriod').value); }
-      else if (target==='#kelayakan'){ /* no-op */ }
-      else if (target==='#pendaftaran'){ /* no-op */ }
-      else if (target==='#tca-call'){ loadTCACallData(); }
-      else if (target==='#first-visit'){ loadFirstVisitData(); }
-      else if (target==='#lab-followup'){ loadLabFollowUp(); }
-      else if (target==='#second-visit'){ loadSecondVisitData(); }
-      else if (target==='#selesai'){ loadCompletedData(); loadCompletedStatistics(document.getElementById('statPeriodCompleted').value); }
-      else if (target==='#arkib'){ loadArchivedData(); }
+      navigateTo(a.getAttribute('href'));
     });
   });
 
@@ -583,6 +634,31 @@ function setupNavigation(){
 
   document.getElementById('statPeriod').addEventListener('change', function(){ loadStatistics(this.value); });
   document.getElementById('statPeriodCompleted').addEventListener('change', function(){ loadCompletedStatistics(this.value); });
+}
+function navigateTo(target){
+  document.querySelectorAll('main section').forEach(s=>s.classList.add('d-none'));
+  document.querySelector(target).classList.remove('d-none');
+  document.querySelectorAll('.nav-link').forEach(n=>n.classList.remove('active'));
+  const nav = document.querySelector(`.nav-link[href="${target}"]`);
+  if (nav) nav.classList.add('active');
+
+  // auto load data seksyen
+  if (target==='#dashboard'){ loadDashboardData(); loadStatistics(document.getElementById('statPeriod').value); }
+  else if (target==='#tca-call'){ loadTCACallData(); }
+  else if (target==='#first-visit'){ loadFirstVisitData(); }
+  else if (target==='#lab-followup'){ loadLabFollowUp(); }
+  else if (target==='#second-visit'){ loadSecondVisitData(); }
+  else if (target==='#selesai'){ loadCompletedData(); loadCompletedStatistics(document.getElementById('statPeriodCompleted').value); }
+  else if (target==='#arkib'){ loadArchivedData(); }
+}
+
+function setupStatCardLinks(){
+  document.querySelectorAll('.stat-link').forEach(div=>{
+    div.addEventListener('click', ()=>{
+      const target = div.getAttribute('data-target') || '#dashboard';
+      navigateTo(target);
+    });
+  });
 }
 
 function setupModals(){
@@ -713,7 +789,6 @@ async function loadDashboardData(){
       totalSelesai.textContent = data.data.totalSelesai || 0;
       labFollowUpDue.textContent = data.data.labFollowUpDue || 0;
       labFollowUpPending.textContent = data.data.labFollowUpPending || 0;
-      loadTCACallData();
     }
   }catch(e){ showToast('Ralat','Gagal memuat data dashboard','danger'); }
 }
@@ -756,10 +831,11 @@ function getPeriodLabel(p){ if(p==='3months')return'3 Bulan Terakhir'; if(p==='6
 ======================= */
 async function loadTCACallData(){
   try{
-    const data = await getJSON({ action:'getTCACall' }, { msg:'Memuat TCA Hari Ini…' });
+    const data = await getJSON({ action:'getTCACall' }, { msg:'Memuat TCA…' });
     const tb1 = document.getElementById('tcaCallTable');
     const tb2 = document.getElementById('tcaCallList');
-    [tb1,tb2].forEach(tb=>tb && (tb.innerHTML=''));
+    if (tb1) tb1.innerHTML='';
+    if (tb2) tb2.innerHTML='';
 
     const renderRow = (p) => {
       const msisdn = normalizeMsisdnMY(p.noTelefon||'');
@@ -772,8 +848,8 @@ async function loadTCACallData(){
           <a class="btn btn-sm btn-outline-success" target="_blank" href="${waHref(msisdn)}"><i class="fa-brands fa-whatsapp"></i> WhatsApp</a>
           <div class="small text-muted mt-1">${msisdn}</div>
         </td>
-        <td>${p.tarikhTCA}</td>
-        <td><span class="badge bg-warning">${p.status}</span></td>
+        <td>${p.tarikhTCA||''} ${p.masaTCA||''}</td>
+        <td><span class="badge bg-warning">${p.status||'TCA CALL'}</span></td>
         <td class="mini-actions"><button class="btn btn-sm btn-primary" onclick="openRetcaModal('${p.noIC}')"><i class="fa-solid fa-calendar-plus"></i> Re-TCA</button></td>
       </tr>`;
     };
@@ -784,7 +860,7 @@ async function loadTCACallData(){
         if (tb2) tb2.insertAdjacentHTML('beforeend', renderRow(p));
       });
     } else {
-      const empty = `<tr><td colspan="6" class="text-center text-muted">Tiada pesakit perlu dihubungi hari ini</td></tr>`;
+      const empty = `<tr><td colspan="6" class="text-center text-muted">Tiada pesakit perlu dihubungi</td></tr>`;
       if (tb1) tb1.innerHTML = empty;
       if (tb2) tb2.innerHTML = empty;
     }
@@ -820,7 +896,7 @@ async function loadFirstVisitData(){
         <tr data-ic="${p.noIC}">
           <td>${p.nama}</td>
           <td>${p.noIC}</td>
-          <td>${p.tarikhTCA||'-'}</td>
+          <td>${p.tarikhTCA||'-'} ${p.masaTCA||''}</td>
           <td>${pdpaHTML}</td>
           <td><span class="badge ${hadir?'bg-success':'bg-warning'}">${hadir?'Hadir':'Belum Hadir'}</span></td>
           <td class="mini-actions">
@@ -898,7 +974,7 @@ async function loadSecondVisitData(){
         <tr data-ic="${p.noIC}">
           <td>${p.nama}</td>
           <td>${p.noIC}</td>
-          <td>${p.tarikhTCA||'-'}</td>
+          <td>${p.tarikhTCA||'-'} ${p.masaTCA||''}</td>
           <td>${pdpaHTML}</td>
           <td><span class="badge ${hadir?'bg-success':'bg-warning'}">${hadir?'Hadir':'Belum Hadir'}</span></td>
           <td class="mini-actions">
@@ -1041,7 +1117,7 @@ async function markLabStatus(noIC, status){
   }catch(e){ showToast('Ralat', e.message, 'danger'); }
 }
 
-/* PDPA (upload + fallback + delete) */
+/* PDPA (base64 sahaja — selari dengan Code.gs) */
 function openPDPA(noIC){
   document.getElementById('pdpaIC').value = noIC;
   document.getElementById('pdpaFile').value = '';
@@ -1052,48 +1128,25 @@ async function uploadPDPA(){
   const file = document.getElementById('pdpaFile').files[0];
   if (!file) { showToast('Ralat','Sila pilih fail PDPA','danger'); return; }
 
-  // 1) cuba multipart
-  const fd = new FormData();
-  fd.append('action','uploadPDPA');
-  fd.append('noIC', noIC);
-  fd.append('staff', 'SYSTEM');
-  fd.append('pdpa', file, file.name);
-
   showLoader('Memuat naik PDPA…');
   try{
-    let res = await fetch(CONFIG.SCRIPT_URL, { method:'POST', body: fd });
-    let json = await res.json();
+    const base64 = await fileToBase64(file);
+    const pure64 = base64.split(',').pop();
 
-    if (json.status === 'success'){
-      pdpaModal.hide();
-      showToast('Berjaya','PDPA dimuat naik (multipart)','success');
-      loadFirstVisitData();
-      return;
-    }
-
-    const msg = (json && json.message || '').toLowerCase();
-    const needFallback = /multipart|tidak diterima|fail pdpa/i.test(msg);
-    if (!needFallback) throw new Error(json.message || 'Gagal muat naik PDPA');
-
-    // fallback base64
-    hideLoader(); showLoader('Memuat naik PDPA (fallback)…');
-    const base64 = await fileToBase64(file); const pure64 = base64.split(',').pop();
-    res = await fetch(CONFIG.SCRIPT_URL, {
+    const res = await fetch(CONFIG.SCRIPT_URL, {
       method: 'POST',
       headers: { 'Content-Type':'application/x-www-form-urlencoded' },
       body: new URLSearchParams({
         action: 'uploadPDPA', noIC, staff:'SYSTEM',
-        fileBase64: pure64, fileName: file.name, fileType: file.type || 'application/octet-stream'
+        fileBase64: pure64, fileName: file.name, fileType: file.type || 'application/pdf'
       })
     });
-    json = await res.json();
-
+    const json = await res.json();
     if (json.status === 'success'){
       pdpaModal.hide();
-      showToast('Berjaya','PDPA dimuat naik (fallback)','success');
-      loadFirstVisitData();
-    } else { throw new Error(json.message || 'Gagal muat naik PDPA (fallback)'); }
-
+      showToast('Berjaya','PDPA dimuat naik','success');
+      loadFirstVisitData(); loadSecondVisitData(); loadCompletedData();
+    } else { throw new Error(json.message || 'Gagal muat naik PDPA'); }
   } catch(e){
     showToast('Ralat', e.message, 'danger');
   } finally { hideLoader(); }
@@ -1158,7 +1211,7 @@ async function daftarPesakit(){
   try{
     const result = await postForm(formData, { msg:'Mendaftar pesakit…' });
     if (result.status==='success'){
-      showToast('Berjaya','Pendaftaran pesakit berjaya (IC sebagai kunci, tiada duplikasi)','success');
+      showToast('Berjaya','Pendaftaran pesakit berjaya (IC sebagai kunci, elak duplikasi)','success');
       document.getElementById('formPendaftaran').reset();
       loadDashboardData(); loadTCACallData();
     } else throw new Error(result.message||'Gagal mendaftar pesakit');
