@@ -1,4 +1,4 @@
-"<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="ms">
 <head>
 <meta charset="UTF-8" />
@@ -53,12 +53,14 @@ body{font-family:'Segoe UI',Tahoma,Geneva,Verdana,sans-serif;background:#f5f7fa;
 /* Cards */
 .card{border:none;border-radius:14px;box-shadow:0 8px 24px rgba(0,0,0,.06);margin-bottom:16px}
 .card-header{background:#fff;border-bottom:1px solid rgba(0,0,0,.06);font-weight:600;padding:12px 16px;border-radius:14px 14px 0 0!important}
+.stat-card{padding:14px;border-radius:14px;color:#fff;text-align:center;position:relative;overflow:hidden;cursor:pointer}
+.stat-card .number{font-size:1.45rem;font-weight:800}
 .table td,.table th{vertical-align:middle}
 .table{font-size:.95rem}
 .searchbar{max-width:340px}
 .mini-actions .btn{margin-right:6px;margin-bottom:6px}
 
-/* Loader global */
+/* Global App Loader (maks 2s) */
 #appLoader{
   position:fixed; inset:0; z-index:2000; display:none;
   background: radial-gradient(1200px 600px at 10% -10%, rgba(52,152,219,.18), transparent),
@@ -79,26 +81,32 @@ body{font-family:'Segoe UI',Tahoma,Geneva,Verdana,sans-serif;background:#f5f7fa;
 }
 @keyframes spin{to{transform:rotate(360deg)}}
 
-/* Log Calls Drawer */
+/* Log Calls Drawer (gaya iPhone) */
 #logDrawer{
   position:fixed; top:0; right:-420px; width:400px; max-width:90vw; height:100%;
-  background:#f8f9fb; box-shadow:-12px 0 35px rgba(0,0,0,.18); z-index:3000;
+  background:#f8f9fb; box-shadow:-12px 0 35px rgba(0,0,0,.18); z-index:3000; /* <— di bawah toast */
   transition:right .25s ease; border-left:1px solid rgba(0,0,0,.05);
   display:flex; flex-direction:column;
 }
 #logDrawer.open{ right:0; }
-.log-header{ padding:10px 12px; background:#fff; border-bottom:1px solid rgba(0,0,0,.06); display:flex; gap:8px; align-items:center; }
+.log-header{
+  padding:10px 12px; background:#fff; border-bottom:1px solid rgba(0,0,0,.06);
+  display:flex; gap:8px; align-items:center;
+}
 .log-header .title{font-weight:700; color:#222; flex:1}
 .log-search{ padding:8px; background:#fff; border-bottom:1px solid rgba(0,0,0,.06); }
 .log-body{ padding:10px; overflow:auto; flex:1; display:flex; flex-direction:column; gap:8px; }
-.bubble{ max-width:80%; padding:8px 10px; border-radius:16px; box-shadow:0 4px 12px rgba(0,0,0,.06); position:relative; font-size:.9rem; line-height:1.2rem; }
+.bubble{
+  max-width:80%; padding:8px 10px; border-radius:16px; box-shadow:0 4px 12px rgba(0,0,0,.06);
+  position:relative; font-size:.9rem; line-height:1.2rem;
+}
 .bubble.me{ margin-left:auto; background:#007aff; color:#fff; border-bottom-right-radius:6px; }
 .bubble.other{ margin-right:auto; background:#e9ecef; color:#222; border-bottom-left-radius:6px; }
 .bubble .meta{ font-size:.72rem; opacity:.8; margin-top:5px }
 .log-loading{ display:none; text-align:center; padding:8px }
 .log-loading.active{ display:block }
 
-/* FAB terapung */
+/* FAB (tombol terapung) untuk Log Calls */
 #fabLog{
   position:fixed; right:18px; bottom:18px; z-index:3500;
   width:56px; height:56px; border-radius:50%;
@@ -106,25 +114,111 @@ body{font-family:'Segoe UI',Tahoma,Geneva,Verdana,sans-serif;background:#f5f7fa;
   box-shadow:0 10px 24px rgba(0,0,0,.18);
 }
 
-/* NOTIFIKASI (kanan atas) */
-#toastHost{ position:fixed; top:12px; right:12px; z-index:4000; pointer-events:none; }
+/* NOTIFIKASI (sentiasa nampak di kanan atas) */
+#toastHost{
+  position:fixed; top:12px; right:12px; z-index:4000; /* tertinggi */
+  pointer-events:none;
+}
 #toastHost .toast{ pointer-events:auto; }
 
-/* ========== NADI (gaya v2.5.0: jadual kemas & mudah diisi) ========== */
-.nadi-table thead th{ white-space:nowrap; }
-.nadi-table .form-control, .nadi-table .form-select { width:100%; }
-.nadi-table td > .input-group > .form-control{ min-width:120px; }
-.nadi-min-nama{ min-width:230px; }
-.nadi-min-ic{ min-width:160px; }
-.nadi-min-tel{ min-width:160px; }
-.nadi-min-alamat{ min-width:260px; }
-.nadi-min-bp{ min-width:120px; }
-.nadi-min-pr{ min-width:110px; }
-.nadi-min-dxt{ min-width:180px; }
-.nadi-min-num{ min-width:120px; }
-.nadi-min-bmi{ min-width:90px; }
-.nadi-min-staff{ min-width:160px; }
-.nadi-actions .btn{ margin:2px 3px; }
+/* NADI grid input – auto-expand terkawal, TAK potong teks */
+.nadi-input{ min-width:140px; width:auto; max-width:360px; }
+.nadi-long{ min-width:200px; max-width:520px; }
+.nadi-row{
+  display:grid;
+  grid-auto-flow:column;
+  grid-auto-columns:max-content;
+  gap:8px; align-items:center;
+  overflow-x:auto; padding-bottom:4px;
+}
+.nadi-row > * { white-space:nowrap; }
+
+/* Dropdown DXT (klik baru buka) */
+.nadi-dxt-wrap .dropdown-toggle{ min-width:120px }
+
+/* Responsive */
+@media (max-width:992px){
+  .stat-card .number{font-size:1.3rem}
+}
+
+/* NADI Table Styles */
+.nadi-table-container {
+  overflow-x: auto;
+  margin-bottom: 1rem;
+  border-radius: 8px;
+  border: 1px solid rgba(0,0,0,0.1);
+}
+
+.nadi-table {
+  width: 100%;
+  min-width: 1200px;
+  border-collapse: separate;
+  border-spacing: 0;
+  background: white;
+}
+
+.nadi-table th {
+  background-color: #f8f9fa;
+  position: sticky;
+  top: 0;
+  z-index: 10;
+  font-weight: 600;
+  font-size: 0.85rem;
+  padding: 8px 12px;
+  border-bottom: 2px solid #dee2e6;
+}
+
+.nadi-table td {
+  padding: 8px 12px;
+  border-bottom: 1px solid #dee2e6;
+  vertical-align: middle;
+}
+
+.nadi-table tr:last-child td {
+  border-bottom: none;
+}
+
+.nadi-table .form-control-sm {
+  height: calc(1.5em + 0.5rem + 2px);
+  padding: 0.25rem 0.5rem;
+  font-size: 0.875rem;
+}
+
+.nadi-table .btn-sm {
+  padding: 0.25rem 0.5rem;
+  font-size: 0.875rem;
+}
+
+.nadi-table .input-group-sm > .form-control,
+.nadi-table .input-group-sm > .input-group-prepend > .btn {
+  height: calc(1.5em + 0.5rem + 2px);
+}
+
+.nadi-table .action-buttons {
+  display: flex;
+  gap: 4px;
+  flex-wrap: wrap;
+}
+
+.nadi-table .status-check {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+.nadi-table .tca-fields {
+  display: flex;
+  gap: 4px;
+  flex-wrap: wrap;
+}
+
+.nadi-table .tca-fields .form-control {
+  min-width: 120px;
+}
+
+.nadi-table .bmi-field {
+  min-width: 80px;
+}
 </style>
 </head>
 <body>
@@ -206,6 +300,7 @@ body{font-family:'Segoe UI',Tahoma,Geneva,Verdana,sans-serif;background:#f5f7fa;
       <div class="d-none d-lg-flex align-items-center gap-2">
         <div id="signinAreaDesktop"></div>
         <span id="staffBadge" class="badge bg-secondary d-none"><i class="bi bi-person-check me-1"></i><span id="staffEmail"></span></span>
+        <!-- (Butang Log Calls terapung di bawah – tidak dalam navbar) -->
       </div>
     </div>
   </div>
@@ -270,7 +365,7 @@ body{font-family:'Segoe UI',Tahoma,Geneva,Verdana,sans-serif;background:#f5f7fa;
       </div>
     </div>
 
-    <!-- Ringkas TCA Hari Ini -->
+    <!-- Pesakit perlu dihubungi (ringkas hari ini mengikut backend lalai) -->
     <div class="card mb-3">
       <div class="card-header d-flex justify-content-between align-items-center">
         <span><i class="fas fa-phone me-2"></i>Pesakit Perlu Dihubungi Hari Ini</span>
@@ -300,46 +395,42 @@ body{font-family:'Segoe UI',Tahoma,Geneva,Verdana,sans-serif;background:#f5f7fa;
     </div>
   </section>
 
-  <!-- ====================== Program NADI (gaya versi 2.5.0) ====================== -->
+  <!-- Program NADI -->
   <section id="nadi" class="mb-4 d-none">
     <div class="d-flex justify-content-between align-items-center mb-2">
       <h2 class="h6 m-0"><i class="bi bi-clipboard2-pulse me-2"></i>Program PEKA B40 bersama NADI</h2>
       <div class="d-flex gap-2">
-        <button id="btnNadiAddRow" class="btn btn-sm btn-outline-primary"><i class="bi bi-plus-lg me-1"></i>Tambah Baris</button>
-        <button id="btnNadiExportCsv" class="btn btn-sm btn-outline-success"><i class="bi bi-filetype-csv me-1"></i>Transfer kepada Excel (CSV)</button>
+        <button id="btnAddNadiRow" class="btn btn-sm btn-primary"><i class="bi bi-plus-lg me-1"></i>Tambah Baris</button>
+        <button id="btnNadiExportCsv" class="btn btn-sm btn-outline-success"><i class="bi bi-filetype-csv me-1"></i>Transfer kepada fail Excel (CSV)</button>
       </div>
     </div>
-
     <div class="card"><div class="card-body">
-      <div class="table-responsive">
-        <table class="table table-hover align-middle nadi-table" id="nadiTable">
-          <thead class="table-light">
+      <div class="nadi-table-container">
+        <table class="nadi-table">
+          <thead>
             <tr>
-              <th class="nadi-min-nama">Nama</th>
-              <th class="nadi-min-ic">IC</th>
-              <th class="nadi-min-tel">Telefon</th>
-              <th class="nadi-min-alamat">Alamat</th>
-              <th class="nadi-min-bp">BP</th>
-              <th class="nadi-min-pr">PR</th>
-              <th class="nadi-min-dxt">DXT</th>
-              <th class="nadi-min-num">Tinggi (cm)</th>
-              <th class="nadi-min-num">Berat (kg)</th>
-              <th class="nadi-min-bmi">BMI</th>
-              <th>Layak?</th>
-              <th>Tarikh TCA</th>
-              <th>Masa TCA</th>
-              <th class="nadi-min-staff">Staff</th>
-              <th style="min-width:260px">Tindakan</th>
+              <th>Nama Pesakit</th>
+              <th>No IC</th>
+              <th>No Telefon</th>
+              <th>Alamat</th>
+              <th>BP</th>
+              <th>PR</th>
+              <th>DXT (mmol/L)</th>
+              <th>Tinggi (cm)</th>
+              <th>Berat (kg)</th>
+              <th>BMI</th>
+              <th>Layak</th>
+              <th>Tidak Layak</th>
+              <th>TCA & Staff</th>
+              <th>Tindakan</th>
             </tr>
           </thead>
-          <tbody id="nadiTbody">
-            <tr><td colspan="15" class="text-center text-muted">Tiada baris. Klik “Tambah Baris”.</td></tr>
+          <tbody id="nadiTableBody">
+            <!-- 5 empty rows will be added by JavaScript -->
           </tbody>
         </table>
       </div>
-      <div class="form-text mt-2">
-        Nota: Baris <b>Layak</b> sahaja boleh <b>Daftar</b> (simpan ke sheet). Baris <b>Tidak Layak</b> <u>tidak disimpan</u> ke sheet tetapi <b>tetap dieksport CSV</b> bersama-sama.
-      </div>
+      <div class="text-muted small mt-2">Nota: Baris "Layak" boleh terus <b>Daftar</b> (simpan ke sheet). Baris "Tidak Layak" <u>tidak</u> disimpan ke sheet tetapi <b>tetap dieksport CSV</b> bersama-sama.</div>
     </div></div>
   </section>
 
@@ -531,7 +622,7 @@ body{font-family:'Segoe UI',Tahoma,Geneva,Verdana,sans-serif;background:#f5f7fa;
   </div></div>
 </div>
 
-<!-- Modal Set Second Visit TCA -->
+<!-- Modal Set Second Visit TCA (Lab Complete & Call) -->
 <div class="modal fade" id="secondTcaModal" tabindex="-1" aria-hidden="true">
   <div class="modal-dialog modal-dialog-centered"><div class="modal-content">
     <div class="modal-header">
@@ -543,7 +634,7 @@ body{font-family:'Segoe UI',Tahoma,Geneva,Verdana,sans-serif;background:#f5f7fa;
       <div class="mb-2"><label class="form-label">Tarikh TCA Second Visit</label><input type="date" id="secondTcaDate" class="form-control" required></div>
       <div class="mb-2"><label class="form-label">Masa TCA</label><input type="time" id="secondTcaTime" class="form-control" required></div>
       <div class="mb-2"><label class="form-label">Nama Staff (wajib isi)</label><input type="text" id="secondTcaStaff" class="form-control" required placeholder="cth: Dayah"></div>
-      <small class="text-muted">Maklumat ini akan direkod ke Log Calls & ruangan “Lab Report Completed”.</small>
+      <small class="text-muted">Maklumat ini akan direkod ke Log Calls & ruangan "Lab Report Completed".</small>
     </div>
     <div class="modal-footer">
       <button class="btn btn-secondary" data-bs-dismiss="modal">Batal</button>
@@ -582,7 +673,7 @@ body{font-family:'Segoe UI',Tahoma,Geneva,Verdana,sans-serif;background:#f5f7fa;
 <footer class="footer mt-4 py-3 bg-light">
   <div class="container"><div class="d-flex justify-content-between">
     <div>&copy; 2025 Klinik SihatSokmo. Untuk kegunaan Klinik sahaja.</div>
-    <div>Versi 3.2 (UI NADI v2.5.0)</div>
+    <div>Versi 3.1 (Secure)</div>
   </div></div>
 </footer>
 
@@ -591,15 +682,18 @@ body{font-family:'Segoe UI',Tahoma,Geneva,Verdana,sans-serif;background:#f5f7fa;
 /* =======================
    KONFIG (EDIT INI SAHAJA)
 ======================= */
+// 1) Isi URL Web App Apps Script (deployment terkini)
 const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbx6TKE0vDDPO3-36cY7xjacAbGL0HIRKCrORNm-sED9y5NpIeIUk9gyrpiWy-S7vbc/exec';
+// 2) Google OAuth Client ID (Google Cloud Console)
 const GOOGLE_CLIENT_ID = '863564124015-838ksbuk27f0kkomm16hnc3bu608pbrr.apps.googleusercontent.com';
+// 3) Logo (optional)
 const LOGO_URL = 'https://github.com/sihat9/mari-jalan-dengan-doktor/blob/main/img/logo-kss.png?raw=true';
 
 /* =======================
    AUTH (Google Identity)
 ======================= */
-let ID_TOKEN = '';
-let STAFF_EMAIL = '';
+let ID_TOKEN = '';      // diisi selepas login
+let STAFF_EMAIL = '';   // email sebenar (server akan sahkan juga)
 
 function initGoogleSignIn(){
   google.accounts.id.initialize({
@@ -617,8 +711,10 @@ function initGoogleSignIn(){
     { theme: 'outline', size: 'medium', text:'signin_with' }
   );
 }
+
 async function handleCredentialResponse(resp){
   ID_TOKEN = resp.credential;
+  // Semak whoami di backend
   const r = await fetch(SCRIPT_URL, {
     method:'POST',
     headers:{ 'Content-Type':'application/x-www-form-urlencoded' },
@@ -631,7 +727,7 @@ async function handleCredentialResponse(resp){
     document.getElementById('staffEmail').textContent = STAFF_EMAIL;
     document.getElementById('signinArea').innerHTML = '';
     document.getElementById('signinAreaDesktop').innerHTML = '';
-    bootstrapApp();
+    bootstrapApp(); // muat data
   } else {
     toast('Akses Ditolak', j.message || 'Sila hubungi admin untuk allowlist.', 'danger');
     ID_TOKEN = ''; STAFF_EMAIL = '';
@@ -639,7 +735,7 @@ async function handleCredentialResponse(resp){
 }
 
 /* =======================
-   LOADER
+   LOADER (maks 2s)
 ======================= */
 let loaderTimer=null;
 function showLoader(msg='Memproses…'){
@@ -666,6 +762,7 @@ async function getJSON(params={}, {silent=false, msg='Memuat data…'}={}){
     return await r.json();
   } finally { if (!silent) hideLoader(); }
 }
+
 async function postForm(params={}, {silent=false, msg='Menyimpan data…'}={}){
   if (!ID_TOKEN) throw new Error('Belum login');
   if (!silent) showLoader(msg);
@@ -694,11 +791,7 @@ const normalizeMsisdnMY = (raw) => {
   return '60' + s;
 };
 const telHref = (msisdn) => `tel:+${msisdn}`;
-const waWebHref = (msisdn, txt='') => {
-  const base = 'https://web.whatsapp.com/';
-  if (!msisdn) return base;
-  return `https://web.whatsapp.com/send?phone=${msisdn}&text=${encodeURIComponent(txt||'')}`;
-};
+const waHref  = (msisdn, txt='Assalamualaikum, ini dari Klinik SihatSokmo.') => `https://wa.me/${msisdn}?text=${encodeURIComponent(txt)}`;
 const parseDDMMYYYY = (s) => {
   if (!s) return null;
   if (/^\d{4}-\d{2}-\d{2}$/.test(s)) { const [Y,M,D]=s.split('-').map(Number); return new Date(Y,M-1,D); }
@@ -745,14 +838,14 @@ function bootstrapApp(){
   setupSearchBars();
   setupExports();
   setupExcel();
-  setupNADIv250();     // <<— NADI gaya 2.5.0
+  setupNADI();
   setupLogDrawer();
   setupFab();
 
   loadDashboardData();
   loadStatistics('3months');
   loadCompletedStatistics('3months');
-  loadTCACallData();
+  loadTCACallData(); // widget dashboard (hari ini)
 }
 
 /* =======================
@@ -778,6 +871,15 @@ function setupNavigation(){
       else if (target==='#second-visit'){ loadSecondVisitData(); }
       else if (target==='#selesai'){ loadCompletedData(); loadCompletedStatistics(document.getElementById('statPeriodCompleted').value); }
       else if (target==='#arkib'){ loadArchivedData(); }
+    });
+  });
+
+  // Stat cards → navigate
+  document.querySelectorAll('.stat-card[data-goto]').forEach(card=>{
+    card.addEventListener('click', ()=>{
+      const href = card.getAttribute('data-goto');
+      const link = document.querySelector(`.nav-link[href="${href}"]`);
+      if (link){ link.click(); }
     });
   });
 
@@ -858,7 +960,9 @@ function buildBarChart(elId, dataArr, titleText){
    LOG CALLS DRAWER
 ======================= */
 let logDrawerTimer=null, lastLogCount=0;
-function setupLogDrawer(){ document.getElementById('logSearch').addEventListener('input', ()=> refreshLogs()); }
+function setupLogDrawer(){
+  document.getElementById('logSearch').addEventListener('input', ()=> refreshLogs());
+}
 function autoRefreshLogs(){ stopAutoRefreshLogs(); logDrawerTimer = setInterval(()=> refreshLogs({silent:true}), 10000); }
 function stopAutoRefreshLogs(){ if (logDrawerTimer){ clearInterval(logDrawerTimer); logDrawerTimer=null; } }
 async function refreshLogs(opts={}){
@@ -878,14 +982,14 @@ async function refreshLogs(opts={}){
         const who = item.staff || 'STAFF';
         const text = `${item.event || 'CALL'} • ${item.nama||'-'} (${item.noIC||'-'}) • ${item.noTelefon||'-'}`;
         const when = item.time || '';
-        const div = document.createElement('div');
-        div.className = 'bubble ' + (me?'me':'other');
-        div.innerHTML = `<div><i class="fa-solid fa-phone-volume me-1"></i>${text}</div><div class="meta">${who} • ${when}</div>`;
-        body.appendChild(div);
+        const bubble = document.createElement('div');
+        bubble.className = 'bubble ' + (me?'me':'other');
+        bubble.innerHTML = `<div><i class="fa-solid fa-phone-volume me-1"></i>${text}</div><div class="meta">${who} • ${when}</div>`;
+        body.appendChild(bubble);
       });
       body.scrollTop = body.scrollHeight;
     }
-  }catch(e){ }
+  }catch(e){ /* senyap */ }
   finally{ if (!opts.silent) loader.classList.remove('active'); }
 }
 
@@ -916,6 +1020,7 @@ function setupExcel(){
         const msisdn = normalizeMsisdnMY(tel);
         const id = 'x'+Date.now()+idx;
 
+        // Kelayakan lalai ikut umur >=40 dari IC (format: YYMMDD-..)
         const lahirYY = ic.slice(0,2), lahirMM = ic.slice(2,4), lahirDD = ic.slice(4,6);
         let ageOk = false;
         if (/^\d{6}/.test(ic)){
@@ -929,12 +1034,12 @@ function setupExcel(){
         }
 
         const tr = `
-          <tr id="\${id}">
-            <td>\${nama}</td>
-            <td>\${ic}</td>
-            <td>\${msisdn}</td>
-            <td class="text-center"><input type="checkbox" class="form-check-input" \${ageOk?'checked':''} onchange="toggleLayak('\${id}', true)"></td>
-            <td class="text-center"><input type="checkbox" class="form-check-input" \${ageOk?'':'checked'} onchange="toggleLayak('\${id}', false)"></td>
+          <tr id="${id}">
+            <td>${nama}</td>
+            <td>${ic}</td>
+            <td>${msisdn}</td>
+            <td class="text-center"><input type="checkbox" class="form-check-input" ${ageOk?'checked':''} onchange="toggleLayak('${id}', true)"></td>
+            <td class="text-center"><input type="checkbox" class="form-check-input" ${ageOk?'':'checked'} onchange="toggleLayak('${id}', false)"></td>
             <td>
               <div class="row g-1 align-items-center">
                 <div class="col"><input type="date" class="form-control form-control-sm tca-date" disabled></div>
@@ -942,7 +1047,9 @@ function setupExcel(){
                 <div class="col"><input type="text" class="form-control form-control-sm tca-staff" placeholder="Nama staff" disabled></div>
               </div>
             </td>
-            <td><button class="btn btn-sm btn-primary" onclick="daftarFromExcel('\${id}', '\${encodeURIComponent(nama)}', '\${encodeURIComponent(ic)}', '\${msisdn}')" disabled>Daftar</button></td>
+            <td>
+              <button class="btn btn-sm btn-primary" onclick="daftarFromExcel('${id}', '${encodeURIComponent(nama)}', '${encodeURIComponent(ic)}', '${msisdn}')" disabled>Daftar</button>
+            </td>
           </tr>`;
         tbody.insertAdjacentHTML('beforeend', tr);
       });
@@ -978,7 +1085,7 @@ async function daftarFromExcel(rowId, encNama, encIC, msisdn){
       namaStaff: staff, tarikhTCA: date, masaTCA: time
     }, { msg:'Mendaftar pesakit…' });
     if (res.status==='success'){
-      toast('Berjaya',`Pesakit \${nama} didaftarkan ke TCA`, 'success');
+      toast('Berjaya',`Pesakit ${nama} didaftarkan ke TCA`, 'success');
       tr.remove();
       loadDashboardData(); loadTCACallData();
     } else throw new Error(res.message||'Gagal daftar');
@@ -986,180 +1093,459 @@ async function daftarFromExcel(rowId, encNama, encIC, msisdn){
 }
 
 /* =======================
-   NADI (versi 2.5.0: jadual)
+   NADI PAGE (auto-expand, PR + dropdown DXT + WA report)
 ======================= */
-function setupNADIv250(){
-  document.getElementById('nadiTbody').innerHTML =
-    `<tr><td colspan="15" class="text-center text-muted">Tiada baris. Klik “Tambah Baris”.</td></tr>`;
-  document.getElementById('btnNadiAddRow').addEventListener('click', addNadiRow_v250);
-  document.getElementById('btnNadiExportCsv').addEventListener('click', exportNadiCSV_v250);
-  // Tambah 1 baris permulaan
-  addNadiRow_v250();
+function setupNADI(){
+  const container = document.getElementById('nadiTableBody');
+  container.innerHTML = '';
+  
+  // Add 5 empty rows by default
+  for (let i = 0; i < 5; i++) {
+    addNadiRow();
+  }
+  
+  document.getElementById('btnNadiExportCsv').addEventListener('click', exportNadiCSV);
+  document.getElementById('btnAddNadiRow').addEventListener('click', addNadiRow);
 }
-function addNadiRow_v250(){
-  const tbody = document.getElementById('nadiTbody');
-  // buang placeholder
-  const ph = tbody.querySelector('tr td[colspan]');
-  if (ph) ph.parentElement.remove();
 
+function addNadiRow(){
+  const tbody = document.getElementById('nadiTableBody');
   const id = 'n'+Date.now()+Math.random().toString(36).slice(2,6);
-  const tr = document.createElement('tr');
-  tr.id = id;
-  tr.innerHTML = `
-    <td class="nadi-min-nama"><input class="form-control form-control-sm n-nama" placeholder="Nama pesakit"></td>
-    <td class="nadi-min-ic"><input class="form-control form-control-sm n-ic" placeholder="IC"></td>
-    <td class="nadi-min-tel"><input class="form-control form-control-sm n-tel" placeholder="012... atau 60..." inputmode="tel"></td>
-    <td class="nadi-min-alamat"><input class="form-control form-control-sm n-alamat" placeholder="Alamat"></td>
-    <td class="nadi-min-bp"><input class="form-control form-control-sm n-bp" placeholder="120/80"></td>
-    <td class="nadi-min-pr"><input class="form-control form-control-sm n-pr" placeholder="degupan/min"></td>
-    <td class="nadi-min-dxt">
-      <div class="input-group input-group-sm n-dxt-wrap">
-        <button class="btn btn-outline-secondary dropdown-toggle n-dxt-type-btn" data-bs-toggle="dropdown" type="button">Fasting</button>
-        <ul class="dropdown-menu">
-          <li><a class="dropdown-item" href="#" data-value="Fasting">Fasting</a></li>
-          <li><a class="dropdown-item" href="#" data-value="Random">Random</a></li>
-        </ul>
-        <input class="form-control n-dxt" placeholder="mmol/L">
-        <input type="hidden" class="n-dxt-type" value="Fasting" />
-      </div>
-    </td>
-    <td class="nadi-min-num"><input class="form-control form-control-sm n-tinggi" type="number" step="0.1" placeholder="cm"></td>
-    <td class="nadi-min-num"><input class="form-control form-control-sm n-berat" type="number" step="0.1" placeholder="kg"></td>
-    <td class="nadi-min-bmi"><input class="form-control form-control-sm n-bmi" placeholder="Auto" disabled></td>
-    <td class="text-center"><input class="form-check-input n-layak" type="checkbox" title="Tandakan jika layak"></td>
-    <td><input class="form-control form-control-sm n-tca-date" type="date" disabled></td>
-    <td><input class="form-control form-control-sm n-tca-time" type="time" disabled></td>
-    <td class="nadi-min-staff"><input class="form-control form-control-sm n-staff" placeholder="Nama staff" disabled></td>
-    <td class="nadi-actions">
-      <div class="d-flex flex-wrap">
-        <button class="btn btn-sm btn-outline-primary n-daftar" disabled><i class="fa-solid fa-floppy-disk me-1"></i>Daftar</button>
-        <button class="btn btn-sm btn-outline-success n-wa"><i class="fa-brands fa-whatsapp me-1"></i>WA Report</button>
-        <button class="btn btn-sm btn-outline-danger n-buang"><i class="fa-solid fa-trash me-1"></i>Buang</button>
-      </div>
-    </td>
-  `;
-  tbody.appendChild(tr);
-
-  // Dropdown DXT
-  tr.querySelectorAll('.n-dxt-wrap .dropdown-item').forEach(a=>{
-    a.addEventListener('click', (e)=>{
+  
+  const row = document.createElement('tr');
+  row.id = id;
+  
+  // Nama
+  const namaCell = document.createElement('td');
+  const namaInput = document.createElement('input');
+  namaInput.className = 'form-control form-control-sm';
+  namaInput.placeholder = 'Nama pesakit';
+  namaCell.appendChild(namaInput);
+  row.appendChild(namaCell);
+  
+  // IC
+  const icCell = document.createElement('td');
+  const icInput = document.createElement('input');
+  icInput.className = 'form-control form-control-sm';
+  icInput.placeholder = 'No IC';
+  icCell.appendChild(icInput);
+  row.appendChild(icCell);
+  
+  // Telefon
+  const telCell = document.createElement('td');
+  const telInput = document.createElement('input');
+  telInput.className = 'form-control form-control-sm';
+  telInput.placeholder = 'No Telefon';
+  telCell.appendChild(telInput);
+  row.appendChild(telCell);
+  
+  // Alamat
+  const alamatCell = document.createElement('td');
+  const alamatInput = document.createElement('input');
+  alamatInput.className = 'form-control form-control-sm';
+  alamatInput.placeholder = 'Alamat';
+  alamatCell.appendChild(alamatInput);
+  row.appendChild(alamatCell);
+  
+  // BP
+  const bpCell = document.createElement('td');
+  const bpInput = document.createElement('input');
+  bpInput.className = 'form-control form-control-sm';
+  bpInput.placeholder = 'BP (cth: 120/80)';
+  bpCell.appendChild(bpInput);
+  row.appendChild(bpCell);
+  
+  // PR
+  const prCell = document.createElement('td');
+  const prInput = document.createElement('input');
+  prInput.className = 'form-control form-control-sm';
+  prInput.placeholder = 'PR (degupan/min)';
+  prCell.appendChild(prInput);
+  row.appendChild(prCell);
+  
+  // DXT
+  const dxtCell = document.createElement('td');
+  const dxtGroup = document.createElement('div');
+  dxtGroup.className = 'input-group input-group-sm';
+  
+  const dxtTypeBtn = document.createElement('button');
+  dxtTypeBtn.className = 'btn btn-outline-secondary dropdown-toggle';
+  dxtTypeBtn.setAttribute('data-bs-toggle', 'dropdown');
+  dxtTypeBtn.type = 'button';
+  dxtTypeBtn.textContent = 'Fasting';
+  
+  const dxtTypeMenu = document.createElement('ul');
+  dxtTypeMenu.className = 'dropdown-menu';
+  
+  const fastingItem = document.createElement('li');
+  const fastingLink = document.createElement('a');
+  fastingLink.className = 'dropdown-item';
+  fastingLink.href = '#';
+  fastingLink.setAttribute('data-value', 'Fasting');
+  fastingLink.textContent = 'Fasting';
+  fastingItem.appendChild(fastingLink);
+  dxtTypeMenu.appendChild(fastingItem);
+  
+  const randomItem = document.createElement('li');
+  const randomLink = document.createElement('a');
+  randomLink.className = 'dropdown-item';
+  randomLink.href = '#';
+  randomLink.setAttribute('data-value', 'Random');
+  randomLink.textContent = 'Random';
+  randomItem.appendChild(randomLink);
+  dxtTypeMenu.appendChild(randomItem);
+  
+  const dxtInput = document.createElement('input');
+  dxtInput.className = 'form-control';
+  dxtInput.placeholder = 'DXT (mmol/L)';
+  
+  const dxtTypeHidden = document.createElement('input');
+  dxtTypeHidden.type = 'hidden';
+  dxtTypeHidden.className = 'nadi-dxt-type';
+  dxtTypeHidden.value = 'Fasting';
+  
+  dxtGroup.appendChild(dxtTypeBtn);
+  dxtGroup.appendChild(dxtTypeMenu);
+  dxtGroup.appendChild(dxtInput);
+  dxtGroup.appendChild(dxtTypeHidden);
+  dxtCell.appendChild(dxtGroup);
+  row.appendChild(dxtCell);
+  
+  // Tinggi
+  const tinggiCell = document.createElement('td');
+  const tinggiInput = document.createElement('input');
+  tinggiInput.className = 'form-control form-control-sm';
+  tinggiInput.placeholder = 'Tinggi (cm)';
+  tinggiCell.appendChild(tinggiInput);
+  row.appendChild(tinggiCell);
+  
+  // Berat
+  const beratCell = document.createElement('td');
+  const beratInput = document.createElement('input');
+  beratInput.className = 'form-control form-control-sm';
+  beratInput.placeholder = 'Berat (kg)';
+  beratCell.appendChild(beratInput);
+  row.appendChild(beratCell);
+  
+  // BMI
+  const bmiCell = document.createElement('td');
+  const bmiInput = document.createElement('input');
+  bmiInput.className = 'form-control form-control-sm bmi-field';
+  bmiInput.placeholder = 'BMI';
+  bmiInput.disabled = true;
+  bmiCell.appendChild(bmiInput);
+  row.appendChild(bmiCell);
+  
+  // Layak
+  const layakCell = document.createElement('td');
+  layakCell.className = 'status-check';
+  const layakDiv = document.createElement('div');
+  layakDiv.className = 'form-check';
+  const layakInput = document.createElement('input');
+  layakInput.className = 'form-check-input nadi-layak';
+  layakInput.type = 'checkbox';
+  const layakLabel = document.createElement('label');
+  layakLabel.className = 'form-check-label';
+  layakDiv.appendChild(layakInput);
+  layakDiv.appendChild(layakLabel);
+  layakCell.appendChild(layakDiv);
+  row.appendChild(layakCell);
+  
+  // Tidak Layak
+  const takLayakCell = document.createElement('td');
+  takLayakCell.className = 'status-check';
+  const takLayakDiv = document.createElement('div');
+  takLayakDiv.className = 'form-check';
+  const takLayakInput = document.createElement('input');
+  takLayakInput.className = 'form-check-input nadi-taklayak';
+  takLayakInput.type = 'checkbox';
+  const takLayakLabel = document.createElement('label');
+  takLayakLabel.className = 'form-check-label';
+  takLayakDiv.appendChild(takLayakInput);
+  takLayakDiv.appendChild(takLayakLabel);
+  takLayakCell.appendChild(takLayakDiv);
+  row.appendChild(takLayakCell);
+  
+  // TCA & Staff
+  const tcaCell = document.createElement('td');
+  tcaCell.className = 'tca-fields';
+  
+  const tcaDate = document.createElement('input');
+  tcaDate.type = 'date';
+  tcaDate.className = 'form-control form-control-sm';
+  tcaDate.disabled = true;
+  
+  const tcaTime = document.createElement('input');
+  tcaTime.type = 'time';
+  tcaTime.className = 'form-control form-control-sm';
+  tcaTime.disabled = true;
+  
+  const staffInput = document.createElement('input');
+  staffInput.type = 'text';
+  staffInput.className = 'form-control form-control-sm';
+  staffInput.placeholder = 'Nama staff';
+  staffInput.disabled = true;
+  
+  tcaCell.appendChild(tcaDate);
+  tcaCell.appendChild(tcaTime);
+  tcaCell.appendChild(staffInput);
+  row.appendChild(tcaCell);
+  
+  // Actions
+  const actionCell = document.createElement('td');
+  actionCell.className = 'action-buttons';
+  
+  const daftarBtn = document.createElement('button');
+  daftarBtn.className = 'btn btn-sm btn-outline-primary nadi-daftar';
+  daftarBtn.disabled = true;
+  daftarBtn.innerHTML = '<i class="bi bi-save"></i> Daftar';
+  
+  const waBtn = document.createElement('button');
+  waBtn.className = 'btn btn-sm btn-outline-success nadi-wa';
+  waBtn.innerHTML = '<i class="bi bi-whatsapp"></i> WA';
+  
+  const buangBtn = document.createElement('button');
+  buangBtn.className = 'btn btn-sm btn-outline-danger nadi-buang';
+  buangBtn.innerHTML = '<i class="bi bi-trash"></i> Buang';
+  
+  actionCell.appendChild(daftarBtn);
+  actionCell.appendChild(waBtn);
+  actionCell.appendChild(buangBtn);
+  row.appendChild(actionCell);
+  
+  tbody.appendChild(row);
+  
+  // Event listeners
+  // DXT Type dropdown
+  dxtTypeMenu.querySelectorAll('.dropdown-item').forEach(a => {
+    a.addEventListener('click', (e) => {
       e.preventDefault();
       const val = a.getAttribute('data-value') || 'Fasting';
-      tr.querySelector('.n-dxt-type').value = val;
-      tr.querySelector('.n-dxt-type-btn').textContent = val;
+      dxtTypeHidden.value = val;
+      dxtTypeBtn.textContent = val;
     });
   });
-
-  // BMI auto-kira
-  const tinggi = tr.querySelector('.n-tinggi');
-  const berat  = tr.querySelector('.n-berat');
-  const bmi    = tr.querySelector('.n-bmi');
-  function calcBMI(){
-    const h = parseFloat(tinggi.value||'0')/100;
-    const w = parseFloat(berat.value||'0');
-    bmi.value = (!h||!w) ? '' : (w/(h*h)).toFixed(1);
+  
+  // BMI calculation
+  tinggiInput.addEventListener('input', calcBMI);
+  beratInput.addEventListener('input', calcBMI);
+  
+  function calcBMI() {
+    const tinggi = parseFloat(tinggiInput.value || '0') / 100; // convert to meters
+    const berat = parseFloat(beratInput.value || '0');
+    if (tinggi && berat) {
+      const bmi = (berat / (tinggi * tinggi)).toFixed(1);
+      bmiInput.value = bmi;
+    } else {
+      bmiInput.value = '';
+    }
   }
-  tinggi.addEventListener('input', calcBMI);
-  berat.addEventListener('input', calcBMI);
-
-  // Layak → enable TCA & Daftar
-  const layak = tr.querySelector('.n-layak');
-  const tcaD  = tr.querySelector('.n-tca-date');
-  const tcaT  = tr.querySelector('.n-tca-time');
-  const staff = tr.querySelector('.n-staff');
-  const btnReg= tr.querySelector('.n-daftar');
-  layak.addEventListener('change', ()=>{
-    const on = layak.checked;
-    tcaD.disabled = !on; tcaT.disabled = !on; staff.disabled = !on; btnReg.disabled = !on;
+  
+  // Layak/Tidak Layak toggle
+  layakInput.addEventListener('change', () => {
+    if (layakInput.checked) {
+      takLayakInput.checked = false;
+      tcaDate.disabled = false;
+      tcaTime.disabled = false;
+      staffInput.disabled = false;
+      daftarBtn.disabled = false;
+    } else {
+      tcaDate.disabled = true;
+      tcaTime.disabled = true;
+      staffInput.disabled = true;
+      daftarBtn.disabled = true;
+    }
   });
-
-  // Daftar (simpan ke sheet)
-  btnReg.addEventListener('click', async ()=>{
-    const data = getNadiRowData(tr);
-    if (!data.layak){
-      toast('Makluman','Tandakan “Layak?” untuk daftar ke sheet.','warning'); return;
+  
+  takLayakInput.addEventListener('change', () => {
+    if (takLayakInput.checked) {
+      layakInput.checked = false;
+      tcaDate.disabled = true;
+      tcaTime.disabled = true;
+      staffInput.disabled = true;
+      daftarBtn.disabled = true;
     }
-    if (!data.nama || !data.ic || !data.tel || !data.tcaDate || !data.tcaTime || !data.staff){
-      toast('Ralat','Sila lengkapkan Nama, IC, Telefon, Tarikh/Masa TCA dan Staff.','danger'); return;
+  });
+  
+  // Daftar button
+  daftarBtn.addEventListener('click', async () => {
+    const nama = namaInput.value.trim();
+    const ic = icInput.value.trim();
+    const tel = telInput.value.trim();
+    const date = tcaDate.value;
+    const time = tcaTime.value;
+    const staff = staffInput.value.trim();
+    
+    if (!nama || !ic || !tel || !date || !time || !staff) {
+      toast('Ralat', 'Sila isi semua maklumat untuk pendaftaran', 'danger');
+      return;
     }
-    try{
+    
+    try {
       const res = await postForm({
-        action:'daftarPesakit',
-        namaPesakit:data.nama, noIC:data.ic, noTelefon:data.tel,
-        namaStaff:data.staff, tarikhTCA:data.tcaDate, masaTCA:data.tcaTime
-      }, { msg:'Mendaftar (NADI)…' });
-      if (res.status==='success'){ toast('Berjaya', `Daftar ${data.nama}`, 'success'); }
-      else throw new Error(res.message||'Gagal daftar');
-    }catch(e){ toast('Ralat', e.message, 'danger'); }
+        action: 'daftarPesakit',
+        namaPesakit: nama,
+        noIC: ic,
+        noTelefon: tel,
+        namaStaff: staff,
+        tarikhTCA: date,
+        masaTCA: time
+      }, { msg: 'Mendaftar pesakit...' });
+      
+      if (res.status === 'success') {
+        toast('Berjaya', `Pesakit ${nama} didaftarkan`, 'success');
+        // Clear the row after successful registration
+        namaInput.value = '';
+        icInput.value = '';
+        telInput.value = '';
+        alamatInput.value = '';
+        bpInput.value = '';
+        prInput.value = '';
+        dxtInput.value = '';
+        tinggiInput.value = '';
+        beratInput.value = '';
+        bmiInput.value = '';
+        tcaDate.value = '';
+        tcaTime.value = '';
+        staffInput.value = '';
+        layakInput.checked = false;
+        takLayakInput.checked = false;
+      } else {
+        throw new Error(res.message || 'Gagal mendaftar');
+      }
+    } catch (e) {
+      toast('Ralat', e.message, 'danger');
+    }
   });
-
-  // WhatsApp Web report (imej + teks)
-  tr.querySelector('.n-wa').addEventListener('click', ()=> sendNadiReportWhatsAppWeb(tr));
-
-  // Buang baris
-  tr.querySelector('.n-buang').addEventListener('click', ()=>{
-    tr.remove();
-    if (!tbody.querySelector('tr')){
-      tbody.innerHTML = `<tr><td colspan="15" class="text-center text-muted">Tiada baris. Klik “Tambah Baris”.</td></tr>`;
+  
+  // WhatsApp button
+  waBtn.addEventListener('click', async () => {
+    try {
+      const data = {
+        nama: namaInput.value.trim(),
+        ic: icInput.value.trim(),
+        tel: telInput.value.trim(),
+        alamat: alamatInput.value.trim(),
+        bp: bpInput.value.trim(),
+        pr: prInput.value.trim(),
+        dxtType: dxtTypeHidden.value,
+        dxt: dxtInput.value.trim(),
+        tinggi: tinggiInput.value.trim(),
+        berat: beratInput.value.trim(),
+        bmi: bmiInput.value.trim(),
+        layak: layakInput.checked
+      };
+      
+      const file = await buildNadiReportImage(data);
+      if (file) {
+        if (navigator.canShare && navigator.canShare({ files: [file] })) {
+          await navigator.share({
+            title: 'Laporan Saringan NADI',
+            text: `Laporan saringan untuk ${data.nama} (${data.ic}).`,
+            files: [file]
+          });
+        } else {
+          // fallback: auto download image + open WhatsApp with text summary
+          const a = document.createElement('a');
+          a.href = URL.createObjectURL(file);
+          a.download = `Laporan_NADI_${(data.nama || 'pesakit').replace(/\s+/g, '_')}.png`;
+          document.body.appendChild(a);
+          a.click();
+          a.remove();
+          
+          const ringkas = `Laporan Saringan NADI\nNama: ${data.nama}\nIC: ${data.ic}\nBP: ${data.bp}\nPR: ${data.pr}\nDXT (${data.dxtType}): ${data.dxt}\nTinggi: ${data.tinggi} cm\nBerat: ${data.berat} kg\nBMI: ${data.bmi}\nStatus: ${data.layak ? 'Layak PEKA B40' : 'Tidak Layak PEKA B40'}`;
+          
+          if (data.tel) {
+            window.open(waHref(data.tel, ringkas), '_blank');
+          } else {
+            toast('Makluman', 'Nombor telefon kosong. Imej telah dimuat turun.', 'warning');
+          }
+        }
+      }
+    } catch (e) {
+      toast('Ralat', 'Gagal jana laporan: ' + e.message, 'danger');
+    }
+  });
+  
+  // Buang button
+  buangBtn.addEventListener('click', () => {
+    if (confirm('Adakah anda pasti ingin membuang baris ini?')) {
+      row.remove();
     }
   });
 }
-function getNadiRowData(tr){
-  const v = (sel)=> (tr.querySelector(sel)?.value||'').trim();
-  return {
-    nama: v('.n-nama'),
-    ic: v('.n-ic'),
-    tel: normalizeMsisdnMY(v('.n-tel')),
-    alamat: v('.n-alamat'),
-    bp: v('.n-bp'),
-    pr: v('.n-pr'),
-    dxtType: (tr.querySelector('.n-dxt-type')?.value||'Fasting'),
-    dxt: v('.n-dxt'),
-    tinggi: v('.n-tinggi'),
-    berat: v('.n-berat'),
-    bmi: v('.n-bmi'),
-    layak: tr.querySelector('.n-layak')?.checked || false,
-    tcaDate: v('.n-tca-date'),
-    tcaTime: v('.n-tca-time'),
-    staff: v('.n-staff')
-  };
-}
-function exportNadiCSV_v250(){
-  const tbody = document.getElementById('nadiTbody');
-  const rows = Array.from(tbody.querySelectorAll('tr')).filter(r=>!r.querySelector('td[colspan]'));
-  if (!rows.length){ toast('Makluman','Tiada data untuk diexport','warning'); return; }
-  const header = ['Nama','IC','Telefon','Alamat','BP','PR','DXT_Tipe','DXT','Tinggi(cm)','Berat(kg)','BMI','Layak','TarikhTCA','MasaTCA','Staff'];
-  const data = rows.map(tr=>{
-    const d = getNadiRowData(tr);
-    return [d.nama,d.ic,d.tel,d.alamat,d.bp,d.pr,d.dxtType,d.dxt,d.tinggi,d.berat,d.bmi,(d.layak?'Ya':'Tidak'),d.tcaDate,d.tcaTime,d.staff];
+
+async function exportNadiCSV() {
+  const tbody = document.getElementById('nadiTableBody');
+  const rows = Array.from(tbody.querySelectorAll('tr'));
+  
+  if (!rows.length) {
+    toast('Makluman', 'Tiada data untuk diexport', 'warning');
+    return;
+  }
+  
+  const header = [
+    'Nama', 'No IC', 'No Telefon', 'Alamat', 'BP', 'PR', 
+    'DXT_Tipe', 'DXT', 'Tinggi(cm)', 'Berat(kg)', 'BMI', 
+    'Layak', 'TarikhTCA', 'MasaTCA', 'Staff'
+  ];
+  
+  const data = rows.map(row => {
+    return [
+      row.querySelector('td:nth-child(1) input').value.trim(),
+      row.querySelector('td:nth-child(2) input').value.trim(),
+      row.querySelector('td:nth-child(3) input').value.trim(),
+      row.querySelector('td:nth-child(4) input').value.trim(),
+      row.querySelector('td:nth-child(5) input').value.trim(),
+      row.querySelector('td:nth-child(6) input').value.trim(),
+      row.querySelector('.nadi-dxt-type').value,
+      row.querySelector('.nadi-dxt-wrap input[type=text]').value.trim(),
+      row.querySelector('td:nth-child(8) input').value.trim(),
+      row.querySelector('td:nth-child(9) input').value.trim(),
+      row.querySelector('td:nth-child(10) input').value.trim(),
+      row.querySelector('.nadi-layak').checked ? 'Ya' : 'Tidak',
+      row.querySelector('td:nth-child(12) input[type=date]').value,
+      row.querySelector('td:nth-child(12) input[type=time]').value,
+      row.querySelector('td:nth-child(12) input[type=text]').value.trim()
+    ];
   });
-  const csv = [header, ...data].map(r=>r.map(v=>`"${String(v||'').replace(/"/g,'""')}"`).join(',')).join('\r\n');
-  const blob = new Blob([csv], { type:'text/csv;charset=utf-8;' });
+  
+  const csv = [header, ...data]
+    .map(row => row.map(cell => `"${String(cell || '').replace(/"/g, '""')}"`).join(',')).join('\r\n');
+  
+  const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
   const url = URL.createObjectURL(blob);
   const a = document.createElement('a');
-  a.href = url; a.download = `program_nadi_${new Date().toISOString().slice(0,10)}.csv`;
-  document.body.appendChild(a); a.click(); a.remove(); URL.revokeObjectURL(url);
-  toast('Export','Fail CSV telah dimuat turun','success');
+  a.href = url;
+  a.download = `program_nadi_${new Date().toISOString().slice(0, 10)}.csv`;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  URL.revokeObjectURL(url);
+  
+  toast('Export', 'Fail CSV telah dimuat turun', 'success');
 }
 
-/* Jana imej laporan NADI (canvas) */
+// Hasilkan imej laporan NADI (canvas → File PNG)
 async function buildNadiReportImage(data){
   const w=900, h=1100, pad=28, line=36;
   const canvas = document.createElement('canvas'); canvas.width=w; canvas.height=h;
   const ctx = canvas.getContext('2d');
-
+  // latar
   ctx.fillStyle='#ffffff'; ctx.fillRect(0,0,w,h);
+  // header
   ctx.fillStyle='#2c3e50'; ctx.fillRect(0,0,w,118);
-
+  // logo
   try{
     const img = new Image(); img.crossOrigin='anonymous'; img.src=LOGO_URL;
-    await new Promise((res)=>{ img.onload=res; img.onerror=()=>res(); });
+    await new Promise((res,rej)=>{ img.onload=res; img.onerror=()=>res(); });
     if (img.width) ctx.drawImage(img, pad, 18, 86, 86);
   }catch(_){}
-
+  // tajuk
   ctx.fillStyle='#ffffff'; ctx.font='700 28px Segoe UI, Arial'; ctx.fillText('Klinik SihatSokmo', 118, 54);
   ctx.font='600 20px Segoe UI, Arial'; ctx.fillText('Laporan Saringan Program NADI', 118, 86);
 
+  // tarikh
   const tarikh = new Date().toLocaleString('ms-MY', {year:'numeric',month:'long',day:'numeric', hour:'2-digit', minute:'2-digit'});
   ctx.fillStyle='#333'; ctx.font='600 20px Segoe UI, Arial'; ctx.fillText('Butiran Pesakit', pad, 160);
   ctx.font='400 18px Segoe UI, Arial';
@@ -1168,7 +1554,11 @@ async function buildNadiReportImage(data){
   write('Nama', data.nama);
   write('No. IC', data.ic);
   write('Tarikh Cetakan', tarikh);
+
+  // garisan
   ctx.strokeStyle='#e5e7eb'; ctx.lineWidth=2; ctx.beginPath(); ctx.moveTo(pad, y+8); ctx.lineTo(w-pad, y+8); ctx.stroke(); y+=30;
+
+  // bacaan
   ctx.fillStyle='#333'; ctx.font='600 20px Segoe UI, Arial'; ctx.fillText('Keputusan Saringan', pad, y); y+=line;
   ctx.font='400 18px Segoe UI, Arial';
   write('Tekanan Darah (BP)', data.bp);
@@ -1177,61 +1567,23 @@ async function buildNadiReportImage(data){
   write('Tinggi', data.tinggi ? (data.tinggi+' cm') : '');
   write('Berat', data.berat ? (data.berat+' kg') : '');
   write('BMI', data.bmi);
+
+  // status
   y+=14;
   const statusTxt = data.layak ? 'LAYAK Saringan PEKA B40' : 'TIDAK LAYAK Saringan PEKA B40';
   ctx.fillStyle = data.layak ? '#16a085' : '#c0392b';
   ctx.fillRect(pad, y, w-pad*2, 70);
   ctx.fillStyle='#fff'; ctx.font='700 22px Segoe UI, Arial';
   ctx.fillText(statusTxt, pad+16, y+44);
+
+  // footer
   ctx.fillStyle='#94a3b8'; ctx.font='400 14px Segoe UI, Arial';
   ctx.fillText('Untuk rujukan pesakit. Sila hubungi klinik jika ada pertanyaan.', pad, h-24);
+
+  // blob
   const blob = await new Promise(res=> canvas.toBlob(res, 'image/png', 0.92));
   if (!blob) throw new Error('Gagal menukar imej');
   return new File([blob], 'laporan_nadi.png', { type:'image/png' });
-}
-function buildWaText(data){
-  return `Laporan Saringan NADI%0A`
-    + `Nama: ${data.nama}%0A`
-    + `IC: ${data.ic}%0A`
-    + `BP: ${data.bp}%0A`
-    + `PR: ${data.pr}%0A`
-    + `DXT (${data.dxtType}): ${data.dxt}%0A`
-    + `Tinggi: ${data.tinggi} cm%0A`
-    + `Berat: ${data.berat} kg%0A`
-    + `BMI: ${data.bmi}%0A`
-    + `Status: ${data.layak?'Layak PEKA B40':'Tidak Layak PEKA B40'}`;
-}
-async function sendNadiReportWhatsAppWeb(tr){
-  const d = getNadiRowData(tr);
-  if (!d.tel){ toast('Makluman','Sila isi nombor telefon pesakit dahulu.','warning'); return; }
-
-  try{
-    const file = await buildNadiReportImage(d);
-
-    // Cuba salin imej ke clipboard (supaya boleh terus Ctrl+V di WhatsApp Web)
-    let copied=false;
-    if (navigator.clipboard && window.ClipboardItem){
-      try{
-        await navigator.clipboard.write([ new ClipboardItem({ 'image/png': file }) ]);
-        copied=true;
-        toast('Disalin','Imej laporan telah disalin ke clipboard. Sila tampal (Ctrl+V) dalam WhatsApp Web.','success');
-      }catch(_){}
-    }
-    // Jika tak berjaya salin → muat turun sebagai fallback
-    if (!copied){
-      const a = document.createElement('a');
-      a.href = URL.createObjectURL(file);
-      a.download = `Laporan_NADI_${(d.nama||'pesakit').replace(/\s+/g,'_')}.png`;
-      document.body.appendChild(a); a.click(); a.remove();
-      toast('Muat Turun','Imej laporan dimuat turun. Sila lampirkan imej dalam WhatsApp Web.','primary');
-    }
-
-    // Buka WhatsApp Web dengan mesej pra-isi
-    const txt = decodeURIComponent(buildWaText(d));
-    window.open(waWebHref(d.tel, txt), '_blank');
-  }catch(e){
-    toast('Ralat','Gagal jana laporan: '+(e.message||e),'danger');
-  }
 }
 
 /* =======================
@@ -1249,6 +1601,7 @@ async function loadDashboardData(){
       labFollowUpDue.textContent = d.labFollowUpDue || 0;
       labFollowUpPending.textContent = d.labFollowUpPending || 0;
 
+      // Badges navbar (tunjuk hanya jika >0)
       setBadge('badgeTCA', d.totalDaftar);
       setBadge('badgeFirst', d.totalFirstVisit);
       setBadge('badgeSecond', d.totalSecondVisit);
@@ -1275,453 +1628,486 @@ async function loadStatistics(period){
 async function loadCompletedStatistics(period){
   try{
     const data = await getJSON({ action:'getStatistics', period }, { msg:'Memuat statistik…' });
-        if (data.status==='success'){
+    if (data.status==='success'){
       if (completed3dChart) completed3dChart.destroy();
-      completed3dChart = buildBarChart(
-        'completed3dChart',
-        data.data,
-        `Statistik Pesakit Selesai (${getPeriodLabel(period)})`
-      );
+      completed3dChart = buildBarChart('completed3dChart', data.data, `Statistik Pesakit Selesai (${getPeriodLabel(period)})`);
     }
   }catch(e){}
 }
+function getPeriodLabel(p){ if(p==='3months')return'3 Bulan Terakhir'; if(p==='6months')return'6 Bulan Terakhir'; if(p==='12months')return'12 Bulan Terakhir'; return p; }
 
-function getPeriodLabel(period){
-  switch(String(period||'')){
-    case '3months': return '3 Bulan Terakhir';
-    case '6months': return '6 Bulan Terakhir';
-    case '12months': return '12 Bulan Terakhir';
-    default: return 'Tempoh';
-  }
-}
-
-/* =======================
-   TCA (Dashboard & Halaman)
-======================= */
 async function loadTCACallData(){
   try{
-    const j = await getJSON({ action:'getTCACall', scope:'today' }, { msg:'Memuat TCA hari ini…' });
-    const tb = document.getElementById('tcaCallTable');
-    tb.innerHTML = '';
-    if (j.status!=='success' || !Array.isArray(j.data) || !j.data.length){
-      tb.innerHTML = `<tr><td colspan="5" class="text-center text-muted">Tiada rekod untuk hari ini.</td></tr>`;
-      return;
-    }
-    j.data.forEach(r=>{
-      const tel = normalizeMsisdnMY(r.noTelefon||'');
-      const tr = document.createElement('tr');
-      tr.innerHTML = `
-        <td>${r.nama||'-'}</td>
-        <td>${r.noIC||'-'}</td>
-        <td><a href="${telHref(tel)}">${tel||'-'}</a></td>
-        <td>${r.tarikhTCA||'-'}</td>
-        <td><span class="badge text-bg-warning">TCA CALL</span></td>`;
-      tb.appendChild(tr);
-    });
-  }catch(e){
-    document.getElementById('tcaCallTable').innerHTML =
-      `<tr><td colspan="5" class="text-center text-danger">Gagal memuat data.</td></tr>`;
-  }
-}
+    const data = await getJSON({ action:'getTCACall' }, { msg:'Memuat TCA Hari Ini…' });
+    const tb1 = document.getElementById('tcaCallTable');
+    if (tb1) tb1.innerHTML = '';
 
-let tcaFilterBound=false, tcaCurrentFilter='today';
-async function loadTCACallPage(){
-  const group = document.getElementById('tcaFilter');
-  const tb = document.getElementById('tcaCallList');
-  if (!tcaFilterBound && group){
-    group.querySelectorAll('button').forEach(btn=>{
-      btn.addEventListener('click', async()=>{
-        group.querySelectorAll('button').forEach(b=>b.classList.remove('active'));
-        btn.classList.add('active');
-        tcaCurrentFilter = btn.getAttribute('data-filter')||'today';
-        await loadTCACallPage(); // reload
-      });
-    });
-    tcaFilterBound = true;
-  }
-  try{
-    const j = await getJSON({ action:'getTCACall', scope:tcaCurrentFilter }, { msg:'Memuat senarai TCA…' });
-    tb.innerHTML = '';
-    const arr = (j.status==='success' && Array.isArray(j.data)) ? j.data : [];
-    if (!arr.length){
-      tb.innerHTML = `<tr><td colspan="5" class="text-center text-muted">Tiada rekod.</td></tr>`;
-      return;
-    }
-    arr.forEach(r=>{
-      const tel = normalizeMsisdnMY(r.noTelefon||'');
-      const tr = document.createElement('tr');
-      tr.innerHTML = `
-        <td>${r.nama||'-'}</td>
-        <td>${r.noIC||'-'}</td>
-        <td>
-          <a class="me-2" href="${telHref(tel)}">${tel||'-'}</a>
-          <a class="btn btn-sm btn-outline-success" target="_blank"
-             href="${waWebHref(tel, `Assalamualaikum/Salam sejahtera ${r.nama||''}. Peringatan temujanji TCA anda pada ${r.tarikhTCA||''}. Terima kasih.`)}">
-             <i class="fa-brands fa-whatsapp"></i>
-          </a>
+    const renderRow = (p) => {
+      const msisdn = normalizeMsisdnMY(p.noTelefon||'');
+      return `
+      <tr data-ic="${p.noIC}">
+        <td>${p.nama}</td>
+        <td>${p.noIC}</td>
+        <td class="mini-actions">
+          <a class="btn btn-sm btn-outline-secondary" href="${telHref(msisdn)}"><i class="fa-solid fa-phone"></i> Call</a>
+          <a class="btn btn-sm btn-outline-success" target="_blank" href="${waHref(msisdn)}"><i class="fa-brands fa-whatsapp"></i> WhatsApp</a>
+          <div class="small text-muted mt-1">${msisdn}</div>
         </td>
-        <td>${r.tarikhTCA||'-'}</td>
-        <td><span class="badge text-bg-warning">TCA CALL</span></td>`;
-      tb.appendChild(tr);
-    });
-  }catch(e){
-    tb.innerHTML = `<tr><td colspan="5" class="text-center text-danger">Gagal memuat data.</td></tr>`;
-  }
+        <td>${p.tarikhTCA}</td>
+        <td><span class="badge ${p.status==='CALLED'?'bg-success':'bg-warning'}">${p.status || 'PENDING'}</span></td>
+      </tr>`;
+    };
+
+    if (data.status==='success' && data.data.length>0){
+      data.data.forEach(p=>{ if (tb1) tb1.insertAdjacentHTML('beforeend', renderRow(p)); });
+    } else {
+      if (tb1) tb1.innerHTML = `<tr><td colspan="5" class="text-center text-muted">Tiada pesakit perlu dihubungi hari ini</td></tr>`;
+    }
+  }catch(e){ /* senyap */ }
 }
 
-/* =======================
-   First Visit
-======================= */
-async function loadFirstVisitData(){
-  const tb = document.getElementById('firstVisitList');
+/* === TCA PAGE (rekod; tiada tanda selesai manual) === */
+let TCA_ALL = [];
+async function loadTCACallPage(){
   try{
-    const j = await getJSON({ action:'getFirstVisit' }, { msg:'Memuat First Visit…' });
-    tb.innerHTML = '';
-    const arr = (j.status==='success' && Array.isArray(j.data)) ? j.data : [];
-    if (!arr.length){
-      tb.innerHTML = `<tr><td colspan="6" class="text-center text-muted">Tiada rekod.</td></tr>`;
-      return;
-    }
-    arr.forEach(r=>{
-      const pdpa = r.pdpa ? '<span class="badge text-bg-success">Ada</span>'
-                          : '<span class="badge text-bg-secondary">Tiada</span>';
-      const tr = document.createElement('tr');
-      tr.innerHTML = `
-        <td>${r.nama||'-'}</td>
-        <td>${r.noIC||'-'}</td>
-        <td>${r.tarikhTCA||'-'}</td>
-        <td>${pdpa}</td>
-        <td><span class="badge text-bg-info">First Visit</span></td>
+    const res = await getJSON({ action:'getTCACall', all:1 }, { msg:'Memuat rekod TCA…' });
+    TCA_ALL = (res.status==='success') ? (res.data||[]) : [];
+    renderTcaList('today');
+  }catch(e){ renderTcaList('all'); }
+  document.querySelectorAll('#tcaFilter [data-filter]').forEach(btn=>{
+    btn.addEventListener('click', ()=>{
+      document.querySelectorAll('#tcaFilter [data-filter]').forEach(b=>b.classList.remove('active'));
+      btn.classList.add('active');
+      renderTcaList(btn.getAttribute('data-filter'));
+    });
+  });
+}
+function renderTcaList(mode){
+  const tbody = document.getElementById('tcaCallList');
+  if (!tbody) return;
+  tbody.innerHTML = '';
+  const today = new Date(); today.setHours(0,0,0,0);
+
+  const filtered = TCA_ALL.filter(p=>{
+    const d = parseDDMMYYYY(p.tarikhTCA);
+    if (!d) return mode==='all';
+    d.setHours(0,0,0,0);
+    if (mode==='today') return isSameDay(d, today);
+    if (mode==='upcoming') return d.getTime() > today.getTime();
+    if (mode==='past') return d.getTime() < today.getTime();
+    return true;
+  });
+
+  if (!filtered.length){
+    tbody.innerHTML = `<tr><td colspan="5" class="text-center text-muted">Tiada rekod untuk paparan ini.</td></tr>`;
+    return;
+  }
+
+  filtered.forEach(p=>{
+    const msisdn = normalizeMsisdnMY(p.noTelefon||'');
+    const badgeCls = p.status==='CALLED' ? 'bg-success' : (parseDDMMYYYY(p.tarikhTCA)?.getTime()<today.getTime() ? 'bg-secondary' : 'bg-warning');
+    const label = p.status==='CALLED' ? 'CALLED' : (parseDDMMYYYY(p.tarikhTCA)?.getTime()<today.getTime() ? 'LEPAS' : (isSameDay(parseDDMMYYYY(p.tarikhTCA), today) ? 'HARI INI' : 'AKAN DATANG'));
+    const row = `
+      <tr data-ic="${p.noIC}">
+        <td>${p.nama}</td>
+        <td>${p.noIC}</td>
         <td class="mini-actions">
-          <button class="btn btn-sm btn-outline-primary" onclick="openPDPA('${(r.noIC||'').replace(/'/g,'&#39;')}')">
-            <i class="fa-solid fa-file-arrow-up me-1"></i>PDPA
-          </button>
-          <button class="btn btn-sm btn-outline-secondary" onclick="openRetca('${(r.noIC||'').replace(/'/g,'&#39;')}')">
-            <i class="fa-solid fa-calendar-plus me-1"></i>Re-TCA
-          </button>
-        </td>`;
-      tb.appendChild(tr);
-    });
-  }catch(e){
-    tb.innerHTML = `<tr><td colspan="6" class="text-center text-danger">Gagal memuat data.</td></tr>`;
-  }
-}
-
-/* =======================
-   Lab Follow-up
-======================= */
-async function loadLabFollowUp(){
-  const tb = document.getElementById('labFollowupTable');
-  try{
-    const j = await getJSON({ action:'getLabFollowup' }, { msg:'Memuat Follow-up Lab…' });
-    tb.innerHTML = '';
-    const arr = (j.status==='success' && Array.isArray(j.data)) ? j.data : [];
-    if (!arr.length){
-      tb.innerHTML = `<tr><td colspan="7" class="text-center text-muted">Tiada rekod.</td></tr>`;
-      return;
-    }
-    arr.forEach(r=>{
-      const tel = normalizeMsisdnMY(r.noTelefon||'');
-      const tr = document.createElement('tr');
-      tr.innerHTML = `
-        <td>${r.nama||'-'}</td>
-        <td>${r.noIC||'-'}</td>
-        <td><a href="${telHref(tel)}">${tel||'-'}</a></td>
-        <td>${r.tarikhFirstVisit||'-'}</td>
-        <td>${r.hariKe||'-'}</td>
-        <td><span class="badge text-bg-warning">Menunggu Lab</span></td>
-        <td class="mini-actions">
-          <button class="btn btn-sm btn-outline-primary" onclick="openSecondTca('${(r.noIC||'').replace(/'/g,'&#39;')}')">
-            <i class="fa-solid fa-calendar-check me-1"></i>Set Second TCA
-          </button>
-        </td>`;
-      tb.appendChild(tr);
-    });
-  }catch(e){
-    tb.innerHTML = `<tr><td colspan="7" class="text-center text-danger">Gagal memuat data.</td></tr>`;
-  }
-}
-
-/* =======================
-   Second Visit
-======================= */
-async function loadSecondVisitData(){
-  const tb = document.getElementById('secondVisitList');
-  try{
-    const j = await getJSON({ action:'getSecondVisit' }, { msg:'Memuat Second Visit…' });
-    tb.innerHTML = '';
-    const arr = (j.status==='success' && Array.isArray(j.data)) ? j.data : [];
-    if (!arr.length){
-      tb.innerHTML = `<tr><td colspan="6" class="text-center text-muted">Tiada rekod.</td></tr>`;
-      return;
-    }
-    arr.forEach(r=>{
-      const pdpa = r.pdpa ? '<span class="badge text-bg-success">Ada</span>'
-                          : '<span class="badge text-bg-secondary">Tiada</span>';
-      const tr = document.createElement('tr');
-      tr.innerHTML = `
-        <td>${r.nama||'-'}</td>
-        <td>${r.noIC||'-'}</td>
-        <td>${r.tarikhTCA||'-'}</td>
-        <td>${pdpa}</td>
-        <td><span class="badge text-bg-info">Second Visit</span></td>
-        <td class="mini-actions">
-          <button class="btn btn-sm btn-outline-primary" onclick="openPDPA('${(r.noIC||'').replace(/'/g,'&#39;')}')">
-            <i class="fa-solid fa-file-arrow-up me-1"></i>PDPA
-          </button>
-        </td>`;
-      tb.appendChild(tr);
-    });
-  }catch(e){
-    tb.innerHTML = `<tr><td colspan="6" class="text-center text-danger">Gagal memuat data.</td></tr>`;
-  }
-}
-
-/* =======================
-   Completed & Arkib
-======================= */
-async function loadCompletedData(){
-  const tb = document.getElementById('completedTable');
-  try{
-    const j = await getJSON({ action:'getCompleted' }, { msg:'Memuat selesai…' });
-    tb.innerHTML = '';
-    const arr = (j.status==='success' && Array.isArray(j.data)) ? j.data : [];
-    if (!arr.length){
-      tb.innerHTML = `<tr><td colspan="10" class="text-center text-muted">Tiada rekod.</td></tr>`;
-      return;
-    }
-    arr.forEach(r=>{
-      const pdpa = r.pdpa ? '<span class="badge text-bg-success">Ada</span>'
-                          : '<span class="badge text-bg-secondary">Tiada</span>';
-      const tr = document.createElement('tr');
-      tr.innerHTML = `
-        <td>${r.nama||'-'}</td>
-        <td>${r.noIC||'-'}</td>
-        <td>${r.noTelefon||'-'}</td>
-        <td>${pdpa}</td>
-        <td>${r.tarikhDaftar||'-'}</td>
-        <td>${r.firstVisit||'-'}</td>
-        <td>${r.labCompleted||'-'}</td>
-        <td>${r.secondVisit||'-'}</td>
-        <td>${r.tarikhSelesai||'-'}</td>
-        <td class="mini-actions">
-          <button class="btn btn-sm btn-outline-secondary" onclick="archiveRecord('${(r.noIC||'').replace(/'/g,'&#39;')}')">
-            <i class="fa-solid fa-box-archive me-1"></i>Arkib
-          </button>
-        </td>`;
-      tb.appendChild(tr);
-    });
-  }catch(e){
-    tb.innerHTML = `<tr><td colspan="10" class="text-center text-danger">Gagal memuat data.</td></tr>`;
-  }
-}
-
-async function loadArchivedData(){
-  const tb = document.getElementById('archiveTable');
-  try{
-    const j = await getJSON({ action:'getArchived' }, { msg:'Memuat arkib…' });
-    tb.innerHTML = '';
-    const arr = (j.status==='success' && Array.isArray(j.data)) ? j.data : [];
-    if (!arr.length){
-      tb.innerHTML = `<tr><td colspan="7" class="text-center text-muted">Tiada rekod arkib.</td></tr>`;
-      return;
-    }
-    arr.forEach(r=>{
-      const tr = document.createElement('tr');
-      tr.innerHTML = `
-        <td>${r.nama||'-'}</td>
-        <td>${r.noIC||'-'}</td>
-        <td>${r.noTelefon||'-'}</td>
-        <td>${r.tarikhDaftar||'-'}</td>
-        <td>${r.tarikhSelesai||'-'}</td>
-        <td>${r.diarkib||'-'}</td>
-        <td class="mini-actions">
-          <button class="btn btn-sm btn-outline-primary" onclick="unarchiveRecord('${(r.noIC||'').replace(/'/g,'&#39;')}')">
-            <i class="fa-solid fa-rotate-left me-1"></i>Pulihkan
-          </button>
-        </td>`;
-      tb.appendChild(tr);
-    });
-  }catch(e){
-    tb.innerHTML = `<tr><td colspan="7" class="text-center text-danger">Gagal memuat data.</td></tr>`;
-  }
-}
-
-/* =======================
-   Eksport CSV (Dashboard)
-======================= */
-async function exportCompletedCSV(){
-  try{
-    const j = await getJSON({ action:'getCompleted' }, { msg:'Menjana CSV…' });
-    const arr = (j.status==='success' && Array.isArray(j.data)) ? j.data : [];
-    if (!arr.length){ toast('Makluman','Tiada data untuk dieksport.','warning'); return; }
-    const header = ['Nama','IC','Telefon','PDPA','Tarikh Daftar','First Visit','Lab Report Completed','Second Visit','Tarikh Selesai'];
-    const rows = arr.map(r=>[
-      r.nama||'', r.noIC||'', r.noTelefon||'', (r.pdpa?'Ada':'Tiada'),
-      r.tarikhDaftar||'', r.firstVisit||'', r.labCompleted||'', r.secondVisit||'', r.tarikhSelesai||''
-    ]);
-    const csv = [header, ...rows].map(r=>r.map(v=>`"${String(v).replace(/"/g,'""')}"`).join(',')).join('\r\n');
-    const blob = new Blob([csv], { type:'text/csv;charset=utf-8;' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url; a.download = `pesakit_selesai_${new Date().toISOString().slice(0,10)}.csv`;
-    document.body.appendChild(a); a.click(); a.remove(); URL.revokeObjectURL(url);
-    toast('Export','CSV telah dimuat turun.','success');
-  }catch(e){
-    toast('Ralat','Gagal eksport CSV.','danger');
-  }
-}
-
-/* =======================
-   Pendaftaran manual
-======================= */
-async function daftarPesakit(){
-  const nama = (document.getElementById('namaPesakit').value||'').trim();
-  const ic   = (document.getElementById('noIC').value||'').trim();
-  const tel  = normalizeMsisdnMY(document.getElementById('noTelefon').value||'');
-  const staff= (document.getElementById('namaStaff').value||'').trim();
-  const date = document.getElementById('tarikhTCA').value;
-  const time = document.getElementById('masaTCA').value;
-  if (!nama || !ic || !tel || !staff || !date || !time){
-    toast('Ralat','Sila lengkapkan semua medan.','danger'); return;
-  }
-  try{
-    const r = await postForm({
-      action:'daftarPesakit', namaPesakit:nama, noIC:ic, noTelefon:tel,
-      namaStaff:staff, tarikhTCA:date, masaTCA:time
-    }, { msg:'Mendaftar pesakit…' });
-    if (r.status==='success'){
-      toast('Berjaya','Pesakit didaftarkan ke TCA.','success');
-      document.getElementById('formPendaftaran').reset();
-      loadDashboardData(); loadTCACallData();
-    }else{
-      throw new Error(r.message||'Gagal daftar');
-    }
-  }catch(e){ toast('Ralat', e.message, 'danger'); }
-}
-
-/* =======================
-   PDPA Upload
-======================= */
-function openPDPA(noIC){
-  document.getElementById('pdpaIC').value = noIC||'';
-  document.getElementById('pdpaFile').value = '';
-  pdpaModal.show();
-}
-async function uploadPDPA(){
-  const ic = (document.getElementById('pdpaIC').value||'').trim();
-  const file = document.getElementById('pdpaFile').files[0];
-  if (!ic){ toast('Ralat','IC tidak sah.','danger'); return; }
-  if (!file){ toast('Ralat','Sila pilih fail PDPA.','danger'); return; }
-  try{
-    const base64 = await fileToBase64(file);
-    const r = await postForm({
-      action:'uploadPDPA', noIC: ic,
-      filename: file.name, mimetype: file.type||'application/octet-stream',
-      size: file.size||0, data: base64
-    }, { msg:'Memuat naik PDPA…' });
-    if (r.status==='success'){
-      toast('Berjaya','PDPA berjaya dimuat naik.','success');
-      pdpaModal.hide();
-      loadFirstVisitData(); loadSecondVisitData(); loadCompletedData();
-    }else{
-      throw new Error(r.message||'Gagal muat naik');
-    }
-  }catch(e){ toast('Ralat', e.message, 'danger'); }
-}
-function fileToBase64(file){
-  return new Promise((res,rej)=>{
-    const fr = new FileReader();
-    fr.onload = ()=> res(String(fr.result||'').split(',')[1]||'');
-    fr.onerror = rej;
-    fr.readAsDataURL(file);
+          <a class="btn btn-sm btn-outline-secondary" href="${telHref(msisdn)}"><i class="fa-solid fa-phone"></i> Call</a>
+          <a class="btn btn-sm btn-outline-success" target="_blank" href="${waHref(msisdn)}"><i class="fa-brands fa-whatsapp"></i> WhatsApp</a>
+          <div class="small text-muted mt-1">${msisdn}</div>
+        </td>
+        <td>${p.tarikhTCA||'-'}</td>
+        <td><span class="badge ${badgeCls}">${label}</span></td>
+      </tr>`;
+    tbody.insertAdjacentHTML('beforeend', row);
   });
 }
 
+async function loadFirstVisitData(){
+  try{
+    const data = await getJSON({ action:'getFirstVisit' }, { msg:'Memuat First Visit…' });
+    const tbody = document.getElementById('firstVisitList');
+    tbody.innerHTML = '';
+    if (data.status==='success' && data.data.length>0){
+      data.data.forEach(p=>{
+        const hadir = p.status==='HADIR';
+        const within = isWithin24hOfDate(p.tarikhTCA);
+        const msisdn = normalizeMsisdnMY(p.noTelefon||'');
+
+        let pdpaHTML = '';
+        if (p.pdpaFileId){
+          pdpaHTML = `
+            <div class="d-flex flex-wrap gap-1">
+              <a class="btn btn-sm btn-outline-success" target="_blank" href="https://drive.google.com/file/d/${p.pdpaFileId}/preview"><i class="fa-solid fa-eye"></i> Lihat</a>
+              <a class="btn btn-sm btn-outline-primary" target="_blank" href="https://drive.google.com/uc?export=download&id=${p.pdpaFileId}"><i class="fa-solid fa-download"></i> Muat Turun</a>
+              <button class="btn btn-sm btn-outline-danger" onclick="deletePDPA('${p.noIC}')"><i class="fa-solid fa-trash"></i> Padam</button>
+            </div>`;
+        } else {
+          pdpaHTML = hadir ? `<button class="btn btn-sm btn-outline-primary" onclick="openPDPA('${p.noIC}')"><i class="fa-solid fa-file-arrow-up"></i> Upload</button>`
+                           : `<span class="text-muted">-</span>`;
+        }
+
+        const row = `
+        <tr data-ic="${p.noIC}">
+          <td>${p.nama}</td>
+          <td>${p.noIC}</td>
+          <td>${p.tarikhTCA||'-'}</td>
+          <td>${pdpaHTML}</td>
+          <td><span class="badge ${hadir?'bg-success':'bg-warning'}">${hadir?'Hadir':'Belum Hadir'}</span></td>
+          <td class="mini-actions">
+            ${within && !hadir ? `<button class="btn btn-sm btn-success" onclick="markFirstVisit('${p.noIC}')"><i class="fa-solid fa-circle-check"></i> Hadir</button>` : ''}
+            ${!hadir ? `<button class="btn btn-sm btn-primary" onclick="openRetcaModal('${p.noIC}')"><i class="fa-solid fa-calendar-plus"></i> Re-TCA</button>` : ''}
+            ${msisdn ? `
+              <a class="btn btn-sm btn-outline-secondary" href="${telHref(msisdn)}"><i class="fa-solid fa-phone"></i></a>
+              <a class="btn btn-sm btn-outline-success" target="_blank" href="${waHref(msisdn)}"><i class="fa-brands fa-whatsapp"></i></a>` : ''}
+          </td>
+        </tr>`;
+        tbody.insertAdjacentHTML('beforeend', row);
+      });
+    } else {
+      tbody.innerHTML = `<tr><td colspan="6" class="text-center text-muted">Tiada data First Visit</td></tr>`;
+    }
+  }catch(e){ /* senyap */ }
+}
+
+function isWithin24hOfDate(dateStr){
+  const d = parseDDMMYYYY(dateStr);
+  if (!d) return false;
+  const start = new Date(d.getFullYear(), d.getMonth(), d.getDate(), 0,0,0,0);
+  const end = new Date(start.getTime() + 24*60*60*1000);
+  const now = new Date();
+  return now >= start && now < end;
+}
+
+async function loadLabFollowUp(){
+  try{
+    const data = await getJSON({ action:'getLabFollowUp' }, { msg:'Memuat Follow-up Lab…' });
+    const tbody = document.getElementById('labFollowupTable');
+    tbody.innerHTML = '';
+    if (data.status==='success' && data.data.length>0){
+      data.data.forEach(p=>{
+        const msisdn = normalizeMsisdnMY(p.noTelefon||'');
+        const badge = p.labStatus==='DONE' ? 'bg-success' : (p.labStatus==='REPEAT' ? 'bg-danger' : (p.labStatus==='IN_PROCESS' ? 'bg-warning' : 'bg-secondary'));
+        const label = p.labStatus || 'PENDING';
+        const row = `
+        <tr data-ic="${p.noIC}">
+          <td>${p.nama}</td>
+          <td>${p.noIC}</td>
+          <td class="mini-actions">
+            <a class="btn btn-sm btn-outline-secondary" href="${telHref(msisdn)}"><i class="fa-solid fa-phone"></i> Call</a>
+            <a class="btn btn-sm btn-outline-success" target="_blank" href="${waHref(msisdn,'Keputusan makmal anda telah siap.')}"><i class="fa-brands fa-whatsapp"></i> WhatsApp</a>
+            <div class="small text-muted mt-1">${msisdn}</div>
+          </td>
+          <td>${p.firstVisitDate}</td>
+          <td>${p.daysSince}</td>
+          <td><span class="badge ${badge}">${label}</span></td>
+          <td class="mini-actions">
+            <button class="btn btn-sm btn-success" onclick="openSecondTca('${p.noIC}')"><i class="fa-solid fa-square-check"></i> Result complete & berjaya call</button>
+            <button class="btn btn-sm btn-warning" onclick="markLabStatus('${p.noIC}','IN_PROCESS')"><i class="fa-solid fa-hourglass-half"></i> In process</button>
+            <button class="btn btn-sm btn-danger" onclick="markLabStatus('${p.noIC}','REPEAT')"><i class="fa-solid fa-rotate-left"></i> Repeat sample</button>
+          </td>
+        </tr>`;
+        tbody.insertAdjacentHTML('beforeend', row);
+      });
+    } else {
+      tbody.innerHTML = `<tr><td colspan="7" class="text-center text-muted">Tiada pesakit untuk follow-up.</td></tr>`;
+    }
+  }catch(e){ /* senyap */ }
+}
+
+async function loadSecondVisitData(){
+  try{
+    const data = await getJSON({ action:'getSecondVisit' }, { msg:'Memuat Second Visit…' });
+    const tbody = document.getElementById('secondVisitList');
+    tbody.innerHTML = '';
+    if (data.status==='success' && data.data.length>0){
+      data.data.forEach(p=>{
+        const hadir = p.status==='HADIR';
+        const within = isWithin24hOfDate(p.tarikhTCA);
+        const msisdn = normalizeMsisdnMY(p.noTelefon||'');
+
+        let pdpaHTML = p.pdpaFileId
+          ? `<div class="d-flex flex-wrap gap-1">
+              <a class="btn btn-sm btn-outline-success" target="_blank" href="https://drive.google.com/file/d/${p.pdpaFileId}/preview"><i class="fa-solid fa-eye"></i> Lihat</a>
+              <a class="btn btn-sm btn-outline-primary" target="_blank" href="https://drive.google.com/uc?export=download&id=${p.pdpaFileId}"><i class="fa-solid fa-download"></i> Muat Turun</a>
+            </div>`
+          : `<span class="text-danger">PDPA tiada</span>`;
+
+        const row = `
+        <tr data-ic="${p.noIC}">
+          <td>${p.nama}</td>
+          <td>${p.noIC}</td>
+          <td>${p.tarikhTCA||'-'}</td>
+          <td>${pdpaHTML}</td>
+          <td><span class="badge ${hadir?'bg-success':'bg-warning'}">${hadir?'Hadir':'Belum Hadir'}</span></td>
+          <td class="mini-actions">
+            ${within && !hadir ? `<button class="btn btn-sm btn-success" onclick="markSecondVisitHadir('${p.noIC}')"><i class="fa-solid fa-circle-check"></i> Hadir</button>` : ''}
+            ${msisdn ? `
+              <a class="btn btn-sm btn-outline-secondary" href="${telHref(msisdn)}"><i class="fa-solid fa-phone"></i></a>
+              <a class="btn btn-sm btn-outline-success" target="_blank" href="${waHref(msisdn)}"><i class="fa-brands fa-whatsapp"></i></a>` : ''}
+          </td>
+        </tr>`;
+        tbody.insertAdjacentHTML('beforeend', row);
+      });
+    } else {
+      tbody.innerHTML = `<tr><td colspan="6" class="text-center text-muted">Tiada data Second Visit</td></tr>`;
+    }
+  }catch(e){ /* senyap */ }
+}
+
+async function loadCompletedData(){
+  try{
+    const data = await getJSON({ action:'getCompleted' }, { msg:'Memuat Selesai…' });
+    const tbody = document.getElementById('completedTable');
+    tbody.innerHTML = '';
+    if (data.status==='success' && data.data.length>0){
+      data.data.forEach(p=>{
+        const msisdn = normalizeMsisdnMY(p.noTelefon||'');
+        const pdpaHTML = p.pdpaFileId
+          ? `<div class="d-flex flex-wrap gap-1">
+              <a class="btn btn-sm btn-outline-success" target="_blank" href="https://drive.google.com/file/d/${p.pdpaFileId}/preview"><i class="fa-solid fa-eye"></i> Lihat</a>
+              <a class="btn btn-sm btn-outline-primary" target="_blank" href="https://drive.google.com/uc?export=download&id=${p.pdpaFileId}"><i class="fa-solid fa-download"></i> Muat Turun</a>
+            </div>`
+          : `<span class="text-muted">-</span>`;
+
+        const labCompleted = p.labCompletedAt ? `${p.labCompletedAt}` : '-';
+        const row = `<tr data-ic="${p.noIC}">
+          <td>${p.nama}</td><td>${p.noIC}</td><td>${msisdn}</td><td>${pdpaHTML}</td>
+          <td>${p.tarikhDaftar||'-'}</td>
+          <td>${p.firstVisitDate||'-'}</td>
+          <td>${labCompleted}</td>
+          <td>${p.secondVisitDate||'-'}</td>
+          <td>${p.tarikhSelesai||'-'}</td>
+          <td><button class="btn btn-sm btn-outline-secondary" onclick="archivePatient('${p.noIC}')"><i class="fa-solid fa-box-archive"></i> Arkib</button></td>
+        </tr>`;
+        tbody.insertAdjacentHTML('beforeend', row);
+      });
+    } else {
+      tbody.innerHTML = `<tr><td colspan="10" class="text-center text-muted">Tiada data pesakit selesai</td></tr>`;
+    }
+  }catch(e){ /* senyap */ }
+}
+
+async function loadArchivedData(){
+  try{
+    const data = await getJSON({ action:'getArchived' }, { msg:'Memuat Arkib…' });
+    const tbody = document.getElementById('archiveTable');
+    tbody.innerHTML = '';
+    if (data.status==='success' && data.data.length>0){
+      data.data.forEach(p=>{
+        const msisdn = normalizeMsisdnMY(p.noTelefon||'');
+        const row = `<tr data-ic="${p.noIC}">
+          <td>${p.nama}</td><td>${p.noIC}</td><td>${msisdn}</td><td>${p.tarikhDaftar}</td><td>${p.tarikhSelesai}</td><td>${p.archivedAt||'-'}</td>
+          <td><button class="btn btn-sm btn-outline-primary" onclick="restorePatient('${p.noIC}')"><i class="fa-solid fa-rotate-left"></i> Pulihkan</button></td>
+        </tr>`;
+        tbody.insertAdjacentHTML('beforeend', row);
+      });
+    } else {
+      tbody.innerHTML = `<tr><td colspan="7" class="text-center text-muted">Tiada rekod arkib</td></tr>`;
+    }
+  }catch(e){ /* senyap */ }
+}
+
 /* =======================
-   Re-TCA & Second TCA
+   ACTIONS
 ======================= */
-function openRetca(noIC){
-  document.getElementById('retcaIC').value = noIC||'';
+async function markFirstVisit(noIC){
+  try{
+    const res = await postForm({ action:'updateStatus', op:'firstVisit', noIC, staff: STAFF_EMAIL }, { msg:'Merekod Hadir (First Visit)…' });
+    if (res.status==='success'){
+      toast('Berjaya','Hadir (First Visit) direkodkan. Sila muat naik PDPA.', 'success');
+      openPDPA(noIC);
+      loadFirstVisitData(); loadLabFollowUp(); loadSecondVisitData(); loadDashboardData();
+    } else throw new Error(res.message||'Gagal rekod hadir');
+  }catch(e){ toast('Ralat', e.message, 'danger'); }
+}
+async function markSecondVisitHadir(noIC){
+  try{
+    const res = await postForm({ action:'updateStatus', op:'secondVisitHadir', noIC, staff: STAFF_EMAIL }, { msg:'Menandakan Hadir (Second Visit)…' });
+    if (res.status==='success'){
+      toast('Berjaya','Second Visit selesai → Selesai','success');
+      loadSecondVisitData(); loadCompletedData(); loadDashboardData();
+    } else throw new Error(res.message||'Gagal menandakan hadir');
+  }catch(e){ toast('Ralat', e.message, 'danger'); }
+}
+
+function openRetcaModal(noIC){
+  document.getElementById('retcaIC').value = noIC;
   document.getElementById('retcaDate').value = '';
   document.getElementById('retcaTime').value = '';
   retcaModal.show();
 }
 async function submitRetca(){
-  const ic = (document.getElementById('retcaIC').value||'').trim();
-  const date = document.getElementById('retcaDate').value;
-  const time = document.getElementById('retcaTime').value;
-  if (!ic || !date || !time){ toast('Ralat','Lengkapkan tarikh & masa.','danger'); return; }
+  const noIC = document.getElementById('retcaIC').value;
+  const tarikhTCA = document.getElementById('retcaDate').value;
+  const masaTCA = document.getElementById('retcaTime').value;
+  if (!noIC || !tarikhTCA || !masaTCA) return toast('Ralat','Sila lengkapkan tarikh & masa','danger');
   try{
-    const r = await postForm({ action:'retcaTCA', noIC:ic, tarikhTCA:date, masaTCA:time }, { msg:'Menyimpan Re-TCA…' });
-    if (r.status==='success'){
-      toast('Berjaya','Re-TCA disimpan & status ditukar ke TCA CALL.','success');
+    const res = await postForm({ action:'updateStatus', op:'retca', noIC, tarikhTCA, masaTCA, staff: STAFF_EMAIL }, { msg:'Mendaftar TCA semula…' });
+    if (res.status==='success'){
       retcaModal.hide();
-      loadTCACallData(); loadTCACallPage(); refreshLogs();
-    }else throw new Error(r.message||'Gagal simpan');
+      toast('Berjaya','TCA baharu disimpan','success');
+      loadTCACallData(); loadFirstVisitData(); loadSecondVisitData(); loadDashboardData();
+    } else throw new Error(res.message||'Gagal kemaskini TCA');
   }catch(e){ toast('Ralat', e.message, 'danger'); }
 }
 
+/* Lab complete → set second TCA + log caller + set Lab DONE */
 function openSecondTca(noIC){
-  document.getElementById('secondTcaIC').value = noIC||'';
+  document.getElementById('secondTcaIC').value = noIC;
   document.getElementById('secondTcaDate').value = '';
   document.getElementById('secondTcaTime').value = '';
   document.getElementById('secondTcaStaff').value = '';
   secondTcaModal.show();
 }
 async function submitSecondTca(){
-  const ic    = (document.getElementById('secondTcaIC').value||'').trim();
-  const date  = document.getElementById('secondTcaDate').value;
-  const time  = document.getElementById('secondTcaTime').value;
-  const staff = (document.getElementById('secondTcaStaff').value||'').trim();
-  if (!ic || !date || !time || !staff){ toast('Ralat','Lengkapkan semua medan.','danger'); return; }
+  const noIC = document.getElementById('secondTcaIC').value;
+  const date = document.getElementById('secondTcaDate').value;
+  const time = document.getElementById('secondTcaTime').value;
+  const staff= document.getElementById('secondTcaStaff').value.trim();
+  if (!date || !time || !staff) { toast('Ralat','Sila isi tarikh, masa & nama staff','danger'); return; }
   try{
-    const r = await postForm({
-      action:'setSecondTCA', noIC:ic, tarikhTCA:date, masaTCA:time, namaStaff:staff
-    }, { msg:'Menyimpan Second TCA…' });
-    if (r.status==='success'){
-      toast('Berjaya','Second TCA ditetapkan.','success');
-      secondTcaModal.hide();
-      loadLabFollowUp(); loadSecondVisitData(); refreshLogs();
-    }else throw new Error(r.message||'Gagal simpan');
+    const a = await postForm({ action:'updatePatient', noIC, tarikhTCA:date, masaTCA:time, staff }, { msg:'Menetapkan TCA Second Visit…' });
+    if (a.status!=='success') throw new Error(a.message||'Gagal tetapkan TCA');
+
+    const b = await postForm({ action:'logCall', noIC, staff, event:'LAB_COMPLETE_CALL' }, { msg:'Merekod log panggilan…' });
+    if (b.status!=='success') throw new Error(b.message||'Gagal rekod log');
+
+    const c = await postForm({ action:'updateLabStatus', noIC, status:'DONE', staff }, { msg:'Mengemas kini status follow-up…' });
+    if (c.status!=='success') throw new Error(c.message||'Gagal set follow-up DONE');
+
+    secondTcaModal.hide();
+    toast('Berjaya','TCA Second Visit ditetapkan, log disimpan & lab ditanda Selesai','success');
+
+    loadLabFollowUp(); loadSecondVisitData(); loadCompletedData(); loadDashboardData();
+    refreshLogs({silent:true});
+  }catch(e){ toast('Ralat', e.message, 'danger'); }
+}
+
+function openPDPA(noIC){
+  document.getElementById('pdpaIC').value = noIC;
+  document.getElementById('pdpaFile').value = '';
+  pdpaModal.show();
+}
+async function uploadPDPA(){
+  const noIC = document.getElementById('pdpaIC').value;
+  const file = document.getElementById('pdpaFile').files[0];
+  if (!file) { toast('Ralat','Sila pilih fail PDPA','danger'); return; }
+
+  showLoader('Memuat naik PDPA…');
+  try{
+    const base64 = await fileToBase64(file); const pure64 = base64.split(',').pop();
+    const res = await fetch(SCRIPT_URL, {
+      method: 'POST',
+      headers: { 'Content-Type':'application/x-www-form-urlencoded' },
+      body: new URLSearchParams({
+        action: 'uploadPDPA', id_token: ID_TOKEN, noIC, staff: STAFF_EMAIL,
+        fileBase64: pure64, fileName: file.name, fileType: file.type || 'application/octet-stream'
+      })
+    });
+    const json = await res.json();
+    if (json.status === 'success'){
+      pdpaModal.hide();
+      toast('Berjaya','PDPA dimuat naik','success');
+      loadFirstVisitData(); loadSecondVisitData(); loadCompletedData();
+    } else { throw new Error(json.message || 'Gagal muat naik PDPA'); }
+  } catch(e){
+    toast('Ralat', e.message, 'danger');
+  } finally { hideLoader(); }
+}
+function fileToBase64(file){
+  return new Promise((resolve, reject)=>{
+    const fr = new FileReader();
+    fr.onload = () => resolve(fr.result);
+    fr.onerror = reject;
+    fr.readAsDataURL(file);
+  });
+}
+
+async function deletePDPA(noIC){
+  if (!confirm('Padam PDPA untuk pesakit ini?')) return;
+  try{
+    const res = await postForm({ action:'deletePDPA', noIC, staff: STAFF_EMAIL }, { msg:'Memadam PDPA…' });
+    if (res.status==='success'){
+      toast('Berjaya','PDPA dipadam.','success');
+      loadFirstVisitData(); loadSecondVisitData(); loadCompletedData();
+    } else throw new Error(res.message||'Gagal padam PDPA');
+  }catch(e){ toast('Ralat', e.message, 'danger'); }
+}
+
+async function archivePatient(noIC){
+  if (!confirm('Arkibkan rekod pesakit ini?')) return;
+  try{
+    const res = await postForm({ action:'archivePatient', noIC, staff: STAFF_EMAIL }, { msg:'Mengarkib rekod…' });
+    if (res.status==='success'){
+      toast('Arkib','Rekod telah diarkibkan','success');
+      loadCompletedData();
+    } else throw new Error(res.message||'Gagal arkib');
+  }catch(e){ toast('Ralat', e.message, 'danger'); }
+}
+async function restorePatient(noIC){
+  if (!confirm('Pulihkan rekod ini ke senarai utama?')) return;
+  try{
+    const res = await postForm({ action:'restorePatient', noIC, staff: STAFF_EMAIL }, { msg:'Memulihkan rekod…' });
+    if (res.status==='success'){
+      toast('Pulih','Rekod telah dipulihkan','success');
+      loadArchivedData(); loadCompletedData(); loadDashboardData();
+    } else throw new Error(res.message||'Gagal pulih');
   }catch(e){ toast('Ralat', e.message, 'danger'); }
 }
 
 /* =======================
-   Arkib / Pulih
+   PENDAFTARAN & EXPORT
 ======================= */
-async function archiveRecord(noIC){
-  if (!noIC) return;
+async function daftarPesakit(){
+  const formData = {
+    action:'daftarPesakit',
+    namaPesakit: document.getElementById('namaPesakit').value.trim(),
+    noIC:        document.getElementById('noIC').value.trim(),
+    noTelefon:   normalizeMsisdnMY(document.getElementById('noTelefon').value.trim()),
+    namaStaff:   document.getElementById('namaStaff').value.trim() || STAFF_EMAIL || 'SYSTEM',
+    tarikhTCA:   document.getElementById('tarikhTCA').value,
+    masaTCA:     document.getElementById('masaTCA').value
+  };
+  if (!formData.namaPesakit || !formData.noIC || !formData.noTelefon || !formData.namaStaff || !formData.tarikhTCA || !formData.masaTCA){
+    toast('Ralat','Sila isi semua maklumat','danger'); return;
+  }
   try{
-    const r = await postForm({ action:'archiveRecord', noIC }, { msg:'Mengarkib rekod…' });
-    if (r.status==='success'){
-      toast('Berjaya','Rekod dipindah ke Arkib.','success');
-      loadCompletedData(); loadArchivedData();
-    }else throw new Error(r.message||'Gagal arkib');
+    const result = await postForm(formData, { msg:'Mendaftar pesakit…' });
+    if (result.status==='success'){
+      toast('Berjaya','Pendaftaran berjaya (IC sebagai kunci, tiada duplikasi)','success');
+      document.getElementById('formPendaftaran').reset();
+      loadDashboardData(); loadTCACallData();
+    } else throw new Error(result.message||'Gagal mendaftar');
   }catch(e){ toast('Ralat', e.message, 'danger'); }
 }
-async function unarchiveRecord(noIC){
-  if (!noIC) return;
+
+async function exportCompletedCSV(){
   try{
-    const r = await postForm({ action:'unarchiveRecord', noIC }, { msg:'Memulihkan rekod…' });
-    if (r.status==='success'){
-      toast('Berjaya','Rekod dipulihkan.','success');
-      loadArchivedData(); loadCompletedData();
-    }else throw new Error(r.message||'Gagal pulih');
+    const data = await getJSON({ action:'getCompleted' }, { msg:'Menjana CSV…' });
+    if (data.status!=='success' || !data.data.length) {
+      toast('Makluman','Tiada data untuk diexport','warning'); return;
+    }
+    const header = ['Nama','NoIC','Telefon','TarikhDaftar','FirstVisit','LabCompleted','SecondVisit','TarikhSelesai'];
+    const rows = data.data.map(x=>[
+      x.nama, x.noIC, normalizeMsisdnMY(x.noTelefon||''), x.tarikhDaftar, x.firstVisitDate||'', x.labCompletedAt||'', x.secondVisitDate||'', x.tarikhSelesai
+    ]);
+    const csv = [header, ...rows].map(r=>r.map(v=>`"${String(v||'').replace(/"/g,'""')}"`).join(',')).join('\r\n');
+    const blob = new Blob([csv], { type:'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url; a.download = `pesakit_selesai_${new Date().toISOString().slice(0,10)}.csv`;
+    document.body.appendChild(a); a.click(); a.remove(); URL.revokeObjectURL(url);
+    toast('Export','Fail CSV telah dimuat turun','success');
   }catch(e){ toast('Ralat', e.message, 'danger'); }
 }
 
 /* =======================
-   Daftar plugin Chart.js
+   STARTUP
 ======================= */
-if (window.Chart && window.ChartDataLabels){
-  try{ Chart.register(ChartDataLabels); }catch(_){}
-}
-
-/* =======================
-   MULAKAN SIGN-IN
-======================= */
-window.addEventListener('load', initGoogleSignIn);
+document.addEventListener('DOMContentLoaded', ()=>{
+  initGoogleSignIn();
+});
 </script>
 </body>
 </html>
