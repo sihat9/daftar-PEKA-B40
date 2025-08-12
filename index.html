@@ -122,7 +122,20 @@ body{font-family:'Segoe UI',Tahoma,Geneva,Verdana,sans-serif;background:#f5f7fa;
 #toastHost .toast{ pointer-events:auto; }
 
 /* NADI grid input – auto-expand terkawal, TAK potong teks */
-.nadi-input{ min-width:140px; width:auto; max-width:360px; }
+.nadi-input{ 
+  min-width: 100px; 
+  width: auto; 
+  max-width: 300px;
+  border: none;
+  outline: none;
+  padding: 0.25rem 0.5rem;
+  background: transparent;
+  font-size: 0.875rem;
+}
+.nadi-input:focus {
+  background: rgba(52, 152, 219, 0.1);
+  border-radius: 4px;
+}
 .nadi-long{ min-width:200px; max-width:520px; }
 .nadi-row{
   display:grid;
@@ -141,20 +154,21 @@ body{font-family:'Segoe UI',Tahoma,Geneva,Verdana,sans-serif;background:#f5f7fa;
   .stat-card .number{font-size:1.3rem}
 }
 
-/* NADI Table Styles */
+/* NADI Table Styles - UPDATED */
 .nadi-table-container {
   overflow-x: auto;
   margin-bottom: 1rem;
   border-radius: 8px;
   border: 1px solid rgba(0,0,0,0.1);
+  background: white;
 }
 
 .nadi-table {
   width: 100%;
-  min-width: 1200px;
+  min-width: 1600px;
   border-collapse: separate;
   border-spacing: 0;
-  background: white;
+  table-layout: auto;
 }
 
 .nadi-table th {
@@ -166,12 +180,15 @@ body{font-family:'Segoe UI',Tahoma,Geneva,Verdana,sans-serif;background:#f5f7fa;
   font-size: 0.85rem;
   padding: 8px 12px;
   border-bottom: 2px solid #dee2e6;
+  white-space: nowrap;
 }
 
 .nadi-table td {
-  padding: 8px 12px;
+  padding: 4px 8px;
   border-bottom: 1px solid #dee2e6;
   vertical-align: middle;
+  height: 42px;
+  position: relative;
 }
 
 .nadi-table tr:last-child td {
@@ -218,6 +235,42 @@ body{font-family:'Segoe UI',Tahoma,Geneva,Verdana,sans-serif;background:#f5f7fa;
 
 .nadi-table .bmi-field {
   min-width: 80px;
+}
+
+/* Auto-grow input wrapper */
+.input-grow-wrapper {
+  position: relative;
+  display: inline-block;
+  min-width: 100px;
+}
+
+.input-grow-wrapper .input-mirror {
+  visibility: hidden;
+  white-space: pre;
+  padding: 0.25rem 0.5rem;
+  font-size: 0.875rem;
+  min-width: 20px;
+  display: inline-block;
+}
+
+.input-grow-wrapper input {
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: 100%;
+  min-width: 100px;
+}
+
+/* WhatsApp button highlight */
+.nadi-wa {
+  background-color: #25D366 !important;
+  color: white !important;
+  border-color: #25D366 !important;
+}
+
+.nadi-wa:hover {
+  background-color: #128C7E !important;
+  border-color: #128C7E !important;
 }
 </style>
 </head>
@@ -1108,6 +1161,37 @@ function setupNADI(){
   document.getElementById('btnAddNadiRow').addEventListener('click', addNadiRow);
 }
 
+// Function to create auto-growing input fields
+function createAutoGrowInput(placeholder = '', initialWidth = 100) {
+  const wrapper = document.createElement('div');
+  wrapper.className = 'input-grow-wrapper';
+  
+  const mirror = document.createElement('span');
+  mirror.className = 'input-mirror';
+  mirror.textContent = placeholder || ' ';
+  
+  const input = document.createElement('input');
+  input.type = 'text';
+  input.className = 'form-control form-control-sm nadi-input';
+  input.placeholder = placeholder;
+  input.style.minWidth = initialWidth + 'px';
+  
+  // Update mirror text and adjust width
+  function updateSize() {
+    mirror.textContent = input.value || placeholder || ' ';
+    const width = Math.max(mirror.scrollWidth, initialWidth);
+    input.style.width = width + 'px';
+  }
+  
+  input.addEventListener('input', updateSize);
+  input.addEventListener('focus', updateSize);
+  
+  wrapper.appendChild(mirror);
+  wrapper.appendChild(input);
+  
+  return { wrapper, input };
+}
+
 function addNadiRow(){
   const tbody = document.getElementById('nadiTableBody');
   const id = 'n'+Date.now()+Math.random().toString(36).slice(2,6);
@@ -1117,50 +1201,38 @@ function addNadiRow(){
   
   // Nama
   const namaCell = document.createElement('td');
-  const namaInput = document.createElement('input');
-  namaInput.className = 'form-control form-control-sm';
-  namaInput.placeholder = 'Nama pesakit';
-  namaCell.appendChild(namaInput);
+  const { wrapper: namaWrapper, input: namaInput } = createAutoGrowInput('Nama pesakit', 120);
+  namaCell.appendChild(namaWrapper);
   row.appendChild(namaCell);
   
   // IC
   const icCell = document.createElement('td');
-  const icInput = document.createElement('input');
-  icInput.className = 'form-control form-control-sm';
-  icInput.placeholder = 'No IC';
-  icCell.appendChild(icInput);
+  const { wrapper: icWrapper, input: icInput } = createAutoGrowInput('No IC', 100);
+  icCell.appendChild(icWrapper);
   row.appendChild(icCell);
   
   // Telefon
   const telCell = document.createElement('td');
-  const telInput = document.createElement('input');
-  telInput.className = 'form-control form-control-sm';
-  telInput.placeholder = 'No Telefon';
-  telCell.appendChild(telInput);
+  const { wrapper: telWrapper, input: telInput } = createAutoGrowInput('No Telefon', 100);
+  telCell.appendChild(telWrapper);
   row.appendChild(telCell);
   
   // Alamat
   const alamatCell = document.createElement('td');
-  const alamatInput = document.createElement('input');
-  alamatInput.className = 'form-control form-control-sm';
-  alamatInput.placeholder = 'Alamat';
-  alamatCell.appendChild(alamatInput);
+  const { wrapper: alamatWrapper, input: alamatInput } = createAutoGrowInput('Alamat', 150);
+  alamatCell.appendChild(alamatWrapper);
   row.appendChild(alamatCell);
   
   // BP
   const bpCell = document.createElement('td');
-  const bpInput = document.createElement('input');
-  bpInput.className = 'form-control form-control-sm';
-  bpInput.placeholder = 'BP (cth: 120/80)';
-  bpCell.appendChild(bpInput);
+  const { wrapper: bpWrapper, input: bpInput } = createAutoGrowInput('BP (cth: 120/80)', 90);
+  bpCell.appendChild(bpWrapper);
   row.appendChild(bpCell);
   
   // PR
   const prCell = document.createElement('td');
-  const prInput = document.createElement('input');
-  prInput.className = 'form-control form-control-sm';
-  prInput.placeholder = 'PR (degupan/min)';
-  prCell.appendChild(prInput);
+  const { wrapper: prWrapper, input: prInput } = createAutoGrowInput('PR (degupan/min)', 90);
+  prCell.appendChild(prWrapper);
   row.appendChild(prCell);
   
   // DXT
@@ -1195,9 +1267,7 @@ function addNadiRow(){
   randomItem.appendChild(randomLink);
   dxtTypeMenu.appendChild(randomItem);
   
-  const dxtInput = document.createElement('input');
-  dxtInput.className = 'form-control';
-  dxtInput.placeholder = 'DXT (mmol/L)';
+  const { wrapper: dxtWrapper, input: dxtInput } = createAutoGrowInput('DXT (mmol/L)', 90);
   
   const dxtTypeHidden = document.createElement('input');
   dxtTypeHidden.type = 'hidden';
@@ -1206,25 +1276,21 @@ function addNadiRow(){
   
   dxtGroup.appendChild(dxtTypeBtn);
   dxtGroup.appendChild(dxtTypeMenu);
-  dxtGroup.appendChild(dxtInput);
+  dxtGroup.appendChild(dxtWrapper);
   dxtGroup.appendChild(dxtTypeHidden);
   dxtCell.appendChild(dxtGroup);
   row.appendChild(dxtCell);
   
   // Tinggi
   const tinggiCell = document.createElement('td');
-  const tinggiInput = document.createElement('input');
-  tinggiInput.className = 'form-control form-control-sm';
-  tinggiInput.placeholder = 'Tinggi (cm)';
-  tinggiCell.appendChild(tinggiInput);
+  const { wrapper: tinggiWrapper, input: tinggiInput } = createAutoGrowInput('Tinggi (cm)', 80);
+  tinggiCell.appendChild(tinggiWrapper);
   row.appendChild(tinggiCell);
   
   // Berat
   const beratCell = document.createElement('td');
-  const beratInput = document.createElement('input');
-  beratInput.className = 'form-control form-control-sm';
-  beratInput.placeholder = 'Berat (kg)';
-  beratCell.appendChild(beratInput);
+  const { wrapper: beratWrapper, input: beratInput } = createAutoGrowInput('Berat (kg)', 80);
+  beratCell.appendChild(beratWrapper);
   row.appendChild(beratCell);
   
   // BMI
@@ -1418,7 +1484,7 @@ function addNadiRow(){
     }
   });
   
-  // WhatsApp button
+  // WhatsApp button - UPDATED to send report directly
   waBtn.addEventListener('click', async () => {
     try {
       const data = {
@@ -1436,31 +1502,30 @@ function addNadiRow(){
         layak: layakInput.checked
       };
       
+      if (!data.tel) {
+        toast('Ralat', 'Sila isi nombor telefon terlebih dahulu', 'danger');
+        return;
+      }
+      
       const file = await buildNadiReportImage(data);
       if (file) {
-        if (navigator.canShare && navigator.canShare({ files: [file] })) {
-          await navigator.share({
-            title: 'Laporan Saringan NADI',
-            text: `Laporan saringan untuk ${data.nama} (${data.ic}).`,
-            files: [file]
-          });
-        } else {
-          // fallback: auto download image + open WhatsApp with text summary
-          const a = document.createElement('a');
-          a.href = URL.createObjectURL(file);
-          a.download = `Laporan_NADI_${(data.nama || 'pesakit').replace(/\s+/g, '_')}.png`;
-          document.body.appendChild(a);
-          a.click();
-          a.remove();
-          
-          const ringkas = `Laporan Saringan NADI\nNama: ${data.nama}\nIC: ${data.ic}\nBP: ${data.bp}\nPR: ${data.pr}\nDXT (${data.dxtType}): ${data.dxt}\nTinggi: ${data.tinggi} cm\nBerat: ${data.berat} kg\nBMI: ${data.bmi}\nStatus: ${data.layak ? 'Layak PEKA B40' : 'Tidak Layak PEKA B40'}`;
-          
-          if (data.tel) {
-            window.open(waHref(data.tel, ringkas), '_blank');
-          } else {
-            toast('Makluman', 'Nombor telefon kosong. Imej telah dimuat turun.', 'warning');
-          }
-        }
+        // Create WhatsApp message with patient info
+        const message = `Laporan Saringan NADI\nNama: ${data.nama}\nIC: ${data.ic}\nBP: ${data.bp}\nPR: ${data.pr}\nDXT (${data.dxtType}): ${data.dxt}\nTinggi: ${data.tinggi} cm\nBerat: ${data.berat} kg\nBMI: ${data.bmi}\nStatus: ${data.layak ? 'Layak PEKA B40' : 'Tidak Layak PEKA B40'}`;
+        
+        // Create form data to send image
+        const formData = new FormData();
+        formData.append('phone', data.tel.startsWith('60') ? data.tel : '60' + data.tel.slice(1));
+        formData.append('caption', message);
+        formData.append('file', file);
+        
+        // Open WhatsApp Web with the image and message
+        const blobUrl = URL.createObjectURL(file);
+        const whatsappUrl = `https://web.whatsapp.com/send?phone=${data.tel.startsWith('60') ? data.tel : '60' + data.tel.slice(1)}&text=${encodeURIComponent(message)}`;
+        
+        // Try to open in new tab
+        window.open(whatsappUrl, '_blank');
+        
+        toast('Makluman', 'Sila buka WhatsApp Web untuk menghantar laporan', 'info');
       }
     } catch (e) {
       toast('Ralat', 'Gagal jana laporan: ' + e.message, 'danger');
