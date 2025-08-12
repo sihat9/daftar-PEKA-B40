@@ -1,581 +1,513 @@
 <!DOCTYPE html>
 <html lang="ms">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Program PEKA B40 bersama NADI</title>
+
+  <!-- Bootstrap 5 (ringan & moden) -->
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+  <!-- Ikon -->
+  <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" rel="stylesheet">
+
   <style>
     :root{
-      --bg:#f7f9fc;
-      --card:#ffffff;
-      --text:#1c2434;
-      --muted:#9096a2;
-      --primary:#2c7be5;
-      --primary-600:#2266c7;
-      --success:#00b884;
-      --warning:#f6a609;
-      --danger:#e44d4d;
-      --border:#e6e9ef;
-      --row:#fbfcfe;
-      --row-alt:#f0f4fa;
-      --focus:#b7d2ff;
-      --shadow:0 6px 16px rgba(28,36,52,.08);
+      --brand:#106ebe;
+      --brand-2:#0b5ed7;
+      --soft:#f7f9fb;
+      --line:#e9eef3;
     }
-
-    *{box-sizing:border-box}
-    html,body{height:100%}
-    body{
-      margin:0;
-      font-family:system-ui,-apple-system,Segoe UI,Roboto,Ubuntu,Cantarell,"Helvetica Neue",Arial,"Noto Sans","Apple Color Emoji","Segoe UI Emoji";
-      background:var(--bg);
-      color:var(--text);
-      line-height:1.45;
+    body{background:#ffffff;color:#111}
+    .app-bar{
+      position:sticky; top:0; z-index:1000; background:#fff; border-bottom:1px solid var(--line);
     }
-
-    .container{
-      max-width:1200px;
-      margin:0 auto;
-      padding:16px;
+    .app-bar .left-actions .btn{margin-right:.5rem}
+    .section-title{
+      font-weight:700; font-size:1.1rem; margin:0;
     }
-
-    header{
-      position:sticky; top:0; z-index:50;
-      background:linear-gradient(180deg, #ffffff 0%, #ffffffee 60%, #ffffffcc 100%);
-      border-bottom:1px solid var(--border);
-      backdrop-filter:saturate(180%) blur(8px);
-    }
-    .header-inner{
-      max-width:1200px; margin:0 auto; padding:14px 16px; display:flex; align-items:center; gap:14px;
-    }
-    .brand{
-      font-weight:700; letter-spacing:.3px; font-size:18px; color:var(--primary);
-    }
-    .subtitle{color:var(--muted); font-size:13px}
-
-    .card{
-      background:var(--card);
-      border:1px solid var(--border);
-      border-radius:14px;
-      box-shadow:var(--shadow);
-      overflow:hidden;
-    }
-
-    .toolbar{
-      position:sticky; top:66px; z-index:40;
-      display:flex; align-items:center; gap:8px; flex-wrap:wrap;
-      padding:12px; background:#fff; border-bottom:1px solid var(--border);
-    }
-
-    .toolbar .spacer{flex:1}
-    .btn{
-      display:inline-flex; align-items:center; gap:8px;
-      height:38px; padding:0 14px; border-radius:10px;
-      border:1px solid var(--border); background:#fff; color:var(--text);
-      cursor:pointer; transition:.15s ease; user-select:none; font-size:14px;
-    }
-    .btn:focus{outline:3px solid var(--focus); outline-offset:1px}
-    .btn:hover{transform:translateY(-1px); box-shadow:0 3px 10px rgba(0,0,0,.05)}
-    .btn-primary{background:var(--primary); border-color:var(--primary); color:#fff}
-    .btn-primary:hover{background:var(--primary-600)}
-    .btn-success{background:var(--success); border-color:var(--success); color:#fff}
-    .btn-warning{background:var(--warning); border-color:var(--warning); color:#1a1a1a}
-    .btn-danger{background:var(--danger); border-color:var(--danger); color:#fff}
-    .btn-ghost{background:#fff; color:var(--text)}
-
-    .hint{color:var(--muted); font-size:12px; margin-left:6px}
-
-    .content{padding:12px}
-
+    .toolbar-note{font-size:.85rem;color:#6c757d}
     .table-wrap{
-      overflow:auto; border-top:1px solid var(--border);
+      background:#fff; border:1px solid var(--line); border-radius:.75rem; overflow:hidden;
     }
-
-    table{width:100%; border-collapse:separate; border-spacing:0}
-    thead th{
-      position:sticky; top:0; z-index:10;
-      background:#fff; color:#334155; font-weight:600; font-size:13px;
-      text-align:left; padding:10px 8px; border-bottom:1px solid var(--border);
-      white-space:nowrap;
+    .table thead th{
+      position:sticky; top:58px; /* tinggi app-bar */
+      background:#fff; z-index:5; border-bottom:1px solid var(--line);
+      font-weight:600;
     }
-    tbody td{
-      padding:6px 8px; border-bottom:1px solid var(--border);
-      background:var(--row);
+    .table tbody tr{border-bottom:1px solid var(--line)}
+    .table td, .table th{vertical-align:middle}
+    .table input, .table select, .table textarea{
+      width:100%; border:1px solid #dee2e6; border-radius:.375rem; padding:.375rem .5rem; font-size:.95rem;
     }
-    tbody tr:nth-child(even) td{background:var(--row-alt)}
-    tfoot td{padding:10px 8px; color:var(--muted); font-size:12px}
-
-    .cell{
-      display:flex; align-items:center;
-      background:#fff; border:1px solid var(--border);
-      border-radius:8px; padding:4px 8px;
-    }
-    .cell:focus-within{border-color:var(--primary); box-shadow:0 0 0 3px #2c7be52a}
-    .cell input,.cell select,.cell textarea{
-      width:100%; border:0; outline:0; background:transparent; font:inherit; color:inherit;
-    }
-    .cell input[type="date"]{text-align:center}
-    .cell textarea{resize:vertical; min-height:36px; max-height:120px}
-    .num, .center{text-align:center}
-    .col-bil{width:54px}
-    .col-nama{min-width:220px}
-    .col-ic{min-width:170px}
-    .col-phone{min-width:150px}
-    .col-syarikat{min-width:200px}
-    .col-tarikh{min-width:150px}
-    .col-ujian{min-width:180px}
-    .col-keputusan{min-width:140px}
-    .col-catatan{min-width:220px}
-    .col-aksi{width:80px}
-
-    .badge{
-      display:inline-flex; align-items:center; gap:6px;
-      height:24px; padding:0 10px; border-radius:999px; font-size:12px;
-      background:#eef2ff; color:#3949ab; border:1px solid #e0e7ff;
-    }
-
-    .footer-note{color:var(--muted); font-size:12px; padding:12px}
+    .table textarea{height:38px; resize:vertical; min-height:38px}
+    .row-actions .btn{padding:.3rem .5rem}
+    .compact .table td{padding:.4rem .5rem}
     .sticky-footer{
-      position:sticky; bottom:0; background:#fff; border-top:1px solid var(--border);
-      display:flex; align-items:center; justify-content:space-between; gap:10px; padding:10px 12px;
+      position:sticky; bottom:0; background:linear-gradient(180deg, rgba(255,255,255,0) 0%, #fff 35%);
+      padding-top:.5rem;
     }
-
-    @media (max-width: 720px){
-      .toolbar{top:60px}
-      .btn{height:36px; padding:0 12px; font-size:13px}
-      .col-syarikat{min-width:160px}
-      .col-catatan{min-width:180px}
+    .badge-dot{
+      display:inline-flex; align-items:center; gap:.4rem; font-size:.8rem
     }
+    .badge-dot i{font-size:.55rem}
+    .form-chip{
+      background:var(--soft); border:1px solid var(--line); border-radius:.5rem; padding:.35rem .5rem; font-size:.85rem
+    }
+    .search-area input{max-width:280px}
+    .whatsapp-preview{
+      background:#f8fff9; border:1px dashed #cfe9d9; border-radius:.5rem; padding:.75rem; font-family:ui-monospace, Menlo, Consolas;
+      white-space:pre-wrap; max-height:240px; overflow:auto
+    }
+    /* Fokus jelas untuk kegunaan lama */
+    :focus{outline:2px solid rgba(16,110,190,.35); outline-offset:2px}
   </style>
 </head>
-<body>
-  <header>
-    <div class="header-inner">
-      <div class="brand">Program PEKA B40 bersama NADI</div>
-      <div class="subtitle">Reka bentuk padat, pantas diisi & sesuai untuk penggunaan lama seharian</div>
-    </div>
-  </header>
+<body class="compact">
 
-  <main class="container">
-    <section class="card" id="page-peka-b40">
-      <!-- Toolbar: “Tambah Baris” di SEBELAH KIRI “Transfer fail kepada excell (CSV)” -->
-      <div class="toolbar" role="toolbar" aria-label="Kawalan Jadual">
-        <button id="btnAddRow" class="btn btn-primary" title="Tambah satu baris kosong (Enter di sel terakhir juga akan tambah baris)">
-          ➕ Tambah Baris
-        </button>
-
-        <button id="btnExportCsv" class="btn btn-success" title="Muat turun data jadual dalam format CSV untuk Excel">
-          ⬇️ Transfer fail kepada excell (CSV)
-        </button>
-
-        <button id="btnWhatsapp" class="btn btn-warning" title="Buka WhatsApp Web dengan mesej ringkasan yang telah diprafill">
-          🟢 Hantar laporan melalui WhatsApp Web
-        </button>
-
-        <div class="spacer"></div>
-
-        <button id="btnClear" class="btn btn-danger" title="Kosongkan semua baris (data juga dibersihkan daripada simpanan automatik)">
-          🗑️ Kosongkan Jadual
-        </button>
-        <span class="hint">Auto-simpan diaktifkan • Tekan <b>Tab</b> untuk bergerak lajur, <b>Enter</b> di sel terakhir untuk tambah baris</span>
-      </div>
-
-      <div class="content">
-        <div class="table-wrap">
-          <table id="tblPekaB40">
-            <thead>
-              <tr>
-                <th class="col-bil center">Bil</th>
-                <th class="col-nama">Nama Peserta</th>
-                <th class="col-ic">IC / Passport</th>
-                <th class="col-phone">No. Telefon</th>
-                <th class="col-syarikat">Syarikat / Lokasi</th>
-                <th class="col-tarikh center">Tarikh</th>
-                <th class="col-ujian">Pemeriksaan</th>
-                <th class="col-keputusan center">Keputusan</th>
-                <th class="col-catatan">Catatan</th>
-                <th class="col-aksi center">Aksi</th>
-              </tr>
-            </thead>
-            <tbody id="tblBody">
-              <!-- baris dinamik -->
-            </tbody>
-            <tfoot>
-              <tr><td colspan="10">
-                <span class="badge" id="badgeCount">0 rekod</span>
-                <span class="hint">— Reka letak kolum dioptimumkan untuk input pantas & bacaan jelas sepanjang hari.</span>
-              </td></tr>
-            </tfoot>
-          </table>
+  <!-- App Bar / Toolbar Atas -->
+  <div class="app-bar">
+    <div class="container py-2">
+      <div class="d-flex align-items-center justify-content-between flex-wrap gap-2">
+        <div class="left-actions d-flex align-items-center gap-2">
+          <h1 class="section-title me-2">Program <span class="text-primary">PEKA B40</span> bersama NADI</h1>
+          <span class="form-chip"><i class="fa-regular fa-clock me-1"></i>
+            <span id="autosaveStatus">Autosave aktif</span>
+          </span>
         </div>
-
-        <div class="sticky-footer">
-          <div class="hint">Nota: Fail CSV sesuai dibuka dengan Microsoft Excel / Google Sheets.</div>
-          <div>
-            <button id="btnAddRowFooter" class="btn btn-primary">➕ Tambah Baris</button>
-            <button id="btnExportCsvFooter" class="btn btn-success">⬇️ Transfer fail kepada excell (CSV)</button>
+        <div class="d-flex align-items-center gap-2 flex-wrap">
+          <!-- Carian & Saring -->
+          <div class="search-area d-flex align-items-center gap-2">
+            <input id="searchInput" type="search" class="form-control" placeholder="Cari nama / IC / telefon...">
+            <select id="filterCompany" class="form-select">
+              <option value="">Semua Syarikat</option>
+            </select>
+            <input id="filterDate" type="date" class="form-control" />
+          </div>
+          <div class="toolbar-note d-none d-md-inline">
+            <span class="badge-dot"><i class="fa-solid fa-circle"></i> Tekan <strong>Tab</strong> untuk berpindah sel</span>
           </div>
         </div>
       </div>
-    </section>
 
-    <p class="footer-note">
-      Tip: Untuk mesej WhatsApp Web, sistem akan cipta ringkasan (jumlah & senarai peserta). Fail CSV perlu dilampirkan secara manual selepas WhatsApp Web dibuka (had keselamatan pelayar tidak benarkan lampiran automatik).
-    </p>
-  </main>
+      <!-- Baris Aksi (Ikut versi 2.5.0: Tambah Baris di sebelah kiri, Export CSV di kanan) -->
+      <div class="d-flex align-items-center justify-content-between mt-2">
+        <div>
+          <button id="addRowBtn" class="btn btn-success">
+            <i class="fa-solid fa-plus"></i> Tambah Baris
+          </button>
+        </div>
+        <div class="d-flex align-items-center gap-2">
+          <button id="exportCsvBtn" class="btn btn-outline-primary">
+            <i class="fa-solid fa-file-export"></i> Transfer fail kepada Excel (CSV)
+          </button>
+          <button id="whatsAppBtn" class="btn btn-success">
+            <i class="fa-brands fa-whatsapp"></i> Hantar report (WhatsApp Web)
+          </button>
+          <button id="clearAllBtn" class="btn btn-outline-danger">
+            <i class="fa-regular fa-trash-can"></i> Kosongkan (tempatan)
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Kandungan Utama -->
+  <div class="container my-3">
+    <div class="table-wrap p-2">
+      <div class="table-responsive">
+        <table id="dataTable" class="table align-middle mb-0">
+          <thead>
+            <tr>
+              <th style="width:48px">#</th>
+              <th style="min-width:120px">Tarikh</th>
+              <th style="min-width:220px">Nama Peserta</th>
+              <th style="min-width:170px">IC / Passport</th>
+              <th style="min-width:160px">No. Telefon</th>
+              <th style="min-width:200px">Syarikat</th>
+              <th style="min-width:180px">Jenis Saringan</th>
+              <th style="min-width:260px">Catatan</th>
+              <th style="width:120px" class="text-center">Tindakan</th>
+            </tr>
+          </thead>
+          <tbody id="tableBody">
+            <!-- Baris akan dijana melalui JS -->
+          </tbody>
+        </table>
+      </div>
+
+      <div class="sticky-footer text-end mt-2">
+        <small class="text-muted">
+          Data disimpan automatik di pelayar (local). Sesuai untuk operasi seharian tanpa internet.
+        </small>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal WhatsApp -->
+  <div class="modal fade" id="waModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-lg modal-dialog-scrollable">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title"><i class="fa-brands fa-whatsapp me-2"></i>Hantar Laporan melalui WhatsApp Web</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Tutup"></button>
+        </div>
+        <div class="modal-body">
+          <div class="row g-3">
+            <div class="col-md-4">
+              <label class="form-label">No. Telefon Penerima (pilihan)</label>
+              <input id="waPhone" type="tel" class="form-control" placeholder="Contoh: 60123456789">
+              <div class="form-text">Biarkan kosong jika mahu pilih kenalan dalam WhatsApp Web.</div>
+            </div>
+            <div class="col-md-8">
+              <label class="form-label">Tajuk / Header mesej</label>
+              <input id="waHeader" type="text" class="form-control" value="Laporan Ringkas Program PEKA B40 bersama NADI">
+            </div>
+            <div class="col-12">
+              <label class="form-label">Pratonton mesej</label>
+              <div id="waPreview" class="whatsapp-preview"></div>
+            </div>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button id="openWaBtn" class="btn btn-success">
+            <i class="fa-brands fa-whatsapp"></i> Buka WhatsApp Web & Hantar
+          </button>
+          <button class="btn btn-secondary" data-bs-dismiss="modal">Tutup</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Bootstrap JS -->
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
 
   <script>
-    // ========= Util asas =========
-    const $ = (q, el=document) => el.querySelector(q);
-    const $$ = (q, el=document) => Array.from(el.querySelectorAll(q));
+    /* =========================
+       Util
+       ========================= */
+    const LS_KEY = "pekaB40_nadi_table_v250";
+    const todayStr = () => new Date().toISOString().slice(0,10);
+    const el = id => document.getElementById(id);
 
-    const STORAGE_KEY = 'pekaB40Rows.v2_5_0';
-    const TODAY = (() => {
-      const d = new Date();
-      const yyyy = d.getFullYear();
-      const mm = String(d.getMonth()+1).padStart(2,'0');
-      const dd = String(d.getDate()).padStart(2,'0');
-      return `${yyyy}-${mm}-${dd}`; // untuk input type="date"
-    })();
+    // Data model asas
+    function newRowData(){
+      return {
+        date: todayStr(),
+        name: "",
+        ic: "",
+        phone: "",
+        company: "",
+        screening: "",
+        notes: ""
+      };
+    }
 
-    const HEADERS = [
-      'Bil',
-      'Nama Peserta',
-      'IC / Passport',
-      'No. Telefon',
-      'Syarikat / Lokasi',
-      'Tarikh',
-      'Pemeriksaan',
-      'Keputusan',
-      'Catatan'
-    ];
+    function sanitizePhone(p){
+      return (p||"").replace(/\D/g,"");
+    }
 
-    // ========= Jadual & baris =========
-    const tbody = $('#tblBody');
-    const badgeCount = $('#badgeCount');
+    // Auto-save status UI
+    let saveTimer;
+    function markSaved(){
+      el('autosaveStatus').textContent = "Disimpan";
+      setTimeout(()=>{ el('autosaveStatus').textContent = "Autosave aktif"; }, 2000);
+    }
+    function scheduleSave(){
+      clearTimeout(saveTimer);
+      el('autosaveStatus').textContent = "Menyimpan...";
+      saveTimer = setTimeout(saveAll, 350);
+    }
 
-    function renumber(){
-      $$('#tblBody tr').forEach((tr,idx)=>{
-        const bilCell = tr.querySelector('.bil');
-        if (bilCell) bilCell.textContent = idx+1;
+    /* =========================
+       Muat / Simpan (localStorage)
+       ========================= */
+    function loadAll(){
+      const raw = localStorage.getItem(LS_KEY);
+      if(!raw) return [];
+      try{
+        const parsed = JSON.parse(raw);
+        return Array.isArray(parsed) ? parsed : [];
+      }catch(e){ return []; }
+    }
+
+    function saveAll(){
+      const data = [];
+      const rows = el('tableBody').querySelectorAll('tr[data-row]');
+      rows.forEach(tr=>{
+        const row = {
+          date: tr.querySelector('[data-field="date"]').value.trim(),
+          name: tr.querySelector('[data-field="name"]').value.trim(),
+          ic: tr.querySelector('[data-field="ic"]').value.trim(),
+          phone: tr.querySelector('[data-field="phone"]').value.trim(),
+          company: tr.querySelector('[data-field="company"]').value.trim(),
+          screening: tr.querySelector('[data-field="screening"]').value.trim(),
+          notes: tr.querySelector('[data-field="notes"]').value.trim(),
+        };
+        data.push(row);
       });
-      updateCountBadge();
+      localStorage.setItem(LS_KEY, JSON.stringify(data));
+      markSaved();
+      refreshCompanyFilterOptions(data);
     }
 
-    function updateCountBadge(){
-      const data = getTableData();
-      badgeCount.textContent = `${data.length} rekod`;
-    }
-
-    function cellInput(value='', opts={}){
-      const wrap = document.createElement('div');
-      wrap.className = 'cell';
-      const input = document.createElement('input');
-      input.type = opts.type || 'text';
-      if (opts.placeholder) input.placeholder = opts.placeholder;
-      if (opts.pattern) input.pattern = opts.pattern;
-      if (opts.inputmode) input.inputMode = opts.inputmode;
-      if (opts.maxlength) input.maxLength = opts.maxlength;
-      input.value = value ?? '';
-      wrap.appendChild(input);
-      input.addEventListener('change', saveState);
-      input.addEventListener('input', handleInlineEnter);
-      return wrap;
-    }
-
-    function cellSelect(value='', options=[], center=false){
-      const wrap = document.createElement('div');
-      wrap.className = 'cell' + (center ? ' center':'');
-      const sel = document.createElement('select');
-      options.forEach(opt=>{
-        const o = document.createElement('option');
-        o.value = o.textContent = opt;
-        sel.appendChild(o);
-      });
-      sel.value = value || options[0] || '';
-      wrap.appendChild(sel);
-      sel.addEventListener('change', saveState);
-      sel.addEventListener('keydown', handleEnterAtLastCell);
-      return wrap;
-    }
-
-    function cellTextarea(value=''){
-      const wrap = document.createElement('div');
-      wrap.className = 'cell';
-      const ta = document.createElement('textarea');
-      ta.value = value ?? '';
-      wrap.appendChild(ta);
-      ta.addEventListener('change', saveState);
-      ta.addEventListener('keydown', handleEnterAtLastCell);
-      return wrap;
-    }
-
-    function addRow(prefill={}){
+    /* =========================
+       Jadual: Render & Aksi
+       ========================= */
+    function renderRow(row, index){
       const tr = document.createElement('tr');
+      tr.setAttribute('data-row', index);
 
-      // Bil
-      const tdBil = document.createElement('td');
-      tdBil.className = 'col-bil center';
-      const bilSpan = document.createElement('span');
-      bilSpan.className = 'bil';
-      bilSpan.textContent = '—';
-      tdBil.appendChild(bilSpan);
-      tr.appendChild(tdBil);
+      tr.innerHTML = `
+        <td class="text-muted">${index+1}</td>
+        <td><input type="date" class="form-control form-control-sm" data-field="date" value="${row.date||""}"></td>
+        <td><input type="text" class="form-control form-control-sm" data-field="name" placeholder="Nama peserta" value="${row.name||""}"></td>
+        <td><input type="text" class="form-control form-control-sm" data-field="ic" placeholder="IC / Passport" value="${row.ic||""}"></td>
+        <td><input type="tel" class="form-control form-control-sm" data-field="phone" placeholder="Contoh: 0123456789" value="${row.phone||""}"></td>
+        <td><input type="text" class="form-control form-control-sm" data-field="company" placeholder="Nama syarikat" value="${row.company||""}"></td>
+        <td>
+          <select class="form-select form-select-sm" data-field="screening">
+            ${[
+              "", "Tekanan darah", "Gula darah cap jari", "Kolesterol", "BMI", "Penglihatan", "Pendengaran", "Lain-lain"
+            ].map(opt=>`<option ${row.screening===opt?'selected':''} value="${opt}">${opt||'Pilih jenis saringan'}</option>`).join("")}
+          </select>
+        </td>
+        <td><textarea class="form-control form-control-sm" data-field="notes" placeholder="Catatan / rujukan / ubat">${row.notes||""}</textarea></td>
+        <td class="text-center row-actions">
+          <div class="btn-group btn-group-sm">
+            <button class="btn btn-outline-secondary" data-action="duplicate" title="Gandakan baris"><i class="fa-regular fa-copy"></i></button>
+            <button class="btn btn-outline-danger" data-action="delete" title="Padam baris"><i class="fa-regular fa-trash-can"></i></button>
+          </div>
+        </td>
+      `;
 
-      // Nama
-      const tdNama = document.createElement('td'); tdNama.className='col-nama';
-      tdNama.appendChild(cellInput(prefill.nama, {placeholder:'Nama penuh'}));
-      tr.appendChild(tdNama);
-
-      // IC
-      const tdIC = document.createElement('td'); tdIC.className='col-ic';
-      tdIC.appendChild(cellInput(prefill.ic, {placeholder:'Contoh: 800101-11-1234', maxlength:20}));
-      tr.appendChild(tdIC);
-
-      // Telefon
-      const tdTel = document.createElement('td'); tdTel.className='col-phone';
-      tdTel.appendChild(cellInput(prefill.phone, {placeholder:'01X-XXXX XXXX', inputmode:'tel'}));
-      tr.appendChild(tdTel);
-
-      // Syarikat / Lokasi
-      const tdSyarikat = document.createElement('td'); tdSyarikat.className='col-syarikat';
-      tdSyarikat.appendChild(cellInput(prefill.syarikat, {placeholder:'Nama syarikat / lokasi program'}));
-      tr.appendChild(tdSyarikat);
-
-      // Tarikh
-      const tdTarikh = document.createElement('td'); tdTarikh.className='col-tarikh center';
-      tdTarikh.appendChild(cellInput(prefill.tarikh || TODAY, {type:'date'}));
-      tr.appendChild(tdTarikh);
-
-      // Pemeriksaan
-      const tdUjian = document.createElement('td'); tdUjian.className='col-ujian';
-      tdUjian.appendChild(cellSelect(prefill.ujian, [
-        '— Pilih —',
-        'Tekanan Darah',
-        'Gula (RBS)',
-        'BMI',
-        'Ujian Mata / Refraction',
-        'Pemeriksaan Umum'
-      ]));
-      tr.appendChild(tdUjian);
-
-      // Keputusan
-      const tdKeputusan = document.createElement('td'); tdKeputusan.className='col-keputusan center';
-      tdKeputusan.appendChild(cellSelect(prefill.keputusan, ['—','Normal','Perlu Rujukan','Susulan Diperlukan'], true));
-      tr.appendChild(tdKeputusan);
-
-      // Catatan
-      const tdCatatan = document.createElement('td'); tdCatatan.className='col-catatan';
-      tdCatatan.appendChild(cellTextarea(prefill.catatan));
-      tr.appendChild(tdCatatan);
-
-      // Aksi
-      const tdAksi = document.createElement('td'); tdAksi.className='col-aksi center';
-      const btnDel = document.createElement('button');
-      btnDel.className = 'btn btn-ghost';
-      btnDel.type = 'button';
-      btnDel.textContent = 'Padam';
-      btnDel.title = 'Padam baris ini';
-      btnDel.addEventListener('click', ()=>{
-        tr.remove(); renumber(); saveState();
+      // Hook perubahan -> autosave
+      tr.querySelectorAll('input, select, textarea').forEach(inp=>{
+        inp.addEventListener('input', scheduleSave);
+        // Enter: lompat ke sel seterusnya
+        inp.addEventListener('keydown', (e)=>{
+          if(e.key==='Enter' && !e.shiftKey){
+            e.preventDefault();
+            focusNextInput(inp);
+          }
+        });
       });
-      tdAksi.appendChild(btnDel);
-      tr.appendChild(tdAksi);
 
-      tbody.appendChild(tr);
-      renumber();
-      saveState();
+      // Aksi baris
+      tr.querySelector('[data-action="delete"]').addEventListener('click', ()=>{
+        tr.remove();
+        renumberRows();
+        scheduleSave();
+      });
+      tr.querySelector('[data-action="duplicate"]').addEventListener('click', ()=>{
+        const rowData = {
+          date: tr.querySelector('[data-field="date"]').value,
+          name: tr.querySelector('[data-field="name"]').value,
+          ic: tr.querySelector('[data-field="ic"]').value,
+          phone: tr.querySelector('[data-field="phone"]').value,
+          company: tr.querySelector('[data-field="company"]').value,
+          screening: tr.querySelector('[data-field="screening"]').value,
+          notes: tr.querySelector('[data-field="notes"]').value,
+        };
+        addRow(rowData, true);
+      });
 
-      // Fokus ke nama jika baris baru
-      const firstInput = tr.querySelector('input,select,textarea');
-      if (firstInput) firstInput.focus();
-
-      // Bila tekan Enter di sel terakhir, tambah baris baru
-      tr.addEventListener('keydown', handleEnterAtLastCell);
+      return tr;
     }
 
-    function handleInlineEnter(e){
-      // Benarkan Enter untuk lompat ke sel seterusnya (tanpa newline)
-      if(e.key === 'Enter'){
-        e.preventDefault();
-        focusNextCell(e.target);
-      }
-    }
-
-    function handleEnterAtLastCell(e){
-      if(e.key === 'Enter'){
-        const lastEditable = getLastEditable();
-        if (e.target === lastEditable){
-          e.preventDefault();
-          addRow();
-        }
-      }
-    }
-
-    function getLastEditable(){
-      const inputs = $$('input,select,textarea', tbody);
-      return inputs[inputs.length-1] || null;
-    }
-
-    function focusNextCell(current){
-      const inputs = $$('input,select,textarea', tbody);
+    function focusNextInput(current){
+      const inputs = Array.from(el('dataTable').querySelectorAll('input, select, textarea'));
       const idx = inputs.indexOf(current);
-      if (idx >= 0 && idx < inputs.length-1){
+      if(idx>-1 && idx<inputs.length-1){
         inputs[idx+1].focus();
-      } else {
-        addRow();
       }
     }
 
-    // ========= Data & CSV =========
-    function getTableData(){
-      const rows = [];
-      $$('#tblBody tr').forEach((tr)=>{
-        const tds = tr.querySelectorAll('td');
-        const nama = tds[1]?.querySelector('input')?.value?.trim() || '';
-        const ic   = tds[2]?.querySelector('input')?.value?.trim() || '';
-        const tel  = tds[3]?.querySelector('input')?.value?.trim() || '';
-        const sykt = tds[4]?.querySelector('input')?.value?.trim() || '';
-        const tarikh = tds[5]?.querySelector('input')?.value || '';
-        const ujian = tds[6]?.querySelector('select')?.value || '';
-        const keputusan = tds[7]?.querySelector('select')?.value || '';
-        const catatan = tds[8]?.querySelector('textarea')?.value?.trim() || '';
-
-        // Skip baris betul-betul kosong
-        if ([nama,ic,tel,sykt,tarikh,ujian,keputusan,catatan].join('').length === 0) return;
-
-        rows.push({nama,ic,tel,sykt,tarikh,ujian,keputusan,catatan});
+    function renumberRows(){
+      el('tableBody').querySelectorAll('tr[data-row]').forEach((tr,i)=>{
+        tr.setAttribute('data-row', i);
+        tr.querySelector('td:first-child').textContent = i+1;
       });
-      return rows;
     }
 
-    function toCsv(){
-      const rows = getTableData();
-      const csv = [];
-      csv.push(HEADERS.join(','));
-      rows.forEach((r,i)=>{
-        const arr = [
-          (i+1),
-          r.nama, r.ic, r.tel, r.sykt, r.tarikh, r.ujian, r.keputusan, r.catatan
-        ].map(csvEscape);
-        csv.push(arr.join(','));
+    function addRow(rowData = null, afterDuplicate = false){
+      const data = rowData || newRowData();
+      const tbody = el('tableBody');
+      const tr = renderRow(data, tbody.children.length);
+      tbody.appendChild(tr);
+      renumberRows();
+      if(!afterDuplicate){
+        // Fokus ke nama peserta baris baru
+        const lastNameInput = tr.querySelector('[data-field="name"]');
+        if(lastNameInput) lastNameInput.focus();
+      }
+      scheduleSave();
+    }
+
+    function loadToTable(){
+      const data = loadAll();
+      const tbody = el('tableBody');
+      tbody.innerHTML = "";
+      (data.length? data : [newRowData()]).forEach((row,i)=>{
+        tbody.appendChild(renderRow(row, i));
       });
-      return '\uFEFF' + csv.join('\r\n'); // BOM untuk Excel (UTF-8)
+      refreshCompanyFilterOptions(data);
     }
 
-    function csvEscape(v){
-      const s = (v ?? '').toString();
-      if (/[",\r\n]/.test(s)){
-        return '"' + s.replace(/"/g,'""') + '"';
-      }
-      return s;
+    /* =========================
+       Carian & Saring
+       ========================= */
+    function refreshCompanyFilterOptions(allRows){
+      const sel = el('filterCompany');
+      const current = sel.value;
+      const companies = Array.from(new Set(allRows.map(r => (r.company||"").trim()).filter(Boolean))).sort();
+      sel.innerHTML = `<option value="">Semua Syarikat</option>` + companies.map(c=>`<option ${c===current?'selected':''}>${c}</option>`).join('');
     }
 
-    function downloadCsv(){
-      const data = getTableData();
-      if (!data.length){
-        alert('Tiada data untuk dieksport.');
-        return;
-      }
-      const blob = new Blob([toCsv()], {type:'text/csv;charset=utf-8;'});
+    function applyFilters(){
+      const q = el('searchInput').value.toLowerCase().trim();
+      const comp = (el('filterCompany').value||"").toLowerCase();
+      const d = el('filterDate').value; // kosong = semua tarikh
+
+      const rows = el('tableBody').querySelectorAll('tr[data-row]');
+      rows.forEach(tr=>{
+        const v = field => tr.querySelector(`[data-field="${field}"]`)?.value || "";
+        const hit =
+          (!q || [v('name'), v('ic'), v('phone'), v('company'), v('screening'), v('notes')].join(' ').toLowerCase().includes(q)) &&
+          (!comp || v('company').toLowerCase()===comp) &&
+          (!d || v('date')===d);
+        tr.style.display = hit ? "" : "none";
+      });
+    }
+
+    /* =========================
+       CSV Export
+       ========================= */
+    function toCSV(){
+      const headers = ["Tarikh","Nama Peserta","IC / Passport","No. Telefon","Syarikat","Jenis Saringan","Catatan"];
+      const lines = [headers.join(",")];
+      const rows = el('tableBody').querySelectorAll('tr[data-row]');
+      rows.forEach(tr=>{
+        if(tr.style.display==='none') return; // hormat saring
+        const get = f => {
+          let val = tr.querySelector(`[data-field="${f}"]`)?.value || "";
+          // Lindungi koma dengan petikan
+          if(/[" ,\n]/.test(val)) val = `"${val.replace(/"/g,'""')}"`;
+          return val;
+        };
+        lines.push([
+          get('date'),
+          get('name'),
+          get('ic'),
+          get('phone'),
+          get('company'),
+          get('screening'),
+          get('notes')
+        ].join(","));
+      });
+      return lines.join("\n");
+    }
+
+    function downloadCSV(filename="PEKA_B40_NADI.csv"){
+      const blob = new Blob([toCSV()], {type:"text/csv;charset=utf-8;"});
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
-      const stamp = new Date().toISOString().slice(0,10);
-      a.href = url;
-      a.download = `PEKA_B40_NADI_${stamp}.csv`;
-      document.body.appendChild(a);
-      a.click();
-      a.remove();
+      a.href = url; a.download = filename;
+      document.body.appendChild(a); a.click();
+      document.body.removeChild(a);
       URL.revokeObjectURL(url);
     }
 
-    // ========= WhatsApp Web =========
-    function composeWhatsappText(){
-      const rows = getTableData();
-      const today = new Date();
-      const dd = String(today.getDate()).padStart(2,'0');
-      const mm = String(today.getMonth()+1).padStart(2,'0');
-      const yyyy = today.getFullYear();
-      let txt = `Ringkasan Program PEKA B40 bersama NADI%0A`;
-      txt += `Tarikh: ${dd}/${mm}/${yyyy}%0A`;
-      txt += `Jumlah rekod: ${rows.length}%0A%0A`;
-      if (rows.length){
-        txt += `Butiran:%0A`;
-        rows.forEach((r,i)=>{
-          const line = `${i+1}) ${safe(r.nama)} — ${safe(r.ic)} — ${safe(r.tel)} — ${safe(r.ujian)} [${safe(r.keputusan)}] — ${safe(r.tarikh)} — ${safe(r.sykt)}${r.catatan?` — Catatan: ${safe(r.catatan)}`:''}`;
-          txt += line.replace(/%/g, '%25') + '%0A';
+    /* =========================
+       WhatsApp Web
+       ========================= */
+    function buildWhatsAppMessage(){
+      const header = el('waHeader').value || "Laporan Program";
+      let lines = [];
+      lines.push(`*${header}*`);
+      lines.push(`Tarikh Laporan: ${todayStr()}`);
+      lines.push("");
+
+      const visibleRows = Array.from(el('tableBody').querySelectorAll('tr[data-row]')).filter(tr=>tr.style.display!=='none');
+      if(!visibleRows.length){
+        lines.push("_Tiada data untuk dihantar (mengikut saringan semasa)._");
+      }else{
+        visibleRows.forEach((tr,idx)=>{
+          const get = f => tr.querySelector(`[data-field="${f}"]`)?.value || "";
+          const parts = [];
+          parts.push(`${idx+1}. ${get('name') || '(Tanpa Nama)'} (${get('ic')||'-'})`);
+          if(get('phone')) parts.push(`☎ ${get('phone')}`);
+          if(get('company')) parts.push(`🏢 ${get('company')}`);
+          if(get('screening')) parts.push(`🩺 ${get('screening')}`);
+          if(get('notes')) parts.push(`📝 ${get('notes')}`);
+          lines.push(parts.join(" | "));
         });
-        txt += `%0A*Nota:* Fail CSV akan dilampirkan secara berasingan.`;
       }
-      return txt;
+      return lines.join("\n");
     }
 
-    function safe(s){ return (s ?? '').toString().trim(); }
+    function openWhatsAppWeb(){
+      const phoneRaw = sanitizePhone(el('waPhone').value);
+      const text = buildWhatsAppMessage();
+      const urlText = encodeURIComponent(text);
 
-    function openWhatsappWeb(){
-      const rows = getTableData();
-      if (!rows.length){
-        alert('Tiada data untuk dihantar.');
-        return;
-      }
-      // Guna wa.me supaya automatik buka WhatsApp Web pada desktop
-      const text = composeWhatsappText(); // sudah termasuk %0A
-      const url = `https://wa.me/?text=${text}`;
-      window.open(url, '_blank', 'noopener');
+      // Tanpa app desktop: buka WhatsApp Web
+      const url = phoneRaw
+        ? `https://web.whatsapp.com/send?phone=${phoneRaw}&text=${urlText}`
+        : `https://web.whatsapp.com/send?text=${urlText}`;
+
+      window.open(url, "_blank", "noopener,noreferrer");
     }
 
-    // ========= Simpan automatik (localStorage) =========
-    function saveState(){
-      const rows = getTableData();
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(rows));
-      updateCountBadge();
-    }
+    /* =========================
+       Event Binding
+       ========================= */
+    function bindEvents(){
+      el('addRowBtn').addEventListener('click', ()=> addRow());
+      el('exportCsvBtn').addEventListener('click', ()=> downloadCSV());
 
-    function restoreState(){
-      const raw = localStorage.getItem(STORAGE_KEY);
-      if (!raw){
-        addRow(); // sekurang-kurangnya satu baris kosong
-        return;
-      }
-      try{
-        const rows = JSON.parse(raw);
-        if (Array.isArray(rows) && rows.length){
-          tbody.innerHTML = '';
-          rows.forEach(r=>addRow(r));
-        } else {
-          addRow();
+      el('clearAllBtn').addEventListener('click', ()=>{
+        if(confirm("Padam semua data tempatan? Tindakan ini tidak boleh diundur.")){
+          localStorage.removeItem(LS_KEY);
+          loadToTable();
         }
-      }catch(e){
-        console.warn('Gagal baca simpanan, mula baru.', e);
-        addRow();
-      }
+      });
+
+      ['searchInput','filterCompany','filterDate'].forEach(id=>{
+        el(id).addEventListener('input', applyFilters);
+        el(id).addEventListener('change', applyFilters);
+      });
+
+      // WhatsApp modal
+      const waModal = new bootstrap.Modal(document.getElementById('waModal'));
+      el('whatsAppBtn').addEventListener('click', ()=>{
+        el('waPreview').textContent = buildWhatsAppMessage();
+        waModal.show();
+      });
+      el('openWaBtn').addEventListener('click', openWhatsAppWeb);
+
+      // Auto refresh preview ketika ubah header/phone
+      el('waHeader').addEventListener('input', ()=>{
+        el('waPreview').textContent = buildWhatsAppMessage();
+      });
     }
 
-    function clearAll(){
-      if (!confirm('Kosongkan semua baris dan buang simpanan automatik?')){
-        return;
-      }
-      tbody.innerHTML = '';
-      localStorage.removeItem(STORAGE_KEY);
-      addRow();
-      updateCountBadge();
-    }
-
-    // ========= Ikatan event =========
-    function bindToolbar(){
-      $('#btnAddRow')?.addEventListener('click', ()=>addRow());
-      $('#btnAddRowFooter')?.addEventListener('click', ()=>addRow());
-
-      const exportClick = ()=>downloadCsv();
-      $('#btnExportCsv')?.addEventListener('click', exportClick);
-      $('#btnExportCsvFooter')?.addEventListener('click', exportClick);
-
-      $('#btnWhatsapp')?.addEventListener('click', openWhatsappWeb);
-      $('#btnClear')?.addEventListener('click', clearAll);
-    }
-
+    /* =========================
+       Init
+       ========================= */
     document.addEventListener('DOMContentLoaded', ()=>{
-      bindToolbar();
-      restoreState();
+      // Baris permulaan
+      loadToTable();
+
+      // Jika kosong, tambah 5 baris awal untuk percepat input
+      if(el('tableBody').children.length === 1){
+        for(let i=0;i<4;i++) addRow();
+      }
+
+      bindEvents();
+      applyFilters();
+
+      // Simpan berkala (backup tambahan)
+      setInterval(saveAll, 30000);
     });
   </script>
 </body>
