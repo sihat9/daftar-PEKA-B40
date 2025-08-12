@@ -42,8 +42,15 @@ body{font-family:'Segoe UI',Tahoma,Geneva,Verdana,sans-serif;background:#f5f7fa;
 /* Navbar */
 .navbar-main{background:#fff;box-shadow:0 2px 10px rgba(0,0,0,.08);padding:10px 0}
 .navbar-brand{font-weight:700;color:var(--primary);font-size:1.05rem;display:flex;align-items:center;gap:10px}
-.nav-link{color:var(--dark);font-weight:500;margin:0 4px;padding:7px 10px!important;border-radius:8px;transition:.2s}
+.nav-item .nav-link{color:var(--dark);font-weight:500;margin:0 4px;padding:7px 10px!important;border-radius:8px;transition:.2s;position:relative}
 .nav-link:hover,.nav-link.active{background:rgba(52,152,219,.12);color:var(--secondary)}
+/* Badge merah kecil pada navbar */
+.nav-badge{
+  position:absolute; top:2px; right:2px;
+  background:#dc3545; color:#fff; border-radius:999px;
+  font-size:.65rem; line-height:1; padding:2px 6px; min-width:16px; text-align:center;
+  display:none;
+}
 
 /* Header */
 .page-header{background:linear-gradient(135deg,var(--primary),var(--secondary));color:#fff;padding:14px 0;margin-bottom:12px;border-radius:0 0 12px 12px}
@@ -51,7 +58,7 @@ body{font-family:'Segoe UI',Tahoma,Geneva,Verdana,sans-serif;background:#f5f7fa;
 /* Cards */
 .card{border:none;border-radius:14px;box-shadow:0 8px 24px rgba(0,0,0,.06);margin-bottom:16px}
 .card-header{background:#fff;border-bottom:1px solid rgba(0,0,0,.06);font-weight:600;padding:12px 16px;border-radius:14px 14px 0 0!important}
-.stat-card{padding:14px;border-radius:14px;color:#fff;text-align:center;position:relative;overflow:hidden}
+.stat-card{padding:14px;border-radius:14px;color:#fff;text-align:center;position:relative;overflow:hidden;cursor:pointer}
 .stat-card .number{font-size:1.45rem;font-weight:800}
 .table td,.table th{vertical-align:middle}
 .table{font-size:.95rem}
@@ -79,7 +86,7 @@ body{font-family:'Segoe UI',Tahoma,Geneva,Verdana,sans-serif;background:#f5f7fa;
 }
 @keyframes spin{to{transform:rotate(360deg)}}
 
-/* Log Calls Drawer (gaya iPhone) */
+/* Log Calls Drawer */
 #logDrawer{
   position:fixed; top:0; right:-420px; width:400px; max-width:90vw; height:100%;
   background:#f8f9fb; box-shadow:-12px 0 35px rgba(0,0,0,.18); z-index:2001;
@@ -96,27 +103,25 @@ body{font-family:'Segoe UI',Tahoma,Geneva,Verdana,sans-serif;background:#f5f7fa;
 .log-body{ padding:10px; overflow:auto; flex:1; display:flex; flex-direction:column; gap:8px; }
 .bubble{
   max-width:80%; padding:8px 10px; border-radius:16px; box-shadow:0 4px 12px rgba(0,0,0,.06);
-  position:relative; font-size:.9rem; line-height:1.2rem;
+  position:relative; font-size:.9rem; line-height:1.2rem; background:#e9ecef; color:#222; border-bottom-left-radius:6px; margin-right:auto;
 }
-.bubble.me{ margin-left:auto; background:#007aff; color:#fff; border-bottom-right-radius:6px; }
-.bubble.other{ margin-right:auto; background:#e9ecef; color:#222; border-bottom-left-radius:6px; }
+.bubble.me{ margin-left:auto; margin-right:0; background:#007aff; color:#fff; border-bottom-right-radius:6px; border-bottom-left-radius:16px; }
 .bubble .meta{ font-size:.72rem; opacity:.8; margin-top:5px }
-.log-loading{ display:none; text-align:center; padding:8px }
-.log-loading.active{ display:block }
-
-/* NADI grid input – satu baris, auto-expand terkawal */
-.nadi-input{ min-width:120px; width:auto; max-width:300px; }
-.nadi-long{ min-width:180px; max-width:420px; }
-.nadi-row{
-  display:grid;
-  grid-auto-flow:column;
-  grid-auto-columns:max-content;
-  gap:8px; align-items:center;
-  overflow-x:auto; padding-bottom:4px;
+/* Butang telefon ala iPhone */
+.call-chip{
+  display:inline-flex; align-items:center; justify-content:center;
+  width:26px; height:26px; border-radius:999px; background:#007aff; color:#fff; text-decoration:none;
+  margin-left:6px; box-shadow:0 2px 6px rgba(0,122,255,.35);
 }
-.nadi-row > * { white-space:nowrap; }
 
-/* Responsive: pada skrin kecil, biarkan horizontal scroll (kekal "satu baris") */
+/* NADI: gaya jadual kemas */
+.nadi-toolbar{ display:flex; justify-content:space-between; gap:8px; margin-bottom:8px }
+.table-nadi thead th{ white-space:nowrap }
+.table-nadi input, .table-nadi select{ min-width:90px }
+.table-nadi .w-sm{ width:110px }
+.table-nadi .w-xs{ width:80px }
+
+/* Responsive tweaks */
 @media (max-width:992px){
   .stat-card .number{font-size:1.3rem}
 }
@@ -165,15 +170,42 @@ body{font-family:'Segoe UI',Tahoma,Geneva,Verdana,sans-serif;background:#f5f7fa;
     </button>
     <div class="collapse navbar-collapse" id="navbarMain">
       <ul class="navbar-nav me-auto mb-2 mb-lg-0">
-        <!-- susun Program NADI selepas Dashboard (kanan) -->
         <li class="nav-item"><a class="nav-link active" href="#dashboard"><i class="fas fa-tachometer-alt"></i> Dashboard</a></li>
-        <li class="nav-item"><a class="nav-link" href="#nadi"><i class="bi bi-clipboard2-pulse"></i> Program PEKA B40 bersama NADI</a></li>
+
+        <li class="nav-item">
+          <a class="nav-link" href="#nadi"><i class="bi bi-clipboard2-pulse"></i> Program PEKA B40 bersama NADI</a>
+        </li>
+
         <li class="nav-item"><a class="nav-link" href="#kelayakan"><i class="fa-solid fa-file-excel"></i> Kelayakan (Excel)</a></li>
-        <li class="nav-item"><a class="nav-link" href="#pendaftaran"><i class="fas fa-user-plus"></i> Pendaftaran</a></li>
-        <li class="nav-item"><a class="nav-link" href="#tca-call"><i class="fas fa-phone"></i> TCA Call</a></li>
-        <li class="nav-item"><a class="nav-link" href="#first-visit"><i class="fas fa-calendar-check"></i> First Visit</a></li>
-        <li class="nav-item"><a class="nav-link" href="#lab-followup"><i class="fa-solid fa-flask-vial"></i> Follow-up Lab Report</a></li>
-        <li class="nav-item"><a class="nav-link" href="#second-visit"><i class="fas fa-calendar-check"></i> Second Visit</a></li>
+
+        <li class="nav-item">
+          <a id="navTCA" class="nav-link" href="#tca-call">
+            <i class="fas fa-phone"></i> TCA Call
+            <span id="badgeTCA" class="nav-badge">0</span>
+          </a>
+        </li>
+
+        <li class="nav-item">
+          <a id="navFirst" class="nav-link" href="#first-visit">
+            <i class="fas fa-calendar-check"></i> First Visit
+            <span id="badgeFirst" class="nav-badge">0</span>
+          </a>
+        </li>
+
+        <li class="nav-item">
+          <a id="navLab" class="nav-link" href="#lab-followup">
+            <i class="fa-solid fa-flask-vial"></i> Follow-up Lab Report
+            <span id="badgeLab" class="nav-badge">0</span>
+          </a>
+        </li>
+
+        <li class="nav-item">
+          <a id="navSecond" class="nav-link" href="#second-visit">
+            <i class="fas fa-calendar-check"></i> Second Visit
+            <span id="badgeSecond" class="nav-badge">0</span>
+          </a>
+        </li>
+
         <li class="nav-item"><a class="nav-link" href="#selesai"><i class="fas fa-check-circle"></i> Selesai</a></li>
         <li class="nav-item"><a class="nav-link" href="#arkib"><i class="fa-solid fa-box-archive"></i> Arkib</a></li>
       </ul>
@@ -214,12 +246,48 @@ body{font-family:'Segoe UI',Tahoma,Geneva,Verdana,sans-serif;background:#f5f7fa;
     </div>
 
     <div class="row g-3 mb-3">
-      <div class="col-6 col-md-2"><div class="stat-card" style="background:linear-gradient(135deg,var(--secondary),#2980b9)"><div class="number" id="totalDaftar">0</div><div class="small">Aktif</div></div></div>
-      <div class="col-6 col-md-2"><div class="stat-card" style="background:linear-gradient(135deg,var(--warning),#e67e22)"><div class="number" id="totalFirstVisit">0</div><div class="small">First Visit (Pending)</div></div></div>
-      <div class="col-6 col-md-2"><div class="stat-card" style="background:linear-gradient(135deg,#9b59b6,#8e44ad)"><div class="number" id="totalSecondVisit">0</div><div class="small">Second Visit (Pending)</div></div></div>
-      <div class="col-6 col-md-2"><div class="stat-card" style="background:linear-gradient(135deg,var(--success),#16a085)"><div class="number" id="totalSelesai">0</div><div class="small">Selesai</div></div></div>
-      <div class="col-6 col-md-2"><div class="stat-card" style="background:linear-gradient(135deg,#8e44ad,#6c5ce7)"><div class="number" id="labFollowUpDue">0</div><div class="small">Result > 3 Hari</div></div></div>
-      <div class="col-6 col-md-2"><div class="stat-card" style="background:linear-gradient(135deg,#d35400,#c0392b)"><div class="number" id="labFollowUpPending">0</div><div class="small">Perlu Follow-up</div></div></div>
+      <div class="col-6 col-md-2">
+        <a class="text-decoration-none" href="#tca-call" data-jump="tca-call">
+          <div class="stat-card" style="background:linear-gradient(135deg,var(--secondary),#2980b9)">
+            <div class="number" id="totalDaftar">0</div><div class="small">Aktif</div>
+          </div>
+        </a>
+      </div>
+      <div class="col-6 col-md-2">
+        <a class="text-decoration-none" href="#first-visit" data-jump="first-visit">
+          <div class="stat-card" style="background:linear-gradient(135deg,var(--warning),#e67e22)">
+            <div class="number" id="totalFirstVisit">0</div><div class="small">First Visit (Pending)</div>
+          </div>
+        </a>
+      </div>
+      <div class="col-6 col-md-2">
+        <a class="text-decoration-none" href="#second-visit" data-jump="second-visit">
+          <div class="stat-card" style="background:linear-gradient(135deg,#9b59b6,#8e44ad)">
+            <div class="number" id="totalSecondVisit">0</div><div class="small">Second Visit (Pending)</div>
+          </div>
+        </a>
+      </div>
+      <div class="col-6 col-md-2">
+        <a class="text-decoration-none" href="#selesai" data-jump="selesai">
+          <div class="stat-card" style="background:linear-gradient(135deg,var(--success),#16a085)">
+            <div class="number" id="totalSelesai">0</div><div class="small">Selesai</div>
+          </div>
+        </a>
+      </div>
+      <div class="col-6 col-md-2">
+        <a class="text-decoration-none" href="#lab-followup" data-jump="lab-followup">
+          <div class="stat-card" style="background:linear-gradient(135deg,#8e44ad,#6c5ce7)">
+            <div class="number" id="labFollowUpDue">0</div><div class="small">Result > 3 Hari</div>
+          </div>
+        </a>
+      </div>
+      <div class="col-6 col-md-2">
+        <a class="text-decoration-none" href="#lab-followup" data-jump="lab-followup">
+          <div class="stat-card" style="background:linear-gradient(135deg,#d35400,#c0392b)">
+            <div class="number" id="labFollowUpPending">0</div><div class="small">Perlu Follow-up</div>
+          </div>
+        </a>
+      </div>
     </div>
 
     <!-- Pesakit perlu dihubungi -->
@@ -252,29 +320,47 @@ body{font-family:'Segoe UI',Tahoma,Geneva,Verdana,sans-serif;background:#f5f7fa;
     </div>
   </section>
 
-  <!-- Program NADI -->
+  <!-- Program NADI (RESTYLE: jadual kemas seperti versi lama) -->
   <section id="nadi" class="mb-4 d-none">
     <div class="d-flex justify-content-between align-items-center mb-2">
       <h2 class="h6 m-0"><i class="bi bi-clipboard2-pulse me-2"></i>Program PEKA B40 bersama NADI</h2>
-      <div class="d-flex gap-2">
-        <button id="btnNadiExportCsv" class="btn btn-sm btn-outline-success"><i class="bi bi-filetype-csv me-1"></i>Transfer kepada fail Excel (CSV)</button>
+      <div class="nadi-toolbar">
+        <button id="btnNadiAddRow" class="btn btn-sm btn-outline-primary"><i class="bi bi-plus-circle me-1"></i>Tambah Baris</button>
+        <button id="btnNadiExportCsv" class="btn btn-sm btn-outline-success"><i class="bi bi-filetype-csv me-1"></i>Export CSV</button>
       </div>
     </div>
     <div class="card"><div class="card-body">
-      <div id="nadiContainer"></div>
-      <div class="text-muted small mt-2">Nota: Baris “Layak” boleh terus <b>Daftar</b> (simpan ke sheet). Baris “Tidak Layak” tidak disimpan ke sheet tetapi tetap dieksport CSV bersama-sama.</div>
+      <div class="table-responsive">
+        <table class="table table-hover table-nadi align-middle">
+          <thead class="table-light">
+            <tr>
+              <th>Nama</th><th>IC</th><th>Telefon</th><th>Alamat</th>
+              <th class="w-xs">BP</th>
+              <th>DXT Tipe</th><th class="w-xs">DXT</th>
+              <th class="w-xs">Tinggi</th><th class="w-xs">Berat</th><th class="w-xs">BMI</th>
+              <th>Layak</th><th>Tidak Layak</th>
+              <th>Tarikh TCA</th><th>Masa</th><th>Staff</th><th>Tindakan</th>
+            </tr>
+          </thead>
+          <tbody id="nadiTableBody">
+            <tr class="text-center text-muted"><td colspan="16">Tiada data. Klik “Tambah Baris”.</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <div class="text-muted small mt-2">Nota: Baris “Layak” boleh terus <b>Daftar</b> (simpan ke sheet). Baris “Tidak Layak” akan terus dibuang daripada senarai.</div>
     </div></div>
   </section>
 
   <!-- Kelayakan (Excel) -->
   <section id="kelayakan" class="mb-4 d-none">
-    <h2 class="h6 mb-3"><i class="fa-solid fa-file-excel me-2"></i>Semak Kelayakan (Import Excel)</h2>
+    <h2 class="h6 mb-2"><i class="fa-solid fa-file-excel me-2"></i>Semak Kelayakan (Import Excel)</h2>
     <div class="card"><div class="card-body">
-      <div class="row g-2 align-items-center mb-3">
+      <div class="row g-2 align-items-center mb-2">
         <div class="col-md-6">
           <input type="file" id="excelFile" class="form-control" accept=".xlsx,.xls" />
-          <div class="form-text">Fail perlu ada lajur: <b>Nama</b>, <b>IC</b>, <b>Telefon</b>.</div>
+          <div class="form-text">Fail perlu ada lajur: <b>Nama</b>, <b>IC</b>, <b>Telefon</b>. Hanya pesakit <b>≥ 40 tahun</b> (ikut IC) akan dipaparkan.</div>
         </div>
+        <div class="col-md-6 text-md-end"><span id="excelInfo" class="badge text-bg-light d-none"></span></div>
       </div>
       <div class="table-responsive">
         <table class="table table-hover align-middle">
@@ -426,7 +512,7 @@ body{font-family:'Segoe UI',Tahoma,Geneva,Verdana,sans-serif;background:#f5f7fa;
 
 </main>
 
-<!-- Modal Re-TCA -->
+<!-- Modals -->
 <div class="modal fade" id="retcaModal" tabindex="-1" aria-hidden="true">
   <div class="modal-dialog modal-dialog-centered"><div class="modal-content">
     <div class="modal-header">
@@ -446,7 +532,6 @@ body{font-family:'Segoe UI',Tahoma,Geneva,Verdana,sans-serif;background:#f5f7fa;
   </div></div>
 </div>
 
-<!-- Modal Set Second Visit TCA (Lab Complete & Call) -->
 <div class="modal fade" id="secondTcaModal" tabindex="-1" aria-hidden="true">
   <div class="modal-dialog modal-dialog-centered"><div class="modal-content">
     <div class="modal-header">
@@ -458,7 +543,7 @@ body{font-family:'Segoe UI',Tahoma,Geneva,Verdana,sans-serif;background:#f5f7fa;
       <div class="mb-2"><label class="form-label">Tarikh TCA Second Visit</label><input type="date" id="secondTcaDate" class="form-control" required></div>
       <div class="mb-2"><label class="form-label">Masa TCA</label><input type="time" id="secondTcaTime" class="form-control" required></div>
       <div class="mb-2"><label class="form-label">Nama Staff (wajib isi)</label><input type="text" id="secondTcaStaff" class="form-control" required placeholder="cth: Dayah"></div>
-      <small class="text-muted">Maklumat ini akan direkod ke Log Calls & ruangan “Lab Report Completed” (cth: <b>11/08/2025 14:46 by Dayah</b>).</small>
+      <small class="text-muted">Maklumat ini akan direkod ke Log Calls & ruangan “Lab Report Completed”.</small>
     </div>
     <div class="modal-footer">
       <button class="btn btn-secondary" data-bs-dismiss="modal">Batal</button>
@@ -467,7 +552,6 @@ body{font-family:'Segoe UI',Tahoma,Geneva,Verdana,sans-serif;background:#f5f7fa;
   </div></div>
 </div>
 
-<!-- Modal Upload PDPA -->
 <div class="modal fade" id="pdpaModal" tabindex="-1" aria-hidden="true">
   <div class="modal-dialog modal-dialog-centered"><div class="modal-content">
     <div class="modal-header">
@@ -535,7 +619,6 @@ function initGoogleSignIn(){
 
 async function handleCredentialResponse(resp){
   ID_TOKEN = resp.credential;
-  // Semak whoami di backend
   const r = await fetch(SCRIPT_URL, {
     method:'POST',
     headers:{ 'Content-Type':'application/x-www-form-urlencoded' },
@@ -548,7 +631,7 @@ async function handleCredentialResponse(resp){
     document.getElementById('staffEmail').textContent = STAFF_EMAIL;
     document.getElementById('signinArea').innerHTML = '';
     document.getElementById('signinAreaDesktop').innerHTML = '';
-    bootstrapApp(); // muat data
+    bootstrapApp();
   } else {
     toast('Akses Ditolak', j.message || 'Sila hubungi admin untuk allowlist.', 'danger');
     ID_TOKEN = ''; STAFF_EMAIL = '';
@@ -578,7 +661,6 @@ async function getJSON(params={}, {silent=false, msg='Memuat data…'}={}){
   try{
     const r = await Promise.race([
       fetch(url, { method:'GET' }),
-      // Timeout dinaikkan 12s untuk elak “Gagal memuat data…”
       new Promise((_,rej)=> setTimeout(()=>rej(new Error('Timeout')), 12000))
     ]);
     return await r.json();
@@ -595,7 +677,6 @@ async function postForm(params={}, {silent=false, msg='Menyimpan data…'}={}){
         headers:{ 'Content-Type':'application/x-www-form-urlencoded' },
         body: new URLSearchParams({ ...params, id_token: ID_TOKEN })
       }),
-      // Timeout dinaikkan 12s
       new Promise((_,rej)=> setTimeout(()=>rej(new Error('Timeout')), 12000))
     ]);
     return await r.json();
@@ -646,6 +727,24 @@ function toast(title, message, variant='primary'){
   el.addEventListener('hidden.bs.toast', ()=>el.remove());
 }
 
+/* Umur dari IC (NRIC: YYMMDD-… atau angka tanpa dash) */
+function ageFromIC(ic){
+  const s = String(ic).replace(/\D/g,'');
+  if (s.length < 6) return null;
+  const yy = parseInt(s.slice(0,2),10);
+  const mm = parseInt(s.slice(2,4),10)-1;
+  const dd = parseInt(s.slice(4,6),10);
+  const now = new Date();
+  const curYY = now.getFullYear() % 100;
+  const year = (yy <= curYY ? 2000 + yy : 1900 + yy); // logik standard
+  const dob = new Date(year, mm, dd);
+  if (isNaN(dob.getTime())) return null;
+  let age = now.getFullYear() - dob.getFullYear();
+  const m = now.getMonth() - dob.getMonth();
+  if (m < 0 || (m === 0 && now.getDate() < dob.getDate())) age--;
+  return age;
+}
+
 /* =======================
    GLOBALS
 ======================= */
@@ -680,16 +779,18 @@ function bootstrapApp(){
 /* =======================
    NAV & UI
 ======================= */
+function showSection(hash){
+  document.querySelectorAll('main section').forEach(s=>s.classList.add('d-none'));
+  document.querySelector(hash)?.classList.remove('d-none');
+  document.querySelectorAll('.nav-link').forEach(n=>n.classList.remove('active'));
+  document.querySelector(`a[href="${hash}"]`)?.classList.add('active');
+}
 function setupNavigation(){
   document.querySelectorAll('.nav-link').forEach(a=>{
     a.addEventListener('click',(e)=>{
       e.preventDefault();
-      document.querySelectorAll('main section').forEach(s=>s.classList.add('d-none'));
       const target = a.getAttribute('href');
-      document.querySelector(target).classList.remove('d-none');
-      document.querySelectorAll('.nav-link').forEach(n=>n.classList.remove('active'));
-      a.classList.add('active');
-
+      showSection(target);
       if (target==='#dashboard'){ loadDashboardData(); loadStatistics(document.getElementById('statPeriod').value); }
       else if (target==='#nadi'){ /* no-op */ }
       else if (target==='#kelayakan'){ /* no-op */ }
@@ -700,6 +801,15 @@ function setupNavigation(){
       else if (target==='#second-visit'){ loadSecondVisitData(); }
       else if (target==='#selesai'){ loadCompletedData(); loadCompletedStatistics(document.getElementById('statPeriodCompleted').value); }
       else if (target==='#arkib'){ loadArchivedData(); }
+    });
+  });
+
+  // klik kad statistik → lompat ke seksyen
+  document.querySelectorAll('[data-jump]').forEach(a=>{
+    a.addEventListener('click', (e)=>{
+      const id = a.getAttribute('data-jump');
+      showSection('#'+id);
+      document.querySelector(`a[href="#${id}"]`)?.click();
     });
   });
 
@@ -778,7 +888,7 @@ function buildBarChart(elId, dataArr, titleText){
 /* =======================
    LOG CALLS DRAWER
 ======================= */
-let logDrawerTimer=null, lastLogCount=0;
+let logDrawerTimer=null;
 function setupLogDrawer(){
   const btnOpen = document.getElementById('btnShowLog');
   const btnClose= document.getElementById('btnCloseLog');
@@ -799,17 +909,18 @@ async function refreshLogs(opts={}){
     const res = await getJSON({ action:'getCallLogs', q }, { silent:true });
     if (res.status==='success'){
       const arr = res.data||[];
-      lastLogCount = arr.length;
       document.getElementById('logBadge').textContent = arr.length;
       body.innerHTML = '';
       arr.forEach(item=>{
         const me = (item.staff||'').toLowerCase() === (STAFF_EMAIL||'').toLowerCase();
         const who = item.staff || 'STAFF';
-        const text = `${item.event || 'CALL'} • ${item.nama||'-'} (${item.noIC||'-'}) • ${item.noTelefon||'-'}`;
         const when = item.time || '';
+        const msisdn = normalizeMsisdnMY(item.noTelefon||'');
+        const telLink = msisdn ? `<a class="call-chip" href="${telHref(msisdn)}" title="Call"><i class="bi bi-telephone-fill"></i></a>` : '';
+        const text = `${item.event || 'CALL'} • ${item.nama||'-'} (${item.noIC||'-'}) • ${item.noTelefon||'-'}`;
         const bubble = document.createElement('div');
-        bubble.className = 'bubble ' + (me?'me':'other');
-        bubble.innerHTML = `<div>${text}</div><div class="meta">${who} • ${when}</div>`;
+        bubble.className = 'bubble ' + (me?'me':'');
+        bubble.innerHTML = `<div>${text} ${telLink}</div><div class="meta">${who} • ${when}</div>`;
         body.appendChild(bubble);
       });
       body.scrollTop = body.scrollHeight;
@@ -819,11 +930,12 @@ async function refreshLogs(opts={}){
 }
 
 /* =======================
-   EXCEL (Kelayakan)
+   EXCEL (Kelayakan) – tapis ≥40 thn dari IC
 ======================= */
 function setupExcel(){
   const input = document.getElementById('excelFile');
   const tbody = document.getElementById('kelayakanTable');
+  const info  = document.getElementById('excelInfo');
   input.addEventListener('change', async (e)=>{
     const file = e.target.files[0];
     if (!file) return;
@@ -836,12 +948,17 @@ function setupExcel(){
       tbody.innerHTML = '';
       if (!json.length) {
         tbody.innerHTML = `<tr><td colspan="7" class="text-center text-muted">Tiada data.</td></tr>`;
+        info.classList.add('d-none');
         return;
       }
+      let shown = 0, skipped = 0;
       json.forEach((row, idx)=>{
         const nama = row.Nama || row.NAMA || row.name || '';
         const ic = row.IC || row.Ic || row.ic || '';
         const tel = row.Telefon || row.TELEFON || row.Phone || row.phone || '';
+        const age = ageFromIC(ic);
+        if (age===null || age < 40){ skipped++; return; } // tapis <40
+        shown++;
         const msisdn = normalizeMsisdnMY(tel);
         const id = 'x'+Date.now()+idx;
         const tr = `
@@ -864,6 +981,11 @@ function setupExcel(){
           </tr>`;
         tbody.insertAdjacentHTML('beforeend', tr);
       });
+      if (!shown){
+        tbody.innerHTML = `<tr><td colspan="7" class="text-center text-muted">Tiada calon ≥ 40 tahun ditemui.</td></tr>`;
+      }
+      info.textContent = `Dipaparkan: ${shown} • Ditapis (<40 thn): ${skipped}`;
+      info.classList.remove('d-none');
     } finally { hideLoader(); }
   });
 }
@@ -871,7 +993,7 @@ function toggleLayak(rowId, isLayak){
   const tr = document.getElementById(rowId);
   if (!tr) return;
   const checks = tr.querySelectorAll('input[type=checkbox]');
-  if (isLayak) { checks[1].checked = false; } else { checks[0].checked = false; }
+  if (isLayak) { checks[1].checked = false; } else { checks[0].checked = false; tr.remove(); return; } // Tidak Layak → buang
   const date  = tr.querySelector('.tca-date');
   const time  = tr.querySelector('.tca-time');
   const staff = tr.querySelector('.tca-staff');
@@ -904,81 +1026,52 @@ async function daftarFromExcel(rowId, encNama, encIC, msisdn){
 }
 
 /* =======================
-   NADI PAGE (auto-expand)
+   NADI PAGE (jadual kemas)
 ======================= */
 function setupNADI(){
-  const container = document.getElementById('nadiContainer');
-  container.innerHTML = '';
-  addNadiRow(); // mula 1 baris
+  const tbody = document.getElementById('nadiTableBody');
+  tbody.innerHTML = `<tr class="text-center text-muted"><td colspan="16">Tiada data. Klik “Tambah Baris”.</td></tr>`;
+  document.getElementById('btnNadiAddRow').addEventListener('click', addNadiRowTable);
   document.getElementById('btnNadiExportCsv').addEventListener('click', exportNadiCSV);
 }
-function autoGrowInput(el, min=120, max=300, pad=22){
-  const canvas = document.createElement('canvas');
-  const ctx = canvas.getContext('2d');
-  function update(){
-    const style = getComputedStyle(el);
-    ctx.font = `${style.fontWeight} ${style.fontSize} ${style.fontFamily}`;
-    const text = el.value || el.placeholder || '';
-    let w = Math.ceil(ctx.measureText(text).width) + pad;
-    if (w < min) w = min;
-    if (w > max) w = max;
-    el.style.width = w + 'px';
-  }
-  ['input','change'].forEach(evt=> el.addEventListener(evt, update));
-  update();
-}
-function wireAutoExpandForRow(row){
-  row.querySelectorAll('.nadi-input').forEach(el=>{
-    const isLong = el.classList.contains('nadi-long');
-    autoGrowInput(el, isLong?180:120, isLong?420:300);
-  });
-  const dxt = row.querySelector('.nadi-dxt');
-  if (dxt) autoGrowInput(dxt, 90, 160);
-}
-function addNadiRow(){
-  const container = document.getElementById('nadiContainer');
+function addNadiRowTable(){
+  const tbody = document.getElementById('nadiTableBody');
+  if (tbody.firstElementChild && tbody.firstElementChild.classList.contains('text-muted')) tbody.innerHTML='';
   const id = 'n'+Date.now()+Math.random().toString(36).slice(2,6);
-  const row = document.createElement('div');
-  row.className = 'nadi-row mb-2';
-  row.id = id;
-  row.innerHTML = `
-    <input class="form-control form-control-sm nadi-input nadi-long nadi-nama" placeholder="Nama pesakit" />
-    <input class="form-control form-control-sm nadi-input nadi-ic" placeholder="IC" />
-    <input class="form-control form-control-sm nadi-input nadi-tel" placeholder="Telefon (012.. atau 60..)" />
-    <input class="form-control form-control-sm nadi-input nadi-alamat nadi-long" placeholder="Alamat" />
-    <input class="form-control form-control-sm nadi-input nadi-bp" placeholder="BP (cth: 120/80)" />
-    <div class="input-group input-group-sm">
-      <select class="form-select nadi-dxt-type">
+  const tr = document.createElement('tr');
+  tr.id = id;
+  tr.innerHTML = `
+    <td><input class="form-control form-control-sm nadi-nama" placeholder="Nama pesakit"/></td>
+    <td><input class="form-control form-control-sm nadi-ic" placeholder="IC"/></td>
+    <td><input class="form-control form-control-sm nadi-tel" placeholder="012.. / 60.."/></td>
+    <td><input class="form-control form-control-sm nadi-alamat" placeholder="Alamat"/></td>
+    <td><input class="form-control form-control-sm nadi-bp w-xs" placeholder="120/80"/></td>
+    <td>
+      <select class="form-select form-select-sm nadi-dxt-type">
         <option value="Fasting">Fasting</option>
         <option value="Random">Random</option>
       </select>
-      <input class="form-control nadi-dxt" placeholder="DXT (mmol/L)" />
-    </div>
-    <input class="form-control form-control-sm nadi-input nadi-tinggi" placeholder="Tinggi (cm)" />
-    <input class="form-control form-control-sm nadi-input nadi-berat" placeholder="Berat (kg)" />
-    <input class="form-control form-control-sm nadi-input nadi-bmi" placeholder="BMI (auto)" disabled />
-    <div class="form-check"><input class="form-check-input nadi-layak" type="checkbox"><label class="form-check-label">Layak</label></div>
-    <div class="form-check"><input class="form-check-input nadi-taklayak" type="checkbox"><label class="form-check-label">Tidak Layak</label></div>
-    <div class="d-flex gap-1 align-items-center">
-      <input type="date" class="form-control form-control-sm nadi-tca-date" disabled>
-      <input type="time" class="form-control form-control-sm nadi-tca-time" disabled>
-      <input type="text" class="form-control form-control-sm nadi-staff" placeholder="Nama staff" disabled>
-    </div>
-    <div class="d-flex gap-1">
+    </td>
+    <td><input class="form-control form-control-sm nadi-dxt w-xs" placeholder="mmol/L"/></td>
+    <td><input class="form-control form-control-sm nadi-tinggi w-xs" placeholder="cm"/></td>
+    <td><input class="form-control form-control-sm nadi-berat w-xs" placeholder="kg"/></td>
+    <td><input class="form-control form-control-sm nadi-bmi w-xs" placeholder="auto" disabled/></td>
+    <td class="text-center"><input type="checkbox" class="form-check-input nadi-layak"></td>
+    <td class="text-center"><input type="checkbox" class="form-check-input nadi-taklayak"></td>
+    <td><input type="date" class="form-control form-control-sm nadi-tca-date" disabled></td>
+    <td><input type="time" class="form-control form-control-sm nadi-tca-time" disabled></td>
+    <td><input type="text" class="form-control form-control-sm nadi-staff" placeholder="Nama staff" disabled></td>
+    <td class="d-flex gap-1">
       <button class="btn btn-sm btn-outline-primary nadi-daftar" disabled>Daftar</button>
-      <button class="btn btn-sm btn-outline-secondary nadi-tambah">Tambah Baris</button>
       <button class="btn btn-sm btn-outline-danger nadi-buang">Buang</button>
-    </div>
+    </td>
   `;
-  container.appendChild(row);
+  tbody.appendChild(tr);
 
-  // Auto-expand kawal
-  wireAutoExpandForRow(row);
-
-  // BMI auto-kira
-  const tinggi = row.querySelector('.nadi-tinggi');
-  const berat  = row.querySelector('.nadi-berat');
-  const bmi    = row.querySelector('.nadi-bmi');
+  // Auto BMI
+  const tinggi = tr.querySelector('.nadi-tinggi');
+  const berat  = tr.querySelector('.nadi-berat');
+  const bmi    = tr.querySelector('.nadi-bmi');
   function calcBMI(){
     const h = parseFloat(tinggi.value||'0')/100;
     const w = parseFloat(berat.value||'0');
@@ -987,54 +1080,51 @@ function addNadiRow(){
   tinggi.addEventListener('input', calcBMI);
   berat.addEventListener('input', calcBMI);
 
-  // Layak/Tidak Layak → enable/disable TCA & staff
-  const layak = row.querySelector('.nadi-layak');
-  const tak   = row.querySelector('.nadi-taklayak');
-  const tcaD  = row.querySelector('.nadi-tca-date');
-  const tcaT  = row.querySelector('.nadi-tca-time');
-  const staff = row.querySelector('.nadi-staff');
-  const btnReg= row.querySelector('.nadi-daftar');
+  const layak = tr.querySelector('.nadi-layak');
+  const tak   = tr.querySelector('.nadi-taklayak');
+  const tcaD  = tr.querySelector('.nadi-tca-date');
+  const tcaT  = tr.querySelector('.nadi-tca-time');
+  const staff = tr.querySelector('.nadi-staff');
+  const btn   = tr.querySelector('.nadi-daftar');
 
   layak.addEventListener('change', ()=>{
-    if (layak.checked){ tak.checked=false; tcaD.disabled=false; tcaT.disabled=false; staff.disabled=false; btnReg.disabled=false; }
-    else { tcaD.disabled=true; tcaT.disabled=true; staff.disabled=true; btnReg.disabled=true; }
+    if (layak.checked){ tak.checked=false; tcaD.disabled=false; tcaT.disabled=false; staff.disabled=false; btn.disabled=false; }
+    else { tcaD.disabled=true; tcaT.disabled=true; staff.disabled=true; btn.disabled=true; }
   });
-  tak.addEventListener('change', ()=>{ if (tak.checked){ layak.checked=false; tcaD.disabled=true; tcaT.disabled=true; staff.disabled=true; btnReg.disabled=true; } });
+  tak.addEventListener('change', ()=>{ if (tak.checked){ layak.checked=false; tr.remove(); if (!tbody.children.length) tbody.innerHTML = `<tr class="text-center text-muted"><td colspan="16">Tiada data. Klik “Tambah Baris”.</td></tr>`; } });
 
-  // Daftar → simpan ke sheet (bagi yang layak sahaja)
-  btnReg.addEventListener('click', async ()=>{
-    const nama   = row.querySelector('.nadi-nama').value.trim();
-    const ic     = row.querySelector('.nadi-ic').value.trim();
-    const tel    = normalizeMsisdnMY(row.querySelector('.nadi-tel').value.trim());
-    const date   = tcaD.value; const time = tcaT.value; const st = staff.value.trim();
+  btn.addEventListener('click', async ()=>{
+    const nama = tr.querySelector('.nadi-nama').value.trim();
+    const ic   = tr.querySelector('.nadi-ic').value.trim();
+    const tel  = normalizeMsisdnMY(tr.querySelector('.nadi-tel').value.trim());
+    const date = tcaD.value; const time = tcaT.value; const st = staff.value.trim();
     if (!nama||!ic||!tel||!date||!time||!st){ toast('Ralat','Sila isi penuh untuk pendaftaran layak','danger'); return; }
     try{
       const res = await postForm({ action:'daftarPesakit', namaPesakit:nama, noIC:ic, noTelefon:tel, namaStaff:st, tarikhTCA:date, masaTCA:time }, { msg:'Mendaftar (NADI)…' });
-      if (res.status==='success'){ toast('Berjaya', `Daftar ${nama}`, 'success'); }
+      if (res.status==='success'){ toast('Berjaya', `Daftar ${nama}`, 'success'); tr.remove(); if (!tbody.children.length) tbody.innerHTML = `<tr class="text-center text-muted"><td colspan="16">Tiada data. Klik “Tambah Baris”.</td></tr>`; }
       else throw new Error(res.message||'Gagal daftar');
     }catch(e){ toast('Ralat', e.message, 'danger'); }
   });
 
-  // Tambah/Buang
-  row.querySelector('.nadi-tambah').addEventListener('click', addNadiRow);
-  row.querySelector('.nadi-buang').addEventListener('click', ()=> row.remove());
+  tr.querySelector('.nadi-buang').addEventListener('click', ()=>{ tr.remove(); if (!tbody.children.length) tbody.innerHTML = `<tr class="text-center text-muted"><td colspan="16">Tiada data. Klik “Tambah Baris”.</td></tr>`; });
 }
 function exportNadiCSV(){
-  const container = document.getElementById('nadiContainer');
-  const rows = Array.from(container.querySelectorAll('.nadi-row'));
-  if (!rows.length){ toast('Makluman','Tiada data untuk diexport','warning'); return; }
-  const header = ['Nama','IC','Telefon','Alamat','BP','DXT_Tipe','DXT','Tinggi(cm)','Berat(kg)','BMI','Layak','TarikhTCA','MasaTCA','Staff'];
-  const data = rows.map(r=>{
-    const v = (sel) => (r.querySelector(sel)?.value || '').trim();
-    const b = (sel) => (r.querySelector(sel)?.checked ? 'Ya' : 'Tidak');
-    return [
-      v('.nadi-nama'), v('.nadi-ic'), v('.nadi-tel'), v('.nadi-alamat'),
-      v('.nadi-bp'), r.querySelector('.nadi-dxt-type')?.value || '', v('.nadi-dxt'),
-      v('.nadi-tinggi'), v('.nadi-berat'), v('.nadi-bmi'),
-      b('.nadi-layak'),
-      v('.nadi-tca-date'), v('.nadi-tca-time'), v('.nadi-staff')
-    ];
+  const tbody = document.getElementById('nadiTableBody');
+  const rows = Array.from(tbody.querySelectorAll('tr'));
+  const data = [];
+  rows.forEach(r=>{
+    const get = (sel)=> (r.querySelector(sel)?.value || '').trim();
+    if (!r.querySelector('.nadi-nama')) return;
+    data.push([
+      get('.nadi-nama'), get('.nadi-ic'), get('.nadi-tel'), get('.nadi-alamat'),
+      get('.nadi-bp'), r.querySelector('.nadi-dxt-type')?.value || '', get('.nadi-dxt'),
+      get('.nadi-tinggi'), get('.nadi-berat'), get('.nadi-bmi'),
+      (r.querySelector('.nadi-layak')?.checked ? 'Ya' : 'Tidak'),
+      r.querySelector('.nadi-tca-date')?.value || '', r.querySelector('.nadi-tca-time')?.value || '', get('.nadi-staff')
+    ]);
   });
+  if (!data.length){ toast('Makluman','Tiada data untuk diexport','warning'); return; }
+  const header = ['Nama','IC','Telefon','Alamat','BP','DXT_Tipe','DXT','Tinggi(cm)','Berat(kg)','BMI','Layak','TarikhTCA','MasaTCA','Staff'];
   const csv = [header, ...data].map(r=>r.map(v=>`"${String(v||'').replace(/"/g,'""')}"`).join(',')).join('\r\n');
   const blob = new Blob([csv], { type:'text/csv;charset=utf-8;' });
   const url = URL.createObjectURL(blob);
@@ -1047,6 +1137,13 @@ function exportNadiCSV(){
 /* =======================
    DATA LOADERS
 ======================= */
+function setNavBadge(id, n){
+  const el = document.getElementById(id);
+  if (!el) return;
+  if (n && n>0){ el.textContent = n; el.style.display='inline-block'; }
+  else { el.style.display='none'; }
+}
+
 async function loadDashboardData(){
   try{
     const data = await getJSON({ action:'getDashboardData' }, { msg:'Memuat Dashboard…' });
@@ -1057,6 +1154,10 @@ async function loadDashboardData(){
       totalSelesai.textContent = data.data.totalSelesai || 0;
       labFollowUpDue.textContent = data.data.labFollowUpDue || 0;
       labFollowUpPending.textContent = data.data.labFollowUpPending || 0;
+      // Anggaran awal untuk lencana (akan dikemaskini lagi oleh loader seksyen)
+      setNavBadge('badgeFirst', data.data.totalFirstVisit||0);
+      setNavBadge('badgeSecond', data.data.totalSecondVisit||0);
+      setNavBadge('badgeLab', (data.data.labFollowUpPending||0)+(data.data.labFollowUpDue||0));
     }
   }catch(e){ toast('Ralat','Gagal memuat data dashboard','danger'); }
 }
@@ -1087,8 +1188,10 @@ async function loadTCACallData(){
     const tb2 = document.getElementById('tcaCallList');
     [tb1,tb2].forEach(tb=>tb && (tb.innerHTML=''));
 
+    let count = 0;
     const renderRow = (p) => {
       const msisdn = normalizeMsisdnMY(p.noTelefon||'');
+      count++;
       return `
       <tr data-ic="${p.noIC}">
         <td>${p.nama}</td>
@@ -1114,6 +1217,7 @@ async function loadTCACallData(){
       if (tb1) tb1.innerHTML = empty;
       if (tb2) tb2.innerHTML = empty;
     }
+    setNavBadge('badgeTCA', count);
   }catch(e){ /* senyap */ }
 }
 
@@ -1122,9 +1226,11 @@ async function loadFirstVisitData(){
     const data = await getJSON({ action:'getFirstVisit' }, { msg:'Memuat First Visit…' });
     const tbody = document.getElementById('firstVisitList');
     tbody.innerHTML = '';
+    let pending = 0;
     if (data.status==='success' && data.data.length>0){
       data.data.forEach(p=>{
         const hadir = p.status==='HADIR';
+        if (!hadir) pending++;
         const within = isWithin24hOfDate(p.tarikhTCA);
         const msisdn = normalizeMsisdnMY(p.noTelefon||'');
 
@@ -1161,6 +1267,7 @@ async function loadFirstVisitData(){
     } else {
       tbody.innerHTML = `<tr><td colspan="6" class="text-center text-muted">Tiada data First Visit</td></tr>`;
     }
+    setNavBadge('badgeFirst', pending);
   }catch(e){ /* senyap */ }
 }
 
@@ -1169,10 +1276,13 @@ async function loadLabFollowUp(){
     const data = await getJSON({ action:'getLabFollowUp' }, { msg:'Memuat Follow-up Lab…' });
     const tbody = document.getElementById('labFollowupTable');
     tbody.innerHTML = '';
+    let pending = 0;
     if (data.status==='success' && data.data.length>0){
       data.data.forEach(p=>{
         const msisdn = normalizeMsisdnMY(p.noTelefon||'');
-        const badge = p.labStatus==='DONE' ? 'bg-success' : (p.labStatus==='REPEAT' ? 'bg-danger' : (p.labStatus==='IN_PROCESS' ? 'bg-warning' : 'bg-secondary'));
+        const done = p.labStatus==='DONE';
+        if (!done) pending++;
+        const badge = done ? 'bg-success' : (p.labStatus==='REPEAT' ? 'bg-danger' : (p.labStatus==='IN_PROCESS' ? 'bg-warning' : 'bg-secondary'));
         const label = p.labStatus || 'PENDING';
         const row = `
         <tr data-ic="${p.noIC}">
@@ -1189,7 +1299,7 @@ async function loadLabFollowUp(){
           <td class="mini-actions">
             <button class="btn btn-sm btn-success" onclick="openSecondTca('${p.noIC}')"><i class="fa-solid fa-square-check"></i> Result complete & berjaya call</button>
             <button class="btn btn-sm btn-warning" onclick="markLabStatus('${p.noIC}','IN_PROCESS')"><i class="fa-solid fa-hourglass-half"></i> In process</button>
-            <button class="btn btn-sm btn-danger" onclick="markLabStatus('${p.noIC}','REPEAT')"><i class="fa-solid fa-rotate-left"></i> Repeat sample</button>
+            <button class="btn btn-sm btn-danger"  onclick="markLabStatus('${p.noIC}','REPEAT')"><i class="fa-solid fa-rotate-left"></i> Repeat sample</button>
           </td>
         </tr>`;
         tbody.insertAdjacentHTML('beforeend', row);
@@ -1197,6 +1307,7 @@ async function loadLabFollowUp(){
     } else {
       tbody.innerHTML = `<tr><td colspan="7" class="text-center text-muted">Tiada pesakit untuk follow-up.</td></tr>`;
     }
+    setNavBadge('badgeLab', pending);
   }catch(e){ /* senyap */ }
 }
 
@@ -1205,9 +1316,11 @@ async function loadSecondVisitData(){
     const data = await getJSON({ action:'getSecondVisit' }, { msg:'Memuat Second Visit…' });
     const tbody = document.getElementById('secondVisitList');
     tbody.innerHTML = '';
+    let pending = 0;
     if (data.status==='success' && data.data.length>0){
       data.data.forEach(p=>{
         const hadir = p.status==='HADIR';
+        if (!hadir) pending++;
         const within = isWithin24hOfDate(p.tarikhTCA);
         const msisdn = normalizeMsisdnMY(p.noTelefon||'');
 
@@ -1237,6 +1350,7 @@ async function loadSecondVisitData(){
     } else {
       tbody.innerHTML = `<tr><td colspan="6" class="text-center text-muted">Tiada data Second Visit</td></tr>`;
     }
+    setNavBadge('badgeSecond', pending);
   }catch(e){ /* senyap */ }
 }
 
@@ -1269,26 +1383,6 @@ async function loadCompletedData(){
       });
     } else {
       tbody.innerHTML = `<tr><td colspan="10" class="text-center text-muted">Tiada data pesakit selesai</td></tr>`;
-    }
-  }catch(e){ /* senyap */ }
-}
-
-async function loadArchivedData(){
-  try{
-    const data = await getJSON({ action:'getArchived' }, { msg:'Memuat Arkib…' });
-    const tbody = document.getElementById('archiveTable');
-    tbody.innerHTML = '';
-    if (data.status==='success' && data.data.length>0){
-      data.data.forEach(p=>{
-        const msisdn = normalizeMsisdnMY(p.noTelefon||'');
-        const row = `<tr data-ic="${p.noIC}">
-          <td>${p.nama}</td><td>${p.noIC}</td><td>${msisdn}</td><td>${p.tarikhDaftar}</td><td>${p.tarikhSelesai}</td><td>${p.archivedAt||'-'}</td>
-          <td><button class="btn btn-sm btn-outline-primary" onclick="restorePatient('${p.noIC}')"><i class="fa-solid fa-rotate-left"></i> Pulihkan</button></td>
-        </tr>`;
-        tbody.insertAdjacentHTML('beforeend', row);
-      });
-    } else {
-      tbody.innerHTML = `<tr><td colspan="7" class="text-center text-muted">Tiada rekod arkib</td></tr>`;
     }
   }catch(e){ /* senyap */ }
 }
@@ -1337,7 +1431,7 @@ async function submitRetca(){
   }catch(e){ toast('Ralat', e.message, 'danger'); }
 }
 
-/* Lab complete → set second TCA + log caller + set Lab DONE */
+/* Lab complete helpers */
 function openSecondTca(noIC){
   document.getElementById('secondTcaIC').value = noIC;
   document.getElementById('secondTcaDate').value = '';
@@ -1366,6 +1460,15 @@ async function submitSecondTca(){
 
     loadLabFollowUp(); loadSecondVisitData(); loadCompletedData(); loadDashboardData();
     refreshLogs({silent:true});
+  }catch(e){ toast('Ralat', e.message, 'danger'); }
+}
+async function markLabStatus(noIC, status){
+  try{
+    const res = await postForm({ action:'updateLabStatus', noIC, status, staff: STAFF_EMAIL }, { msg:'Mengemas kini status…' });
+    if (res.status==='success'){
+      toast('Berjaya','Status follow-up dikemas kini','success');
+      loadLabFollowUp(); loadDashboardData();
+    } else throw new Error(res.message||'Gagal kemas kini status');
   }catch(e){ toast('Ralat', e.message, 'danger'); }
 }
 
