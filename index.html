@@ -93,15 +93,25 @@ body{font-family:'Segoe UI',Tahoma,Geneva,Verdana,sans-serif;background:#f5f7fa;
 .log-loading{ display:none; text-align:center; padding:10px }
 .log-loading.active{ display:block }
 
-/* NADI grid input - auto expand horizontally */
-.nadi-input{ min-width:120px; width:100%; }
+/* NADI grid input - auto expand */
+.nadi-scroll{overflow-x:auto; padding-bottom:4px}
+.nadi-row{
+  display:grid;
+  grid-auto-flow: column;           /* baris memanjang ke kanan */
+  grid-auto-columns: max-content;   /* lebar ikut kandungan */
+  gap:8px; align-items:center;
+  width:max-content;                /* biar boleh overflow dan scroll */
+}
+.nadi-input{ width:auto; min-width:120px; }
 .nadi-long{ min-width:220px; }
-.nadi-row{ display:grid; grid-template-columns: 220px 140px 160px 240px 140px 180px 120px 120px 120px 120px 120px 260px 160px; gap:8px; align-items:center; }
-.nadi-row > * { white-space:nowrap; }
+/* Input group DXT jangan paksa penuh */
+.nadi-dxt-group{ display:flex; gap:6px; align-items:center; flex:0 0 auto; }
+.nadi-dxt-group .form-select,
+.nadi-dxt-group .form-control{ width:auto; min-width:110px; }
 
 /* Responsive */
 @media (max-width:992px){
-  .nadi-row{ grid-template-columns: repeat(1, minmax(220px, 1fr)); }
+  .nadi-row{ grid-auto-columns: minmax(160px, max-content); }
 }
 </style>
 </head>
@@ -244,7 +254,8 @@ body{font-family:'Segoe UI',Tahoma,Geneva,Verdana,sans-serif;background:#f5f7fa;
       </div>
     </div>
     <div class="card"><div class="card-body">
-      <div id="nadiContainer"></div>
+      <!-- scroll container untuk baris panjang -->
+      <div class="nadi-scroll"><div id="nadiContainer"></div></div>
       <div class="text-muted small mt-2">Nota: Baris “Layak” boleh terus <b>Daftar</b> (simpan ke sheet). Baris “Tidak Layak” tidak disimpan ke sheet tetapi tetap dieksport CSV bersama-sama.</div>
     </div></div>
   </section>
@@ -486,11 +497,8 @@ body{font-family:'Segoe UI',Tahoma,Geneva,Verdana,sans-serif;background:#f5f7fa;
 /* =======================
    KONFIG (EDIT INI SAHAJA)
 ======================= */
-// 1) Isi URL Web App Apps Script (deployment terkini)
-const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbx6TKE0vDDPO3-36cY7xjacAbGL0HIRKCrORNm-sED9y5NpIeIUk9gyrpiWy-S7vbc/exec'; // contoh: https://script.google.com/macros/s/AKfycbx.../exec
-// 2) Google OAuth Client ID (boleh public – guna Google Cloud Console)
+const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbx6TKE0vDDPO3-36cY7xjacAbGL0HIRKCrORNm-sED9y5NpIeIUk9gyrpiWy-S7vbc/exec';
 const GOOGLE_CLIENT_ID = '863564124015-838ksbuk27f0kkomm16hnc3bu608pbrr.apps.googleusercontent.com';
-// 3) Logo (optional)
 const LOGO_URL = 'https://github.com/sihat9/mari-jalan-dengan-doktor/blob/main/img/logo-kss.png?raw=true';
 
 /* =======================
@@ -517,9 +525,7 @@ function initGoogleSignIn(){
 }
 
 async function handleCredentialResponse(resp){
-  // resp.credential = id_token
   ID_TOKEN = resp.credential;
-  // Ping backend whoami (server verify + allowlist)
   const r = await fetch(SCRIPT_URL, {
     method:'POST',
     headers:{ 'Content-Type':'application/x-www-form-urlencoded' },
@@ -532,7 +538,7 @@ async function handleCredentialResponse(resp){
     document.getElementById('staffEmail').textContent = STAFF_EMAIL;
     document.getElementById('signinArea').innerHTML = '';
     document.getElementById('signinAreaDesktop').innerHTML = '';
-    bootstrapApp(); // muat data
+    bootstrapApp();
   } else {
     toast('Akses Ditolak', j.message || 'Sila hubungi admin untuk allowlist.', 'danger');
     ID_TOKEN = ''; STAFF_EMAIL = '';
@@ -546,7 +552,6 @@ let loaderTimer=null;
 function showLoader(msg='Memproses…'){
   document.getElementById('loaderMsg').textContent = msg;
   document.getElementById('appLoader').style.display = 'block';
-  // auto-hide selepas 2s agar UI tak “terkunci”
   clearTimeout(loaderTimer);
   loaderTimer = setTimeout(hideLoader, 2000);
 }
@@ -639,12 +644,10 @@ let retcaModal, secondTcaModal, pdpaModal;
    BOOTSTRAP APP
 ======================= */
 function bootstrapApp(){
-  // logo (fallback)
   const logoEl = document.getElementById('brandLogo');
   logoEl.src = LOGO_URL;
   logoEl.onerror = () => (logoEl.src='https://via.placeholder.com/64x64.png?text=KS');
 
-  // tarikh
   document.getElementById('current-date').textContent =
     new Date().toLocaleDateString('ms-MY', { weekday:'long', year:'numeric', month:'long', day:'numeric' });
 
@@ -659,7 +662,6 @@ function bootstrapApp(){
   loadDashboardData();
   loadStatistics('3months');
   loadCompletedStatistics('3months');
-  // Auto muat TCA call section di dashboard
   loadTCACallData();
 }
 
@@ -737,7 +739,6 @@ function setupExports(){
    CHART HELPERS (3D fallback)
 ======================= */
 function ensure3DPlugin(){
-  // Jika plugin 3D gagal load, kita buat fallback 2D
   return !!Chart?.registry?.plugins?.get?.('3d');
 }
 function buildBarChart(elId, dataArr, titleText){
@@ -779,7 +780,7 @@ function setupLogDrawer(){
 }
 function autoRefreshLogs(){
   stopAutoRefreshLogs();
-  logDrawerTimer = setInterval(()=> refreshLogs({silent:true}), 10000); // 10s
+  logDrawerTimer = setInterval(()=> refreshLogs({silent:true}), 10000);
 }
 function stopAutoRefreshLogs(){
   if (logDrawerTimer){ clearInterval(logDrawerTimer); logDrawerTimer=null; }
@@ -795,7 +796,6 @@ async function refreshLogs(opts={}){
       const arr = res.data||[];
       lastLogCount = arr.length;
       document.getElementById('logBadge').textContent = arr.length;
-      // render bubbles
       body.innerHTML = '';
       arr.forEach(item=>{
         const me = (item.staff||'').toLowerCase() === (STAFF_EMAIL||'').toLowerCase();
@@ -899,17 +899,24 @@ async function daftarFromExcel(rowId, encNama, encIC, msisdn){
 }
 
 /* =======================
-   NADI PAGE
+   NADI PAGE + AUTO-EXPAND
 ======================= */
-const nadiRows = []; // disimpan lokal (hari ini)
+function attachAutoGrow(input, minCh=12, maxCh=80){
+  const update=()=>{
+    const len = Math.max(minCh, Math.min(maxCh, (input.value||'').length + 1));
+    input.style.width = len + 'ch';
+  };
+  update();
+  input.addEventListener('input', update);
+}
+
 function setupNADI(){
   const container = document.getElementById('nadiContainer');
   container.innerHTML = '';
-
-  addNadiRow(); // mula 1 baris
-  const btnExport = document.getElementById('btnNadiExportCsv');
-  btnExport.addEventListener('click', exportNadiCSV);
+  addNadiRow();
+  document.getElementById('btnNadiExportCsv').addEventListener('click', exportNadiCSV);
 }
+
 function addNadiRow(){
   const container = document.getElementById('nadiContainer');
   const id = 'n'+Date.now()+Math.random().toString(36).slice(2,6);
@@ -922,12 +929,12 @@ function addNadiRow(){
     <input class="form-control form-control-sm nadi-input nadi-tel" placeholder="Telefon (012.. atau 60..)" />
     <input class="form-control form-control-sm nadi-input nadi-alamat nadi-long" placeholder="Alamat" />
     <input class="form-control form-control-sm nadi-input nadi-bp" placeholder="BP (cth: 120/80)" />
-    <div class="input-group input-group-sm">
-      <select class="form-select nadi-dxt-type">
+    <div class="nadi-dxt-group">
+      <select class="form-select form-select-sm nadi-dxt-type">
         <option value="Fasting">Fasting</option>
         <option value="Random">Random</option>
       </select>
-      <input class="form-control nadi-dxt" placeholder="DXT (mmol/L)" />
+      <input class="form-control form-control-sm nadi-dxt" placeholder="DXT (mmol/L)" />
     </div>
     <input class="form-control form-control-sm nadi-input nadi-tinggi" placeholder="Tinggi (cm)" />
     <input class="form-control form-control-sm nadi-input nadi-berat" placeholder="Berat (kg)" />
@@ -947,7 +954,16 @@ function addNadiRow(){
   `;
   container.appendChild(row);
 
-  // behaviour
+  // AUTO-GROW sasaran
+  [
+    '.nadi-nama','.nadi-ic','.nadi-tel','.nadi-alamat','.nadi-bp',
+    '.nadi-dxt','.nadi-tinggi','.nadi-berat','.nadi-bmi','.nadi-staff'
+  ].forEach(sel=>{
+    const el = row.querySelector(sel);
+    if (el) attachAutoGrow(el, el.classList.contains('nadi-long') ? 24 : 12, 120);
+  });
+
+  // BMI auto-kira
   const tinggi = row.querySelector('.nadi-tinggi');
   const berat  = row.querySelector('.nadi-berat');
   const bmi    = row.querySelector('.nadi-bmi');
@@ -955,10 +971,12 @@ function addNadiRow(){
     const h = parseFloat(tinggi.value||'0')/100;
     const w = parseFloat(berat.value||'0');
     bmi.value = (!h||!w) ? '' : (w/(h*h)).toFixed(1);
+    attachAutoGrow(bmi, 8, 16);
   }
   tinggi.addEventListener('input', calcBMI);
   berat.addEventListener('input', calcBMI);
 
+  // Kelayakan/Daftar
   const layak = row.querySelector('.nadi-layak');
   const tak   = row.querySelector('.nadi-taklayak');
   const tcaD  = row.querySelector('.nadi-tca-date');
@@ -972,7 +990,7 @@ function addNadiRow(){
   });
   tak.addEventListener('change', ()=>{ if (tak.checked){ layak.checked=false; tcaD.disabled=true; tcaT.disabled=true; staff.disabled=true; btnReg.disabled=true; } });
 
-  // Daftar → simpan ke sheet (bagi yang layak sahaja)
+  // Daftar → simpan ke sheet (yang layak sahaja)
   btnReg.addEventListener('click', async ()=>{
     const nama   = row.querySelector('.nadi-nama').value.trim();
     const ic     = row.querySelector('.nadi-ic').value.trim();
@@ -986,12 +1004,12 @@ function addNadiRow(){
     }catch(e){ toast('Ralat', e.message, 'danger'); }
   });
 
-  // Tambah/Buang
+  // Tambah/Buang baris
   row.querySelector('.nadi-tambah').addEventListener('click', addNadiRow);
   row.querySelector('.nadi-buang').addEventListener('click', ()=> row.remove());
 }
+
 function exportNadiCSV(){
-  // Kumpul SEMUA baris (layak & tidak layak) → export CSV
   const container = document.getElementById('nadiContainer');
   const rows = Array.from(container.querySelectorAll('.nadi-row'));
   if (!rows.length){ toast('Makluman','Tiada data untuk diexport','warning'); return; }
@@ -1328,11 +1346,9 @@ async function submitSecondTca(){
     const a = await postForm({ action:'updatePatient', noIC, tarikhTCA:date, masaTCA:time, staff }, { msg:'Menetapkan TCA Second Visit…' });
     if (a.status!=='success') throw new Error(a.message||'Gagal tetapkan TCA');
 
-    // Log call & rekod LabDoneAt + staff (server akan rekod timestamp + event)
     const b = await postForm({ action:'logCall', noIC, staff, event:'LAB_COMPLETE_CALL' }, { msg:'Merekod log panggilan…' });
     if (b.status!=='success') throw new Error(b.message||'Gagal rekod log');
 
-    // set lab DONE
     const c = await postForm({ action:'updateLabStatus', noIC, status:'DONE', staff }, { msg:'Mengemas kini status follow-up…' });
     if (c.status!=='success') throw new Error(c.message||'Gagal set follow-up DONE');
 
@@ -1354,7 +1370,6 @@ async function uploadPDPA(){
   const file = document.getElementById('pdpaFile').files[0];
   if (!file) { toast('Ralat','Sila pilih fail PDPA','danger'); return; }
 
-  // fallback base64 terus (stabil di GAS)
   showLoader('Memuat naik PDPA…');
   try{
     const base64 = await fileToBase64(file); const pure64 = base64.split(',').pop();
