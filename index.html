@@ -867,14 +867,14 @@ const LOGO_URL = 'https://github.com/sihat9/mari-jalan-dengan-doktor/blob/main/i
 let ID_TOKEN = '';      // diisi selepas login
 let STAFF_EMAIL = '';   // email sebenar (server akan sahkan juga)
 
-function initGoogleSignIn() {
-  // Pastikan Google library sudah dimuat
+function initGoogleSignIn(){
+  // Pastikan Google Identity Services sudah dimuat
   if (typeof google === 'undefined' || !google.accounts || !google.accounts.id) {
-    console.error('Google Identity Services library not loaded');
+    console.error('Google Identity Services belum dimuat');
     setTimeout(initGoogleSignIn, 500); // Cuba lagi selepas 500ms
     return;
   }
-
+  
   google.accounts.id.initialize({
     client_id: GOOGLE_CLIENT_ID,
     callback: handleCredentialResponse,
@@ -882,57 +882,56 @@ function initGoogleSignIn() {
     cancel_on_tap_outside: true
   });
   
-  // Untuk mobile
-  if (document.getElementById('signinArea')) {
+  // Render button untuk mobile dan desktop
+  try {
     google.accounts.id.renderButton(
       document.getElementById('signinArea'),
-      { 
-        theme: 'outline', 
-        size: 'medium', 
-        text: 'signin_with',
-        shape: 'rectangular',
-        width: 200
-      }
+      { theme: 'outline', size: 'medium', text:'signin_with', width: '200px' }
     );
-  }
-  
-  // Untuk desktop
-  if (document.getElementById('signinAreaDesktop')) {
     google.accounts.id.renderButton(
       document.getElementById('signinAreaDesktop'),
-      { 
-        theme: 'outline', 
-        size: 'medium', 
-        text: 'signin_with',
-        shape: 'rectangular',
-        width: 200
-      }
+      { theme: 'outline', size: 'medium', text:'signin_with', width: '200px' }
     );
+    
+    // Juga tampilkan One Tap sign-in jika sesuai
+    google.accounts.id.prompt((notification) => {
+      if (notification.isNotDisplayed() || notification.isSkippedMoment()) {
+        // One Tap tidak ditampilkan, lanjutkan dengan button biasa
+      }
+    });
+  } catch(e) {
+    console.error('Error rendering Google Sign-In button:', e);
   }
-  
-  // Juga tampilkan One Tap prompt jika sesuai
-  google.accounts.id.prompt();
 }
 
-async function handleCredentialResponse(resp){
-  ID_TOKEN = resp.credential;
-  // Semak whoami di backend
-  const r = await fetch(SCRIPT_URL, {
-    method:'POST',
-    headers:{ 'Content-Type':'application/x-www-form-urlencoded' },
-    body: new URLSearchParams({ action:'whoami', id_token: ID_TOKEN })
-  });
-  const j = await r.json();
-  if (j.status === 'success'){
-    STAFF_EMAIL = j.email || '';
-    document.getElementById('staffBadge').classList.remove('d-none');
-    document.getElementById('staffEmail').textContent = STAFF_EMAIL;
-    document.getElementById('signinArea').innerHTML = '';
-    document.getElementById('signinAreaDesktop').innerHTML = '';
-    bootstrapApp(); // muat data
-  } else {
-    toast('Akses Ditolak', j.message || 'Sila hubungi admin untuk allowlist.', 'danger');
-    ID_TOKEN = ''; STAFF_EMAIL = '';
+async function handleCredentialResponse(response){
+  try {
+    ID_TOKEN = response.credential;
+    
+    // Semak whoami di backend
+    const r = await fetch(SCRIPT_URL, {
+      method:'POST',
+      headers:{ 'Content-Type':'application/x-www-form-urlencoded' },
+      body: new URLSearchParams({ action:'whoami', id_token: ID_TOKEN })
+    });
+    
+    const j = await r.json();
+    if (j.status === 'success'){
+      STAFF_EMAIL = j.email || '';
+      document.getElementById('staffBadge').classList.remove('d-none');
+      document.getElementById('staffEmail').textContent = STAFF_EMAIL;
+      document.getElementById('signinArea').innerHTML = '';
+      document.getElementById('signinAreaDesktop').innerHTML = '';
+      bootstrapApp(); // muat data
+    } else {
+      toast('Akses Ditolak', j.message || 'Sila hubungi admin untuk allowlist.', 'danger');
+      ID_TOKEN = ''; STAFF_EMAIL = '';
+      // Reload button sign-in
+      initGoogleSignIn();
+    }
+  } catch(e) {
+    console.error('Error handling credential response:', e);
+    toast('Ralat', 'Gagal memproses login Google', 'danger');
   }
 }
 
@@ -1920,7 +1919,7 @@ function renderTcaList(mode){
   filtered.forEach(p=>{
     const msisdn = normalizeMsisdnMY(p.noTelefon||'');
     const badgeCls = p.status==='CALLED' ? 'bg-success' : (parseDDMMYYYY(p.tarikhTCA)?.getTime()<today.getTime() ? 'bg-secondary' : 'bg-warning');
-    const label = p.status==='CALLED' ? 'CALLED' : (parseDDMMYYYY(p.tarikhTCA)?.getTime()<today.getTime() ? 'LEPAS' : (isSameDay(parseDDMMYYYY(p.tarikhTCA), today) ? 'HARI INI' : 'AKAN DATANG');
+    const label = p.status==='CALLED' ? 'CALLED' : (parseDDMMYYYY(p.tarikhTCA)?.getTime()<today.getTime() ? 'LEPAS' : (isSameDay(parseDDMMYYYY(p.tarikhTCA), today) ? 'HARI INI' : 'AKAN DATANG';
     const row = `
       <tr data-ic="${p.noIC}">
         <td>${p.nama}</td>
@@ -2320,7 +2319,17 @@ async function exportCompletedCSV(){
    STARTUP
 ======================= */
 document.addEventListener('DOMContentLoaded', ()=>{
-  initGoogleSignIn();
+  // Tunggu hingga Google Identity Services siap
+  if (typeof google === 'undefined') {
+    const script = document.createElement('script');
+    script.src = 'https://accounts.google.com/gsi/client';
+    script.async = true;
+    script.defer = true;
+    script.onload = initGoogleSignIn;
+    document.head.appendChild(script);
+  } else {
+    initGoogleSignIn();
+  }
 });
 </script>
 </body>
