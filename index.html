@@ -867,21 +867,51 @@ const LOGO_URL = 'https://github.com/sihat9/mari-jalan-dengan-doktor/blob/main/i
 let ID_TOKEN = '';      // diisi selepas login
 let STAFF_EMAIL = '';   // email sebenar (server akan sahkan juga)
 
-function initGoogleSignIn(){
+function initGoogleSignIn() {
+  // Pastikan Google library sudah dimuat
+  if (typeof google === 'undefined' || !google.accounts || !google.accounts.id) {
+    console.error('Google Identity Services library not loaded');
+    setTimeout(initGoogleSignIn, 500); // Cuba lagi selepas 500ms
+    return;
+  }
+
   google.accounts.id.initialize({
     client_id: GOOGLE_CLIENT_ID,
     callback: handleCredentialResponse,
     auto_select: false,
     cancel_on_tap_outside: true
   });
-  google.accounts.id.renderButton(
-    document.getElementById('signinArea'),
-    { theme: 'outline', size: 'medium', text:'signin_with' }
-  );
-  google.accounts.id.renderButton(
-    document.getElementById('signinAreaDesktop'),
-    { theme: 'outline', size: 'medium', text:'signin_with' }
-  );
+  
+  // Untuk mobile
+  if (document.getElementById('signinArea')) {
+    google.accounts.id.renderButton(
+      document.getElementById('signinArea'),
+      { 
+        theme: 'outline', 
+        size: 'medium', 
+        text: 'signin_with',
+        shape: 'rectangular',
+        width: 200
+      }
+    );
+  }
+  
+  // Untuk desktop
+  if (document.getElementById('signinAreaDesktop')) {
+    google.accounts.id.renderButton(
+      document.getElementById('signinAreaDesktop'),
+      { 
+        theme: 'outline', 
+        size: 'medium', 
+        text: 'signin_with',
+        shape: 'rectangular',
+        width: 200
+      }
+    );
+  }
+  
+  // Juga tampilkan One Tap prompt jika sesuai
+  google.accounts.id.prompt();
 }
 
 async function handleCredentialResponse(resp){
