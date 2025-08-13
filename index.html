@@ -1599,5 +1599,280 @@ async function loadSecondVisitData(){
 async function loadCompletedData(){
   try{
     const data = await getJSON({ action:'getCompleted' }, { msg:'Memuat Selesai…' });
+    const tbody = document.getElementById('completedTable');      if (tbody) tbody.innerHTML = '';
+
+      if (data.status === 'success' && Array.isArray(data.data) && data.data.length > 0){
+        data.data.forEach(p=>{
+          const msisdn = normalizeMsisdnMY(p.noTelefon || '');
+          const row = `
+            <tr data-ic="${p.noIC}">
+              <td>${p.nama || '-'}</td>
+              <td>${p.noIC || '-'}</td>
+              <td>${msisdn || '-'}</td>
+              <td>${p.pdpaFileId ? '<span class="badge bg-success">Ada</span>' : '<span class="badge bg-secondary">Tiada</span>'}</td>
+              <td>${p.tarikhDaftar || '-'}</td>
+              <td>${p.firstVisitDate || '-'}</td>
+              <td>${p.labCompletedDate || '-'}</td>
+              <td>${p.secondVisitDate || '-'}</td>
+              <td>${p.tarikhSelesai || '-'}</td>
+              <td class="mini-actions">
+                ${msisdn ? `
+                  <a class="btn btn-sm btn-outline-secondary" href="${telHref(msisdn)}"><i class="fa-solid fa-phone"></i></a>
+                  <a class="btn btn-sm btn-outline-success" target="_blank" href="${waHref(msisdn)}"><i class="fa-brands fa-whatsapp"></i></a>` : ''}
+                <button class="btn btn-sm btn-outline-warning" type="button" onclick="archivePatient('${p.noIC}')">
+                  <i class="fa-solid fa-box-archive"></i> Arkib
+                </button>
+              </td>
+            </tr>`;
+          tbody.insertAdjacentHTML('beforeend', row);
+        });
+      } else {
+        if (tbody) tbody.innerHTML = `<tr><td colspan="10" class="text-center text-muted">Tiada data selesai.</td></tr>`;
+      }
+    }catch(e){ /* senyap */ }
+  }
+
+  async function loadArchivedData(){
+    try{
+      const data = await getJSON({ action:'getArchived' }, { msg:'Memuat Arkib…' });
+      const tbody = document.getElementById('archiveTable');
+      if (tbody) tbody.innerHTML = '';
+      if (data.status === 'success' && Array.isArray(data.data) && data.data.length){
+        data.data.forEach(p=>{
+          const msisdn = normalizeMsisdnMY(p.noTelefon || '');
+          const row = `
+            <tr data-ic="${p.noIC}">
+              <td>${p.nama || '-'}</td>
+              <td>${p.noIC || '-'}</td>
+              <td>${msisdn || '-'}</td>
+              <td>${p.tarikhDaftar || '-'}</td>
+              <td>${p.tarikhSelesai || '-'}</td>
+              <td>${p.tarikhArkib || '-'}</td>
+              <td class="mini-actions">
+                <button class="btn btn-sm btn-outline-secondary" type="button" onclick="unarchivePatient('${p.noIC}')">
+                  <i class="fa-solid fa-rotate-left"></i> Pulihkan
+                </button>
+              </td>
+            </tr>`;
+          tbody.insertAdjacentHTML('beforeend', row);
+        });
+      }else{
+        if (tbody) tbody.innerHTML = `<tr><td colspan="7" class="text-center text-muted">Tiada data arkib.</td></tr>`;
+      }
+    }catch(e){ /* senyap */ }
+  }
+
+  /* =======================
+     TINDAKAN / SIMPANAN
+     ======================= */
+  async function daftarPesakit(){
+    const nama = document.getElementById('namaPesakit').value.trim();
+    const ic   = document.getElementById('noIC').value.trim();
+    const tel  = normalizeMsisdnMY(document.getElementById('noTelefon').value.trim());
+    const staff= document.getElementById('namaStaff').value.trim();
+    const tcaD = document.getElementById('tarikhTCA').value;
+    const tcaT = document.getElementById('masaTCA').value;
+
+    if (!nama || !ic || !tel || !staff || !tcaD || !tcaT){
+      toast('Ralat','Sila isi semua ruangan pendaftaran.','danger'); return;
+    }
+    try{
+      const res = await postForm({
+        action:'daftarPesakit',
+        namaPesakit:nama, noIC:ic, noTelefon:tel,
+        namaStaff:staff, tarikhTCA:tcaD, masaTCA:tcaT
+      }, { msg:'Mendaftar pesakit…' });
+      if (res.status === 'success'){
+        toast('Berjaya', `Pesakit ${nama} didaftarkan ke TCA`, 'success');
+        document.getElementById('formPendaftaran').reset();
+        loadDashboardData(); loadTCACallData(); loadTCACallPage();
+      } else throw new Error(res.message || 'Gagal daftar');
+    }catch(e){ toast('Ralat', e.message, 'danger'); }
+  }
+
+  function openRetcaModal(ic){
+    document.getElementById('retcaIC').value = ic;
+    document.getElementById('retcaDate').value = '';
+    document.getElementById('retcaTime').value = '';
+    retcaModal.show();
+  }
+  async function submitRetca(){
+    const ic = document.getElementById('retcaIC').value;
+    const d  = document.getElementById('retcaDate').value;
+    const t  = document.getElementById('retcaTime').value;
+    if (!ic || !d || !t){ toast('Ralat','Sila isi tarikh & masa TCA baharu.','danger'); return; }
+    try{
+      const res = await postForm({ action:'retca', noIC:ic, tarikhTCA:d, masaTCA:t }, { msg:'Menyimpan Re-TCA…' });
+      if (res.status === 'success'){
+        toast('Berjaya','Re-TCA disimpan. Status ditukar kepada TCA CALL.','success');
+        retcaModal.hide();
+        loadFirstVisitData(); loadTCACallData(); loadTCACallPage(); refreshLogs();
+      }else throw new Error(res.message || 'Gagal simpan');
+    }catch(e){ toast('Ralat', e.message, 'danger'); }
+  }
+
+  function openSecondTca(ic){
+    document.getElementById('secondTcaIC').value = ic;
+    document.getElementById('secondTcaDate').value = '';
+    document.getElementById('secondTcaTime').value = '';
+    document.getElementById('secondTcaStaff').value = '';
+    secondTcaModal.show();
+  }
+  async function submitSecondTca(){
+    const ic    = document.getElementById('secondTcaIC').value;
+    const d     = document.getElementById('secondTcaDate').value;
+    const t     = document.getElementById('secondTcaTime').value;
+    const staff = document.getElementById('secondTcaStaff').value.trim();
+    if (!ic || !d || !t || !staff){ toast('Ralat','Isi tarikh, masa & nama staff.','danger'); return; }
+    try{
+      const res = await postForm({
+        action:'setSecondTca', noIC:ic, tarikhTCA:d, masaTCA:t, namaStaff:staff
+      }, { msg:'Menyimpan Second Visit…' });
+      if (res.status === 'success'){
+        toast('Berjaya','TCA Second Visit ditetapkan.','success');
+        secondTcaModal.hide();
+        loadLabFollowUp(); loadSecondVisitData(); refreshLogs();
+      }else throw new Error(res.message || 'Gagal simpan');
+    }catch(e){ toast('Ralat', e.message, 'danger'); }
+  }
+
+  async function markLabStatus(ic, status){
+    try{
+      const res = await postForm({ action:'markLabStatus', noIC:ic, status }, { msg:'Mengemaskini status lab…' });
+      if (res.status === 'success'){
+        toast('Berjaya','Status lab dikemaskini.','success');
+        loadLabFollowUp(); loadDashboardData();
+      }else throw new Error(res.message || 'Gagal kemaskini');
+    }catch(e){ toast('Ralat', e.message, 'danger'); }
+  }
+
+  async function markFirstVisit(ic){
+    try{
+      const res = await postForm({ action:'markFirstVisit', noIC:ic }, { msg:'Menandakan First Visit hadir…' });
+      if (res.status === 'success'){
+        toast('Berjaya','First Visit ditandakan hadir.','success');
+        loadFirstVisitData(); loadLabFollowUp(); loadDashboardData();
+      }else throw new Error(res.message || 'Gagal kemaskini');
+    }catch(e){ toast('Ralat', e.message, 'danger'); }
+  }
+
+  async function markSecondVisitHadir(ic){
+    try{
+      const res = await postForm({ action:'markSecondVisitHadir', noIC:ic }, { msg:'Menandakan Second Visit hadir…' });
+      if (res.status === 'success'){
+        toast('Berjaya','Second Visit ditandakan hadir.','success');
+        loadSecondVisitData(); loadCompletedData(); loadDashboardData();
+      }else throw new Error(res.message || 'Gagal kemaskini');
+    }catch(e){ toast('Ralat', e.message, 'danger'); }
+  }
+
+  function openPDPA(ic){
+    document.getElementById('pdpaIC').value = ic;
+    document.getElementById('pdpaFile').value = '';
+    pdpaModal.show();
+  }
+  async function uploadPDPA(){
+    const ic   = document.getElementById('pdpaIC').value;
+    const file = document.getElementById('pdpaFile').files[0];
+    if (!ic || !file){ toast('Ralat','Pilih fail PDPA dahulu.','danger'); return; }
+
+    // Tukar ke base64 (tanpa header data:)
+    const toBase64 = (f)=> new Promise((resolve,reject)=>{
+      const reader = new FileReader();
+      reader.onload = ()=> resolve(String(reader.result).split(',')[1] || '');
+      reader.onerror = reject;
+      reader.readAsDataURL(f);
+    });
+
+    try{
+      const base64 = await toBase64(file);
+      const res = await postForm({
+        action:'uploadPDPA', noIC:ic, fileName:file.name, mimeType:file.type, data:base64
+      }, { msg:'Memuat naik PDPA…' });
+      if (res.status === 'success'){
+        toast('Berjaya','Fail PDPA dimuat naik.','success');
+        pdpaModal.hide();
+        loadFirstVisitData(); loadSecondVisitData(); loadCompletedData();
+      }else throw new Error(res.message || 'Gagal muat naik');
+    }catch(e){ toast('Ralat', e.message, 'danger'); }
+  }
+  async function deletePDPA(ic){
+    if (!confirm('Padam fail PDPA untuk pesakit ini?')) return;
+    try{
+      const res = await postForm({ action:'deletePDPA', noIC:ic }, { msg:'Memadam PDPA…' });
+      if (res.status === 'success'){
+        toast('Berjaya','Fail PDPA dipadam.','success');
+        loadFirstVisitData(); loadSecondVisitData(); loadCompletedData();
+      }else throw new Error(res.message || 'Gagal padam');
+    }catch(e){ toast('Ralat', e.message, 'danger'); }
+  }
+
+  async function archivePatient(ic){
+    if (!confirm('Arkibkan rekod pesakit ini?')) return;
+    try{
+      const res = await postForm({ action:'archivePatient', noIC:ic }, { msg:'Mengarkibkan rekod…' });
+      if (res.status === 'success'){
+        toast('Berjaya','Rekod dipindahkan ke Arkib.','success');
+        loadCompletedData(); loadArchivedData(); loadDashboardData();
+      }else throw new Error(res.message || 'Gagal arkib');
+    }catch(e){ toast('Ralat', e.message, 'danger'); }
+  }
+  async function unarchivePatient(ic){
+    try{
+      const res = await postForm({ action:'unarchivePatient', noIC:ic }, { msg:'Memulihkan rekod…' });
+      if (res.status === 'success'){
+        toast('Berjaya','Rekod dipulihkan ke aktif.','success');
+        loadArchivedData(); loadDashboardData();
+      }else throw new Error(res.message || 'Gagal pulih');
+    }catch(e){ toast('Ralat', e.message, 'danger'); }
+  }
+
+  /* =======================
+     EXPORTS (CSV)
+     ======================= */
+  function exportCompletedCSV(){
     const tbody = document.getElementById('completedTable');
+    if (!tbody){ toast('Makluman','Tiada data untuk dieksport.','warning'); return; }
+    const rows = Array.from(tbody.querySelectorAll('tr'));
+    if (!rows.length || rows[0].querySelectorAll('td').length === 1){
+      toast('Makluman','Tiada data selesai untuk dieksport.','warning'); return;
+    }
+
+    const header = [
+      'Nama Pesakit','No IC','No Telefon','PDPA',
+      'Tarikh Daftar','First Visit','Lab Report Completed','Second Visit','Tarikh Selesai'
+    ];
+    const toRow = (tr)=>{
+      const tds = Array.from(tr.querySelectorAll('td'));
+      return [
+        tds[0]?.innerText?.trim() || '',
+        tds[1]?.innerText?.trim() || '',
+        tds[2]?.innerText?.trim() || '',
+        (tds[3]?.innerText?.trim() || ''),
+        tds[4]?.innerText?.trim() || '',
+        tds[5]?.innerText?.trim() || '',
+        tds[6]?.innerText?.trim() || '',
+        tds[7]?.innerText?.trim() || '',
+        tds[8]?.innerText?.trim() || ''
+      ];
+    };
+    const data = rows.map(toRow);
+    const csv = [header, ...data].map(r=>r.map(c=>`"${String(c||'').replace(/"/g,'""')}"`).join(',')).join('\r\n');
+    const blob = new Blob([csv], { type:'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url; a.download = `completed_${new Date().toISOString().slice(0,10)}.csv`;
+    document.body.appendChild(a); a.click(); a.remove();
+    URL.revokeObjectURL(url);
+    toast('Export','Fail CSV (Selesai) telah dimuat turun.','success');
+  }
+
+  /* =======================
+     MULA (LOGIN)
+     ======================= */
+  document.addEventListener('DOMContentLoaded', initGoogleSignIn);
+</script>
+</body>
+</html>
+
   
