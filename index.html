@@ -127,28 +127,45 @@ body{font-family:'Segoe UI',Tahoma,Geneva,Verdana,sans-serif;background:#f5f7fa;
    ----------------------------- */
 
 /* Input auto-grow */
-.input-grow-wrapper{ position:relative; display:inline-block; max-width:none; }
+.input-grow-wrapper{ 
+  position:relative; 
+  display:inline-block; 
+  min-width: 100px;
+  max-width: 100%;
+}
 .input-mirror{
-  position:absolute; left:0; top:0; visibility:hidden; white-space:pre;
-  font: inherit; padding: .25rem .5rem;
+  position:absolute; 
+  left:0; 
+  top:0; 
+  visibility:hidden; 
+  white-space:pre;
+  font: inherit; 
+  padding: .375rem .75rem;
+  line-height: 1.5;
 }
 .nadi-input{
+  width: 100%;
   min-width: 100px;
-  width: auto;
-  max-width:none;
-  border: none;
+  border: 1px solid #ced4da;
   outline: none;
-  padding: 0.25rem 0.5rem;
-  background: transparent;
+  padding: .375rem .75rem;
+  border-radius: .25rem;
   font-size: 0.875rem;
-  white-space: nowrap;
+  transition: border-color .15s ease-in-out, box-shadow .15s ease-in-out;
 }
-.nadi-input:focus { background: rgba(52, 152, 219, 0.1); border-radius: 4px; }
+.nadi-input:focus { 
+  border-color: #86b7fe;
+  box-shadow: 0 0 0 0.25rem rgba(13, 110, 253, 0.25);
+}
 
 /* Bekas jadual NADI */
 .nadi-table-container {
-  overflow-x: auto; overflow-y: auto; margin-bottom: 1rem; border-radius: 10px;
-  border: 1px solid rgba(0,0,0,0.1); background: white;
+  overflow-x: auto; 
+  overflow-y: auto; 
+  margin-bottom: 1rem; 
+  border-radius: 10px;
+  border: 1px solid rgba(0,0,0,0.1); 
+  background: white;
   max-height: calc(100vh - 250px);
   box-shadow: inset 0 1px 0 rgba(0,0,0,.03);
 }
@@ -157,47 +174,76 @@ body{font-family:'Segoe UI',Tahoma,Geneva,Verdana,sans-serif;background:#f5f7fa;
 .nadi-table {
   width: auto;
   min-width: 100%;
-  border-collapse: separate; border-spacing: 0;
+  border-collapse: separate; 
+  border-spacing: 0;
   table-layout: auto;
 }
 .nadi-table th {
-  background-color: #f8f9fa; position: sticky; top: 0; z-index: 12;
-  font-weight: 600; font-size: 0.85rem; padding: 8px 12px; border-bottom: 2px solid #dee2e6;
-  white-space: nowrap; text-align: center;
+  background-color: #f8f9fa; 
+  position: sticky; 
+  top: 0; 
+  z-index: 12;
+  font-weight: 600; 
+  font-size: 0.85rem; 
+  padding: 8px 12px; 
+  border-bottom: 2px solid #dee2e6;
+  white-space: nowrap; 
+  text-align: center;
 }
 .nadi-table td {
   padding: 8px;
   border-bottom: 1px solid #eef1f4;
-  vertical-align: top;
+  vertical-align: middle;
   position: relative;
   overflow: visible;
-  white-space: nowrap;  /* scroll mendatar, bukan pecah baris */
+  white-space: nowrap;
 }
 
 /* Sticky kolum pertama (Nama Pesakit) */
 .nadi-table th:first-child,
 .nadi-table td:first-child{
-  position: sticky; left: 0; z-index: 13;
-  background: #fff; box-shadow: 2px 0 0 rgba(0,0,0,.05);
+  position: sticky; 
+  left: 0; 
+  z-index: 13;
+  background: #fff; 
+  box-shadow: 2px 0 0 rgba(0,0,0,.05);
 }
 
-/* Lebar kolum utiliti */
+/* Lebar kolum minimum */
 .nadi-table th:nth-child(7),  .nadi-table td:nth-child(7)  { min-width: 220px; }  /* DXT */
 .nadi-table th:nth-child(11), .nadi-table td:nth-child(11),
 .nadi-table th:nth-child(12), .nadi-table td:nth-child(12){ min-width: 90px; text-align:center; } /* Layak / Tidak Layak */
-.nadi-table th:nth-child(13), .nadi-table td:nth-child(13){ min-width: 200px; }  /* TCA & Staff */
+.nadi-table th:nth-child(13), .nadi-table td:nth-child(13){ min-width: 260px; }  /* TCA & Staff */
 .nadi-table th:nth-child(14), .nadi-table td:nth-child(14){ min-width: 200px; }  /* Tindakan */
 
 /* Komponen dalam sel */
 .nadi-table .form-control-sm { height: calc(1.5em + 0.5rem + 2px); padding: 0.25rem 0.5rem; font-size: 0.875rem; }
 .nadi-table .btn-sm { padding: 0.25rem 0.5rem; font-size: 0.875rem; }
 
-.nadi-table .action-buttons { display: flex; gap: 6px; flex-wrap: wrap; align-items: center; justify-content: center; }
-.nadi-table .status-check{ display:flex; justify-content:center; align-items:center; }
-.nadi-table .tca-fields{ display:flex; gap:6px; flex-direction:column; }
+.nadi-table .action-buttons { 
+  display: flex; 
+  gap: 6px; 
+  flex-wrap: wrap; 
+  align-items: center; 
+  justify-content: center; 
+}
+.nadi-table .status-check{ 
+  display:flex; 
+  justify-content:center; 
+  align-items:center; 
+}
+.nadi-table .tca-fields{ 
+  display:flex; 
+  gap:6px; 
+  flex-direction:column; 
+}
 .nadi-table .tca-fields .form-control { min-width: 160px; }
 .nadi-table .bmi-field { min-width: 80px; text-align: center; }
-.nadi-dxt-wrap{ flex-wrap: nowrap; }
+.nadi-dxt-wrap{ 
+  display: flex;
+  flex-wrap: nowrap; 
+  align-items: center;
+}
 
 /* Tooltip ringkas */
 .nadi-table td:hover::after{
@@ -209,6 +255,20 @@ body{font-family:'Segoe UI',Tahoma,Geneva,Verdana,sans-serif;background:#f5f7fa;
 /* Responsive */
 @media (max-width:992px){
   .stat-card .number{font-size:1.3rem}
+  .nadi-table-container {
+    max-height: calc(100vh - 300px);
+  }
+  .nadi-table td, .nadi-table th {
+    padding: 6px;
+  }
+  .nadi-table .action-buttons {
+    flex-direction: column;
+    gap: 3px;
+  }
+  .nadi-table .action-buttons .btn {
+    width: 100%;
+    margin-right: 0;
+  }
 }
 </style>
 </head>
@@ -417,7 +477,7 @@ body{font-family:'Segoe UI',Tahoma,Geneva,Verdana,sans-serif;background:#f5f7fa;
             </tr>
           </thead>
           <tbody id="nadiTableBody">
-            <!-- Baris kosong akan ditambah melalui JavaScript -->
+            <!-- Baris akan ditambah melalui JavaScript -->
           </tbody>
         </table>
       </div>
@@ -1137,37 +1197,43 @@ function addNadiRow(){
   const id = 'n'+Date.now()+Math.random().toString(36).slice(2,6);
   const row = document.createElement('tr'); row.id = id;
 
-  // Kolom 1: Nama Pesakit
+  // Nama Pesakit
   const namaCell = document.createElement('td');
   const { wrapper: namaWrapper, input: namaInput } = createAutoGrowInput('Nama pesakit', 160);
-  namaCell.appendChild(namaWrapper); row.appendChild(namaCell);
+  namaCell.appendChild(namaWrapper); 
+  row.appendChild(namaCell);
 
-  // Kolom 2: No IC
+  // No IC
   const icCell = document.createElement('td');
   const { wrapper: icWrapper, input: icInput } = createAutoGrowInput('No IC', 120);
-  icCell.appendChild(icWrapper); row.appendChild(icCell);
+  icCell.appendChild(icWrapper); 
+  row.appendChild(icCell);
 
-  // Kolom 3: No Telefon
+  // No Telefon
   const telCell = document.createElement('td');
   const { wrapper: telWrapper, input: telInput } = createAutoGrowInput('No Telefon', 130);
-  telCell.appendChild(telWrapper); row.appendChild(telCell);
+  telCell.appendChild(telWrapper); 
+  row.appendChild(telCell);
 
-  // Kolom 4: Alamat
+  // Alamat
   const alamatCell = document.createElement('td');
   const { wrapper: alamatWrapper, input: alamatInput } = createAutoGrowInput('Alamat', 220);
-  alamatCell.appendChild(alamatWrapper); row.appendChild(alamatCell);
+  alamatCell.appendChild(alamatWrapper); 
+  row.appendChild(alamatCell);
 
-  // Kolom 5: BP
+  // BP
   const bpCell = document.createElement('td');
   const { wrapper: bpWrapper, input: bpInput } = createAutoGrowInput('BP (cth: 120/80)', 120);
-  bpCell.appendChild(bpWrapper); row.appendChild(bpCell);
+  bpCell.appendChild(bpWrapper); 
+  row.appendChild(bpCell);
 
-  // Kolom 6: PR
+  // PR
   const prCell = document.createElement('td');
   const { wrapper: prWrapper, input: prInput } = createAutoGrowInput('PR (degupan/min)', 130);
-  prCell.appendChild(prWrapper); row.appendChild(prCell);
+  prCell.appendChild(prWrapper); 
+  row.appendChild(prCell);
 
-  // Kolom 7: DXT
+  // DXT
   const dxtCell = document.createElement('td');
   const dxtGroup = document.createElement('div');
   dxtGroup.className = 'input-group input-group-sm nadi-dxt-wrap';
@@ -1202,27 +1268,32 @@ function addNadiRow(){
   dxtCell.appendChild(dxtGroup);
   row.appendChild(dxtCell);
 
-  // Kolom 8: Tinggi
+  // Tinggi
   const tinggiCell = document.createElement('td');
   const { wrapper: tinggiWrapper, input: tinggiInput } = createAutoGrowInput('Tinggi (cm)', 110);
-  tinggiCell.appendChild(tinggiWrapper); row.appendChild(tinggiCell);
+  tinggiCell.appendChild(tinggiWrapper); 
+  row.appendChild(tinggiCell);
 
-  // Kolom 9: Berat
+  // Berat
   const beratCell = document.createElement('td');
   const { wrapper: beratWrapper, input: beratInput } = createAutoGrowInput('Berat (kg)', 110);
-  beratCell.appendChild(beratWrapper); row.appendChild(beratCell);
+  beratCell.appendChild(beratWrapper); 
+  row.appendChild(beratCell);
 
-  // Kolom 10: BMI
+  // BMI
   const bmiCell = document.createElement('td');
   const bmiInput = document.createElement('input');
   bmiInput.className = 'form-control form-control-sm bmi-field';
-  bmiInput.placeholder = 'BMI'; bmiInput.disabled = true;
-  bmiCell.appendChild(bmiInput); row.appendChild(bmiCell);
+  bmiInput.placeholder = 'BMI'; 
+  bmiInput.disabled = true;
+  bmiCell.appendChild(bmiInput); 
+  row.appendChild(bmiCell);
 
-  // Kolom 11: Layak
+  // Layak
   const layakCell = document.createElement('td');
   layakCell.className = 'status-check';
-  const layakDiv = document.createElement('div'); layakDiv.className = 'form-check';
+  const layakDiv = document.createElement('div'); 
+  layakDiv.className = 'form-check';
   const layakInput = document.createElement('input'); 
   layakInput.className = 'form-check-input nadi-layak'; 
   layakInput.type = 'checkbox';
@@ -1230,7 +1301,7 @@ function addNadiRow(){
   layakCell.appendChild(layakDiv); 
   row.appendChild(layakCell);
 
-  // Kolom 12: Tidak Layak
+  // Tidak Layak
   const takLayakCell = document.createElement('td');
   takLayakCell.className = 'status-check';
   const takLayakDiv = document.createElement('div'); 
@@ -1242,39 +1313,40 @@ function addNadiRow(){
   takLayakCell.appendChild(takLayakDiv); 
   row.appendChild(takLayakCell);
 
-  // Kolom 13: TCA & Staff (untuk Layak)
-  const tcaLayakCell = document.createElement('td');
-  tcaLayakCell.className = 'tca-fields';
-  const tcaLayakDate = document.createElement('input'); 
-  tcaLayakDate.type='date'; 
-  tcaLayakDate.className='form-control form-control-sm tca-layak-date'; 
-  tcaLayakDate.disabled=true;
-  const tcaLayakTime = document.createElement('input'); 
-  tcaLayakTime.type='time'; 
-  tcaLayakTime.className='form-control form-control-sm tca-layak-time'; 
-  tcaLayakTime.disabled=true;
-  const staffLayakInput = document.createElement('input'); 
-  staffLayakInput.type='text'; 
-  staffLayakInput.className='form-control form-control-sm tca-layak-staff'; 
-  staffLayakInput.placeholder='Nama staff'; 
-  staffLayakInput.disabled=true;
-  tcaLayakCell.appendChild(tcaLayakDate); 
-  tcaLayakCell.appendChild(tcaLayakTime); 
-  tcaLayakCell.appendChild(staffLayakInput); 
-  row.appendChild(tcaLayakCell);
+  // TCA & Staff
+  const tcaCell = document.createElement('td');
+  tcaCell.className = 'tca-fields';
+  const tcaDate = document.createElement('input'); 
+  tcaDate.type='date'; 
+  tcaDate.className='form-control form-control-sm'; 
+  tcaDate.disabled=true;
+  
+  const tcaTime = document.createElement('input'); 
+  tcaTime.type='time'; 
+  tcaTime.className='form-control form-control-sm'; 
+  tcaTime.disabled=true;
+  
+  const staffInput = document.createElement('input'); 
+  staffInput.type='text'; 
+  staffInput.className='form-control form-control-sm'; 
+  staffInput.placeholder='Nama staff'; 
+  staffInput.disabled=true;
+  
+  tcaCell.appendChild(tcaDate); 
+  tcaCell.appendChild(tcaTime); 
+  tcaCell.appendChild(staffInput); 
+  row.appendChild(tcaCell);
 
-  // Kolom 14: Tindakan
+  // Tindakan
   const actionCell = document.createElement('td');
   actionCell.className = 'action-buttons';
   
-  // Button Daftar (untuk Layak)
   const daftarBtn = document.createElement('button'); 
   daftarBtn.className='btn btn-sm btn-outline-primary nadi-daftar'; 
   daftarBtn.disabled=true; 
   daftarBtn.type='button'; 
   daftarBtn.innerHTML='<i class="bi bi-save"></i> Daftar';
   
-  // Button Buang
   const buangBtn = document.createElement('button'); 
   buangBtn.className='btn btn-sm btn-outline-danger nadi-buang'; 
   buangBtn.type='button'; 
@@ -1296,7 +1368,7 @@ function addNadiRow(){
     });
   });
 
-  // Fungsi kira BMI
+  // Calculate BMI when height or weight changes
   function calcBMI() {
     const tinggi = parseFloat(tinggiInput.value || '0') / 100;
     const berat = parseFloat(beratInput.value || '0');
@@ -1306,18 +1378,18 @@ function addNadiRow(){
   tinggiInput.addEventListener('input', calcBMI);
   beratInput.addEventListener('input', calcBMI);
 
-  // Event listeners untuk checkbox Layak/Tidak Layak
+  // Toggle layak/tidak layak
   layakInput.addEventListener('change', () => {
     if (layakInput.checked) {
       takLayakInput.checked = false;
-      tcaLayakDate.disabled = false; 
-      tcaLayakTime.disabled = false; 
-      staffLayakInput.disabled = false; 
+      tcaDate.disabled = false; 
+      tcaTime.disabled = false; 
+      staffInput.disabled = false; 
       daftarBtn.disabled = false;
     } else {
-      tcaLayakDate.disabled = true;  
-      tcaLayakTime.disabled = true;  
-      staffLayakInput.disabled = true;  
+      tcaDate.disabled = true;  
+      tcaTime.disabled = true; 
+      staffInput.disabled = true; 
       daftarBtn.disabled = true;
     }
   });
@@ -1325,22 +1397,24 @@ function addNadiRow(){
   takLayakInput.addEventListener('change', () => {
     if (takLayakInput.checked) {
       layakInput.checked = false;
-      tcaLayakDate.disabled = true;  
-      tcaLayakTime.disabled = true;  
-      staffLayakInput.disabled = true;  
+      tcaDate.disabled = true;  
+      tcaTime.disabled = true; 
+      staffInput.disabled = true; 
       daftarBtn.disabled = true;
     }
   });
 
-  // Button Daftar
+  // Daftar button click handler
   daftarBtn.addEventListener('click', async () => {
     const nama = namaInput.value.trim();
     const ic = icInput.value.trim();
     const tel = telInput.value.trim();
-    const date = tcaLayakDate.value;
-    const time = tcaLayakTime.value;
-    const staff = staffLayakInput.value.trim();
-    if (!nama || !ic || !tel || !date || !time || !staff) return toast('Ralat', 'Sila isi semua maklumat untuk pendaftaran', 'danger');
+    const date = tcaDate.value;
+    const time = tcaTime.value;
+    const staff = staffInput.value.trim();
+    if (!nama || !ic || !tel || !date || !time || !staff) {
+      return toast('Ralat', 'Sila isi semua maklumat untuk pendaftaran', 'danger');
+    }
     try {
       const res = await postForm({ 
         action:'daftarPesakit', 
@@ -1351,13 +1425,13 @@ function addNadiRow(){
         tarikhTCA:date, 
         masaTCA:time 
       }, { msg:'Mendaftar pesakit...' });
+      
       if (res.status === 'success') {
         toast('Berjaya', `Pesakit ${nama} didaftarkan`, 'success');
-        [namaInput, icInput, telInput, alamatInput, bpInput, prInput, dxtInput, tinggiInput, beratInput].forEach(i=> i.value='');
+        [namaInput, icInput, telInput, alamatInput, bpInput, prInput, dxtInput, tinggiInput, beratInput, staffInput].forEach(i=> i.value='');
         bmiInput.value=''; 
-        tcaLayakDate.value=''; 
-        tcaLayakTime.value=''; 
-        staffLayakInput.value='';
+        tcaDate.value=''; 
+        tcaTime.value=''; 
         layakInput.checked=false; 
         takLayakInput.checked=false;
       } else { 
@@ -1368,7 +1442,7 @@ function addNadiRow(){
     }
   });
 
-  // Button Buang
+  // Buang button click handler
   buangBtn.addEventListener('click', () => {
     if (confirm('Adakah anda pasti ingin membuang baris ini?')) row.remove();
   });
@@ -1379,7 +1453,7 @@ async function exportNadiCSV() {
   const rows = Array.from(tbody.querySelectorAll('tr'));
   if (!rows.length) return toast('Makluman', 'Tiada data untuk diexport', 'warning');
 
-  const header = ['Nama','No IC','No Telefon','Alamat','BP','PR','DXT_Tipe','DXT','Tinggi(cm)','Berat(kg)','BMI','Layak','Tidak Layak','TarikhTCA','MasaTCA','Staff'];
+  const header = ['Nama','No IC','No Telefon','Alamat','BP','PR','DXT_Tipe','DXT','Tinggi(cm)','Berat(kg)','BMI','Layak','TarikhTCA','MasaTCA','Staff'];
 
   const data = rows.map(row => {
     const v = sel => (row.querySelector(sel) ? row.querySelector(sel).value.trim() : '');
@@ -1397,10 +1471,9 @@ async function exportNadiCSV() {
       v('td:nth-child(9) input'),
       v('td:nth-child(10) input'),
       yes('.nadi-layak'),
-      yes('.nadi-taklayak'),
-      v('.tca-layak-date'),
-      v('.tca-layak-time'),
-      v('.tca-layak-staff')
+      v('td:nth-child(13) input[type=date]'),
+      v('td:nth-child(13) input[type=time]'),
+      v('td:nth-child(13) input[type=text]')
     ];
   });
 
