@@ -1,4 +1,4 @@
-"<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="ms">
 <head>
 <meta charset="UTF-8" />
@@ -341,6 +341,55 @@ body{font-family:'Segoe UI',Tahoma,Geneva,Verdana,sans-serif;background:#f5f7fa;
   white-space: normal;
   width: max-content;
   max-width: 300px;
+}
+
+/* Improved NADI table layout */
+.nadi-table-container {
+  max-height: calc(100vh - 250px);
+  overflow-y: auto;
+}
+
+.nadi-table td {
+  padding: 8px 6px;
+}
+
+.nadi-table .form-control-sm {
+  min-height: 32px;
+}
+
+.nadi-table .action-buttons {
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+}
+
+.nadi-table .action-buttons .btn {
+  width: 100%;
+  max-width: 120px;
+  margin: 0;
+}
+
+.nadi-table .tca-fields {
+  flex-direction: column;
+  gap: 6px;
+}
+
+.nadi-table .tca-fields .form-control {
+  min-width: 100%;
+}
+
+@media (max-width: 992px) {
+  .nadi-table th, 
+  .nadi-table td {
+    padding: 6px 4px;
+    font-size: 0.8rem;
+  }
+  
+  .nadi-table .action-buttons .btn {
+    padding: 0.2rem 0.4rem;
+    font-size: 0.75rem;
+    max-width: 100px;
+  }
 }
 </style>
 </head>
@@ -1580,7 +1629,7 @@ function addNadiRow(){
       const file = await buildNadiReportImage(data);
       if (file) {
         // Create WhatsApp message with patient info
-        const message = `Laporan Saringan NADI\nNama: ${data.nama}\nIC: ${data.ic}\nBP: ${data.bp}\nPR: ${data.pr}\nDXT (${data.dxtType}): ${data.dxt}\nTinggi: ${data.tinggi} cm\nBerat: ${data.berat} kg\nBMI: ${data.bmi}\nStatus: ${data.layak ? 'Layak PEKA B40' : 'Tidak Layak PEKA B40'}`;
+        const message = `Laporan Saringan NADI\nNama: ${data.nama}\nIC: ${data.ic}\nBP: ${data.bp}\nPR: ${data.pr}\nDXT (${data.dxtType}): ${data.dxt}\nTinggi: ${data.tinggi} cm\nBerat: ${data.berat} kg\nBMI: ${data.bmi}\nStatus: ${data.layak ? 'LAYAK Saringan PEKA B40' : 'TIDAK LAYAK Saringan PEKA B40'}`;
         
         // Create form data to send image
         const formData = new FormData();
@@ -1841,7 +1890,7 @@ function renderTcaList(mode){
   filtered.forEach(p=>{
     const msisdn = normalizeMsisdnMY(p.noTelefon||'');
     const badgeCls = p.status==='CALLED' ? 'bg-success' : (parseDDMMYYYY(p.tarikhTCA)?.getTime()<today.getTime() ? 'bg-secondary' : 'bg-warning');
-    const label = p.status==='CALLED' ? 'CALLED' : (parseDDMMYYYY(p.tarikhTCA)?.getTime()<today.getTime() ? 'LEPAS' : (isSameDay(parseDDMMYYYY(p.tarikhTCA), today) ? 'HARI INI' : 'AKAN DATANG'));
+    const label = p.status==='CALLED' ? 'CALLED' : (parseDDMMYYYY(p.tarikhTCA)?.getTime()<today.getTime() ? 'LEPAS' : (isSameDay(parseDDMMYYYY(p.tarikhTCA), today) ? 'HARI INI' : 'AKAN DATANG');
     const row = `
       <tr data-ic="${p.noIC}">
         <td>${p.nama}</td>
