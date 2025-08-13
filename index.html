@@ -122,69 +122,71 @@ body{font-family:'Segoe UI',Tahoma,Geneva,Verdana,sans-serif;background:#f5f7fa;
 #toastHost .toast{ pointer-events:auto; }
 
 /* -----------------------------
-   NADI (gaya versi 2.5.0)
+   NADI (layout profesional)
    ----------------------------- */
 
-/* Input auto-grow (lebih stabil & sejajar) */
-.input-grow-wrapper{ position:relative; display:inline-block; max-width:100%; }
+/* Input auto-grow (sejajar & stabil) */
+.input-grow-wrapper{ position:relative; display:inline-block; max-width:none; }
 .input-mirror{
   position:absolute; left:0; top:0; visibility:hidden; white-space:pre;
   font: inherit; padding: .25rem .5rem;
 }
 .nadi-input{
   min-width: 100px;
-  width: auto;
-  max-width: 520px;
+  width: auto;           /* biar JS menetapkan lebar sebenar */
+  max-width:none;        /* jangan hadkan */
   border: none;
   outline: none;
   padding: 0.25rem 0.5rem;
   background: transparent;
   font-size: 0.875rem;
+  white-space: nowrap;   /* elak pecah baris */
 }
 .nadi-input:focus { background: rgba(52, 152, 219, 0.1); border-radius: 4px; }
 
-/* Jadual NADI */
+/* Bekas jadual NADI */
 .nadi-table-container {
-  overflow-x: auto; margin-bottom: 1rem; border-radius: 8px;
+  overflow-x: auto; overflow-y: auto; margin-bottom: 1rem; border-radius: 10px;
   border: 1px solid rgba(0,0,0,0.1); background: white;
   max-height: calc(100vh - 250px);
+  box-shadow: inset 0 1px 0 rgba(0,0,0,.03);
 }
+
+/* Jadual NADI: BENARKAN MELUAS */
 .nadi-table {
-  width: 100%; min-width: 1800px; border-collapse: separate; border-spacing: 0; table-layout: fixed;
+  width: auto;            /* biar meluas ikut kandungan */
+  min-width: 100%;        /* sekurang-kurangnya penuh bekas */
+  border-collapse: separate; border-spacing: 0;
+  table-layout: auto;     /* penting: beri ruang mengembang */
 }
 .nadi-table th {
-  background-color: #f8f9fa; position: sticky; top: 0; z-index: 10;
+  background-color: #f8f9fa; position: sticky; top: 0; z-index: 12;
   font-weight: 600; font-size: 0.85rem; padding: 8px 12px; border-bottom: 2px solid #dee2e6;
   white-space: nowrap; text-align: center;
 }
 .nadi-table td {
-  padding: 8px; border-bottom: 1px solid #dee2e6; vertical-align: middle; height: 42px;
-  position: relative; overflow: hidden; text-overflow: ellipsis;
+  padding: 8px; border-bottom: 1px solid #eef1f4; vertical-align: middle; height: 42px;
+  position: relative; overflow: visible;            /* benarkan kandungan nampak penuh */
+  white-space: nowrap;                               /* scroll ke kanan, bukan pecah baris */
 }
 .nadi-table tr:last-child td { border-bottom: none; }
-.nadi-table .form-control-sm { height: calc(1.5em + 0.5rem + 2px); padding: 0.25rem 0.5rem; font-size: 0.875rem; width: 100%; }
+.nadi-table .form-control-sm { height: calc(1.5em + 0.5rem + 2px); padding: 0.25rem 0.5rem; font-size: 0.875rem; }
 .nadi-table .btn-sm { padding: 0.25rem 0.5rem; font-size: 0.875rem; }
-.nadi-table .action-buttons { display: flex; gap: 4px; flex-wrap: wrap; justify-content: center; flex-direction: column; align-items: center; }
+.nadi-table .action-buttons { display: flex; gap: 6px; flex-wrap: nowrap; align-items: center; justify-content: center; }
 .nadi-table .status-check{ display:flex; justify-content:center; align-items:center; }
 .nadi-table .tca-fields{ display:flex; gap:6px; flex-direction:column; }
-.nadi-table .tca-fields .form-control { min-width: 100%; }
+.nadi-table .tca-fields .form-control { min-width: 160px; }
 .nadi-table .bmi-field { min-width: 80px; text-align: center; }
 
-/* Lebar Kolum (selari & konsisten) */
-.nadi-table th:nth-child(1), .nadi-table td:nth-child(1) { width: 180px; }
-.nadi-table th:nth-child(2), .nadi-table td:nth-child(2) { width: 120px; }
-.nadi-table th:nth-child(3), .nadi-table td:nth-child(3) { width: 120px; }
-.nadi-table th:nth-child(4), .nadi-table td:nth-child(4) { width: 200px; }
-.nadi-table th:nth-child(5), .nadi-table td:nth-child(5) { width: 90px; }
-.nadi-table th:nth-child(6), .nadi-table td:nth-child(6) { width: 90px; }
-.nadi-table th:nth-child(7), .nadi-table td:nth-child(7) { width: 150px; }
-.nadi-table th:nth-child(8), .nadi-table td:nth-child(8) { width: 90px; }
-.nadi-table th:nth-child(9), .nadi-table td:nth-child(9) { width: 90px; }
-.nadi-table th:nth-child(10), .nadi-table td:nth-child(10){ width: 80px; }
-.nadi-table th:nth-child(11), .nadi-table td:nth-child(11){ width: 80px; }
-.nadi-table th:nth-child(12), .nadi-table td:nth-child(12){ width: 100px; }
-.nadi-table th:nth-child(13), .nadi-table td:nth-child(13){ width: 220px; }
-.nadi-table th:nth-child(14), .nadi-table td:nth-child(14){ width: 140px; } /* tindakan sedikit lebih padat */
+/* Hilangkan tetapan lebar kolum terdahulu supaya BOLEH membesar dengan kandungan */
+/* (Sengaja dibuang semua nth-child width untuk membenarkan auto-grow) */
+
+/* Sticky kolum pertama (Nama Pesakit) untuk rujukan pantas */
+.nadi-table th:first-child,
+.nadi-table td:first-child{
+  position: sticky; left: 0; z-index: 13;
+  background: #fff; box-shadow: 2px 0 0 rgba(0,0,0,.05);
+}
 
 /* Tooltip ringkas */
 .nadi-table td:hover::after{
@@ -1084,7 +1086,7 @@ async function daftarFromExcel(rowId, encNama, encIC, msisdn){
 }
 
 /* =======================
-   NADI PAGE (2.5.0 layout)
+   NADI PAGE (layout & auto-grow)
    ======================= */
 function setupNADI(){
   const container = document.getElementById('nadiTableBody');
@@ -1093,30 +1095,42 @@ function setupNADI(){
 
   document.getElementById('btnNadiExportCsv').addEventListener('click', exportNadiCSV);
   document.getElementById('btnAddNadiRow').addEventListener('click', addNadiRow);
+
+  // Pintasan: Ctrl+Enter pada sebarang input → tambah baris
+  document.getElementById('nadi').addEventListener('keydown', (e)=>{
+    if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') addNadiRow();
+  });
 }
 
 // input auto-grow
-function createAutoGrowInput(placeholder = '', initialWidth = 100) {
+function createAutoGrowInput(placeholder = '', initialWidth = 120) {
   const wrapper = document.createElement('div');
   wrapper.className = 'input-grow-wrapper';
+
   const mirror = document.createElement('span');
   mirror.className = 'input-mirror';
   mirror.textContent = placeholder || ' ';
+
   const input = document.createElement('input');
   input.type = 'text';
   input.className = 'form-control form-control-sm nadi-input';
   input.placeholder = placeholder;
   input.style.minWidth = initialWidth + 'px';
+
   function updateSize() {
     mirror.textContent = input.value || placeholder || ' ';
-    const width = Math.max(mirror.scrollWidth, initialWidth);
-    input.style.width = width + 'px';
+    const w = mirror.scrollWidth + 18; // sedikit ruang
+    input.style.width = w + 'px';
   }
   input.addEventListener('input', updateSize);
   input.addEventListener('focus', updateSize);
+
   wrapper.appendChild(mirror);
   wrapper.appendChild(input);
-  return { wrapper, input };
+
+  // set saiz awal
+  updateSize();
+  return { wrapper, input, updateSize };
 }
 
 function addNadiRow(){
@@ -1126,32 +1140,32 @@ function addNadiRow(){
 
   // Nama
   const namaCell = document.createElement('td');
-  const { wrapper: namaWrapper, input: namaInput } = createAutoGrowInput('Nama pesakit', 120);
+  const { wrapper: namaWrapper, input: namaInput } = createAutoGrowInput('Nama pesakit', 160);
   namaCell.appendChild(namaWrapper); row.appendChild(namaCell);
 
   // IC
   const icCell = document.createElement('td');
-  const { wrapper: icWrapper, input: icInput } = createAutoGrowInput('No IC', 100);
+  const { wrapper: icWrapper, input: icInput } = createAutoGrowInput('No IC', 120);
   icCell.appendChild(icWrapper); row.appendChild(icCell);
 
   // Telefon
   const telCell = document.createElement('td');
-  const { wrapper: telWrapper, input: telInput } = createAutoGrowInput('No Telefon', 100);
+  const { wrapper: telWrapper, input: telInput } = createAutoGrowInput('No Telefon', 130);
   telCell.appendChild(telWrapper); row.appendChild(telCell);
 
   // Alamat
   const alamatCell = document.createElement('td');
-  const { wrapper: alamatWrapper, input: alamatInput } = createAutoGrowInput('Alamat', 150);
+  const { wrapper: alamatWrapper, input: alamatInput } = createAutoGrowInput('Alamat', 220);
   alamatCell.appendChild(alamatWrapper); row.appendChild(alamatCell);
 
   // BP
   const bpCell = document.createElement('td');
-  const { wrapper: bpWrapper, input: bpInput } = createAutoGrowInput('BP (cth: 120/80)', 90);
+  const { wrapper: bpWrapper, input: bpInput } = createAutoGrowInput('BP (cth: 120/80)', 120);
   bpCell.appendChild(bpWrapper); row.appendChild(bpCell);
 
   // PR
   const prCell = document.createElement('td');
-  const { wrapper: prWrapper, input: prInput } = createAutoGrowInput('PR (degupan/min)', 90);
+  const { wrapper: prWrapper, input: prInput } = createAutoGrowInput('PR (degupan/min)', 130);
   prCell.appendChild(prWrapper); row.appendChild(prCell);
 
   // DXT
@@ -1175,7 +1189,7 @@ function addNadiRow(){
     li.appendChild(a); dxtTypeMenu.appendChild(li);
   });
 
-  const { wrapper: dxtWrapper, input: dxtInput } = createAutoGrowInput('DXT (mmol/L)', 90);
+  const { wrapper: dxtWrapper, input: dxtInput } = createAutoGrowInput('DXT (mmol/L)', 120);
   dxtInput.classList.add('nadi-dxt-input');
 
   const dxtTypeHidden = document.createElement('input');
@@ -1192,12 +1206,12 @@ function addNadiRow(){
 
   // Tinggi
   const tinggiCell = document.createElement('td');
-  const { wrapper: tinggiWrapper, input: tinggiInput } = createAutoGrowInput('Tinggi (cm)', 80);
+  const { wrapper: tinggiWrapper, input: tinggiInput } = createAutoGrowInput('Tinggi (cm)', 110);
   tinggiCell.appendChild(tinggiWrapper); row.appendChild(tinggiCell);
 
   // Berat
   const beratCell = document.createElement('td');
-  const { wrapper: beratWrapper, input: beratInput } = createAutoGrowInput('Berat (kg)', 80);
+  const { wrapper: beratWrapper, input: beratInput } = createAutoGrowInput('Berat (kg)', 110);
   beratCell.appendChild(beratWrapper); row.appendChild(beratCell);
 
   // BMI
