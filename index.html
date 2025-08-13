@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+ini adalah rumus index.html saya yang versi telah dikemaskini iaitu "<!DOCTYPE html>
 <html lang="ms">
 <head>
 <meta charset="UTF-8" />
@@ -122,20 +122,7 @@ body{font-family:'Segoe UI',Tahoma,Geneva,Verdana,sans-serif;background:#f5f7fa;
 #toastHost .toast{ pointer-events:auto; }
 
 /* NADI grid input – auto-expand terkawal, TAK potong teks */
-.nadi-input{ 
-  min-width: 100px; 
-  width: auto; 
-  max-width: 300px;
-  border: none;
-  outline: none;
-  padding: 0.25rem 0.5rem;
-  background: transparent;
-  font-size: 0.875rem;
-}
-.nadi-input:focus {
-  background: rgba(52, 152, 219, 0.1);
-  border-radius: 4px;
-}
+.nadi-input{ min-width:140px; width:auto; max-width:360px; }
 .nadi-long{ min-width:200px; max-width:520px; }
 .nadi-row{
   display:grid;
@@ -154,21 +141,20 @@ body{font-family:'Segoe UI',Tahoma,Geneva,Verdana,sans-serif;background:#f5f7fa;
   .stat-card .number{font-size:1.3rem}
 }
 
-/* NADI Table Styles - UPDATED */
+/* NADI Table Styles */
 .nadi-table-container {
   overflow-x: auto;
   margin-bottom: 1rem;
   border-radius: 8px;
   border: 1px solid rgba(0,0,0,0.1);
-  background: white;
 }
 
 .nadi-table {
   width: 100%;
-  min-width: 1800px;
+  min-width: 1200px;
   border-collapse: separate;
   border-spacing: 0;
-  table-layout: fixed;
+  background: white;
 }
 
 .nadi-table th {
@@ -180,18 +166,12 @@ body{font-family:'Segoe UI',Tahoma,Geneva,Verdana,sans-serif;background:#f5f7fa;
   font-size: 0.85rem;
   padding: 8px 12px;
   border-bottom: 2px solid #dee2e6;
-  white-space: nowrap;
-  text-align: center;
 }
 
 .nadi-table td {
-  padding: 8px;
+  padding: 8px 12px;
   border-bottom: 1px solid #dee2e6;
   vertical-align: middle;
-  height: 42px;
-  position: relative;
-  overflow: hidden;
-  text-overflow: ellipsis;
 }
 
 .nadi-table tr:last-child td {
@@ -202,7 +182,6 @@ body{font-family:'Segoe UI',Tahoma,Geneva,Verdana,sans-serif;background:#f5f7fa;
   height: calc(1.5em + 0.5rem + 2px);
   padding: 0.25rem 0.5rem;
   font-size: 0.875rem;
-  width: 100%;
 }
 
 .nadi-table .btn-sm {
@@ -219,7 +198,6 @@ body{font-family:'Segoe UI',Tahoma,Geneva,Verdana,sans-serif;background:#f5f7fa;
   display: flex;
   gap: 4px;
   flex-wrap: wrap;
-  justify-content: center;
 }
 
 .nadi-table .status-check {
@@ -240,107 +218,6 @@ body{font-family:'Segoe UI',Tahoma,Geneva,Verdana,sans-serif;background:#f5f7fa;
 
 .nadi-table .bmi-field {
   min-width: 80px;
-  text-align: center;
-}
-
-/* Column Widths for NADI Table */
-.nadi-table th:nth-child(1), .nadi-table td:nth-child(1) { width: 180px; } /* Nama */
-.nadi-table th:nth-child(2), .nadi-table td:nth-child(2) { width: 120px; } /* IC */
-.nadi-table th:nth-child(3), .nadi-table td:nth-child(3) { width: 120px; } /* Telefon */
-.nadi-table th:nth-child(4), .nadi-table td:nth-child(4) { width: 200px; } /* Alamat */
-.nadi-table th:nth-child(5), .nadi-table td:nth-child(5) { width: 90px; } /* BP */
-.nadi-table th:nth-child(6), .nadi-table td:nth-child(6) { width: 90px; } /* PR */
-.nadi-table th:nth-child(7), .nadi-table td:nth-child(7) { width: 150px; } /* DXT */
-.nadi-table th:nth-child(8), .nadi-table td:nth-child(8) { width: 90px; } /* Tinggi */
-.nadi-table th:nth-child(9), .nadi-table td:nth-child(9) { width: 90px; } /* Berat */
-.nadi-table th:nth-child(10), .nadi-table td:nth-child(10) { width: 80px; } /* BMI */
-.nadi-table th:nth-child(11), .nadi-table td:nth-child(11) { width: 80px; } /* Layak */
-.nadi-table th:nth-child(12), .nadi-table td:nth-child(12) { width: 100px; } /* Tidak Layak */
-.nadi-table th:nth-child(13), .nadi-table td:nth-child(13) { width: 220px; } /* TCA & Staff */
-.nadi-table th:nth-child(14), .nadi-table td:nth-child(14) { width: 180px; } /* Tindakan */
-
-/* Auto-grow input wrapper */
-.input-grow-wrapper {
-  position: relative;
-  display: inline-block;
-  min-width: 100%;
-}
-
-.input-grow-wrapper .input-mirror {
-  visibility: hidden;
-  white-space: pre;
-  padding: 0.25rem 0.5rem;
-  font-size: 0.875rem;
-  min-width: 20px;
-  display: inline-block;
-}
-
-.input-grow-wrapper input {
-  position: absolute;
-  left: 0;
-  top: 0;
-  width: 100%;
-  min-width: 100%;
-}
-
-/* WhatsApp button highlight */
-.nadi-wa {
-  background-color: #25D366 !important;
-  color: white !important;
-  border-color: #25D366 !important;
-}
-
-.nadi-wa:hover {
-  background-color: #128C7E !important;
-  border-color: #128C7E !important;
-}
-
-/* Form check alignment */
-.form-check {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  margin: 0;
-}
-
-/* Input group for DXT */
-.dxt-input-group {
-  display: flex;
-  align-items: center;
-  gap: 4px;
-}
-
-/* Responsive adjustments */
-@media (max-width: 1400px) {
-  .nadi-table-container {
-    font-size: 0.9rem;
-  }
-  
-  .nadi-table th, 
-  .nadi-table td {
-    padding: 6px 8px;
-  }
-}
-
-/* Tooltip for truncated content */
-.nadi-table td {
-  position: relative;
-}
-
-.nadi-table td:hover::after {
-  content: attr(data-title);
-  position: absolute;
-  left: 0;
-  top: 100%;
-  z-index: 20;
-  background: #333;
-  color: #fff;
-  padding: 4px 8px;
-  border-radius: 4px;
-  font-size: 0.8rem;
-  white-space: normal;
-  width: max-content;
-  max-width: 300px;
 }
 </style>
 </head>
@@ -423,6 +300,7 @@ body{font-family:'Segoe UI',Tahoma,Geneva,Verdana,sans-serif;background:#f5f7fa;
       <div class="d-none d-lg-flex align-items-center gap-2">
         <div id="signinAreaDesktop"></div>
         <span id="staffBadge" class="badge bg-secondary d-none"><i class="bi bi-person-check me-1"></i><span id="staffEmail"></span></span>
+        <!-- (Butang Log Calls terapung di bawah – tidak dalam navbar) -->
       </div>
     </div>
   </div>
@@ -526,83 +404,77 @@ body{font-family:'Segoe UI',Tahoma,Geneva,Verdana,sans-serif;background:#f5f7fa;
         <button id="btnNadiExportCsv" class="btn btn-sm btn-outline-success"><i class="bi bi-filetype-csv me-1"></i>Transfer kepada fail Excel (CSV)</button>
       </div>
     </div>
-    <div class="card">
-      <div class="card-body">
-        <div class="nadi-table-container">
-          <table class="nadi-table">
-            <thead>
-              <tr>
-                <th>Nama Pesakit</th>
-                <th>No IC</th>
-                <th>No Telefon</th>
-                <th>Alamat</th>
-                <th>BP</th>
-                <th>PR</th>
-                <th>DXT (mmol/L)</th>
-                <th>Tinggi (cm)</th>
-                <th>Berat (kg)</th>
-                <th>BMI</th>
-                <th>Layak</th>
-                <th>Tidak Layak</th>
-                <th>TCA & Staff</th>
-                <th>Tindakan</th>
-              </tr>
-            </thead>
-            <tbody id="nadiTableBody">
-              <!-- 5 empty rows will be added by JavaScript -->
-            </tbody>
-          </table>
-        </div>
-        <div class="text-muted small mt-2">Nota: Baris "Layak" boleh terus <b>Daftar</b> (simpan ke sheet). Baris "Tidak Layak" <u>tidak</u> disimpan ke sheet tetapi <b>tetap dieksport CSV</b> bersama-sama.</div>
+    <div class="card"><div class="card-body">
+      <div class="nadi-table-container">
+        <table class="nadi-table">
+          <thead>
+            <tr>
+              <th>Nama Pesakit</th>
+              <th>No IC</th>
+              <th>No Telefon</th>
+              <th>Alamat</th>
+              <th>BP</th>
+              <th>PR</th>
+              <th>DXT (mmol/L)</th>
+              <th>Tinggi (cm)</th>
+              <th>Berat (kg)</th>
+              <th>BMI</th>
+              <th>Layak</th>
+              <th>Tidak Layak</th>
+              <th>TCA & Staff</th>
+              <th>Tindakan</th>
+            </tr>
+          </thead>
+          <tbody id="nadiTableBody">
+            <!-- 5 empty rows will be added by JavaScript -->
+          </tbody>
+        </table>
       </div>
-    </div>
+      <div class="text-muted small mt-2">Nota: Baris "Layak" boleh terus <b>Daftar</b> (simpan ke sheet). Baris "Tidak Layak" <u>tidak</u> disimpan ke sheet tetapi <b>tetap dieksport CSV</b> bersama-sama.</div>
+    </div></div>
   </section>
 
   <!-- Kelayakan (Excel) -->
   <section id="kelayakan" class="mb-4 d-none">
     <h2 class="h6 mb-3"><i class="fa-solid fa-file-excel me-2"></i>Semak Kelayakan (Import Excel)</h2>
-    <div class="card">
-      <div class="card-body">
-        <div class="row g-2 align-items-center mb-3">
-          <div class="col-md-6">
-            <input type="file" id="excelFile" class="form-control" accept=".xlsx,.xls" />
-            <div class="form-text">Fail perlu ada lajur: <b>Nama</b>, <b>IC</b>, <b>Telefon</b>. (Sistem tapis umur ≥40 ikut IC)</div>
-          </div>
-        </div>
-        <div class="table-responsive">
-          <table class="table table-hover align-middle">
-            <thead class="table-light">
-              <tr>
-                <th>Nama</th><th>IC</th><th>Telefon</th>
-                <th class="text-center">Layak</th><th class="text-center">Tidak Layak</th>
-                <th style="width:360px">Jika Layak → TCA & Masa & Staff</th><th>Tindakan</th>
-              </tr>
-            </thead>
-            <tbody id="kelayakanTable"><tr><td colspan="7" class="text-center text-muted">Muat naik Excel untuk mula.</td></tr></tbody>
-          </table>
+    <div class="card"><div class="card-body">
+      <div class="row g-2 align-items-center mb-3">
+        <div class="col-md-6">
+          <input type="file" id="excelFile" class="form-control" accept=".xlsx,.xls" />
+          <div class="form-text">Fail perlu ada lajur: <b>Nama</b>, <b>IC</b>, <b>Telefon</b>. (Sistem tapis umur ≥40 ikut IC)</div>
         </div>
       </div>
-    </div>
+      <div class="table-responsive">
+        <table class="table table-hover align-middle">
+          <thead class="table-light">
+            <tr>
+              <th>Nama</th><th>IC</th><th>Telefon</th>
+              <th class="text-center">Layak</th><th class="text-center">Tidak Layak</th>
+              <th style="width:360px">Jika Layak → TCA & Masa & Staff</th><th>Tindakan</th>
+            </tr>
+          </thead>
+          <tbody id="kelayakanTable"><tr><td colspan="7" class="text-center text-muted">Muat naik Excel untuk mula.</td></tr></tbody>
+        </table>
+      </div>
+    </div></div>
   </section>
 
   <!-- Pendaftaran -->
   <section id="pendaftaran" class="mb-4 d-none">
     <h2 class="h6 mb-3"><i class="fas fa-user-plus me-2"></i>Pendaftaran Pesakit Baru</h2>
-    <div class="card">
-      <div class="card-body">
-        <form id="formPendaftaran">
-          <div class="row g-3">
-            <div class="col-md-6"><label class="form-label">Nama Penuh Pesakit</label><input id="namaPesakit" class="form-control" required></div>
-            <div class="col-md-6"><label class="form-label">Nombor IC</label><input id="noIC" class="form-control" required></div>
-            <div class="col-md-6"><label class="form-label">Nombor Telefon</label><input id="noTelefon" class="form-control" type="tel" required placeholder="cth: 0123456789 atau 60123456789"></div>
-            <div class="col-md-6"><label class="form-label">Nama Staff</label><input id="namaStaff" class="form-control" required></div>
-            <div class="col-md-6"><label class="form-label">Tarikh TCA</label><input id="tarikhTCA" class="form-control" type="date" required></div>
-            <div class="col-md-6"><label class="form-label">Masa TCA</label><input id="masaTCA" class="form-control" type="time" required></div>
-            <div class="col-12"><button class="btn btn-primary"><i class="fas fa-save me-1"></i>Daftar Pesakit</button></div>
-          </div>
-        </form>
-      </div>
-    </div>
+    <div class="card"><div class="card-body">
+      <form id="formPendaftaran">
+        <div class="row g-3">
+          <div class="col-md-6"><label class="form-label">Nama Penuh Pesakit</label><input id="namaPesakit" class="form-control" required></div>
+          <div class="col-md-6"><label class="form-label">Nombor IC</label><input id="noIC" class="form-control" required></div>
+          <div class="col-md-6"><label class="form-label">Nombor Telefon</label><input id="noTelefon" class="form-control" type="tel" required placeholder="cth: 0123456789 atau 60123456789"></div>
+          <div class="col-md-6"><label class="form-label">Nama Staff</label><input id="namaStaff" class="form-control" required></div>
+          <div class="col-md-6"><label class="form-label">Tarikh TCA</label><input id="tarikhTCA" class="form-control" type="date" required></div>
+          <div class="col-md-6"><label class="form-label">Masa TCA</label><input id="masaTCA" class="form-control" type="time" required></div>
+          <div class="col-12"><button class="btn btn-primary"><i class="fas fa-save me-1"></i>Daftar Pesakit</button></div>
+        </div>
+      </form>
+    </div></div>
   </section>
 
   <!-- TCA Call (senarai rekod — tiada tanda selesai manual) -->
@@ -619,16 +491,14 @@ body{font-family:'Segoe UI',Tahoma,Geneva,Verdana,sans-serif;background:#f5f7fa;
         <input class="form-control form-control-sm searchbar" id="searchTCAPage" placeholder="Cari nama/IC/telefon…"/>
       </div>
     </div>
-    <div class="card">
-      <div class="card-body">
-        <div class="table-responsive">
-          <table class="table table-hover align-middle">
-            <thead class="table-light"><tr><th>Nama Pesakit</th><th>No IC</th><th>No Telefon</th><th>Tarikh TCA</th><th>Status</th></tr></thead>
-            <tbody id="tcaCallList"><tr><td colspan="5" class="text-center text-muted">Memuat data...</td></tr></tbody>
-          </table>
-        </div>
+    <div class="card"><div class="card-body">
+      <div class="table-responsive">
+        <table class="table table-hover align-middle">
+          <thead class="table-light"><tr><th>Nama Pesakit</th><th>No IC</th><th>No Telefon</th><th>Tarikh TCA</th><th>Status</th></tr></thead>
+          <tbody id="tcaCallList"><tr><td colspan="5" class="text-center text-muted">Memuat data...</td></tr></tbody>
+        </table>
       </div>
-    </div>
+    </div></div>
   </section>
 
   <!-- First Visit -->
@@ -637,16 +507,14 @@ body{font-family:'Segoe UI',Tahoma,Geneva,Verdana,sans-serif;background:#f5f7fa;
       <h2 class="h6 m-0"><i class="fas fa-calendar-check me-2"></i>First Visit</h2>
       <input class="form-control form-control-sm searchbar" id="searchFirst" placeholder="Cari nama/IC/telefon…"/>
     </div>
-    <div class="card">
-      <div class="card-body">
-        <div class="table-responsive">
-          <table class="table table-hover align-middle">
-            <thead class="table-light"><tr><th>Nama Pesakit</th><th>No IC</th><th>Tarikh TCA</th><th>PDPA</th><th>Status</th><th>Tindakan</th></tr></thead>
-            <tbody id="firstVisitList"><tr><td colspan="6" class="text-center text-muted">Memuat data...</td></tr></tbody>
-          </table>
-        </div>
+    <div class="card"><div class="card-body">
+      <div class="table-responsive">
+        <table class="table table-hover align-middle">
+          <thead class="table-light"><tr><th>Nama Pesakit</th><th>No IC</th><th>Tarikh TCA</th><th>PDPA</th><th>Status</th><th>Tindakan</th></tr></thead>
+          <tbody id="firstVisitList"><tr><td colspan="6" class="text-center text-muted">Memuat data...</td></tr></tbody>
+        </table>
       </div>
-    </div>
+    </div></div>
   </section>
 
   <!-- Follow-up Lab Report -->
@@ -655,18 +523,16 @@ body{font-family:'Segoe UI',Tahoma,Geneva,Verdana,sans-serif;background:#f5f7fa;
       <h2 class="h6 m-0"><i class="fa-solid fa-flask-vial me-2"></i>Follow-up Lab Report</h2>
       <input class="form-control form-control-sm searchbar" id="searchLab" placeholder="Cari nama/IC/telefon…"/>
     </div>
-    <div class="card">
-      <div class="card-body">
-        <div class="table-responsive">
-          <table class="table table-hover align-middle">
-            <thead class="table-light">
-              <tr><th>Nama</th><th>IC</th><th>Telefon</th><th>Tarikh First Visit</th><th>Hari Ke-</th><th>Status</th><th>Tindakan</th></tr>
-            </thead>
-            <tbody id="labFollowupTable"><tr><td colspan="7" class="text-center text-muted">Memuat data...</td></tr></tbody>
-          </table>
-        </div>
+    <div class="card"><div class="card-body">
+      <div class="table-responsive">
+        <table class="table table-hover align-middle">
+          <thead class="table-light">
+            <tr><th>Nama</th><th>IC</th><th>Telefon</th><th>Tarikh First Visit</th><th>Hari Ke-</th><th>Status</th><th>Tindakan</th></tr>
+          </thead>
+          <tbody id="labFollowupTable"><tr><td colspan="7" class="text-center text-muted">Memuat data...</td></tr></tbody>
+        </table>
       </div>
-    </div>
+    </div></div>
   </section>
 
   <!-- Second Visit -->
@@ -675,16 +541,14 @@ body{font-family:'Segoe UI',Tahoma,Geneva,Verdana,sans-serif;background:#f5f7fa;
       <h2 class="h6 m-0"><i class="fas fa-calendar-check me-2"></i>Second Visit</h2>
       <input class="form-control form-control-sm searchbar" id="searchSecond" placeholder="Cari nama/IC/telefon…"/>
     </div>
-    <div class="card">
-      <div class="card-body">
-        <div class="table-responsive">
-          <table class="table table-hover align-middle">
-            <thead class="table-light"><tr><th>Nama Pesakit</th><th>No IC</th><th>Tarikh TCA</th><th>PDPA</th><th>Status</th><th>Tindakan</th></tr></thead>
-            <tbody id="secondVisitList"><tr><td colspan="6" class="text-center text-muted">Memuat data...</td></tr></tbody>
-          </table>
-        </div>
+    <div class="card"><div class="card-body">
+      <div class="table-responsive">
+        <table class="table table-hover align-middle">
+          <thead class="table-light"><tr><th>Nama Pesakit</th><th>No IC</th><th>Tarikh TCA</th><th>PDPA</th><th>Status</th><th>Tindakan</th></tr></thead>
+          <tbody id="secondVisitList"><tr><td colspan="6" class="text-center text-muted">Memuat data...</td></tr></tbody>
+        </table>
       </div>
-    </div>
+    </div></div>
   </section>
 
   <!-- Selesai -->
@@ -693,21 +557,19 @@ body{font-family:'Segoe UI',Tahoma,Geneva,Verdana,sans-serif;background:#f5f7fa;
       <h2 class="h6 m-0"><i class="fas fa-check-circle me-2"></i>Pesakit Selesai</h2>
       <input class="form-control form-control-sm searchbar" id="searchCompleted" placeholder="Cari nama/IC/telefon…"/>
     </div>
-    <div class="card mb-3">
-      <div class="card-body">
-        <div class="table-responsive">
-          <table class="table table-hover align-middle">
-            <thead class="table-light">
-              <tr>
-                <th>Nama Pesakit</th><th>No IC</th><th>No Telefon</th><th>PDPA</th>
-                <th>Tarikh Daftar</th><th>First Visit</th><th>Lab Report Completed</th><th>Second Visit</th><th>Tarikh Selesai</th><th>Tindakan</th>
-              </tr>
-            </thead>
-            <tbody id="completedTable"><tr><td colspan="10" class="text-center text-muted">Memuat data...</td></tr></tbody>
-          </table>
-        </div>
+    <div class="card mb-3"><div class="card-body">
+      <div class="table-responsive">
+        <table class="table table-hover align-middle">
+          <thead class="table-light">
+            <tr>
+              <th>Nama Pesakit</th><th>No IC</th><th>No Telefon</th><th>PDPA</th>
+              <th>Tarikh Daftar</th><th>First Visit</th><th>Lab Report Completed</th><th>Second Visit</th><th>Tarikh Selesai</th><th>Tindakan</th>
+            </tr>
+          </thead>
+          <tbody id="completedTable"><tr><td colspan="10" class="text-center text-muted">Memuat data...</td></tr></tbody>
+        </table>
       </div>
-    </div>
+    </div></div>
 
     <div class="card">
       <div class="card-header d-flex justify-content-between align-items-center">
@@ -728,16 +590,14 @@ body{font-family:'Segoe UI',Tahoma,Geneva,Verdana,sans-serif;background:#f5f7fa;
       <h2 class="h6 m-0"><i class="fa-solid fa-box-archive me-2"></i>Arkib</h2>
       <input class="form-control form-control-sm searchbar" id="searchArchive" placeholder="Cari nama/IC/telefon…"/>
     </div>
-    <div class="card">
-      <div class="card-body">
-        <div class="table-responsive">
-          <table class="table table-hover align-middle">
-            <thead class="table-light"><tr><th>Nama Pesakit</th><th>No IC</th><th>No Telefon</th><th>Tarikh Daftar</th><th>Tarikh Selesai</th><th>Diarkib</th><th>Tindakan</th></tr></thead>
-            <tbody id="archiveTable"><tr><td colspan="7" class="text-center text-muted">Memuat data...</td></tr></tbody>
-          </table>
-        </div>
+    <div class="card"><div class="card-body">
+      <div class="table-responsive">
+        <table class="table table-hover align-middle">
+          <thead class="table-light"><tr><th>Nama Pesakit</th><th>No IC</th><th>No Telefon</th><th>Tarikh Daftar</th><th>Tarikh Selesai</th><th>Diarkib</th><th>Tindakan</th></tr></thead>
+          <tbody id="archiveTable"><tr><td colspan="7" class="text-center text-muted">Memuat data...</td></tr></tbody>
+        </table>
       </div>
-    </div>
+    </div></div>
   </section>
 
 </main>
@@ -1257,98 +1117,56 @@ function addNadiRow(){
   
   // Nama
   const namaCell = document.createElement('td');
-  const namaWrapper = document.createElement('div');
-  namaWrapper.className = 'input-grow-wrapper';
-  const namaMirror = document.createElement('span');
-  namaMirror.className = 'input-mirror';
   const namaInput = document.createElement('input');
-  namaInput.type = 'text';
-  namaInput.className = 'form-control form-control-sm nadi-input';
+  namaInput.className = 'form-control form-control-sm';
   namaInput.placeholder = 'Nama pesakit';
-  namaWrapper.appendChild(namaMirror);
-  namaWrapper.appendChild(namaInput);
-  namaCell.appendChild(namaWrapper);
+  namaCell.appendChild(namaInput);
   row.appendChild(namaCell);
   
   // IC
   const icCell = document.createElement('td');
-  const icWrapper = document.createElement('div');
-  icWrapper.className = 'input-grow-wrapper';
-  const icMirror = document.createElement('span');
-  icMirror.className = 'input-mirror';
   const icInput = document.createElement('input');
-  icInput.type = 'text';
-  icInput.className = 'form-control form-control-sm nadi-input';
+  icInput.className = 'form-control form-control-sm';
   icInput.placeholder = 'No IC';
-  icWrapper.appendChild(icMirror);
-  icWrapper.appendChild(icInput);
-  icCell.appendChild(icWrapper);
+  icCell.appendChild(icInput);
   row.appendChild(icCell);
   
   // Telefon
   const telCell = document.createElement('td');
-  const telWrapper = document.createElement('div');
-  telWrapper.className = 'input-grow-wrapper';
-  const telMirror = document.createElement('span');
-  telMirror.className = 'input-mirror';
   const telInput = document.createElement('input');
-  telInput.type = 'text';
-  telInput.className = 'form-control form-control-sm nadi-input';
+  telInput.className = 'form-control form-control-sm';
   telInput.placeholder = 'No Telefon';
-  telWrapper.appendChild(telMirror);
-  telWrapper.appendChild(telInput);
-  telCell.appendChild(telWrapper);
+  telCell.appendChild(telInput);
   row.appendChild(telCell);
   
   // Alamat
   const alamatCell = document.createElement('td');
-  const alamatWrapper = document.createElement('div');
-  alamatWrapper.className = 'input-grow-wrapper';
-  const alamatMirror = document.createElement('span');
-  alamatMirror.className = 'input-mirror';
   const alamatInput = document.createElement('input');
-  alamatInput.type = 'text';
-  alamatInput.className = 'form-control form-control-sm nadi-input nadi-long';
+  alamatInput.className = 'form-control form-control-sm';
   alamatInput.placeholder = 'Alamat';
-  alamatWrapper.appendChild(alamatMirror);
-  alamatWrapper.appendChild(alamatInput);
-  alamatCell.appendChild(alamatWrapper);
+  alamatCell.appendChild(alamatInput);
   row.appendChild(alamatCell);
   
   // BP
   const bpCell = document.createElement('td');
-  const bpWrapper = document.createElement('div');
-  bpWrapper.className = 'input-grow-wrapper';
-  const bpMirror = document.createElement('span');
-  bpMirror.className = 'input-mirror';
   const bpInput = document.createElement('input');
-  bpInput.type = 'text';
-  bpInput.className = 'form-control form-control-sm nadi-input';
+  bpInput.className = 'form-control form-control-sm';
   bpInput.placeholder = 'BP (cth: 120/80)';
-  bpWrapper.appendChild(bpMirror);
-  bpWrapper.appendChild(bpInput);
-  bpCell.appendChild(bpWrapper);
+  bpCell.appendChild(bpInput);
   row.appendChild(bpCell);
   
   // PR
   const prCell = document.createElement('td');
-  const prWrapper = document.createElement('div');
-  prWrapper.className = 'input-grow-wrapper';
-  const prMirror = document.createElement('span');
-  prMirror.className = 'input-mirror';
   const prInput = document.createElement('input');
-  prInput.type = 'text';
-  prInput.className = 'form-control form-control-sm nadi-input';
+  prInput.className = 'form-control form-control-sm';
   prInput.placeholder = 'PR (degupan/min)';
-  prWrapper.appendChild(prMirror);
-  prWrapper.appendChild(prInput);
-  prCell.appendChild(prWrapper);
+  prCell.appendChild(prInput);
   row.appendChild(prCell);
   
   // DXT
   const dxtCell = document.createElement('td');
   const dxtGroup = document.createElement('div');
-  dxtGroup.className = 'input-group input-group-sm dxt-input-group';
+  dxtGroup.className = 'input-group input-group-sm';
   
   const dxtTypeBtn = document.createElement('button');
   dxtTypeBtn.className = 'btn btn-outline-secondary dropdown-toggle';
@@ -1377,16 +1195,9 @@ function addNadiRow(){
   randomItem.appendChild(randomLink);
   dxtTypeMenu.appendChild(randomItem);
   
-  const dxtWrapper = document.createElement('div');
-  dxtWrapper.className = 'input-grow-wrapper';
-  const dxtMirror = document.createElement('span');
-  dxtMirror.className = 'input-mirror';
   const dxtInput = document.createElement('input');
-  dxtInput.type = 'text';
-  dxtInput.className = 'form-control form-control-sm nadi-input';
+  dxtInput.className = 'form-control';
   dxtInput.placeholder = 'DXT (mmol/L)';
-  dxtWrapper.appendChild(dxtMirror);
-  dxtWrapper.appendChild(dxtInput);
   
   const dxtTypeHidden = document.createElement('input');
   dxtTypeHidden.type = 'hidden';
@@ -1395,39 +1206,25 @@ function addNadiRow(){
   
   dxtGroup.appendChild(dxtTypeBtn);
   dxtGroup.appendChild(dxtTypeMenu);
-  dxtGroup.appendChild(dxtWrapper);
+  dxtGroup.appendChild(dxtInput);
   dxtGroup.appendChild(dxtTypeHidden);
   dxtCell.appendChild(dxtGroup);
   row.appendChild(dxtCell);
   
   // Tinggi
   const tinggiCell = document.createElement('td');
-  const tinggiWrapper = document.createElement('div');
-  tinggiWrapper.className = 'input-grow-wrapper';
-  const tinggiMirror = document.createElement('span');
-  tinggiMirror.className = 'input-mirror';
   const tinggiInput = document.createElement('input');
-  tinggiInput.type = 'text';
-  tinggiInput.className = 'form-control form-control-sm nadi-input';
+  tinggiInput.className = 'form-control form-control-sm';
   tinggiInput.placeholder = 'Tinggi (cm)';
-  tinggiWrapper.appendChild(tinggiMirror);
-  tinggiWrapper.appendChild(tinggiInput);
-  tinggiCell.appendChild(tinggiWrapper);
+  tinggiCell.appendChild(tinggiInput);
   row.appendChild(tinggiCell);
   
   // Berat
   const beratCell = document.createElement('td');
-  const beratWrapper = document.createElement('div');
-  beratWrapper.className = 'input-grow-wrapper';
-  const beratMirror = document.createElement('span');
-  beratMirror.className = 'input-mirror';
   const beratInput = document.createElement('input');
-  beratInput.type = 'text';
-  beratInput.className = 'form-control form-control-sm nadi-input';
+  beratInput.className = 'form-control form-control-sm';
   beratInput.placeholder = 'Berat (kg)';
-  beratWrapper.appendChild(beratMirror);
-  beratWrapper.appendChild(beratInput);
-  beratCell.appendChild(beratWrapper);
+  beratCell.appendChild(beratInput);
   row.appendChild(beratCell);
   
   // BMI
@@ -1518,37 +1315,8 @@ function addNadiRow(){
   
   tbody.appendChild(row);
   
-  // Setup event listeners
-  setupNadiRowEvents(row);
-}
-
-function setupNadiRowEvents(row) {
-  // Auto-grow inputs
-  const setupAutoGrow = (input, mirror) => {
-    const updateSize = () => {
-      mirror.textContent = input.value || input.placeholder || ' ';
-      const width = Math.max(mirror.scrollWidth, 100);
-      input.style.width = width + 'px';
-    };
-    
-    input.addEventListener('input', updateSize);
-    input.addEventListener('focus', updateSize);
-    updateSize();
-  };
-  
-  // Setup all auto-grow inputs
-  const inputs = row.querySelectorAll('.input-grow-wrapper');
-  inputs.forEach(wrapper => {
-    const input = wrapper.querySelector('input');
-    const mirror = wrapper.querySelector('.input-mirror');
-    setupAutoGrow(input, mirror);
-  });
-  
+  // Event listeners
   // DXT Type dropdown
-  const dxtTypeBtn = row.querySelector('.dropdown-toggle');
-  const dxtTypeMenu = row.querySelector('.dropdown-menu');
-  const dxtTypeHidden = row.querySelector('.nadi-dxt-type');
-  
   dxtTypeMenu.querySelectorAll('.dropdown-item').forEach(a => {
     a.addEventListener('click', (e) => {
       e.preventDefault();
@@ -1559,11 +1327,10 @@ function setupNadiRowEvents(row) {
   });
   
   // BMI calculation
-  const tinggiInput = row.querySelector('td:nth-child(8) input');
-  const beratInput = row.querySelector('td:nth-child(9) input');
-  const bmiInput = row.querySelector('td:nth-child(10) input');
+  tinggiInput.addEventListener('input', calcBMI);
+  beratInput.addEventListener('input', calcBMI);
   
-  const calcBMI = () => {
+  function calcBMI() {
     const tinggi = parseFloat(tinggiInput.value || '0') / 100; // convert to meters
     const berat = parseFloat(beratInput.value || '0');
     if (tinggi && berat) {
@@ -1572,19 +1339,9 @@ function setupNadiRowEvents(row) {
     } else {
       bmiInput.value = '';
     }
-  };
-  
-  tinggiInput.addEventListener('input', calcBMI);
-  beratInput.addEventListener('input', calcBMI);
+  }
   
   // Layak/Tidak Layak toggle
-  const layakInput = row.querySelector('.nadi-layak');
-  const takLayakInput = row.querySelector('.nadi-taklayak');
-  const tcaDate = row.querySelector('td:nth-child(13) input[type="date"]');
-  const tcaTime = row.querySelector('td:nth-child(13) input[type="time"]');
-  const staffInput = row.querySelector('td:nth-child(13) input[type="text"]');
-  const daftarBtn = row.querySelector('.nadi-daftar');
-  
   layakInput.addEventListener('change', () => {
     if (layakInput.checked) {
       takLayakInput.checked = false;
@@ -1612,9 +1369,9 @@ function setupNadiRowEvents(row) {
   
   // Daftar button
   daftarBtn.addEventListener('click', async () => {
-    const nama = row.querySelector('td:nth-child(1) input').value.trim();
-    const ic = row.querySelector('td:nth-child(2) input').value.trim();
-    const tel = row.querySelector('td:nth-child(3) input').value.trim();
+    const nama = namaInput.value.trim();
+    const ic = icInput.value.trim();
+    const tel = telInput.value.trim();
     const date = tcaDate.value;
     const time = tcaTime.value;
     const staff = staffInput.value.trim();
@@ -1638,16 +1395,16 @@ function setupNadiRowEvents(row) {
       if (res.status === 'success') {
         toast('Berjaya', `Pesakit ${nama} didaftarkan`, 'success');
         // Clear the row after successful registration
-        row.querySelector('td:nth-child(1) input').value = '';
-        row.querySelector('td:nth-child(2) input').value = '';
-        row.querySelector('td:nth-child(3) input').value = '';
-        row.querySelector('td:nth-child(4) input').value = '';
-        row.querySelector('td:nth-child(5) input').value = '';
-        row.querySelector('td:nth-child(6) input').value = '';
-        row.querySelector('td:nth-child(7) .nadi-input').value = '';
-        row.querySelector('td:nth-child(8) input').value = '';
-        row.querySelector('td:nth-child(9) input').value = '';
-        row.querySelector('td:nth-child(10) input').value = '';
+        namaInput.value = '';
+        icInput.value = '';
+        telInput.value = '';
+        alamatInput.value = '';
+        bpInput.value = '';
+        prInput.value = '';
+        dxtInput.value = '';
+        tinggiInput.value = '';
+        beratInput.value = '';
+        bmiInput.value = '';
         tcaDate.value = '';
         tcaTime.value = '';
         staffInput.value = '';
@@ -1662,41 +1419,48 @@ function setupNadiRowEvents(row) {
   });
   
   // WhatsApp button
-  const waBtn = row.querySelector('.nadi-wa');
   waBtn.addEventListener('click', async () => {
     try {
       const data = {
-        nama: row.querySelector('td:nth-child(1) input').value.trim(),
-        ic: row.querySelector('td:nth-child(2) input').value.trim(),
-        tel: row.querySelector('td:nth-child(3) input').value.trim(),
-        alamat: row.querySelector('td:nth-child(4) input').value.trim(),
-        bp: row.querySelector('td:nth-child(5) input').value.trim(),
-        pr: row.querySelector('td:nth-child(6) input').value.trim(),
-        dxtType: row.querySelector('.nadi-dxt-type').value,
-        dxt: row.querySelector('td:nth-child(7) .nadi-input').value.trim(),
-        tinggi: row.querySelector('td:nth-child(8) input').value.trim(),
-        berat: row.querySelector('td:nth-child(9) input').value.trim(),
-        bmi: row.querySelector('td:nth-child(10) input').value.trim(),
-        layak: row.querySelector('.nadi-layak').checked
+        nama: namaInput.value.trim(),
+        ic: icInput.value.trim(),
+        tel: telInput.value.trim(),
+        alamat: alamatInput.value.trim(),
+        bp: bpInput.value.trim(),
+        pr: prInput.value.trim(),
+        dxtType: dxtTypeHidden.value,
+        dxt: dxtInput.value.trim(),
+        tinggi: tinggiInput.value.trim(),
+        berat: beratInput.value.trim(),
+        bmi: bmiInput.value.trim(),
+        layak: layakInput.checked
       };
-      
-      if (!data.tel) {
-        toast('Ralat', 'Sila isi nombor telefon terlebih dahulu', 'danger');
-        return;
-      }
       
       const file = await buildNadiReportImage(data);
       if (file) {
-        // Create WhatsApp message with patient info
-        const message = `Laporan Saringan NADI\nNama: ${data.nama}\nIC: ${data.ic}\nBP: ${data.bp}\nPR: ${data.pr}\nDXT (${data.dxtType}): ${data.dxt}\nTinggi: ${data.tinggi} cm\nBerat: ${data.berat} kg\nBMI: ${data.bmi}\nStatus: ${data.layak ? 'Layak PEKA B40' : 'Tidak Layak PEKA B40'}`;
-        
-        // Open WhatsApp Web with the image and message
-        const whatsappUrl = `https://web.whatsapp.com/send?phone=${data.tel.startsWith('60') ? data.tel : '60' + data.tel.slice(1)}&text=${encodeURIComponent(message)}`;
-        
-        // Try to open in new tab
-        window.open(whatsappUrl, '_blank');
-        
-        toast('Makluman', 'Sila buka WhatsApp Web untuk menghantar laporan', 'info');
+        if (navigator.canShare && navigator.canShare({ files: [file] })) {
+          await navigator.share({
+            title: 'Laporan Saringan NADI',
+            text: `Laporan saringan untuk ${data.nama} (${data.ic}).`,
+            files: [file]
+          });
+        } else {
+          // fallback: auto download image + open WhatsApp with text summary
+          const a = document.createElement('a');
+          a.href = URL.createObjectURL(file);
+          a.download = `Laporan_NADI_${(data.nama || 'pesakit').replace(/\s+/g, '_')}.png`;
+          document.body.appendChild(a);
+          a.click();
+          a.remove();
+          
+          const ringkas = `Laporan Saringan NADI\nNama: ${data.nama}\nIC: ${data.ic}\nBP: ${data.bp}\nPR: ${data.pr}\nDXT (${data.dxtType}): ${data.dxt}\nTinggi: ${data.tinggi} cm\nBerat: ${data.berat} kg\nBMI: ${data.bmi}\nStatus: ${data.layak ? 'Layak PEKA B40' : 'Tidak Layak PEKA B40'}`;
+          
+          if (data.tel) {
+            window.open(waHref(data.tel, ringkas), '_blank');
+          } else {
+            toast('Makluman', 'Nombor telefon kosong. Imej telah dimuat turun.', 'warning');
+          }
+        }
       }
     } catch (e) {
       toast('Ralat', 'Gagal jana laporan: ' + e.message, 'danger');
@@ -1704,7 +1468,6 @@ function setupNadiRowEvents(row) {
   });
   
   // Buang button
-  const buangBtn = row.querySelector('.nadi-buang');
   buangBtn.addEventListener('click', () => {
     if (confirm('Adakah anda pasti ingin membuang baris ini?')) {
       row.remove();
@@ -1736,14 +1499,14 @@ async function exportNadiCSV() {
       row.querySelector('td:nth-child(5) input').value.trim(),
       row.querySelector('td:nth-child(6) input').value.trim(),
       row.querySelector('.nadi-dxt-type').value,
-      row.querySelector('td:nth-child(7) .nadi-input').value.trim(),
+      row.querySelector('.nadi-dxt-wrap input[type=text]').value.trim(),
       row.querySelector('td:nth-child(8) input').value.trim(),
       row.querySelector('td:nth-child(9) input').value.trim(),
       row.querySelector('td:nth-child(10) input').value.trim(),
       row.querySelector('.nadi-layak').checked ? 'Ya' : 'Tidak',
-      row.querySelector('td:nth-child(13) input[type="date"]').value,
-      row.querySelector('td:nth-child(13) input[type="time"]').value,
-      row.querySelector('td:nth-child(13) input[type="text"]').value.trim()
+      row.querySelector('td:nth-child(12) input[type=date]').value,
+      row.querySelector('td:nth-child(12) input[type=time]').value,
+      row.querySelector('td:nth-child(12) input[type=text]').value.trim()
     ];
   });
   
@@ -1943,7 +1706,7 @@ function renderTcaList(mode){
   filtered.forEach(p=>{
     const msisdn = normalizeMsisdnMY(p.noTelefon||'');
     const badgeCls = p.status==='CALLED' ? 'bg-success' : (parseDDMMYYYY(p.tarikhTCA)?.getTime()<today.getTime() ? 'bg-secondary' : 'bg-warning');
-    const label = p.status==='CALLED' ? 'CALLED' : (parseDDMMYYYY(p.tarikhTCA)?.getTime()<today.getTime() ? 'LEPAS' : (isSameDay(parseDDMMYYYY(p.tarikhTCA), today) ? 'HARI INI' : 'AKAN DATANG');
+    const label = p.status==='CALLED' ? 'CALLED' : (parseDDMMYYYY(p.tarikhTCA)?.getTime()<today.getTime() ? 'LEPAS' : (isSameDay(parseDDMMYYYY(p.tarikhTCA), today) ? 'HARI INI' : 'AKAN DATANG'));
     const row = `
       <tr data-ic="${p.noIC}">
         <td>${p.nama}</td>
@@ -2347,4 +2110,4 @@ document.addEventListener('DOMContentLoaded', ()=>{
 });
 </script>
 </body>
-</html>
+</html>" nanti di bawah saya akan berikan kepada awak rumus code.gs saya yang lama kepada awak untuk dikemaskini semula supaya selari dengan index.html yang saya berikan ini
