@@ -1253,4 +1253,283 @@ function addNadiRow(){
   tcaCell.appendChild(tcaDate); tcaCell.appendChild(tcaTime); tcaCell.appendChild(staffInput); row.appendChild(tcaCell);
 
   const actionCell = document.createElement('td');
-  actionCell.className = 'action-buttons
+  actionCell.className = 'action-buttons   const actionCell = document.createElement('td');
+  actionCell.className = 'action-buttons';
+
+  // Butang: Kira BMI
+  const btnBmi = document.createElement('button');
+  btnBmi.type = 'button';
+  btnBmi.className = 'btn btn-sm btn-outline-secondary';
+  btnBmi.innerHTML = '<i class="fa-solid fa-calculator me-1"></i>BMI';
+  btnBmi.addEventListener('click', ()=> {
+    kiraBMI(tinggiInput, beratInput, bmiInput);
+  });
+
+  // Butang: Call
+  const btnCall = document.createElement('a');
+  btnCall.className = 'btn btn-sm btn-outline-primary';
+  btnCall.target = '_blank';
+  btnCall.rel = 'noopener';
+  btnCall.innerHTML = '<i class="fa-solid fa-phone me-1"></i>Call';
+  btnCall.addEventListener('click', (e)=>{
+    e.preventDefault();
+    const msisdn = normalizeMsisdnMY(telInput.value);
+    if (!msisdn) { toast('Ralat','Masukkan nombor telefon dahulu','danger'); return; }
+    window.open(telHref(msisdn), '_blank');
+  });
+
+  // Butang: WhatsApp Web
+  const btnWA = document.createElement('a');
+  btnWA.className = 'btn btn-sm btn-outline-success';
+  btnWA.target = '_blank';
+  btnWA.rel = 'noopener';
+  btnWA.innerHTML = '<i class="fa-brands fa-whatsapp me-1"></i>WA';
+  btnWA.addEventListener('click', (e)=>{
+    e.preventDefault();
+    const msisdn = normalizeMsisdnMY(telInput.value);
+    if (!msisdn) { toast('Ralat','Masukkan nombor telefon dahulu','danger'); return; }
+    window.open(waHref(msisdn, 'Assalamualaikum, dari Klinik SihatSokmo.'), '_blank');
+  });
+
+  // Butang: Daftar (simpan Layak ke sheet)
+  const btnDaftar = document.createElement('button');
+  btnDaftar.type = 'button';
+  btnDaftar.className = 'btn btn-sm btn-primary';
+  btnDaftar.innerHTML = '<i class="fa-solid fa-floppy-disk me-1"></i>Daftar';
+  btnDaftar.addEventListener('click', async ()=>{
+    await daftarBarisNADI({
+      namaInput, icInput, telInput, alamatInput,
+      bpInput, prInput, dxtInput, dxtTypeHidden,
+      tinggiInput, beratInput, bmiInput,
+      layakInput, takLayakInput,
+      tcaDate, tcaTime, staffInput,
+      row
+    });
+  });
+
+  // Butang: Padam baris
+  const btnPadam = document.createElement('button');
+  btnPadam.type = 'button';
+  btnPadam.className = 'btn btn-sm btn-outline-danger';
+  btnPadam.innerHTML = '<i class="fa-solid fa-trash me-1"></i>Padam';
+  btnPadam.addEventListener('click', ()=>{
+    row.remove();
+  });
+
+  actionCell.appendChild(btnBmi);
+  actionCell.appendChild(btnCall);
+  actionCell.appendChild(btnWA);
+  actionCell.appendChild(btnDaftar);
+  actionCell.appendChild(btnPadam);
+  row.appendChild(actionCell);
+
+  // DXT dropdown handlers
+  dxtTypeMenu.querySelectorAll('.dropdown-item').forEach(a=>{
+    a.addEventListener('click', (e)=>{
+      e.preventDefault();
+      const val = a.getAttribute('data-value') || 'Fasting';
+      dxtTypeHidden.value = val;
+      dxtTypeBtn.textContent = val;
+    });
+  });
+
+  // Layak / Tidak Layak toggle → kawal TCA fields
+  function syncEligibilityUI(){
+    const isLayak = layakInput.checked && !takLayakInput.checked;
+    [tcaDate, tcaTime, staffInput].forEach(el=> el.disabled = !isLayak);
+  }
+  layakInput.addEventListener('change', ()=>{
+    if (layakInput.checked) takLayakInput.checked = false;
+    syncEligibilityUI();
+  });
+  takLayakInput.addEventListener('change', ()=>{
+    if (takLayakInput.checked) layakInput.checked = false;
+    syncEligibilityUI();
+  });
+  syncEligibilityUI();
+
+  // Auto-kira BMI bila tinggi/berat berubah
+  tinggiInput.addEventListener('input', ()=> kiraBMI(tinggiInput, beratInput, bmiInput));
+  beratInput.addEventListener('input',  ()=> kiraBMI(tinggiInput, beratInput, bmiInput));
+
+  // Akhir sekali, masukkan baris ke jadual
+  tbody.appendChild(row);
+}
+
+/* Kira BMI helper */
+function kiraBMI(tinggiInput, beratInput, bmiInput){
+  const h = parseFloat(String(tinggiInput.value||'').replace(',','.'));
+  const w = parseFloat(String(beratInput.value||'').replace(',','.'));
+  if (!h || !w) { bmiInput.value = ''; return; }
+  const m = h/100;
+  const bmi = w/(m*m);
+  bmiInput.value = isFinite(bmi) ? bmi.toFixed(1) : '';
+}
+
+/* Daftar baris NADI → simpan ke sheet (hanya jika LAYAK) */
+async function daftarBarisNADI(ctx){
+  const {
+    namaInput, icInput, telInput, alamatInput,
+    bpInput, prInput, dxtInput, dxtTypeHidden,
+    tinggiInput, beratInput, bmiInput,
+    layakInput, takLayakInput,
+    tcaDate, tcaTime, staffInput,
+    row
+  } = ctx;
+
+  const nama = (namaInput.value||'').trim();
+  const ic   = (icInput.value||'').trim();
+  const msisdn = normalizeMsisdnMY(telInput.value||'');
+  const alamat = (alamatInput.value||'').trim();
+  const bp  = (bpInput.value||'').trim();
+  const pr  = (prInput.value||'').trim();
+  const dxt = (dxtInput.value||'').trim();
+  const dxtType = dxtTypeHidden.value||'Fasting';
+  const tinggi = (tinggiInput.value||'').trim();
+  const berat  = (beratInput.value||'').trim();
+  const bmi    = (bmiInput.value||'').trim();
+
+  const isLayak = layakInput.checked && !takLayakInput.checked;
+
+  if (!nama || !ic){
+    toast('Ralat','Nama & IC wajib diisi','danger'); return;
+  }
+
+  // Jika Layak → perlukan TCA date/time/staff
+  if (isLayak){
+    if (!tcaDate.value || !tcaTime.value || !staffInput.value.trim()){
+      toast('Ralat','Isi Tarikh, Masa TCA & Nama Staff','danger'); return;
+    }
+    try{
+      const res = await postForm({
+        action:'daftarPesakit',
+        namaPesakit: nama,
+        noIC: ic,
+        noTelefon: msisdn,
+        namaStaff: staffInput.value.trim(),
+        tarikhTCA: tcaDate.value,
+        masaTCA: tcaTime.value,
+        alamat, bp, pr, dxt, dxtType, tinggi, berat, bmi
+      }, { msg:'Mendaftar pesakit…' });
+
+      if (res.status === 'success'){
+        toast('Berjaya', `Pesakit ${nama} didaftarkan ke TCA.`, 'success');
+        row.remove();
+        loadDashboardData && loadDashboardData();
+        loadTCACallData && loadTCACallData();
+      } else {
+        throw new Error(res.message || 'Gagal daftar');
+      }
+    }catch(e){
+      toast('Ralat', e.message, 'danger');
+    }
+  } else {
+    // Tidak Layak: tidak disimpan ke sheet. Beri makluman.
+    toast('Makluman','Baris ditanda "Tidak Layak" — tidak disimpan (akan termasuk dalam CSV).','warning');
+  }
+}
+
+/* Export NADI → CSV (kedua-dua Layak & Tidak Layak disertakan) */
+function exportNadiCSV(){
+  const tbody = document.getElementById('nadiTableBody');
+  const rows = Array.from(tbody.querySelectorAll('tr'));
+  if (!rows.length){ toast('Makluman','Tiada baris untuk dieksport','secondary'); return; }
+
+  const headers = [
+    'Nama','IC','Telefon','Alamat','BP','PR',
+    'DXT','DXT_Type','Tinggi_cm','Berat_kg','BMI',
+    'Layak','Tidak_Layak','TCA_Tarikh','TCA_Masa','Staff'
+  ];
+  const data = [headers];
+
+  rows.forEach(row=>{
+    const getVal = (sel) => (sel && sel.querySelector('input')) ? sel.querySelector('input').value.trim() : '';
+    const tds = row.children;
+
+    const nama   = tds[0].querySelector('input')?.value.trim() || '';
+    const ic     = tds[1].querySelector('input')?.value.trim() || '';
+    const tel    = normalizeMsisdnMY(tds[2].querySelector('input')?.value.trim() || '');
+    const alamat = tds[3].querySelector('input')?.value.trim() || '';
+    const bp     = tds[4].querySelector('input')?.value.trim() || '';
+    const pr     = tds[5].querySelector('input')?.value.trim() || '';
+
+    const dxtInput = tds[6].querySelector('.nadi-dxt-input');
+    const dxtType  = tds[6].querySelector('.nadi-dxt-type')?.value || 'Fasting';
+    const dxt      = dxtInput ? dxtInput.value.trim() : '';
+
+    const tinggi = tds[7].querySelector('input')?.value.trim() || '';
+    const berat  = tds[8].querySelector('input')?.value.trim() || '';
+    const bmi    = tds[9].querySelector('input')?.value.trim() || '';
+
+    const layak = tds[10].querySelector('input[type=checkbox]')?.checked ? 'YA':'';
+    const tak   = tds[11].querySelector('input[type=checkbox]')?.checked ? 'YA':'';
+
+    const tcaTarikh = tds[12].querySelector('input[type=date]')?.value || '';
+    const tcaMasa   = tds[12].querySelector('input[type=time]')?.value || '';
+    const staff     = tds[12].querySelector('input[type=text]')?.value.trim() || '';
+
+    data.push([nama,ic,tel,alamat,bp,pr,dxt,dxtType,tinggi,berat,bmi,layak,tak,tcaTarikh,tcaMasa,staff]);
+  });
+
+  const csv = data.map(r=> r.map(v=>{
+    const s = String(v||'').replace(/"/g,'""');
+    return /[",\n]/.test(s) ? `"${s}"` : s;
+  }).join(',')).join('\n');
+
+  const blob = new Blob([csv], {type:'text/csv;charset=utf-8;'});
+  const url  = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `NADI_${new Date().toISOString().slice(0,10)}.csv`;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  URL.revokeObjectURL(url);
+  toast('Berjaya','CSV NADI telah dijana','success');
+}
+
+/* =======================
+   DASHBOARD & PAGES (STUB jika belum ada)
+   ======================= */
+if (typeof loadDashboardData === 'undefined'){
+  async function loadDashboardData(){ /* stub: boleh diganti dengan implementasi penuh */ }
+}
+if (typeof loadStatistics === 'undefined'){
+  async function loadStatistics(){ /* stub */ }
+}
+if (typeof loadCompletedStatistics === 'undefined'){
+  async function loadCompletedStatistics(){ /* stub */ }
+}
+if (typeof loadTCACallData === 'undefined'){
+  async function loadTCACallData(){ /* stub */ }
+}
+if (typeof loadTCACallPage === 'undefined'){
+  async function loadTCACallPage(){ /* stub */ }
+}
+if (typeof loadFirstVisitData === 'undefined'){
+  async function loadFirstVisitData(){ /* stub */ }
+}
+if (typeof loadLabFollowUp === 'undefined'){
+  async function loadLabFollowUp(){ /* stub */ }
+}
+if (typeof loadSecondVisitData === 'undefined'){
+  async function loadSecondVisitData(){ /* stub */ }
+}
+if (typeof loadCompletedData === 'undefined'){
+  async function loadCompletedData(){ /* stub */ }
+}
+if (typeof loadArchivedData === 'undefined'){
+  async function loadArchivedData(){ /* stub */ }
+}
+
+/* =======================
+   BOOT
+   ======================= */
+window.addEventListener('load', ()=>{
+  initGoogleSignIn();
+});
+</script>
+
+</body>
+</html>
+
