@@ -1,13 +1,3 @@
-"Faham—isu tu berlaku sebab sel NADI guna `white-space: nowrap` + lebar kolum tak dikunci, jadi komponen dalam sel (terutamanya DXT & auto-grow input) “tolak” sempadan kolum lain hingga nampak macam TCA & Tindakan masuk ke kolum **Layak**. Saya baiki dengan:
-
-1. Kunci lebar setiap kolum menggunakan `<colgroup>` + `table-layout: fixed`.
-2. Pastikan pembalut auto-grow tidak melimpah kolum (`max-width:100%`) dan kekalkan auto-grow.
-3. Benarkan kandungan TCA & Tindakan susun rapi (flex) tapi tak tumpang kolum jiran.
-4. Kekalkan semua fungsi asal (daftar, export CSV, checkbox Layak/Tidak Layak, dll).
-
-Di bawah ialah **fail penuh** siap tampal (index.html) dengan pembetulan. Salin & tampal ganti versi anda sekarang.
-
-```html
 <!DOCTYPE html>
 <html lang="ms">
 <head>
