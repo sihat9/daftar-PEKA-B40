@@ -154,7 +154,7 @@ body{font-family:'Segoe UI',Tahoma,Geneva,Verdana,sans-serif;background:#f5f7fa;
   .stat-card .number{font-size:1.3rem}
 }
 
-/* NADI Table Styles - UPDATED with better layout */
+/* NADI Table Styles - UPDATED */
 .nadi-table-container {
   overflow-x: auto;
   margin-bottom: 1rem;
@@ -185,12 +185,13 @@ body{font-family:'Segoe UI',Tahoma,Geneva,Verdana,sans-serif;background:#f5f7fa;
 }
 
 .nadi-table td {
-  padding: 6px 8px;
+  padding: 8px;
   border-bottom: 1px solid #dee2e6;
   vertical-align: middle;
   height: 42px;
   position: relative;
-  overflow: visible;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .nadi-table tr:last-child td {
@@ -201,6 +202,7 @@ body{font-family:'Segoe UI',Tahoma,Geneva,Verdana,sans-serif;background:#f5f7fa;
   height: calc(1.5em + 0.5rem + 2px);
   padding: 0.25rem 0.5rem;
   font-size: 0.875rem;
+  width: 100%;
 }
 
 .nadi-table .btn-sm {
@@ -213,54 +215,6 @@ body{font-family:'Segoe UI',Tahoma,Geneva,Verdana,sans-serif;background:#f5f7fa;
   height: calc(1.5em + 0.5rem + 2px);
 }
 
-/* Improved column widths for better layout */
-.nadi-table th:nth-child(1), .nadi-table td:nth-child(1) { width: 180px; } /* Nama */
-.nadi-table th:nth-child(2), .nadi-table td:nth-child(2) { width: 140px; } /* No IC */
-.nadi-table th:nth-child(3), .nadi-table td:nth-child(3) { width: 120px; } /* No Telefon */
-.nadi-table th:nth-child(4), .nadi-table td:nth-child(4) { width: 200px; } /* Alamat */
-.nadi-table th:nth-child(5), .nadi-table td:nth-child(5) { width: 100px; } /* BP */
-.nadi-table th:nth-child(6), .nadi-table td:nth-child(6) { width: 100px; } /* PR */
-.nadi-table th:nth-child(7), .nadi-table td:nth-child(7) { width: 150px; } /* DXT */
-.nadi-table th:nth-child(8), .nadi-table td:nth-child(8) { width: 100px; } /* Tinggi */
-.nadi-table th:nth-child(9), .nadi-table td:nth-child(9) { width: 100px; } /* Berat */
-.nadi-table th:nth-child(10), .nadi-table td:nth-child(10) { width: 80px; } /* BMI */
-.nadi-table th:nth-child(11), .nadi-table td:nth-child(11) { width: 80px; } /* Layak */
-.nadi-table th:nth-child(12), .nadi-table td:nth-child(12) { width: 100px; } /* Tidak Layak */
-.nadi-table th:nth-child(13), .nadi-table td:nth-child(13) { width: 250px; } /* TCA & Staff */
-.nadi-table th:nth-child(14), .nadi-table td:nth-child(14) { width: 200px; } /* Tindakan */
-
-/* Input fields styling */
-.nadi-table input[type="text"],
-.nadi-table input[type="date"],
-.nadi-table input[type="time"] {
-  width: 100%;
-  min-width: 80px;
-  padding: 0.25rem 0.5rem;
-  font-size: 0.875rem;
-  border: 1px solid #dee2e6;
-  border-radius: 4px;
-}
-
-.nadi-table input[type="text"]:focus,
-.nadi-table input[type="date"]:focus,
-.nadi-table input[type="time"]:focus {
-  border-color: #86b7fe;
-  outline: 0;
-  box-shadow: 0 0 0 0.25rem rgba(13, 110, 253, 0.25);
-}
-
-/* Status checkboxes */
-.nadi-table .status-check {
-  text-align: center;
-}
-
-.nadi-table .status-check .form-check-input {
-  width: 1.2em;
-  height: 1.2em;
-  margin-top: 0;
-}
-
-/* Action buttons */
 .nadi-table .action-buttons {
   display: flex;
   gap: 4px;
@@ -268,29 +222,12 @@ body{font-family:'Segoe UI',Tahoma,Geneva,Verdana,sans-serif;background:#f5f7fa;
   justify-content: center;
 }
 
-.nadi-table .action-buttons .btn {
-  white-space: nowrap;
-}
-
-/* DXT input group */
-.nadi-table .dxt-input-group {
+.nadi-table .status-check {
   display: flex;
+  justify-content: center;
   align-items: center;
-  gap: 4px;
 }
 
-.nadi-table .dxt-input-group .dropdown-toggle {
-  min-width: 90px;
-  padding: 0.25rem 0.5rem;
-  font-size: 0.875rem;
-}
-
-.nadi-table .dxt-input-group .form-control {
-  flex: 1;
-  min-width: 60px;
-}
-
-/* TCA fields */
 .nadi-table .tca-fields {
   display: flex;
   gap: 4px;
@@ -298,36 +235,35 @@ body{font-family:'Segoe UI',Tahoma,Geneva,Verdana,sans-serif;background:#f5f7fa;
 }
 
 .nadi-table .tca-fields .form-control {
-  min-width: 80px;
-}
-
-.nadi-table .tca-fields input[type="date"],
-.nadi-table .tca-fields input[type="time"] {
-  min-width: 100px;
-}
-
-.nadi-table .tca-fields input[type="text"] {
   min-width: 120px;
 }
 
-/* WhatsApp button highlight */
-.nadi-wa {
-  background-color: #25D366 !important;
-  color: white !important;
-  border-color: #25D366 !important;
+.nadi-table .bmi-field {
+  min-width: 80px;
+  text-align: center;
 }
 
-.nadi-wa:hover {
-  background-color: #128C7E !important;
-  border-color: #128C7E !important;
-}
+/* Column Widths for NADI Table */
+.nadi-table th:nth-child(1), .nadi-table td:nth-child(1) { width: 180px; } /* Nama */
+.nadi-table th:nth-child(2), .nadi-table td:nth-child(2) { width: 120px; } /* IC */
+.nadi-table th:nth-child(3), .nadi-table td:nth-child(3) { width: 120px; } /* Telefon */
+.nadi-table th:nth-child(4), .nadi-table td:nth-child(4) { width: 200px; } /* Alamat */
+.nadi-table th:nth-child(5), .nadi-table td:nth-child(5) { width: 90px; } /* BP */
+.nadi-table th:nth-child(6), .nadi-table td:nth-child(6) { width: 90px; } /* PR */
+.nadi-table th:nth-child(7), .nadi-table td:nth-child(7) { width: 150px; } /* DXT */
+.nadi-table th:nth-child(8), .nadi-table td:nth-child(8) { width: 90px; } /* Tinggi */
+.nadi-table th:nth-child(9), .nadi-table td:nth-child(9) { width: 90px; } /* Berat */
+.nadi-table th:nth-child(10), .nadi-table td:nth-child(10) { width: 80px; } /* BMI */
+.nadi-table th:nth-child(11), .nadi-table td:nth-child(11) { width: 80px; } /* Layak */
+.nadi-table th:nth-child(12), .nadi-table td:nth-child(12) { width: 100px; } /* Tidak Layak */
+.nadi-table th:nth-child(13), .nadi-table td:nth-child(13) { width: 220px; } /* TCA & Staff */
+.nadi-table th:nth-child(14), .nadi-table td:nth-child(14) { width: 180px; } /* Tindakan */
 
 /* Auto-grow input wrapper */
 .input-grow-wrapper {
   position: relative;
   display: inline-block;
-  min-width: 80px;
-  width: 100%;
+  min-width: 100%;
 }
 
 .input-grow-wrapper .input-mirror {
@@ -344,26 +280,67 @@ body{font-family:'Segoe UI',Tahoma,Geneva,Verdana,sans-serif;background:#f5f7fa;
   left: 0;
   top: 0;
   width: 100%;
-  min-width: 80px;
-  padding: 0.25rem 0.5rem;
-  border: 1px solid #dee2e6;
+  min-width: 100%;
+}
+
+/* WhatsApp button highlight */
+.nadi-wa {
+  background-color: #25D366 !important;
+  color: white !important;
+  border-color: #25D366 !important;
+}
+
+.nadi-wa:hover {
+  background-color: #128C7E !important;
+  border-color: #128C7E !important;
+}
+
+/* Form check alignment */
+.form-check {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin: 0;
+}
+
+/* Input group for DXT */
+.dxt-input-group {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+/* Responsive adjustments */
+@media (max-width: 1400px) {
+  .nadi-table-container {
+    font-size: 0.9rem;
+  }
+  
+  .nadi-table th, 
+  .nadi-table td {
+    padding: 6px 8px;
+  }
+}
+
+/* Tooltip for truncated content */
+.nadi-table td {
+  position: relative;
+}
+
+.nadi-table td:hover::after {
+  content: attr(data-title);
+  position: absolute;
+  left: 0;
+  top: 100%;
+  z-index: 20;
+  background: #333;
+  color: #fff;
+  padding: 4px 8px;
   border-radius: 4px;
-  font-size: 0.875rem;
-}
-
-.input-grow-wrapper input:focus {
-  border-color: #86b7fe;
-  outline: 0;
-  box-shadow: 0 0 0 0.25rem rgba(13, 110, 253, 0.25);
-}
-
-/* Zebra striping for better readability */
-.nadi-table tbody tr:nth-child(odd) {
-  background-color: rgba(0, 0, 0, 0.02);
-}
-
-.nadi-table tbody tr:hover {
-  background-color: rgba(0, 0, 0, 0.05);
+  font-size: 0.8rem;
+  white-space: normal;
+  width: max-content;
+  max-width: 300px;
 }
 </style>
 </head>
@@ -1254,6 +1231,7 @@ function setupNADI(){
   document.getElementById('btnAddNadiRow').addEventListener('click', addNadiRow);
 }
 
+// Function to create auto-growing input fields
 function createAutoGrowInput(placeholder = '', initialWidth = 100) {
   const wrapper = document.createElement('div');
   wrapper.className = 'input-grow-wrapper';
@@ -1264,8 +1242,9 @@ function createAutoGrowInput(placeholder = '', initialWidth = 100) {
   
   const input = document.createElement('input');
   input.type = 'text';
-  input.className = 'form-control form-control-sm';
+  input.className = 'form-control form-control-sm nadi-input';
   input.placeholder = placeholder;
+  input.style.minWidth = initialWidth + 'px';
   
   // Update mirror text and adjust width
   function updateSize() {
@@ -1329,10 +1308,10 @@ function addNadiRow(){
   // DXT
   const dxtCell = document.createElement('td');
   const dxtGroup = document.createElement('div');
-  dxtGroup.className = 'dxt-input-group';
+  dxtGroup.className = 'input-group input-group-sm';
   
   const dxtTypeBtn = document.createElement('button');
-  dxtTypeBtn.className = 'btn btn-outline-secondary dropdown-toggle btn-sm';
+  dxtTypeBtn.className = 'btn btn-outline-secondary dropdown-toggle';
   dxtTypeBtn.setAttribute('data-bs-toggle', 'dropdown');
   dxtTypeBtn.type = 'button';
   dxtTypeBtn.textContent = 'Fasting';
@@ -1358,10 +1337,7 @@ function addNadiRow(){
   randomItem.appendChild(randomLink);
   dxtTypeMenu.appendChild(randomItem);
   
-  const dxtInput = document.createElement('input');
-  dxtInput.type = 'text';
-  dxtInput.className = 'form-control form-control-sm';
-  dxtInput.placeholder = 'mmol/L';
+  const { wrapper: dxtWrapper, input: dxtInput } = createAutoGrowInput('DXT (mmol/L)', 90);
   
   const dxtTypeHidden = document.createElement('input');
   dxtTypeHidden.type = 'hidden';
@@ -1370,7 +1346,7 @@ function addNadiRow(){
   
   dxtGroup.appendChild(dxtTypeBtn);
   dxtGroup.appendChild(dxtTypeMenu);
-  dxtGroup.appendChild(dxtInput);
+  dxtGroup.appendChild(dxtWrapper);
   dxtGroup.appendChild(dxtTypeHidden);
   dxtCell.appendChild(dxtGroup);
   row.appendChild(dxtCell);
@@ -1390,7 +1366,7 @@ function addNadiRow(){
   // BMI
   const bmiCell = document.createElement('td');
   const bmiInput = document.createElement('input');
-  bmiInput.className = 'form-control form-control-sm';
+  bmiInput.className = 'form-control form-control-sm bmi-field';
   bmiInput.placeholder = 'BMI';
   bmiInput.disabled = true;
   bmiCell.appendChild(bmiInput);
@@ -1604,7 +1580,7 @@ function addNadiRow(){
       const file = await buildNadiReportImage(data);
       if (file) {
         // Create WhatsApp message with patient info
-        const message = `Laporan Saringan NADI\nNama: ${data.nama}\nIC: ${data.ic}\nBP: ${data.bp}\nPR: ${data.pr}\nDXT (${data.dxtType}): ${data.dxt}\nTinggi: ${data.tinggi} cm\nBerat: ${data.berat} kg\nBMI: ${data.bmi}\nStatus: ${data.layak ? 'LAYAK Saringan PEKA B40' : 'TIDAK LAYAK Saringan PEKA B40'}`;
+        const message = `Laporan Saringan NADI\nNama: ${data.nama}\nIC: ${data.ic}\nBP: ${data.bp}\nPR: ${data.pr}\nDXT (${data.dxtType}): ${data.dxt}\nTinggi: ${data.tinggi} cm\nBerat: ${data.berat} kg\nBMI: ${data.bmi}\nStatus: ${data.layak ? 'Layak PEKA B40' : 'Tidak Layak PEKA B40'}`;
         
         // Create form data to send image
         const formData = new FormData();
@@ -1658,7 +1634,7 @@ async function exportNadiCSV() {
       row.querySelector('td:nth-child(5) input').value.trim(),
       row.querySelector('td:nth-child(6) input').value.trim(),
       row.querySelector('.nadi-dxt-type').value,
-      row.querySelector('.dxt-input-group input[type=text]').value.trim(),
+      row.querySelector('.nadi-dxt-wrap input[type=text]').value.trim(),
       row.querySelector('td:nth-child(8) input').value.trim(),
       row.querySelector('td:nth-child(9) input').value.trim(),
       row.querySelector('td:nth-child(10) input').value.trim(),
@@ -1865,7 +1841,7 @@ function renderTcaList(mode){
   filtered.forEach(p=>{
     const msisdn = normalizeMsisdnMY(p.noTelefon||'');
     const badgeCls = p.status==='CALLED' ? 'bg-success' : (parseDDMMYYYY(p.tarikhTCA)?.getTime()<today.getTime() ? 'bg-secondary' : 'bg-warning');
-    const label = p.status==='CALLED' ? 'CALLED' : (parseDDMMYYYY(p.tarikhTCA)?.getTime()<today.getTime() ? 'LEPAS' : (isSameDay(parseDDMMYYYY(p.tarikhTCA), today) ? 'HARI INI' : 'AKAN DATANG');
+    const label = p.status==='CALLED' ? 'CALLED' : (parseDDMMYYYY(p.tarikhTCA)?.getTime()<today.getTime() ? 'LEPAS' : (isSameDay(parseDDMMYYYY(p.tarikhTCA), today) ? 'HARI INI' : 'AKAN DATANG'));
     const row = `
       <tr data-ic="${p.noIC}">
         <td>${p.nama}</td>
@@ -1989,7 +1965,6 @@ async function loadSecondVisitData(){
           ? `<div class="d-flex flex-wrap gap-1">
               <a class="btn btn-sm btn-outline-success" target="_blank" href="https://drive.google.com/file/d/${p.pdpaFileId}/preview"><i class="fa-solid fa-eye"></i> Lihat</a>
               <a class="btn btn-sm btn-outline-primary" target="_blank" href="https://drive.google.com/uc?export=download&id=${p.pdpaFileId}"><i class="fa-solid fa-download"></i> Muat Turun</a>
-              <button class="btn btn-sm btn-outline-danger" onclick="deletePDPA('${p.noIC}')"><i class="fa-solid fa-trash"></i> Padam</button>
             </div>`
           : `<span class="text-danger">PDPA tiada</span>`;
 
