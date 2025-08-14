@@ -1995,12 +1995,8 @@ document.addEventListener('click', (e)=>{
 /* =======================
    STARTUP
 ======================= */
-window.addEventListener('load', ()=>{
-  try{
-    initGoogleSignIn(); // butang login akan dipaparkan, app akan bootstrap selepas login berjaya
-  }catch(e){
-    console.warn('GSI init gagal:', e);
-  }
+document.addEventListener('DOMContentLoaded', ()=>{
+  initGoogleSignIn();
 });
 </script>
 </body>
