@@ -1,4 +1,4 @@
- <!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="ms">
 <head>
 <meta charset="UTF-8" />
@@ -121,7 +121,7 @@ body{font-family:'Segoe UI',Tahoma,Geneva,Verdana,sans-serif;background:#f5f7fa;
 }
 #toastHost .toast{ pointer-events:auto; }
 
-/* NADI TABLE STYLES */
+/* NADI TABLE STYLES - UPDATED FOR FLEXIBLE WIDTH */
 .nadi-scroll-container {
   overflow-x: auto;
   width: 100%;
@@ -130,9 +130,9 @@ body{font-family:'Segoe UI',Tahoma,Geneva,Verdana,sans-serif;background:#f5f7fa;
 
 .nadi-table {
   width: 100%;
-  min-width: 1300px;
   border-collapse: separate;
   border-spacing: 0;
+  table-layout: auto; /* Changed from fixed to auto for flexible width */
 }
 
 .nadi-table th {
@@ -144,12 +144,14 @@ body{font-family:'Segoe UI',Tahoma,Geneva,Verdana,sans-serif;background:#f5f7fa;
   top: 0;
   z-index: 10;
   border: 1px solid #dee2e6;
+  white-space: nowrap; /* Prevent header text from wrapping */
 }
 
 .nadi-table td {
   padding: 8px;
   vertical-align: middle;
   border: 1px solid #dee2e6;
+  min-width: 100px; /* Minimum width for columns */
 }
 
 .nadi-input-cell input {
