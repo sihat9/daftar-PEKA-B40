@@ -129,10 +129,10 @@ body{font-family:'Segoe UI',Tahoma,Geneva,Verdana,sans-serif;background:#f5f7fa;
 }
 
 .nadi-table {
-  width: 100%;
+  width: auto;
+  min-width: 100%;
   border-collapse: separate;
   border-spacing: 0;
-  table-layout: auto; /* Changed from fixed to auto for flexible width */
 }
 
 .nadi-table th {
@@ -144,19 +144,18 @@ body{font-family:'Segoe UI',Tahoma,Geneva,Verdana,sans-serif;background:#f5f7fa;
   top: 0;
   z-index: 10;
   border: 1px solid #dee2e6;
-  white-space: nowrap; /* Prevent header text from wrapping */
+  white-space: nowrap;
 }
 
 .nadi-table td {
   padding: 8px;
   vertical-align: middle;
   border: 1px solid #dee2e6;
-  min-width: 100px; /* Minimum width for columns */
 }
 
 .nadi-input-cell input {
   width: 100%;
-  min-width: 100px;
+  min-width: 80px;
   border: 1px solid #ced4da;
   border-radius: 4px;
   padding: 6px 8px;
@@ -165,7 +164,7 @@ body{font-family:'Segoe UI',Tahoma,Geneva,Verdana,sans-serif;background:#f5f7fa;
 
 .nadi-input-cell input:focus {
   width: auto;
-  min-width: 100px;
+  min-width: 80px;
 }
 
 .nadi-checkbox-cell {
@@ -173,7 +172,7 @@ body{font-family:'Segoe UI',Tahoma,Geneva,Verdana,sans-serif;background:#f5f7fa;
 }
 
 .nadi-actions-cell {
-  min-width: 180px;
+  white-space: nowrap;
 }
 
 .nadi-counter {
