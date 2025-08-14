@@ -121,53 +121,27 @@ body{font-family:'Segoe UI',Tahoma,Geneva,Verdana,sans-serif;background:#f5f7fa;
 }
 #toastHost .toast{ pointer-events:auto; }
 
-/* NADI TABLE STYLES */
-.nadi-scroll-container {
-  overflow-x: auto;
-  width: 100%;
-  padding-bottom: 8px;
+/* NADI grid input – auto-expand terkawal, TAK potong teks */
+.nadi-input{ min-width:140px; width:auto; max-width:360px; }
+.nadi-long{ min-width:200px; max-width:520px; }
+.nadi-row{
+  display:grid;
+  grid-auto-flow:column;
+  grid-auto-columns:max-content;
+  gap:8px; align-items:center;
+  overflow-x:auto; padding-bottom:4px;
+}
+.nadi-row > * { white-space:nowrap; }
+
+/* Dropdown DXT (klik baru buka) */
+.nadi-dxt-wrap .dropdown-toggle{ min-width:120px }
+
+/* Responsive */
+@media (max-width:992px){
+  .stat-card .number{font-size:1.3rem}
 }
 
-.nadi-table {
-  width: 100%;
-  min-width: 1300px;
-  border-collapse: separate;
-  border-spacing: 0;
-}
-
-.nadi-table th {
-  background: #f8f9fa;
-  padding: 10px 8px;
-  font-weight: 600;
-  text-align: center;
-  position: sticky;
-  top: 0;
-  z-index: 10;
-  border: 1px solid #dee2e6;
-}
-
-.nadi-table td {
-  padding: 8px;
-  vertical-align: middle;
-  border: 1px solid #dee2e6;
-}
-
-.nadi-input-cell input {
-  width: 100%;
-  min-width: 100px;
-  border: 1px solid #ced4da;
-  border-radius: 4px;
-  padding: 6px 8px;
-}
-
-.nadi-checkbox-cell {
-  text-align: center;
-}
-
-.nadi-actions-cell {
-  min-width: 180px;
-}
-
+/* New styles for Daftar Peka and improved NADI */
 .nadi-counter {
   background: var(--primary);
   color: white;
@@ -178,14 +152,31 @@ body{font-family:'Segoe UI',Tahoma,Geneva,Verdana,sans-serif;background:#f5f7fa;
   align-items: center;
   justify-content: center;
   font-size: 0.75rem;
+  margin-right: 8px;
 }
 
-/* Responsive */
-@media (max-width: 992px) {
-  .stat-card .number{font-size:1.3rem}
+.nadi-row-header {
+  background: #f8f9fa;
+  font-weight: 600;
+  padding: 8px;
+  border-radius: 8px;
+  margin-bottom: 8px;
+  display: grid;
+  grid-template-columns: 40px repeat(auto-fit, minmax(100px, 1fr));
+  gap: 8px;
 }
 
-/* Form sections */
+.nadi-row-item {
+  display: contents;
+}
+
+.nadi-row-item > div {
+  padding: 8px;
+  border-bottom: 1px solid #eee;
+  display: flex;
+  align-items: center;
+}
+
 .form-section {
   background: white;
   border-radius: 12px;
@@ -393,42 +384,32 @@ body{font-family:'Segoe UI',Tahoma,Geneva,Verdana,sans-serif;background:#f5f7fa;
     <div class="d-flex justify-content-between align-items-center mb-2">
       <h2 class="h6 m-0"><i class="bi bi-clipboard2-pulse me-2"></i>Program PEKA B40 bersama NADI</h2>
       <div class="d-flex gap-2">
-        <button id="btnNadiExportCsv" class="btn btn-sm btn-outline-success"><i class="bi bi-filetype-csv me-1"></i>Export to CSV</button>
+        <button id="btnNadiExportCsv" class="btn btn-sm btn-outline-success"><i class="bi bi-filetype-csv me-1"></i>Transfer kepada fail Excel (CSV)</button>
       </div>
     </div>
-    <div class="card">
-      <div class="card-body">
-        <div class="nadi-scroll-container">
-          <table class="nadi-table">
-            <thead>
-              <tr>
-                <th style="width: 40px;">#</th>
-                <th style="min-width: 150px;">Nama Pesakit</th>
-                <th style="min-width: 120px;">No IC</th>
-                <th style="min-width: 120px;">Telefon</th>
-                <th style="min-width: 80px;">BP</th>
-                <th style="min-width: 80px;">PR</th>
-                <th style="min-width: 120px;">DXT</th>
-                <th style="min-width: 80px;">Tinggi</th>
-                <th style="min-width: 80px;">Berat</th>
-                <th style="min-width: 80px;">BMI</th>
-                <th style="width: 80px;">Layak</th>
-                <th style="width: 100px;">Tidak Layak</th>
-                <th style="min-width: 200px;">TCA & Staff</th>
-                <th style="min-width: 180px;">Tindakan</th>
-              </tr>
-            </thead>
-            <tbody id="nadiContainer">
-              <!-- Rows will be added dynamically -->
-            </tbody>
-          </table>
-        </div>
-        <div class="sticky-form-actions">
-          <button class="btn btn-primary" onclick="addNadiRow()"><i class="bi bi-plus-circle me-1"></i>Tambah Pesakit</button>
-        </div>
-        <div class="text-muted small mt-2">Nota: Baris "Layak" boleh terus <b>Daftar</b> (simpan ke sheet). Baris "Tidak Layak" <u>tidak</u> disimpan ke sheet tetapi <b>tetap dieksport CSV</b> bersama-sama.</div>
+    <div class="card"><div class="card-body">
+      <div class="nadi-row-header">
+        <div>#</div>
+        <div>Nama Pesakit</div>
+        <div>No IC</div>
+        <div>Telefon</div>
+        <div>BP</div>
+        <div>PR</div>
+        <div>DXT</div>
+        <div>Tinggi</div>
+        <div>Berat</div>
+        <div>BMI</div>
+        <div>Layak</div>
+        <div>Tidak Layak</div>
+        <div>TCA & Staff</div>
+        <div>Tindakan</div>
       </div>
-    </div>
+      <div id="nadiContainer"></div>
+      <div class="sticky-form-actions">
+        <button class="btn btn-primary" onclick="addNadiRow()"><i class="bi bi-plus-circle me-1"></i>Tambah Pesakit</button>
+      </div>
+      <div class="text-muted small mt-2">Nota: Baris "Layak" boleh terus <b>Daftar</b> (simpan ke sheet). Baris "Tidak Layak" <u>tidak</u> disimpan ke sheet tetapi <b>tetap dieksport CSV</b> bersama-sama.</div>
+    </div></div>
   </section>
 
   <!-- Daftar Peka -->
@@ -1125,185 +1106,144 @@ async function daftarFromExcel(rowId, encNama, encIC, msisdn){
 }
 
 /* =======================
-   NADI PAGE (tabular view)
+   NADI PAGE (auto-expand, PR + dropdown DXT + WA report)
 ======================= */
 let nadiRowCounter = 0;
-
 function setupNADI(){
   const container = document.getElementById('nadiContainer');
   container.innerHTML = '';
-  addNadiRow(); // Start with 1 row
+  addNadiRow(); // mula 1 baris
   document.getElementById('btnNadiExportCsv').addEventListener('click', exportNadiCSV);
 }
-
+function autoGrowInput(el, min=140, max=360, pad=22){
+  const canvas = document.createElement('canvas');
+  const ctx = canvas.getContext('2d');
+  function update(){
+    const style = getComputedStyle(el);
+    ctx.font = `${style.fontWeight} ${style.fontSize} ${style.fontFamily}`;
+    const text = el.value || el.placeholder || '';
+    let w = Math.ceil(ctx.measureText(text).width) + pad;
+    if (w < min) w = min;
+    if (w > max) w = max;
+    el.style.width = w + 'px';
+  }
+  ['input','change'].forEach(evt=> el.addEventListener(evt, update));
+  update();
+}
+function wireAutoExpandForRow(row){
+  row.querySelectorAll('.nadi-input').forEach(el=>{
+    const isLong = el.classList.contains('nadi-long');
+    autoGrowInput(el, isLong?200:140, isLong?520:360);
+  });
+  const dxt = row.querySelector('.nadi-dxt');
+  if (dxt) autoGrowInput(dxt, 90, 180);
+}
 function addNadiRow(){
   const container = document.getElementById('nadiContainer');
   const id = 'n'+Date.now()+Math.random().toString(36).slice(2,6);
-  const row = document.createElement('tr');
-  row.className = 'nadi-row';
+  const row = document.createElement('div');
+  row.className = 'nadi-row-item';
   row.id = id;
   
   nadiRowCounter++;
   
   row.innerHTML = `
-    <td class="text-center">
-      <div class="nadi-counter">${nadiRowCounter}</div>
-    </td>
-    <td>
-      <input class="form-control form-control-sm nadi-nama" placeholder="Nama pesakit" />
-    </td>
-    <td>
-      <input class="form-control form-control-sm nadi-ic" placeholder="IC" />
-    </td>
-    <td>
-      <input class="form-control form-control-sm nadi-tel" placeholder="Telefon" />
-    </td>
-    <td>
-      <input class="form-control form-control-sm nadi-bp" placeholder="BP" />
-    </td>
-    <td>
-      <input class="form-control form-control-sm nadi-pr" placeholder="PR" />
-    </td>
-    <td>
-      <div class="input-group input-group-sm">
+    <div class="nadi-counter">${nadiRowCounter}</div>
+    <div><input class="form-control form-control-sm nadi-input nadi-long nadi-nama" placeholder="Nama pesakit" /></div>
+    <div><input class="form-control form-control-sm nadi-input nadi-ic" placeholder="IC" /></div>
+    <div><input class="form-control form-control-sm nadi-input nadi-tel" placeholder="Telefon (012.. atau 60..)" /></div>
+    <div><input class="form-control form-control-sm nadi-input nadi-bp" placeholder="BP (cth: 120/80)" /></div>
+    <div><input class="form-control form-control-sm nadi-input nadi-pr" placeholder="PR (degupan/min)" /></div>
+    <div>
+      <div class="input-group input-group-sm nadi-dxt-wrap">
         <button class="btn btn-outline-secondary dropdown-toggle nadi-dxt-type-btn" data-bs-toggle="dropdown" type="button">Fasting</button>
         <ul class="dropdown-menu">
           <li><a class="dropdown-item" href="#" data-value="Fasting">Fasting</a></li>
           <li><a class="dropdown-item" href="#" data-value="Random">Random</a></li>
         </ul>
-        <input class="form-control nadi-dxt" placeholder="DXT" />
+        <input class="form-control nadi-dxt" placeholder="DXT (mmol/L)" />
         <input type="hidden" class="nadi-dxt-type" value="Fasting" />
       </div>
-    </td>
-    <td>
-      <input class="form-control form-control-sm nadi-tinggi" placeholder="Tinggi" />
-    </td>
-    <td>
-      <input class="form-control form-control-sm nadi-berat" placeholder="Berat" />
-    </td>
-    <td>
-      <input class="form-control form-control-sm nadi-bmi" placeholder="BMI" disabled />
-    </td>
-    <td class="text-center">
-      <input class="form-check-input nadi-layak" type="checkbox">
-    </td>
-    <td class="text-center">
-      <input class="form-check-input nadi-taklayak" type="checkbox">
-    </td>
-    <td>
-      <div class="d-flex gap-1">
+    </div>
+    <div><input class="form-control form-control-sm nadi-input nadi-tinggi" placeholder="Tinggi (cm)" /></div>
+    <div><input class="form-control form-control-sm nadi-input nadi-berat" placeholder="Berat (kg)" /></div>
+    <div><input class="form-control form-control-sm nadi-input nadi-bmi" placeholder="BMI (auto)" disabled /></div>
+    <div class="form-check"><input class="form-check-input nadi-layak" type="checkbox"><label class="form-check-label">Layak</label></div>
+    <div class="form-check"><input class="form-check-input nadi-taklayak" type="checkbox"><label class="form-check-label">Tidak Layak</label></div>
+    <div>
+      <div class="d-flex gap-1 align-items-center">
         <input type="date" class="form-control form-control-sm nadi-tca-date" disabled>
         <input type="time" class="form-control form-control-sm nadi-tca-time" disabled>
-        <input type="text" class="form-control form-control-sm nadi-staff" placeholder="Staff" disabled>
+        <input type="text" class="form-control form-control-sm nadi-staff" placeholder="Nama staff" disabled>
       </div>
-    </td>
-    <td>
+    </div>
+    <div>
       <div class="d-flex gap-1">
         <button class="btn btn-sm btn-outline-primary nadi-daftar" disabled>Daftar</button>
-        <button class="btn btn-sm btn-outline-success nadi-wa">WA Report</button>
+        <button class="btn btn-sm btn-outline-success nadi-wa">WhatsApp Report</button>
         <button class="btn btn-sm btn-outline-danger nadi-buang">Buang</button>
       </div>
-    </td>
+    </div>
   `;
-  
   container.appendChild(row);
 
-  // Initialize auto-grow for inputs
-  row.querySelectorAll('input[type="text"]').forEach(input => {
-    autoGrowInput(input);
+  // Auto-expand kawal
+  wireAutoExpandForRow(row);
+
+  // Dropdown DXT (klik item)
+  row.querySelectorAll('.nadi-dxt-wrap .dropdown-item').forEach(a=>{
+    a.addEventListener('click', (e)=>{
+      e.preventDefault();
+      const val = a.getAttribute('data-value') || 'Fasting';
+      row.querySelector('.nadi-dxt-type').value = val;
+      row.querySelector('.nadi-dxt-type-btn').textContent = val;
+    });
   });
 
-  // BMI calculation
+  // BMI auto-kira
   const tinggi = row.querySelector('.nadi-tinggi');
-  const berat = row.querySelector('.nadi-berat');
-  const bmi = row.querySelector('.nadi-bmi');
-  
-  const calculateBMI = () => {
-    const height = parseFloat(tinggi.value) / 100;
-    const weight = parseFloat(berat.value);
-    if (height && weight) {
-      bmi.value = (weight / (height * height)).toFixed(1);
-    } else {
-      bmi.value = '';
-    }
-  };
-  
-  tinggi.addEventListener('input', calculateBMI);
-  berat.addEventListener('input', calculateBMI);
+  const berat  = row.querySelector('.nadi-berat');
+  const bmi    = row.querySelector('.nadi-bmi');
+  function calcBMI(){
+    const h = parseFloat(tinggi.value||'0')/100;
+    const w = parseFloat(berat.value||'0');
+    bmi.value = (!h||!w) ? '' : (w/(h*h)).toFixed(1);
+  }
+  tinggi.addEventListener('input', calcBMI);
+  berat.addEventListener('input', calcBMI);
 
-  // Layak/Tidak Layak toggle
+  // Layak/Tidak Layak → enable/disable TCA & staff
   const layak = row.querySelector('.nadi-layak');
-  const takLayak = row.querySelector('.nadi-taklayak');
-  const tcaDate = row.querySelector('.nadi-tca-date');
-  const tcaTime = row.querySelector('.nadi-tca-time');
+  const tak   = row.querySelector('.nadi-taklayak');
+  const tcaD  = row.querySelector('.nadi-tca-date');
+  const tcaT  = row.querySelector('.nadi-tca-time');
   const staff = row.querySelector('.nadi-staff');
-  const btnDaftar = row.querySelector('.nadi-daftar');
-  
-  layak.addEventListener('change', () => {
-    if (layak.checked) {
-      takLayak.checked = false;
-      tcaDate.disabled = false;
-      tcaTime.disabled = false;
-      staff.disabled = false;
-      btnDaftar.disabled = false;
-    } else {
-      tcaDate.disabled = true;
-      tcaTime.disabled = true;
-      staff.disabled = true;
-      btnDaftar.disabled = true;
-    }
+  const btnReg= row.querySelector('.nadi-daftar');
+
+  layak.addEventListener('change', ()=>{
+    if (layak.checked){ tak.checked=false; tcaD.disabled=false; tcaT.disabled=false; staff.disabled=false; btnReg.disabled=false; }
+    else { tcaD.disabled=true; tcaT.disabled=true; staff.disabled=true; btnReg.disabled=true; }
   });
-  
-  takLayak.addEventListener('change', () => {
-    if (takLayak.checked) {
-      layak.checked = false;
-      tcaDate.disabled = true;
-      tcaTime.disabled = true;
-      staff.disabled = true;
-      btnDaftar.disabled = true;
-    }
+  tak.addEventListener('change', ()=>{ if (tak.checked){ layak.checked=false; tcaD.disabled=true; tcaT.disabled=true; staff.disabled=true; btnReg.disabled=true; } });
+
+  // Daftar → simpan ke sheet (bagi yang layak sahaja)
+  btnReg.addEventListener('click', async ()=>{
+    const nama   = row.querySelector('.nadi-nama').value.trim();
+    const ic     = row.querySelector('.nadi-ic').value.trim();
+    const telRaw = row.querySelector('.nadi-tel').value.trim();
+    const tel    = normalizeMsisdnMY(telRaw);
+    const date   = tcaD.value; const time = tcaT.value; const st = staff.value.trim();
+    if (!nama||!ic||!tel||!date||!time||!st){ toast('Ralat','Sila isi penuh untuk pendaftaran layak','danger'); return; }
+    try{
+      const res = await postForm({ action:'daftarPesakit', namaPesakit:nama, noIC:ic, noTelefon:tel, namaStaff:st, tarikhTCA:date, masaTCA:time }, { msg:'Mendaftar (NADI)…' });
+      if (res.status==='success'){ toast('Berjaya', `Daftar ${nama}`, 'success'); }
+      else throw new Error(res.message||'Gagal daftar');
+    }catch(e){ toast('Ralat', e.message, 'danger'); }
   });
 
-  // Daftar button action
-  btnDaftar.addEventListener('click', async () => {
-    const nama = row.querySelector('.nadi-nama').value.trim();
-    const ic = row.querySelector('.nadi-ic').value.trim();
-    const tel = row.querySelector('.nadi-tel').value.trim();
-    const date = tcaDate.value;
-    const time = tcaTime.value;
-    const staffName = staff.value.trim();
-    
-    if (!nama || !ic || !tel || !date || !time || !staffName) {
-      toast('Ralat', 'Sila isi semua maklumat', 'danger');
-      return;
-    }
-    
-    try {
-      const res = await postForm({
-        action: 'daftarPesakit',
-        namaPesakit: nama,
-        noIC: ic,
-        noTelefon: tel,
-        tarikhTCA: date,
-        masaTCA: time,
-        namaStaff: staffName
-      }, { msg: 'Mendaftar pesakit...' });
-      
-      if (res.status === 'success') {
-        toast('Berjaya', 'Pesakit berjaya didaftarkan', 'success');
-        row.remove();
-        updateNadiRowNumbers();
-      } else {
-        throw new Error(res.message || 'Gagal mendaftar pesakit');
-      }
-    } catch (e) {
-      toast('Ralat', e.message, 'danger');
-    }
-  });
-
-  // WhatsApp Report button
-  row.querySelector('.nadi-wa').addEventListener('click', async () => {
-    try {
+  // WhatsApp Report (imej)
+  row.querySelector('.nadi-wa').addEventListener('click', async ()=>{
+    try{
       const data = {
         nama: row.querySelector('.nadi-nama').value.trim(),
         ic: row.querySelector('.nadi-ic').value.trim(),
@@ -1317,218 +1257,127 @@ function addNadiRow(){
         bmi: row.querySelector('.nadi-bmi').value.trim(),
         layak: row.querySelector('.nadi-layak').checked
       };
-      
       const file = await buildNadiReportImage(data);
-      if (file) {
-        if (navigator.canShare && navigator.canShare({ files: [file] })) {
+      if (file){
+        if (navigator.canShare && navigator.canShare({ files:[file] })){
           await navigator.share({
-            title: 'Laporan Saringan NADI',
-            text: `Laporan saringan untuk ${data.nama} (${data.ic}).`,
-            files: [file]
+            title:'Laporan Saringan NADI',
+            text:`Laporan saringan untuk ${data.nama} (${data.ic}).`,
+            files:[file]
           });
         } else {
-          // fallback: auto download image + open WhatsApp with text summary
+          // fallback: auto muat turun imej + buka WhatsApp dengan ringkasan teks
           const a = document.createElement('a');
           a.href = URL.createObjectURL(file);
-          a.download = `Laporan_NADI_${(data.nama || 'pesakit').replace(/\s+/g, '_')}.png`;
-          document.body.appendChild(a); 
-          a.click(); 
-          a.remove();
-          
-          const ringkas = `Laporan Saringan NADI\nNama: ${data.nama}\nIC: ${data.ic}\nBP: ${data.bp}\nPR: ${data.pr}\nDXT (${data.dxtType}): ${data.dxt}\nTinggi: ${data.tinggi} cm\nBerat: ${data.berat} kg\nBMI: ${data.bmi}\nStatus: ${data.layak ? 'Layak PEKA B40' : 'Tidak Layak PEKA B40'}`;
-          
-          if (data.tel) {
-            window.open(waHref(data.tel, ringkas), '_blank');
-          } else {
-            toast('Makluman', 'Nombor telefon kosong. Imej telah dimuat turun.', 'warning');
-          }
+          a.download = `Laporan_NADI_${(data.nama||'pesakit').replace(/\s+/g,'_')}.png`;
+          document.body.appendChild(a); a.click(); a.remove();
+          const ringkas = `Laporan Saringan NADI\nNama: ${data.nama}\nIC: ${data.ic}\nBP: ${data.bp}\nPR: ${data.pr}\nDXT (${data.dxtType}): ${data.dxt}\nTinggi: ${data.tinggi} cm\nBerat: ${data.berat} kg\nBMI: ${data.bmi}\nStatus: ${data.layak?'Layak PEKA B40':'Tidak Layak PEKA B40'}`;
+          if (data.tel){ window.open(waHref(data.tel, ringkas), '_blank'); }
+          else { toast('Makluman','Nombor telefon kosong. Imej telah dimuat turun.','warning'); }
         }
       }
-    } catch (e) {
-      toast('Ralat', 'Gagal jana laporan: ' + e.message, 'danger');
-    }
+    }catch(e){ toast('Ralat','Gagal jana laporan: '+e.message,'danger'); }
   });
 
-  // Buang button
-  row.querySelector('.nadi-buang').addEventListener('click', () => {
-    if (confirm('Adakah anda pasti ingin membuang baris ini?')) {
-      row.remove();
-      updateNadiRowNumbers();
-    }
+  // Buang
+  row.querySelector('.nadi-buang').addEventListener('click', ()=> {
+    row.remove();
+    updateNadiRowNumbers();
   });
 }
 
 function updateNadiRowNumbers() {
-  const rows = document.querySelectorAll('#nadiContainer tr');
-  let counter = 0;
-  rows.forEach(row => {
-    counter++;
-    const counterEl = row.querySelector('.nadi-counter');
-    if (counterEl) {
-      counterEl.textContent = counter;
-    }
-  });
-  nadiRowCounter = counter;
-}
-
-function autoGrowInput(element) {
-  element.style.width = '100%';
-  element.addEventListener('input', function() {
-    this.style.width = '100%';
-    this.style.width = (this.scrollWidth + 10) + 'px';
+  const rows = document.querySelectorAll('.nadi-row-item');
+  nadiRowCounter = 0;
+  rows.forEach((row, index) => {
+    nadiRowCounter++;
+    const counter = row.querySelector('.nadi-counter');
+    if (counter) counter.textContent = nadiRowCounter;
   });
 }
 
-function exportNadiCSV() {
+function exportNadiCSV(){
   const container = document.getElementById('nadiContainer');
-  const rows = Array.from(container.querySelectorAll('.nadi-row'));
-  if (!rows.length) { 
-    toast('Makluman', 'Tiada data untuk diexport', 'warning'); 
-    return; 
-  }
-  
-  const header = ['No', 'Nama', 'IC', 'Telefon', 'BP', 'PR', 'DXT_Tipe', 'DXT', 'Tinggi(cm)', 'Berat(kg)', 'BMI', 'Layak', 'Tidak_Layak', 'Tarikh_TCA', 'Masa_TCA', 'Staff'];
-  const data = rows.map(row => {
+  const rows = Array.from(container.querySelectorAll('.nadi-row-item'));
+  if (!rows.length){ toast('Makluman','Tiada data untuk diexport','warning'); return; }
+  const header = ['Nama','IC','Telefon','BP','PR','DXT_Tipe','DXT','Tinggi(cm)','Berat(kg)','BMI','Layak','TarikhTCA','MasaTCA','Staff'];
+  const data = rows.map(r=>{
+    const v = (sel) => (r.querySelector(sel)?.value || '').trim();
+    const b = (sel) => (r.querySelector(sel)?.checked ? 'Ya' : 'Tidak');
     return [
-      row.querySelector('.nadi-counter')?.textContent || '',
-      row.querySelector('.nadi-nama')?.value || '',
-      row.querySelector('.nadi-ic')?.value || '',
-      row.querySelector('.nadi-tel')?.value || '',
-      row.querySelector('.nadi-bp')?.value || '',
-      row.querySelector('.nadi-pr')?.value || '',
-      row.querySelector('.nadi-dxt-type')?.value || '',
-      row.querySelector('.nadi-dxt')?.value || '',
-      row.querySelector('.nadi-tinggi')?.value || '',
-      row.querySelector('.nadi-berat')?.value || '',
-      row.querySelector('.nadi-bmi')?.value || '',
-      row.querySelector('.nadi-layak')?.checked ? 'Ya' : 'Tidak',
-      row.querySelector('.nadi-taklayak')?.checked ? 'Ya' : 'Tidak',
-      row.querySelector('.nadi-tca-date')?.value || '',
-      row.querySelector('.nadi-tca-time')?.value || '',
-      row.querySelector('.nadi-staff')?.value || ''
+      v('.nadi-nama'), v('.nadi-ic'), v('.nadi-tel'),
+      v('.nadi-bp'), v('.nadi-pr'), (r.querySelector('.nadi-dxt-type')?.value||''), v('.nadi-dxt'),
+      v('.nadi-tinggi'), v('.nadi-berat'), v('.nadi-bmi'),
+      b('.nadi-layak'),
+      v('.nadi-tca-date'), v('.nadi-tca-time'), v('.nadi-staff')
     ];
   });
-  
-  const csvContent = [header, ...data]
-    .map(row => row.map(cell => `"${String(cell).replace(/"/g, '""')}"`).join(','))
-    .join('\r\n');
-  
-  const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+  const csv = [header, ...data].map(r=>r.map(v=>`"${String(v||'').replace(/"/g,'""')}"`).join(',')).join('\r\n');
+  const blob = new Blob([csv], { type:'text/csv;charset=utf-8;' });
   const url = URL.createObjectURL(blob);
   const a = document.createElement('a');
-  a.href = url;
-  a.download = `program_nadi_${new Date().toISOString().slice(0, 10)}.csv`;
-  document.body.appendChild(a);
-  a.click();
-  document.body.removeChild(a);
-  URL.revokeObjectURL(url);
-  
-  toast('Export', 'Fail CSV telah dimuat turun', 'success');
+  a.href = url; a.download = `program_nadi_${new Date().toISOString().slice(0,10)}.csv`;
+  document.body.appendChild(a); a.click(); a.remove(); URL.revokeObjectURL(url);
+  toast('Export','Fail CSV telah dimuat turun','success');
 }
-
 // Hasilkan imej laporan NADI (canvas → File PNG)
-async function buildNadiReportImage(data) {
-  const w = 900, h = 1100, pad = 28, line = 36;
-  const canvas = document.createElement('canvas'); 
-  canvas.width = w; 
-  canvas.height = h;
+async function buildNadiReportImage(data){
+  const w=900, h=1100, pad=28, line=36;
+  const canvas = document.createElement('canvas'); canvas.width=w; canvas.height=h;
   const ctx = canvas.getContext('2d');
-  
-  // Background
-  ctx.fillStyle = '#ffffff'; 
-  ctx.fillRect(0, 0, w, h);
-  
-  // Header
-  ctx.fillStyle = '#2c3e50'; 
-  ctx.fillRect(0, 0, w, 118);
-  
-  // Logo
-  try {
-    const img = new Image(); 
-    img.crossOrigin = 'anonymous'; 
-    img.src = LOGO_URL;
-    await new Promise((res, rej) => { 
-      img.onload = res; 
-      img.onerror = () => res(); 
-    });
+  // latar
+  ctx.fillStyle='#ffffff'; ctx.fillRect(0,0,w,h);
+  // header
+  ctx.fillStyle='#2c3e50'; ctx.fillRect(0,0,w,118);
+  // logo
+  try{
+    const img = new Image(); img.crossOrigin='anonymous'; img.src=LOGO_URL;
+    await new Promise((res,rej)=>{ img.onload=res; img.onerror=()=>res(); });
     if (img.width) ctx.drawImage(img, pad, 18, 86, 86);
-  } catch (_) {}
-  
-  // Title
-  ctx.fillStyle = '#ffffff'; 
-  ctx.font = '700 28px Segoe UI, Arial'; 
-  ctx.fillText('Klinik SihatSokmo', 118, 54);
-  ctx.font = '600 20px Segoe UI, Arial'; 
-  ctx.fillText('Laporan Saringan Program NADI', 118, 86);
+  }catch(_){}
+  // tajuk
+  ctx.fillStyle='#ffffff'; ctx.font='700 28px Segoe UI, Arial'; ctx.fillText('Klinik SihatSokmo', 118, 54);
+  ctx.font='600 20px Segoe UI, Arial'; ctx.fillText('Laporan Saringan Program NADI', 118, 86);
 
-  // Date
-  const tarikh = new Date().toLocaleString('ms-MY', {
-    year: 'numeric',
-    month: 'long',
-    day: 'numeric',
-    hour: '2-digit',
-    minute: '2-digit'
-  });
-  
-  ctx.fillStyle = '#333'; 
-  ctx.font = '600 20px Segoe UI, Arial'; 
-  ctx.fillText('Butiran Pesakit', pad, 160);
-  ctx.font = '400 18px Segoe UI, Arial';
-  
-  let y = 196;
-  const write = (label, val) => { 
-    ctx.fillStyle = '#666'; 
-    ctx.fillText(label, pad, y); 
-    ctx.fillStyle = '#111'; 
-    ctx.fillText(': ' + (val || '-'), pad + 180, y); 
-    y += line; 
-  };
-  
+  // tarikh
+  const tarikh = new Date().toLocaleString('ms-MY', {year:'numeric',month:'long',day:'numeric', hour:'2-digit', minute:'2-digit'});
+  ctx.fillStyle='#333'; ctx.font='600 20px Segoe UI, Arial'; ctx.fillText('Butiran Pesakit', pad, 160);
+  ctx.font='400 18px Segoe UI, Arial';
+  let y=196;
+  const write = (label, val)=>{ ctx.fillStyle='#666'; ctx.fillText(label, pad, y); ctx.fillStyle='#111'; ctx.fillText(': '+(val||'-'), pad+180, y); y+=line; };
   write('Nama', data.nama);
   write('No. IC', data.ic);
   write('Tarikh Cetakan', tarikh);
 
-  // Line separator
-  ctx.strokeStyle = '#e5e7eb'; 
-  ctx.lineWidth = 2; 
-  ctx.beginPath(); 
-  ctx.moveTo(pad, y + 8); 
-  ctx.lineTo(w - pad, y + 8); 
-  ctx.stroke(); 
-  y += 30;
+  // garisan
+  ctx.strokeStyle='#e5e7eb'; ctx.lineWidth=2; ctx.beginPath(); ctx.moveTo(pad, y+8); ctx.lineTo(w-pad, y+8); ctx.stroke(); y+=30;
 
-  // Results
-  ctx.fillStyle = '#333'; 
-  ctx.font = '600 20px Segoe UI, Arial'; 
-  ctx.fillText('Keputusan Saringan', pad, y); 
-  y += line;
-  ctx.font = '400 18px Segoe UI, Arial';
-  
+  // bacaan
+  ctx.fillStyle='#333'; ctx.font='600 20px Segoe UI, Arial'; ctx.fillText('Keputusan Saringan', pad, y); y+=line;
+  ctx.font='400 18px Segoe UI, Arial';
   write('Tekanan Darah (BP)', data.bp);
   write('Degupan Jantung (PR)', data.pr);
   write(`Bacaan Gula (DXT - ${data.dxtType})`, data.dxt);
-  write('Tinggi', data.tinggi ? (data.tinggi + ' cm') : '');
-  write('Berat', data.berat ? (data.berat + ' kg') : '');
+  write('Tinggi', data.tinggi ? (data.tinggi+' cm') : '');
+  write('Berat', data.berat ? (data.berat+' kg') : '');
   write('BMI', data.bmi);
 
-  // Status
-  y += 14;
+  // status
+  y+=14;
   const statusTxt = data.layak ? 'LAYAK Saringan PEKA B40' : 'TIDAK LAYAK Saringan PEKA B40';
   ctx.fillStyle = data.layak ? '#16a085' : '#c0392b';
-  ctx.fillRect(pad, y, w - pad * 2, 70);
-  ctx.fillStyle = '#fff'; 
-  ctx.font = '700 22px Segoe UI, Arial';
-  ctx.fillText(statusTxt, pad + 16, y + 44);
+  ctx.fillRect(pad, y, w-pad*2, 70);
+  ctx.fillStyle='#fff'; ctx.font='700 22px Segoe UI, Arial';
+  ctx.fillText(statusTxt, pad+16, y+44);
 
-  // Footer
-  ctx.fillStyle = '#94a3b8'; 
-  ctx.font = '400 14px Segoe UI, Arial';
-  ctx.fillText('Untuk rujukan pesakit. Sila hubungi klinik jika ada pertanyaan.', pad, h - 24);
+  // footer
+  ctx.fillStyle='#94a3b8'; ctx.font='400 14px Segoe UI, Arial';
+  ctx.fillText('Untuk rujukan pesakit. Sila hubungi klinik jika ada pertanyaan.', pad, h-24);
 
-  // Convert to blob
-  const blob = await new Promise(res => canvas.toBlob(res, 'image/png', 0.92));
+  // blob
+  const blob = await new Promise(res=> canvas.toBlob(res, 'image/png', 0.92));
   if (!blob) throw new Error('Gagal menukar imej');
-  return new File([blob], 'laporan_nadi.png', { type: 'image/png' });
+  return new File([blob], 'laporan_nadi.png', { type:'image/png' });
 }
 
 /* =======================
@@ -1651,7 +1500,7 @@ function renderTcaList(mode){
   filtered.forEach(p=>{
     const msisdn = normalizeMsisdnMY(p.noTelefon||'');
     const badgeCls = p.status==='CALLED' ? 'bg-success' : (parseDDMMYYYY(p.tarikhTCA)?.getTime()<today.getTime() ? 'bg-secondary' : 'bg-warning');
-    const label = p.status==='CALLED' ? 'CALLED' : (parseDDMMYYYY(p.tarikhTCA)?.getTime()<today.getTime() ? 'LEPAS' : (isSameDay(parseDDMMYYYY(p.tarikhTCA), today) ? 'HARI INI' : 'AKAN DATANG');
+    const label = p.status==='CALLED' ? 'CALLED' : (parseDDMMYYYY(p.tarikhTCA)?.getTime()<today.getTime() ? 'LEPAS' : (isSameDay(parseDDMMYYYY(p.tarikhTCA), today) ? 'HARI INI' : 'AKAN DATANG'));
     const row = `
       <tr data-ic="${p.noIC}">
         <td>${p.nama}</td>
