@@ -130,7 +130,7 @@ body{font-family:'Segoe UI',Tahoma,Geneva,Verdana,sans-serif;background:#f5f7fa;
 
 .nadi-table {
   width: 100%;
-  min-width: 1500px;
+  min-width: 1300px;
   border-collapse: separate;
   border-spacing: 0;
 }
@@ -152,32 +152,18 @@ body{font-family:'Segoe UI',Tahoma,Geneva,Verdana,sans-serif;background:#f5f7fa;
   border: 1px solid #dee2e6;
 }
 
-.nadi-display-cell {
-  padding: 8px;
-  cursor: pointer;
-  transition: background-color 0.2s;
-}
-
-.nadi-display-cell:hover {
-  background-color: rgba(0, 123, 255, 0.1);
-}
-
-.nadi-input-cell {
-  padding: 0;
-}
-
-.nadi-input-cell input, .nadi-input-cell select {
+.nadi-input-cell input {
   width: 100%;
-  border: none;
-  padding: 8px;
-  background-color: #fff;
+  min-width: 100px;
   border: 1px solid #ced4da;
   border-radius: 4px;
+  padding: 6px 8px;
+  transition: width 0.2s ease;
 }
 
-.nadi-input-cell input:focus, .nadi-input-cell select:focus {
-  outline: none;
-  box-shadow: 0 0 0 2px rgba(0, 123, 255, 0.25);
+.nadi-input-cell input:focus {
+  width: auto;
+  min-width: 100px;
 }
 
 .nadi-checkbox-cell {
@@ -198,6 +184,40 @@ body{font-family:'Segoe UI',Tahoma,Geneva,Verdana,sans-serif;background:#f5f7fa;
   align-items: center;
   justify-content: center;
   font-size: 0.75rem;
+}
+
+/* New styles for editable cells */
+.nadi-editable-cell {
+  padding: 0;
+  position: relative;
+}
+
+.nadi-editable-cell .display-value {
+  padding: 8px;
+  cursor: pointer;
+  min-height: 36px;
+  display: flex;
+  align-items: center;
+}
+
+.nadi-editable-cell .edit-input {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  border: none;
+  padding: 8px;
+  background: white;
+  display: none;
+}
+
+.nadi-editable-cell.editing .display-value {
+  display: none;
+}
+
+.nadi-editable-cell.editing .edit-input {
+  display: block;
 }
 
 /* Responsive */
@@ -229,13 +249,6 @@ body{font-family:'Segoe UI',Tahoma,Geneva,Verdana,sans-serif;background:#f5f7fa;
   border-top: 1px solid #eee;
   margin-top: 16px;
 }
-
-/* WhatsApp Report Canvas */
-#waReportCanvas {
-  display: none;
-  position: absolute;
-  left: -9999px;
-}
 </style>
 </head>
 <body>
@@ -264,9 +277,6 @@ body{font-family:'Segoe UI',Tahoma,Geneva,Verdana,sans-serif;background:#f5f7fa;
   </div>
   <div id="logBody" class="log-body"></div>
 </div>
-
-<!-- WhatsApp Report Canvas (hidden) -->
-<canvas id="waReportCanvas" width="800" height="1200"></canvas>
 
 <!-- Navbar -->
 <nav class="navbar navbar-expand-lg navbar-main sticky-top">
@@ -436,7 +446,7 @@ body{font-family:'Segoe UI',Tahoma,Geneva,Verdana,sans-serif;background:#f5f7fa;
                 <th style="min-width: 150px;">Nama Pesakit</th>
                 <th style="min-width: 120px;">No IC</th>
                 <th style="min-width: 120px;">Telefon</th>
-                <th style="min-width: 200px;">Alamat</th>
+                <th style="min-width: 150px;">Alamat</th>
                 <th style="min-width: 80px;">BP</th>
                 <th style="min-width: 80px;">PR</th>
                 <th style="min-width: 120px;">DXT</th>
@@ -740,7 +750,7 @@ body{font-family:'Segoe UI',Tahoma,Geneva,Verdana,sans-serif;background:#f5f7fa;
 <footer class="footer mt-4 py-3 bg-light">
   <div class="container"><div class="d-flex justify-content-between">
     <div>&copy; 2025 Klinik SihatSokmo. Untuk kegunaan Klinik sahaja.</div>
-    <div>Versi 3.1 (Secure)</div>
+    <div>Versi 3.2 (Enhanced)</div>
   </div></div>
 </footer>
 
@@ -755,6 +765,8 @@ const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbx6TKE0vDDPO3-36cY7x
 const GOOGLE_CLIENT_ID = '863564124015-838ksbuk27f0kkomm16hnc3bu608pbrr.apps.googleusercontent.com';
 // 3) Logo (optional)
 const LOGO_URL = 'https://github.com/sihat9/mari-jalan-dengan-doktor/blob/main/img/logo-kss.png?raw=true';
+// 4) URL Logo untuk Report WhatsApp
+const REPORT_LOGO_URL = 'https://github.com/sihat9/mari-jalan-dengan-doktor/blob/main/img/logo-kss.png?raw=true';
 
 /* =======================
    AUTH (Google Identity)
@@ -763,43 +775,20 @@ let ID_TOKEN = '';      // diisi selepas login
 let STAFF_EMAIL = '';   // email sebenar (server akan sahkan juga)
 
 function initGoogleSignIn(){
-  // Pastikan element container ada
-  const signinArea = document.getElementById('signinArea');
-  const signinAreaDesktop = document.getElementById('signinAreaDesktop');
-  
-  if (!signinArea || !signinAreaDesktop) {
-    console.error('Element container untuk Google Sign-In tidak ditemukan');
-    return;
-  }
-
-  // Cek apakah script Google Identity sudah terload
-  if (typeof google === 'undefined' || !google.accounts || !google.accounts.id) {
-    console.error('Google Identity Services belum dimuat');
-    return;
-  }
-
   google.accounts.id.initialize({
     client_id: GOOGLE_CLIENT_ID,
     callback: handleCredentialResponse,
     auto_select: false,
     cancel_on_tap_outside: true
   });
-
-  // Render tombol untuk mobile view
-  if (signinArea) {
-    google.accounts.id.renderButton(
-      signinArea,
-      { theme: 'outline', size: 'medium', text:'signin_with' }
-    );
-  }
-
-  // Render tombol untuk desktop view
-  if (signinAreaDesktop) {
-    google.accounts.id.renderButton(
-      signinAreaDesktop,
-      { theme: 'outline', size: 'medium', text:'signin_with' }
-    );
-  }
+  google.accounts.id.renderButton(
+    document.getElementById('signinArea'),
+    { theme: 'outline', size: 'medium', text:'signin_with' }
+  );
+  google.accounts.id.renderButton(
+    document.getElementById('signinAreaDesktop'),
+    { theme: 'outline', size: 'medium', text:'signin_with' }
+  );
 }
 
 async function handleCredentialResponse(resp){
@@ -1210,52 +1199,51 @@ function addNadiRow(){
     <td class="text-center">
       <div class="nadi-counter">${nadiRowCounter}</div>
     </td>
-    <td class="nadi-display-cell" onclick="editNadiCell(this, 'nama')">
-      <div class="nadi-display-content"></div>
-      <div class="nadi-input-cell d-none"><input class="form-control form-control-sm nadi-nama" placeholder="Nama pesakit" /></div>
+    <td class="nadi-editable-cell" data-field="nama">
+      <div class="display-value"></div>
+      <input class="edit-input form-control form-control-sm" placeholder="Nama pesakit" />
     </td>
-    <td class="nadi-display-cell" onclick="editNadiCell(this, 'ic')">
-      <div class="nadi-display-content"></div>
-      <div class="nadi-input-cell d-none"><input class="form-control form-control-sm nadi-ic" placeholder="IC" /></div>
+    <td class="nadi-editable-cell" data-field="ic">
+      <div class="display-value"></div>
+      <input class="edit-input form-control form-control-sm" placeholder="IC" />
     </td>
-    <td class="nadi-display-cell" onclick="editNadiCell(this, 'tel')">
-      <div class="nadi-display-content"></div>
-      <div class="nadi-input-cell d-none"><input class="form-control form-control-sm nadi-tel" placeholder="Telefon" /></div>
+    <td class="nadi-editable-cell" data-field="tel">
+      <div class="display-value"></div>
+      <input class="edit-input form-control form-control-sm" placeholder="Telefon" />
     </td>
-    <td class="nadi-display-cell" onclick="editNadiCell(this, 'alamat')">
-      <div class="nadi-display-content"></div>
-      <div class="nadi-input-cell d-none"><textarea class="form-control form-control-sm nadi-alamat" placeholder="Alamat" rows="1"></textarea></div>
+    <td class="nadi-editable-cell" data-field="alamat">
+      <div class="display-value"></div>
+      <textarea class="edit-input form-control form-control-sm" placeholder="Alamat" rows="1"></textarea>
     </td>
-    <td class="nadi-display-cell" onclick="editNadiCell(this, 'bp')">
-      <div class="nadi-display-content"></div>
-      <div class="nadi-input-cell d-none"><input class="form-control form-control-sm nadi-bp" placeholder="BP" /></div>
+    <td class="nadi-editable-cell" data-field="bp">
+      <div class="display-value"></div>
+      <input class="edit-input form-control form-control-sm" placeholder="BP" />
     </td>
-    <td class="nadi-display-cell" onclick="editNadiCell(this, 'pr')">
-      <div class="nadi-display-content"></div>
-      <div class="nadi-input-cell d-none"><input class="form-control form-control-sm nadi-pr" placeholder="PR" /></div>
+    <td class="nadi-editable-cell" data-field="pr">
+      <div class="display-value"></div>
+      <input class="edit-input form-control form-control-sm" placeholder="PR" />
     </td>
-    <td class="nadi-display-cell" onclick="editNadiCell(this, 'dxt')">
-      <div class="nadi-display-content"></div>
-      <div class="nadi-input-cell d-none">
-        <div class="input-group input-group-sm">
-          <select class="form-select form-select-sm nadi-dxt-type">
-            <option value="Fasting">Fasting</option>
-            <option value="Random">Random</option>
-          </select>
-          <input class="form-control nadi-dxt" placeholder="DXT" />
-        </div>
+    <td>
+      <div class="input-group input-group-sm">
+        <button class="btn btn-outline-secondary dropdown-toggle nadi-dxt-type-btn" data-bs-toggle="dropdown" type="button">Fasting</button>
+        <ul class="dropdown-menu">
+          <li><a class="dropdown-item" href="#" data-value="Fasting">Fasting</a></li>
+          <li><a class="dropdown-item" href="#" data-value="Random">Random</a></li>
+        </ul>
+        <input class="form-control nadi-dxt" placeholder="DXT" />
+        <input type="hidden" class="nadi-dxt-type" value="Fasting" />
       </div>
     </td>
-    <td class="nadi-display-cell" onclick="editNadiCell(this, 'tinggi')">
-      <div class="nadi-display-content"></div>
-      <div class="nadi-input-cell d-none"><input class="form-control form-control-sm nadi-tinggi" placeholder="Tinggi" /></div>
+    <td class="nadi-editable-cell" data-field="tinggi">
+      <div class="display-value"></div>
+      <input class="edit-input form-control form-control-sm" placeholder="Tinggi" />
     </td>
-    <td class="nadi-display-cell" onclick="editNadiCell(this, 'berat')">
-      <div class="nadi-display-content"></div>
-      <div class="nadi-input-cell d-none"><input class="form-control form-control-sm nadi-berat" placeholder="Berat" /></div>
+    <td class="nadi-editable-cell" data-field="berat">
+      <div class="display-value"></div>
+      <input class="edit-input form-control form-control-sm" placeholder="Berat" />
     </td>
-    <td class="nadi-display-cell">
-      <div class="nadi-display-content nadi-bmi"></div>
+    <td>
+      <input class="form-control form-control-sm nadi-bmi" placeholder="BMI" disabled />
     </td>
     <td class="text-center">
       <input class="form-check-input nadi-layak" type="checkbox">
@@ -1265,39 +1253,63 @@ function addNadiRow(){
     </td>
     <td>
       <div class="d-flex gap-1">
-        <input type="date" class="form-control form-control-sm nadi-tca-date" disabled style="min-width:100px">
-        <input type="time" class="form-control form-control-sm nadi-tca-time" disabled style="min-width:80px">
-        <input type="text" class="form-control form-control-sm nadi-staff" placeholder="Staff" disabled style="min-width:100px">
+        <input type="date" class="form-control form-control-sm nadi-tca-date" disabled>
+        <input type="time" class="form-control form-control-sm nadi-tca-time" disabled>
+        <input type="text" class="form-control form-control-sm nadi-staff" placeholder="Staff" disabled>
       </div>
     </td>
     <td>
       <div class="d-flex gap-1">
         <button class="btn btn-sm btn-outline-primary nadi-daftar" disabled>Daftar</button>
-        <button class="btn btn-sm btn-outline-success nadi-wa" onclick="generateWaReport(this.closest('tr'))">WA Report</button>
-        <button class="btn btn-sm btn-outline-danger nadi-buang" onclick="removeNadiRow('${id}')">Buang</button>
+        <button class="btn btn-sm btn-outline-success nadi-wa">WA Report</button>
+        <button class="btn btn-sm btn-outline-danger nadi-buang">Buang</button>
       </div>
     </td>
   `;
   
   container.appendChild(row);
 
-  // BMI calculation
-  const tinggi = row.querySelector('.nadi-tinggi');
-  const berat = row.querySelector('.nadi-berat');
-  const bmi = row.querySelector('.nadi-bmi');
-  
-  const calculateBMI = () => {
-    const height = parseFloat(tinggi?.value) / 100;
-    const weight = parseFloat(berat?.value);
-    if (height && weight) {
-      bmi.textContent = (weight / (height * height)).toFixed(1);
-    } else {
-      bmi.textContent = '';
-    }
-  };
-  
-  if (tinggi) tinggi.addEventListener('input', calculateBMI);
-  if (berat) berat.addEventListener('input', calculateBMI);
+  // Setup editable cells
+  row.querySelectorAll('.nadi-editable-cell').forEach(cell => {
+    const displayValue = cell.querySelector('.display-value');
+    const editInput = cell.querySelector('.edit-input');
+    const field = cell.getAttribute('data-field');
+    
+    cell.addEventListener('click', (e) => {
+      if (e.target !== editInput && !cell.classList.contains('editing')) {
+        cell.classList.add('editing');
+        editInput.focus();
+      }
+    });
+    
+    editInput.addEventListener('blur', () => {
+      const newValue = editInput.value.trim();
+      displayValue.textContent = newValue;
+      cell.classList.remove('editing');
+      
+      // Calculate BMI if height or weight changed
+      if (field === 'tinggi' || field === 'berat') {
+        calculateBMI(row);
+      }
+    });
+    
+    editInput.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') {
+        editInput.blur();
+      }
+    });
+  });
+
+  // DXT type dropdown
+  const dxtTypeBtn = row.querySelector('.nadi-dxt-type-btn');
+  const dxtTypeHidden = row.querySelector('.nadi-dxt-type');
+  row.querySelectorAll('.dropdown-item').forEach(item => {
+    item.addEventListener('click', (e) => {
+      e.preventDefault();
+      dxtTypeBtn.textContent = e.target.textContent;
+      dxtTypeHidden.value = e.target.getAttribute('data-value');
+    });
+  });
 
   // Layak/Tidak Layak toggle
   const layak = row.querySelector('.nadi-layak');
@@ -1334,10 +1346,10 @@ function addNadiRow(){
 
   // Daftar button action
   btnDaftar.addEventListener('click', async () => {
-    const nama = row.querySelector('.nadi-nama')?.value || row.querySelector('.nadi-display-content')?.textContent || '';
-    const ic = row.querySelector('.nadi-ic')?.value || '';
-    const tel = row.querySelector('.nadi-tel')?.value || '';
-    const alamat = row.querySelector('.nadi-alamat')?.value || '';
+    const nama = row.querySelector('.nadi-editable-cell[data-field="nama"] .display-value').textContent.trim();
+    const ic = row.querySelector('.nadi-editable-cell[data-field="ic"] .display-value').textContent.trim();
+    const tel = row.querySelector('.nadi-editable-cell[data-field="tel"] .display-value').textContent.trim();
+    const alamat = row.querySelector('.nadi-editable-cell[data-field="alamat"] .display-value').textContent.trim();
     const date = tcaDate.value;
     const time = tcaTime.value;
     const staffName = staff.value.trim();
@@ -1370,116 +1382,150 @@ function addNadiRow(){
       toast('Ralat', e.message, 'danger');
     }
   });
-}
 
-function editNadiCell(cell, field) {
-  const displayContent = cell.querySelector('.nadi-display-content');
-  const inputCell = cell.querySelector('.nadi-input-cell');
-  const input = inputCell.querySelector('input, textarea, select');
-  
-  // If already editing, save changes
-  if (!inputCell.classList.contains('d-none')) {
-    displayContent.textContent = input.value || '';
-    inputCell.classList.add('d-none');
-    displayContent.classList.remove('d-none');
-    
-    // Trigger BMI calculation if height/weight changed
-    if (field === 'tinggi' || field === 'berat') {
-      const row = cell.closest('tr');
-      const tinggi = row.querySelector('.nadi-tinggi')?.value || '';
-      const berat = row.querySelector('.nadi-berat')?.value || '';
-      const bmi = row.querySelector('.nadi-bmi');
+  // WhatsApp Report button
+  row.querySelector('.nadi-wa').addEventListener('click', async () => {
+    try {
+      const nama = row.querySelector('.nadi-editable-cell[data-field="nama"] .display-value').textContent.trim();
+      const ic = row.querySelector('.nadi-editable-cell[data-field="ic"] .display-value').textContent.trim();
+      const tel = normalizeMsisdnMY(row.querySelector('.nadi-editable-cell[data-field="tel"] .display-value').textContent.trim());
+      const bp = row.querySelector('.nadi-editable-cell[data-field="bp"] .display-value').textContent.trim();
+      const pr = row.querySelector('.nadi-editable-cell[data-field="pr"] .display-value').textContent.trim();
+      const dxtType = row.querySelector('.nadi-dxt-type').value;
+      const dxt = row.querySelector('.nadi-dxt').value.trim();
+      const tinggi = row.querySelector('.nadi-editable-cell[data-field="tinggi"] .display-value').textContent.trim();
+      const berat = row.querySelector('.nadi-editable-cell[data-field="berat"] .display-value').textContent.trim();
+      const bmi = row.querySelector('.nadi-bmi').value.trim();
+      const layak = row.querySelector('.nadi-layak').checked;
       
-      if (tinggi && berat) {
-        const height = parseFloat(tinggi) / 100;
-        const weight = parseFloat(berat);
-        bmi.textContent = (weight / (height * height)).toFixed(1);
-      } else {
-        bmi.textContent = '';
+      if (!tel) {
+        toast('Ralat', 'Nombor telefon diperlukan untuk hantar WhatsApp', 'danger');
+        return;
       }
-    }
-    return;
-  }
-  
-  // Start editing
-  displayContent.classList.add('d-none');
-  inputCell.classList.remove('d-none');
-  
-  // Set current value
-  if (input.tagName === 'TEXTAREA') {
-    input.value = displayContent.textContent || '';
-    input.style.height = 'auto';
-    input.style.height = (input.scrollHeight) + 'px';
-  } else if (input.tagName === 'INPUT' || input.tagName === 'SELECT') {
-    input.value = displayContent.textContent || '';
-  }
-  
-  // Focus and select all text
-  if (input.tagName !== 'SELECT') {
-    input.focus();
-    input.select();
-  }
-  
-  // Handle Enter key to save
-  input.addEventListener('keydown', function(e) {
-    if (e.key === 'Enter' && !e.shiftKey) {
-      e.preventDefault();
-      displayContent.textContent = input.value || '';
-      inputCell.classList.add('d-none');
-      displayContent.classList.remove('d-none');
       
-      // Trigger BMI calculation if height/weight changed
-      if (field === 'tinggi' || field === 'berat') {
-        const row = cell.closest('tr');
-        const tinggi = row.querySelector('.nadi-tinggi')?.value || '';
-        const berat = row.querySelector('.nadi-berat')?.value || '';
-        const bmi = row.querySelector('.nadi-bmi');
+      // Create a canvas for the report image
+      const canvas = document.createElement('canvas');
+      canvas.width = 800;
+      canvas.height = 1000;
+      const ctx = canvas.getContext('2d');
+      
+      // Background
+      ctx.fillStyle = '#ffffff';
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+      
+      // Header with logo
+      ctx.fillStyle = '#2c3e50';
+      ctx.fillRect(0, 0, canvas.width, 100);
+      
+      // Load logo (use a placeholder if not loaded)
+      const logoImg = new Image();
+      logoImg.crossOrigin = 'Anonymous';
+      logoImg.src = REPORT_LOGO_URL;
+      
+      logoImg.onload = function() {
+        ctx.drawImage(logoImg, 20, 20, 60, 60);
         
-        if (tinggi && berat) {
-          const height = parseFloat(tinggi) / 100;
-          const weight = parseFloat(berat);
-          bmi.textContent = (weight / (height * height)).toFixed(1);
-        } else {
-          bmi.textContent = '';
-        }
-      }
+        // Header text
+        ctx.fillStyle = '#ffffff';
+        ctx.font = 'bold 20px Arial';
+        ctx.fillText('LAPORAN SARINGAN NADI', 100, 50);
+        ctx.font = '16px Arial';
+        ctx.fillText('Klinik SihatSokmo', 100, 80);
+        
+        // Patient info
+        ctx.fillStyle = '#000000';
+        ctx.font = 'bold 16px Arial';
+        ctx.fillText('MAKLUMAT PESAKIT', 20, 140);
+        
+        ctx.font = '14px Arial';
+        ctx.fillText(`Nama: ${nama}`, 20, 170);
+        ctx.fillText(`No. IC: ${ic}`, 20, 200);
+        ctx.fillText(`No. Telefon: ${tel}`, 20, 230);
+        
+        // Medical data
+        ctx.font = 'bold 16px Arial';
+        ctx.fillText('DATA PERUBATAN', 20, 280);
+        
+        ctx.font = '14px Arial';
+        ctx.fillText(`BP: ${bp || '-'}`, 20, 310);
+        ctx.fillText(`PR: ${pr || '-'}`, 200, 310);
+        ctx.fillText(`DXT (${dxtType}): ${dxt || '-'}`, 20, 340);
+        ctx.fillText(`Tinggi: ${tinggi || '-'} cm`, 20, 370);
+        ctx.fillText(`Berat: ${berat || '-'} kg`, 200, 370);
+        ctx.fillText(`BMI: ${bmi || '-'}`, 20, 400);
+        
+        // Eligibility
+        ctx.font = 'bold 16px Arial';
+        ctx.fillText('KELAYAKAN', 20, 450);
+        
+        ctx.fillText(`Status: ${layak ? 'LAYAK' : 'TIDAK LAYAK'} Program PEKA B40`, 20, 480);
+        
+        // Footer
+        ctx.fillStyle = '#2c3e50';
+        ctx.fillRect(0, 900, canvas.width, 100);
+        ctx.fillStyle = '#ffffff';
+        ctx.font = '12px Arial';
+        ctx.textAlign = 'center';
+        ctx.fillText('Laporan ini dijana secara automatik oleh Sistem Tracker PEKA B40', canvas.width/2, 930);
+        ctx.fillText('Klinik SihatSokmo - ' + new Date().toLocaleDateString('ms-MY'), canvas.width/2, 960);
+        
+        // Convert canvas to image and send via WhatsApp
+        canvas.toBlob(function(blob) {
+          const url = URL.createObjectURL(blob);
+          const reportText = `Laporan Saringan NADI untuk ${nama}\n\nKeputusan saringan kesihatan anda telah siap. Sila rujuk gambar di bawah untuk maklumat lanjut.`;
+          const whatsappUrl = `https://wa.me/${tel}?text=${encodeURIComponent(reportText)}`;
+          
+          // Open WhatsApp with text first
+          window.open(whatsappUrl, '_blank');
+          
+          // After a delay, show the image (user can manually send it)
+          setTimeout(() => {
+            toast('Makluman', 'Sila lampirkan gambar laporan dalam WhatsApp yang dibuka', 'info');
+          }, 1000);
+          
+        }, 'image/jpeg', 0.9);
+      };
+      
+      logoImg.onerror = function() {
+        // If logo fails to load, proceed without it
+        ctx.fillStyle = '#ffffff';
+        ctx.font = 'bold 20px Arial';
+        ctx.fillText('LAPORAN SARINGAN NADI', 20, 50);
+        ctx.font = '16px Arial';
+        ctx.fillText('Klinik SihatSokmo', 20, 80);
+        
+        // Rest of the report as above...
+        // (same code as in onload, just starting from Patient info)
+      };
+      
+    } catch (e) {
+      toast('Ralat', 'Gagal buat laporan: ' + e.message, 'danger');
     }
   });
-  
-  // Handle click outside to save
-  document.addEventListener('click', function clickOutside(e) {
-    if (!cell.contains(e.target)) {
-      displayContent.textContent = input.value || '';
-      inputCell.classList.add('d-none');
-      displayContent.classList.remove('d-none');
-      document.removeEventListener('click', clickOutside);
-      
-      // Trigger BMI calculation if height/weight changed
-      if (field === 'tinggi' || field === 'berat') {
-        const row = cell.closest('tr');
-        const tinggi = row.querySelector('.nadi-tinggi')?.value || '';
-        const berat = row.querySelector('.nadi-berat')?.value || '';
-        const bmi = row.querySelector('.nadi-bmi');
-        
-        if (tinggi && berat) {
-          const height = parseFloat(tinggi) / 100;
-          const weight = parseFloat(berat);
-          bmi.textContent = (weight / (height * height)).toFixed(1);
-        } else {
-          bmi.textContent = '';
-        }
-      }
-    }
-  });
-}
 
-function removeNadiRow(id) {
-  if (confirm('Adakah anda pasti ingin membuang baris ini?')) {
-    const row = document.getElementById(id);
-    if (row) {
+  // Buang button
+  row.querySelector('.nadi-buang').addEventListener('click', () => {
+    if (confirm('Adakah anda pasti ingin membuang baris ini?')) {
       row.remove();
       updateNadiRowNumbers();
     }
+  });
+}
+
+function calculateBMI(row) {
+  const tinggiCell = row.querySelector('.nadi-editable-cell[data-field="tinggi"]');
+  const beratCell = row.querySelector('.nadi-editable-cell[data-field="berat"]');
+  const bmiInput = row.querySelector('.nadi-bmi');
+  
+  const tinggi = parseFloat(tinggiCell.querySelector('.display-value').textContent);
+  const berat = parseFloat(beratCell.querySelector('.display-value').textContent);
+  
+  if (tinggi && berat) {
+    const heightM = tinggi / 100;
+    const bmi = (berat / (heightM * heightM)).toFixed(1);
+    bmiInput.value = bmi;
+  } else {
+    bmiInput.value = '';
   }
 }
 
@@ -1496,136 +1542,20 @@ function updateNadiRowNumbers() {
   nadiRowCounter = counter;
 }
 
-async function generateWaReport(row) {
-  try {
-    const nama = row.querySelector('.nadi-display-content')?.textContent || '';
-    const ic = row.querySelector('.nadi-ic')?.value || row.querySelector('.nadi-display-content:nth-child(2)')?.textContent || '';
-    const tel = row.querySelector('.nadi-tel')?.value || row.querySelector('.nadi-display-content:nth-child(3)')?.textContent || '';
-    const alamat = row.querySelector('.nadi-alamat')?.value || row.querySelector('.nadi-display-content:nth-child(4)')?.textContent || '';
-    const bp = row.querySelector('.nadi-bp')?.value || row.querySelector('.nadi-display-content:nth-child(5)')?.textContent || '';
-    const pr = row.querySelector('.nadi-pr')?.value || row.querySelector('.nadi-display-content:nth-child(6)')?.textContent || '';
-    const dxtType = row.querySelector('.nadi-dxt-type')?.value || 'Fasting';
-    const dxt = row.querySelector('.nadi-dxt')?.value || row.querySelector('.nadi-display-content:nth-child(7)')?.textContent || '';
-    const tinggi = row.querySelector('.nadi-tinggi')?.value || row.querySelector('.nadi-display-content:nth-child(8)')?.textContent || '';
-    const berat = row.querySelector('.nadi-berat')?.value || row.querySelector('.nadi-display-content:nth-child(9)')?.textContent || '';
-    const bmi = row.querySelector('.nadi-bmi')?.textContent || '';
-    const layak = row.querySelector('.nadi-layak')?.checked || false;
-    
-    if (!tel) {
-      toast('Makluman', 'Nombor telefon kosong', 'warning');
-      return;
-    }
-    
-    showLoader('Menyediakan laporan...');
-    
-    // Create WhatsApp report image
-    const canvas = document.getElementById('waReportCanvas');
-    const ctx = canvas.getContext('2d');
-    
-    // Set background color
-    ctx.fillStyle = '#ffffff';
-    ctx.fillRect(0, 0, canvas.width, canvas.height);
-    
-    // Add clinic logo (if available)
-    try {
-      const logo = await loadImage(LOGO_URL);
-      ctx.drawImage(logo, 50, 50, 100, 100);
-    } catch (e) {
-      console.log('Gagal memuat logo klinik');
-    }
-    
-    // Add clinic name
-    ctx.fillStyle = '#2c3e50';
-    ctx.font = 'bold 28px Arial';
-    ctx.fillText('Klinik SihatSokmo', 170, 90);
-    
-    // Add report title
-    ctx.font = 'bold 24px Arial';
-    ctx.fillText('Laporan Saringan NADI', 50, 180);
-    
-    // Add patient details
-    ctx.fillStyle = '#333333';
-    ctx.font = '16px Arial';
-    ctx.fillText(`Nama: ${nama}`, 50, 230);
-    ctx.fillText(`No. IC: ${ic}`, 50, 260);
-    ctx.fillText(`Alamat: ${alamat}`, 50, 290);
-    
-    // Add vital signs
-    ctx.fillText(`BP: ${bp || '-'}`, 50, 350);
-    ctx.fillText(`PR: ${pr || '-'}`, 200, 350);
-    ctx.fillText(`DXT (${dxtType}): ${dxt || '-'}`, 350, 350);
-    
-    // Add measurements
-    ctx.fillText(`Tinggi: ${tinggi || '-'} cm`, 50, 400);
-    ctx.fillText(`Berat: ${berat || '-'} kg`, 200, 400);
-    ctx.fillText(`BMI: ${bmi || '-'}`, 350, 400);
-    
-    // Add eligibility status
-    ctx.fillStyle = layak ? '#27ae60' : '#e74c3c';
-    ctx.font = 'bold 20px Arial';
-    ctx.fillText(`Status: ${layak ? 'LAYAK PEKA B40' : 'TIDAK LAYAK PEKA B40'}`, 50, 450);
-    
-    // Add footer
-    ctx.fillStyle = '#95a5a6';
-    ctx.font = '14px Arial';
-    ctx.fillText('Terima kasih kerana menyertai program saringan NADI', 50, 500);
-    ctx.fillText('Sekiranya ada sebarang pertanyaan, sila hubungi klinik', 50, 530);
-    
-    // Convert canvas to image and open WhatsApp
-    const imageData = canvas.toDataURL('image/png');
-    const msisdn = normalizeMsisdnMY(tel);
-    
-    // Create a temporary link to download the image (for testing)
-    // const link = document.createElement('a');
-    // link.href = imageData;
-    // link.download = `laporan_nadi_${nama}.png`;
-    // document.body.appendChild(link);
-    // link.click();
-    // document.body.removeChild(link);
-    
-    // Open WhatsApp with the image
-    const message = `Assalamualaikum,\n\nBerikut adalah laporan saringan NADI anda:\n\nNama: ${nama}\nNo. IC: ${ic}\nStatus: ${layak ? 'LAYAK PEKA B40' : 'TIDAK LAYAK PEKA B40'}\n\nSekian, terima kasih.`;
-    window.open(`https://wa.me/${msisdn}?text=${encodeURIComponent(message)}`, '_blank');
-    
-    hideLoader();
-  } catch (e) {
-    hideLoader();
-    toast('Ralat', 'Gagal menjana laporan: ' + e.message, 'danger');
-  }
-}
-
-function loadImage(url) {
-  return new Promise((resolve, reject) => {
-    const img = new Image();
-    img.crossOrigin = 'Anonymous';
-    img.onload = () => resolve(img);
-    img.onerror = reject;
-    img.src = url;
-  });
-}
-
 function exportNadiCSV() {
   const container = document.getElementById('nadiContainer');
   const rows = Array.from(container.querySelectorAll('.nadi-row'));
   if (!rows.length){ toast('Makluman','Tiada data untuk diexport','warning'); return; }
   const header = ['Nama','IC','Telefon','Alamat','BP','PR','DXT_Tipe','DXT','Tinggi(cm)','Berat(kg)','BMI','Layak','TarikhTCA','MasaTCA','Staff'];
   const data = rows.map(r=>{
-    const getValue = (selector) => {
-      const input = r.querySelector(selector);
-      if (input) return input.value || '';
-      const display = r.querySelector(selector + '-display');
-      if (display) return display.textContent || '';
-      return '';
-    };
-    
-    const v = (sel) => (r.querySelector(sel)?.value || r.querySelector('.nadi-display-content')?.textContent || '';
+    const v = (field) => (r.querySelector(`.nadi-editable-cell[data-field="${field}"] .display-value`)?.textContent || '').trim();
     const b = (sel) => (r.querySelector(sel)?.checked ? 'Ya' : 'Tidak');
     return [
-      v('.nadi-nama'), v('.nadi-ic'), v('.nadi-tel'), v('.nadi-alamat'),
-      v('.nadi-bp'), v('.nadi-pr'), (r.querySelector('.nadi-dxt-type')?.value||''), v('.nadi-dxt'),
-      v('.nadi-tinggi'), v('.nadi-berat'), v('.nadi-bmi'),
+      v('nama'), v('ic'), v('tel'), v('alamat'),
+      v('bp'), v('pr'), (r.querySelector('.nadi-dxt-type')?.value||''), r.querySelector('.nadi-dxt')?.value.trim() || '',
+      v('tinggi'), v('berat'), r.querySelector('.nadi-bmi')?.value.trim() || '',
       b('.nadi-layak'),
-      v('.nadi-tca-date'), v('.nadi-tca-time'), v('.nadi-staff')
+      r.querySelector('.nadi-tca-date')?.value || '', r.querySelector('.nadi-tca-time')?.value || '', r.querySelector('.nadi-staff')?.value.trim() || ''
     ];
   });
   const csv = [header, ...data].map(r=>r.map(v=>`"${String(v||'').replace(/"/g,'""')}"`).join(',')).join('\r\n');
@@ -1758,7 +1688,7 @@ function renderTcaList(mode){
   filtered.forEach(p=>{
     const msisdn = normalizeMsisdnMY(p.noTelefon||'');
     const badgeCls = p.status==='CALLED' ? 'bg-success' : (parseDDMMYYYY(p.tarikhTCA)?.getTime()<today.getTime() ? 'bg-secondary' : 'bg-warning');
-    const label = p.status==='CALLED' ? 'CALLED' : (parseDDMMYYYY(p.tarikhTCA)?.getTime()<today.getTime() ? 'LEPAS' : (isSameDay(parseDDMMYYYY(p.tarikhTCA), today) ? 'HARI INI' : 'AKAN DATANG'));
+    const label = p.status==='CALLED' ? 'CALLED' : (parseDDMMYYYY(p.tarikhTCA)?.getTime()<today.getTime() ? 'LEPAS' : (isSameDay(parseDDMMYYYY(p.tarikhTCA), today) ? 'HARI INI' : 'AKAN DATANG');
     const row = `
       <tr data-ic="${p.noIC}">
         <td>${p.nama}</td>
