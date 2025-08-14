@@ -763,20 +763,43 @@ let ID_TOKEN = '';      // diisi selepas login
 let STAFF_EMAIL = '';   // email sebenar (server akan sahkan juga)
 
 function initGoogleSignIn(){
+  // Pastikan element container ada
+  const signinArea = document.getElementById('signinArea');
+  const signinAreaDesktop = document.getElementById('signinAreaDesktop');
+  
+  if (!signinArea || !signinAreaDesktop) {
+    console.error('Element container untuk Google Sign-In tidak ditemukan');
+    return;
+  }
+
+  // Cek apakah script Google Identity sudah terload
+  if (typeof google === 'undefined' || !google.accounts || !google.accounts.id) {
+    console.error('Google Identity Services belum dimuat');
+    return;
+  }
+
   google.accounts.id.initialize({
     client_id: GOOGLE_CLIENT_ID,
     callback: handleCredentialResponse,
     auto_select: false,
     cancel_on_tap_outside: true
   });
-  google.accounts.id.renderButton(
-    document.getElementById('signinArea'),
-    { theme: 'outline', size: 'medium', text:'signin_with' }
-  );
-  google.accounts.id.renderButton(
-    document.getElementById('signinAreaDesktop'),
-    { theme: 'outline', size: 'medium', text:'signin_with' }
-  );
+
+  // Render tombol untuk mobile view
+  if (signinArea) {
+    google.accounts.id.renderButton(
+      signinArea,
+      { theme: 'outline', size: 'medium', text:'signin_with' }
+    );
+  }
+
+  // Render tombol untuk desktop view
+  if (signinAreaDesktop) {
+    google.accounts.id.renderButton(
+      signinAreaDesktop,
+      { theme: 'outline', size: 'medium', text:'signin_with' }
+    );
+  }
 }
 
 async function handleCredentialResponse(resp){
