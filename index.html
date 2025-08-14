@@ -150,26 +150,21 @@ body{font-family:'Segoe UI',Tahoma,Geneva,Verdana,sans-serif;background:#f5f7fa;
   padding: 8px;
   vertical-align: middle;
   border: 1px solid #dee2e6;
-  overflow: visible; /* biar input yang membesar kelihatan */
 }
 
-/* -- AUTO-GROW (ke kanan) untuk semua input di jadual NADI -- */
-.nadi-table .form-control{
-  width:auto;                /* penting: jangan kunci 100% */
-  min-width:100px;           /* asas */
-  display:inline-block;      /* benarkan lebar mengikut kandungan */
+.nadi-input-cell input {
+  width: 100%;
+  min-width: 100px;
+  border: 1px solid #ced4da;
+  border-radius: 4px;
+  padding: 6px 8px;
+  box-sizing: border-box;
 }
-.nadi-table .nadi-nama{ min-width:180px; }
-.nadi-table .nadi-ic,.nadi-table .nadi-tel{ min-width:140px; }
-.nadi-table .nadi-bp,.nadi-table .nadi-pr,
-.nadi-table .nadi-tinggi,.nadi-table .nadi-berat,.nadi-table .nadi-bmi{ min-width:80px; }
-.nadi-table .nadi-dxt{ min-width:120px; }
-.nadi-table .nadi-staff{ min-width:140px; }
 
-/* pastikan input-group tidak memaksa .form-control = flex:1 */
-.nadi-table .input-group{ flex-wrap:nowrap; }
-.nadi-table .input-group>.form-control{ flex:0 0 auto; width:auto; }
-.nadi-table .input-group .dropdown-toggle{ flex:0 0 auto; }
+.nadi-input-cell input[type="text"] {
+  min-width: 150px;
+  transition: width 0.2s;
+}
 
 .nadi-checkbox-cell {
   text-align: center;
@@ -1219,7 +1214,7 @@ function addNadiRow(){
   
   container.appendChild(row);
 
-  // Initialize auto-grow untuk semua input teks pada baris
+  // Initialize auto-grow for inputs
   row.querySelectorAll('input[type="text"]').forEach(input => {
     autoGrowInput(input);
   });
@@ -1363,32 +1358,12 @@ function updateNadiRowNumbers() {
   nadiRowCounter = counter;
 }
 
-/* -- AUTO-GROW helper: lebarkan input mengikut kandungan (ke kanan) tanpa menukar logik lain -- */
-function autoGrowInput(el){
-  // cermin tersembunyi untuk kira lebar teks sebenar
-  const mirror = document.createElement('span');
-  const cs = getComputedStyle(el);
-  mirror.style.position = 'absolute';
-  mirror.style.visibility = 'hidden';
-  mirror.style.whiteSpace = 'pre';
-  mirror.style.font = `${cs.fontStyle} ${cs.fontVariant} ${cs.fontWeight} ${cs.fontSize} / ${cs.lineHeight} ${cs.fontFamily}`;
-  mirror.style.letterSpacing = cs.letterSpacing;
-  document.body.appendChild(mirror);
-
-  const padding = 14; // ruang tambahan
-  const minW = parseFloat(cs.minWidth) || 60;
-
-  const resize = () => {
-    const val = el.value || el.getAttribute('placeholder') || '';
-    // gantikan space → nbsp agar diukur dengan tepat
-    mirror.textContent = String(val).replace(/ /g, '\u00A0');
-    const w = Math.ceil(mirror.getBoundingClientRect().width) + padding;
-    el.style.width = Math.max(minW, w) + 'px';
-  };
-
-  el.addEventListener('input', resize);
-  // set awal (guna placeholder/min-width)
-  resize();
+function autoGrowInput(element) {
+  element.style.width = '100%';
+  element.addEventListener('input', function() {
+    this.style.width = '100%';
+    this.style.width = (this.scrollWidth + 10) + 'px';
+  });
 }
 
 function exportNadiCSV() {
@@ -1536,7 +1511,7 @@ function renderTcaList(mode){
   filtered.forEach(p=>{
     const msisdn = normalizeMsisdnMY(p.noTelefon||'');
     const badgeCls = p.status==='CALLED' ? 'bg-success' : (parseDDMMYYYY(p.tarikhTCA)?.getTime()<today.getTime() ? 'bg-secondary' : 'bg-warning');
-    const label = p.status==='CALLED' ? 'CALLED' : (parseDDMMYYYY(p.tarikhTCA)?.getTime()<today.getTime() ? 'LEPAS' : (isSameDay(parseDDMMYYYY(p.tarikhTCA), today) ? 'HARI INI' : 'AKAN DATANG'));
+    const label = p.status==='CALLED' ? 'CALLED' : (parseDDMMYYYY(p.tarikhTCA)?.getTime()<today.getTime() ? 'LEPAS' : (isSameDay(parseDDMMYYYY(p.tarikhTCA), today) ? 'HARI INI' : 'AKAN DATANG');
     const row = `
       <tr data-ic="${p.noIC}">
         <td>${p.nama}</td>
