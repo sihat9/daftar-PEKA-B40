@@ -133,6 +133,8 @@ body{font-family:'Segoe UI',Tahoma,Geneva,Verdana,sans-serif;background:#f5f7fa;
   min-width: 1300px;
   border-collapse: separate;
   border-spacing: 0;
+  /* memastikan kolom boleh melebar ikut kandungan */
+  table-layout: auto;
 }
 
 .nadi-table th {
@@ -144,12 +146,14 @@ body{font-family:'Segoe UI',Tahoma,Geneva,Verdana,sans-serif;background:#f5f7fa;
   top: 0;
   z-index: 10;
   border: 1px solid #dee2e6;
+  white-space: nowrap;
 }
 
 .nadi-table td {
   padding: 8px;
   vertical-align: middle;
   border: 1px solid #dee2e6;
+  white-space: nowrap; /* elak balutan; biar melebar ke kanan */
 }
 
 .nadi-input-cell input {
@@ -158,12 +162,17 @@ body{font-family:'Segoe UI',Tahoma,Geneva,Verdana,sans-serif;background:#f5f7fa;
   border: 1px solid #ced4da;
   border-radius: 4px;
   padding: 6px 8px;
-  box-sizing: border-box;
 }
 
-.nadi-input-cell input[type="text"] {
-  min-width: 150px;
-  transition: width 0.2s;
+/* tambahan: pastikan input dalam jadual NADI auto saiz mengikut kandungan */
+.nadi-table input.form-control {
+  width: auto;
+  min-width: 120px;
+}
+
+/* elak input-group pecah baris bila auto-grow */
+.nadi-table .input-group { 
+  flex-wrap: nowrap; 
 }
 
 .nadi-checkbox-cell {
@@ -1214,7 +1223,7 @@ function addNadiRow(){
   
   container.appendChild(row);
 
-  // Initialize auto-grow for inputs
+  // Initialize auto-grow untuk SEMUA input teks pada baris ini
   row.querySelectorAll('input[type="text"]').forEach(input => {
     autoGrowInput(input);
   });
@@ -1358,12 +1367,41 @@ function updateNadiRowNumbers() {
   nadiRowCounter = counter;
 }
 
+/* AUTO-GROW ke kanan untuk input dalam jadual NADI
+   - Lebarkan input mengikut kandungan
+   - Set 'min-width' pada <td> supaya kolom & jadual turut melebar
+   - Jadual berada dalam pembalut yang boleh scroll ke kanan
+*/
 function autoGrowInput(element) {
-  element.style.width = '100%';
-  element.addEventListener('input', function() {
-    this.style.width = '100%';
-    this.style.width = (this.scrollWidth + 10) + 'px';
-  });
+  const td = element.closest('td');
+  const wrapper = element.closest('.input-group') || element;
+
+  const update = () => {
+    // reset kecil dahulu, kemudian lebar ikut scrollWidth
+    element.style.width = '0px';
+    const baseW = Math.max(120, element.scrollWidth + 14); // padding kecil
+    element.style.width = baseW + 'px';
+
+    if (td) {
+      // ambil kira butang dalam input-group jika ada
+      const groupW = Math.max(baseW, wrapper.scrollWidth);
+      const cellW = groupW + 24; // ruang tepi sel
+      td.style.minWidth = cellW + 'px';
+
+      // pastikan jadual (min-width) sentiasa >= lebar baris semasa
+      const table = td.closest('table');
+      if (table) {
+        const row = td.parentElement;
+        const rowW = row.scrollWidth + 24;
+        const currentMin = parseInt(table.style.minWidth || 0) || 1300;
+        if (rowW > currentMin) table.style.minWidth = rowW + 'px';
+      }
+    }
+  };
+
+  // trigger ketika menaip & sekali semasa inisialisasi
+  element.addEventListener('input', update);
+  update();
 }
 
 function exportNadiCSV() {
@@ -1511,7 +1549,7 @@ function renderTcaList(mode){
   filtered.forEach(p=>{
     const msisdn = normalizeMsisdnMY(p.noTelefon||'');
     const badgeCls = p.status==='CALLED' ? 'bg-success' : (parseDDMMYYYY(p.tarikhTCA)?.getTime()<today.getTime() ? 'bg-secondary' : 'bg-warning');
-    const label = p.status==='CALLED' ? 'CALLED' : (parseDDMMYYYY(p.tarikhTCA)?.getTime()<today.getTime() ? 'LEPAS' : (isSameDay(parseDDMMYYYY(p.tarikhTCA), today) ? 'HARI INI' : 'AKAN DATANG');
+    const label = p.status==='CALLED' ? 'CALLED' : (parseDDMMYYYY(p.tarikhTCA)?.getTime()<today.getTime() ? 'LEPAS' : (isSameDay(parseDDMMYYYY(p.tarikhTCA), today) ? 'HARI INI' : 'AKAN DATANG'));
     const row = `
       <tr data-ic="${p.noIC}">
         <td>${p.nama}</td>
@@ -1899,22 +1937,72 @@ async function exportCompletedCSV(){
     const rows = data.data.map(x=>[
       x.nama, x.noIC, normalizeMsisdnMY(x.noTelefon||''), x.tarikhDaftar, x.firstVisitDate||'', x.labCompletedAt||'', x.secondVisitDate||'', x.tarikhSelesai
     ]);
-    const csv = [header, ...rows].map(r=>r.map(v=>`"${String(v||'').replace(/"/g,'""')}"`).join(',')).join('\r\n');
-    const blob = new Blob([csv], { type:'text/csv;charset=utf-8;' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url; a.download = `pesakit_selesai_${new Date().toISOString().slice(0,10)}.csv`;
-    document.body.appendChild(a); a.click(); a.remove(); URL.revokeObjectURL(url);
-    toast('Export','Fail CSV telah dimuat turun','success');
-  }catch(e){ toast('Ralat', e.message, 'danger'); }
+    const csv = [header, ...rows].map      const csv = [header, ...rows]
+        .map(r => r.map(v => `"${String(v ?? '').replace(/"/g, '""')}"`).join(','))
+        .join('\r\n');
+
+      const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `pesakit_selesai_${new Date().toISOString().slice(0,10)}.csv`;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      URL.revokeObjectURL(url);
+      toast('Export','Fail CSV telah dimuat turun','success');
+    }
+  }catch(e){
+    toast('Ralat', e.message, 'danger');
+  }
 }
+
+/* =======================
+   LAB STATUS HELPERS (PERMINTAAN PADA UI FOLLOW-UP)
+======================= */
+async function markLabStatus(noIC, status){
+  try{
+    const res = await postForm({ action:'updateLabStatus', noIC, status, staff: STAFF_EMAIL }, { msg:'Mengemas kini status Lab…' });
+    if (res.status==='success'){
+      toast('Berjaya','Status Lab dikemas kini','success');
+      loadLabFollowUp(); loadDashboardData();
+    } else {
+      throw new Error(res.message || 'Gagal kemas kini status lab');
+    }
+  }catch(e){
+    toast('Ralat', e.message, 'danger');
+  }
+}
+
+/* =======================
+   DELEGATION: DXT dropdown (NADI)
+   — Pastikan klik pada item dropdown mengubah butang & input hidden pada baris yang sama
+======================= */
+document.addEventListener('click', (e)=>{
+  const item = e.target.closest('.dropdown-item[data-value]');
+  if (!item) return;
+  const row = item.closest('.nadi-row');
+  if (!row) return;
+
+  e.preventDefault();
+  const val = item.getAttribute('data-value');
+  const btn = row.querySelector('.nadi-dxt-type-btn');
+  const hidden = row.querySelector('.nadi-dxt-type');
+  if (btn) btn.textContent = val || 'Fasting';
+  if (hidden) hidden.value = val || 'Fasting';
+});
 
 /* =======================
    STARTUP
 ======================= */
-document.addEventListener('DOMContentLoaded', ()=>{
-  initGoogleSignIn();
+window.addEventListener('load', ()=>{
+  try{
+    initGoogleSignIn(); // butang login akan dipaparkan, app akan bootstrap selepas login berjaya
+  }catch(e){
+    console.warn('GSI init gagal:', e);
+  }
 });
 </script>
 </body>
 </html>
+
