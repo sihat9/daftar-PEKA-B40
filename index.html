@@ -152,30 +152,14 @@ body{font-family:'Segoe UI',Tahoma,Geneva,Verdana,sans-serif;background:#f5f7fa;
   border: 1px solid #dee2e6;
 }
 
-/* Auto-grow input fields in NADI table */
 .nadi-input-cell input {
-  min-width: 100px;
   width: 100%;
+  min-width: 100px;
   border: 1px solid #ced4da;
   border-radius: 4px;
   padding: 6px 8px;
   box-sizing: border-box;
-}
-
-.nadi-input-cell input:focus {
-  outline: none;
-  border-color: #86b7fe;
-  box-shadow: 0 0 0 0.25rem rgba(13, 110, 253, 0.25);
-}
-
-/* Auto-grow functionality */
-.nadi-input-cell {
-  position: relative;
-}
-
-.nadi-input-cell input {
-  width: 100%;
-  min-width: 100px;
+  transition: width 0.2s;
 }
 
 .nadi-checkbox-cell {
@@ -1228,7 +1212,10 @@ function addNadiRow(){
 
   // Initialize auto-grow for inputs
   row.querySelectorAll('input[type="text"]').forEach(input => {
-    autoGrowInput(input);
+    input.addEventListener('input', function() {
+      this.style.width = '100%';
+      this.style.width = (this.scrollWidth + 10) + 'px';
+    });
   });
 
   // BMI calculation
@@ -1368,18 +1355,6 @@ function updateNadiRowNumbers() {
     }
   });
   nadiRowCounter = counter;
-}
-
-function autoGrowInput(element) {
-  element.addEventListener('input', function() {
-    this.style.width = 'auto';
-    this.style.width = (this.scrollWidth) + 'px';
-  });
-  // Trigger initial resize
-  setTimeout(() => {
-    element.style.width = 'auto';
-    element.style.width = (element.scrollWidth) + 'px';
-  }, 0);
 }
 
 function exportNadiCSV() {
@@ -1527,7 +1502,7 @@ function renderTcaList(mode){
   filtered.forEach(p=>{
     const msisdn = normalizeMsisdnMY(p.noTelefon||'');
     const badgeCls = p.status==='CALLED' ? 'bg-success' : (parseDDMMYYYY(p.tarikhTCA)?.getTime()<today.getTime() ? 'bg-secondary' : 'bg-warning');
-    const label = p.status==='CALLED' ? 'CALLED' : (parseDDMMYYYY(p.tarikhTCA)?.getTime()<today.getTime() ? 'LEPAS' : (isSameDay(parseDDMMYYYY(p.tarikhTCA), today) ? 'HARI INI' : 'AKAN DATANG');
+    const label = p.status==='CALLED' ? 'CALLED' : (parseDDMMYYYY(p.tarikhTCA)?.getTime()<today.getTime() ? 'LEPAS' : (isSameDay(parseDDMMYYYY(p.tarikhTCA), today) ? 'HARI INI' : 'AKAN DATANG'));
     const row = `
       <tr data-ic="${p.noIC}">
         <td>${p.nama}</td>
