@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+ <!DOCTYPE html>
 <html lang="ms">
 <head>
 <meta charset="UTF-8" />
@@ -158,8 +158,12 @@ body{font-family:'Segoe UI',Tahoma,Geneva,Verdana,sans-serif;background:#f5f7fa;
   border: 1px solid #ced4da;
   border-radius: 4px;
   padding: 6px 8px;
-  box-sizing: border-box;
-  transition: width 0.2s;
+  transition: width 0.2s ease;
+}
+
+.nadi-input-cell input:focus {
+  width: auto;
+  min-width: 100px;
 }
 
 .nadi-checkbox-cell {
@@ -1152,19 +1156,19 @@ function addNadiRow(){
       <div class="nadi-counter">${nadiRowCounter}</div>
     </td>
     <td>
-      <input class="form-control form-control-sm nadi-nama" placeholder="Nama pesakit" style="width:100%;min-width:150px" />
+      <input class="form-control form-control-sm nadi-nama" placeholder="Nama pesakit" style="width:100%; min-width:150px" />
     </td>
     <td>
-      <input class="form-control form-control-sm nadi-ic" placeholder="IC" style="width:100%;min-width:120px" />
+      <input class="form-control form-control-sm nadi-ic" placeholder="IC" style="width:100%; min-width:120px" />
     </td>
     <td>
-      <input class="form-control form-control-sm nadi-tel" placeholder="Telefon" style="width:100%;min-width:120px" />
+      <input class="form-control form-control-sm nadi-tel" placeholder="Telefon" style="width:100%; min-width:120px" />
     </td>
     <td>
-      <input class="form-control form-control-sm nadi-bp" placeholder="BP" style="width:100%;min-width:80px" />
+      <input class="form-control form-control-sm nadi-bp" placeholder="BP" style="width:100%; min-width:80px" />
     </td>
     <td>
-      <input class="form-control form-control-sm nadi-pr" placeholder="PR" style="width:100%;min-width:80px" />
+      <input class="form-control form-control-sm nadi-pr" placeholder="PR" style="width:100%; min-width:80px" />
     </td>
     <td>
       <div class="input-group input-group-sm">
@@ -1173,18 +1177,18 @@ function addNadiRow(){
           <li><a class="dropdown-item" href="#" data-value="Fasting">Fasting</a></li>
           <li><a class="dropdown-item" href="#" data-value="Random">Random</a></li>
         </ul>
-        <input class="form-control nadi-dxt" placeholder="DXT" style="width:100%;min-width:80px" />
+        <input class="form-control nadi-dxt" placeholder="DXT" style="width:100%; min-width:80px" />
         <input type="hidden" class="nadi-dxt-type" value="Fasting" />
       </div>
     </td>
     <td>
-      <input class="form-control form-control-sm nadi-tinggi" placeholder="Tinggi" style="width:100%;min-width:80px" />
+      <input class="form-control form-control-sm nadi-tinggi" placeholder="Tinggi" style="width:100%; min-width:80px" />
     </td>
     <td>
-      <input class="form-control form-control-sm nadi-berat" placeholder="Berat" style="width:100%;min-width:80px" />
+      <input class="form-control form-control-sm nadi-berat" placeholder="Berat" style="width:100%; min-width:80px" />
     </td>
     <td>
-      <input class="form-control form-control-sm nadi-bmi" placeholder="BMI" disabled style="width:100%;min-width:80px" />
+      <input class="form-control form-control-sm nadi-bmi" placeholder="BMI" disabled style="width:100%; min-width:80px" />
     </td>
     <td class="text-center">
       <input class="form-check-input nadi-layak" type="checkbox">
@@ -1194,7 +1198,7 @@ function addNadiRow(){
     </td>
     <td>
       <div class="d-flex gap-1">
-        <input type="date" class="form-control form-control-sm nadi-tca-date" disabled style="min-width:80px">
+        <input type="date" class="form-control form-control-sm nadi-tca-date" disabled style="min-width:100px">
         <input type="time" class="form-control form-control-sm nadi-tca-time" disabled style="min-width:80px">
         <input type="text" class="form-control form-control-sm nadi-staff" placeholder="Staff" disabled style="min-width:100px">
       </div>
