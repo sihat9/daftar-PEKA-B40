@@ -150,15 +150,26 @@ body{font-family:'Segoe UI',Tahoma,Geneva,Verdana,sans-serif;background:#f5f7fa;
   padding: 8px;
   vertical-align: middle;
   border: 1px solid #dee2e6;
+  overflow: visible; /* biar input yang membesar kelihatan */
 }
 
-.nadi-input-cell input {
-  width: 100%;
-  min-width: 100px;
-  border: 1px solid #ced4da;
-  border-radius: 4px;
-  padding: 6px 8px;
+/* -- AUTO-GROW (ke kanan) untuk semua input di jadual NADI -- */
+.nadi-table .form-control{
+  width:auto;                /* penting: jangan kunci 100% */
+  min-width:100px;           /* asas */
+  display:inline-block;      /* benarkan lebar mengikut kandungan */
 }
+.nadi-table .nadi-nama{ min-width:180px; }
+.nadi-table .nadi-ic,.nadi-table .nadi-tel{ min-width:140px; }
+.nadi-table .nadi-bp,.nadi-table .nadi-pr,
+.nadi-table .nadi-tinggi,.nadi-table .nadi-berat,.nadi-table .nadi-bmi{ min-width:80px; }
+.nadi-table .nadi-dxt{ min-width:120px; }
+.nadi-table .nadi-staff{ min-width:140px; }
+
+/* pastikan input-group tidak memaksa .form-control = flex:1 */
+.nadi-table .input-group{ flex-wrap:nowrap; }
+.nadi-table .input-group>.form-control{ flex:0 0 auto; width:auto; }
+.nadi-table .input-group .dropdown-toggle{ flex:0 0 auto; }
 
 .nadi-checkbox-cell {
   text-align: center;
@@ -179,23 +190,6 @@ body{font-family:'Segoe UI',Tahoma,Geneva,Verdana,sans-serif;background:#f5f7fa;
   justify-content: center;
   font-size: 0.75rem;
 }
-
-/* —— AUTO-GROW untuk kolum NADI ——
-   * Kekalkan lebar sekurang-kurangnya selebar sel (min-width:100%)
-   * Tetapi boleh melebar ke kanan mengikut kandungan (JS set width:px)
-   * Tidak sentuh halaman lain
-*/
-.nadi-table .form-control.auto-grow{
-  display:inline-block !important;
-  width:auto !important;
-  min-width:100%;              /* isi penuh sel pada asalnya */
-  max-width:none;
-  white-space:nowrap;          /* elak pecah baris, biar lebar ke kanan */
-  overflow:visible;
-  box-sizing:content-box;      /* scrollWidth padan dengan teks sebenar */
-}
-.nadi-table .input-group .auto-grow{ flex:0 0 auto; }  /* untuk DXT */
-.nadi-table .input-group{ width:auto; }
 
 /* Responsive */
 @media (max-width: 992px) {
@@ -1167,19 +1161,19 @@ function addNadiRow(){
       <div class="nadi-counter">${nadiRowCounter}</div>
     </td>
     <td>
-      <input class="form-control form-control-sm nadi-nama auto-grow" placeholder="Nama pesakit" />
+      <input class="form-control form-control-sm nadi-nama" placeholder="Nama pesakit" />
     </td>
     <td>
-      <input class="form-control form-control-sm nadi-ic auto-grow" placeholder="IC" />
+      <input class="form-control form-control-sm nadi-ic" placeholder="IC" />
     </td>
     <td>
-      <input class="form-control form-control-sm nadi-tel auto-grow" placeholder="Telefon" />
+      <input class="form-control form-control-sm nadi-tel" placeholder="Telefon" />
     </td>
     <td>
-      <input class="form-control form-control-sm nadi-bp auto-grow" placeholder="BP" />
+      <input class="form-control form-control-sm nadi-bp" placeholder="BP" />
     </td>
     <td>
-      <input class="form-control form-control-sm nadi-pr auto-grow" placeholder="PR" />
+      <input class="form-control form-control-sm nadi-pr" placeholder="PR" />
     </td>
     <td>
       <div class="input-group input-group-sm">
@@ -1188,18 +1182,18 @@ function addNadiRow(){
           <li><a class="dropdown-item" href="#" data-value="Fasting">Fasting</a></li>
           <li><a class="dropdown-item" href="#" data-value="Random">Random</a></li>
         </ul>
-        <input class="form-control nadi-dxt auto-grow" placeholder="DXT" />
+        <input class="form-control nadi-dxt" placeholder="DXT" />
         <input type="hidden" class="nadi-dxt-type" value="Fasting" />
       </div>
     </td>
     <td>
-      <input class="form-control form-control-sm nadi-tinggi auto-grow" placeholder="Tinggi" />
+      <input class="form-control form-control-sm nadi-tinggi" placeholder="Tinggi" />
     </td>
     <td>
-      <input class="form-control form-control-sm nadi-berat auto-grow" placeholder="Berat" />
+      <input class="form-control form-control-sm nadi-berat" placeholder="Berat" />
     </td>
     <td>
-      <input class="form-control form-control-sm nadi-bmi auto-grow" placeholder="BMI" disabled />
+      <input class="form-control form-control-sm nadi-bmi" placeholder="BMI" disabled />
     </td>
     <td class="text-center">
       <input class="form-check-input nadi-layak" type="checkbox">
@@ -1211,7 +1205,7 @@ function addNadiRow(){
       <div class="d-flex gap-1">
         <input type="date" class="form-control form-control-sm nadi-tca-date" disabled>
         <input type="time" class="form-control form-control-sm nadi-tca-time" disabled>
-        <input type="text" class="form-control form-control-sm nadi-staff auto-grow" placeholder="Staff" disabled>
+        <input type="text" class="form-control form-control-sm nadi-staff" placeholder="Staff" disabled>
       </div>
     </td>
     <td>
@@ -1225,9 +1219,10 @@ function addNadiRow(){
   
   container.appendChild(row);
 
-  // Initialize auto-grow untuk semua input teks dalam baris (kecuali date/time/checkbox/hidden)
-  row.querySelectorAll('input.form-control:not([type="date"]):not([type="time"]):not([type="checkbox"]):not([type="hidden"])')
-    .forEach(input => autoGrowInput(input));
+  // Initialize auto-grow untuk semua input teks pada baris
+  row.querySelectorAll('input[type="text"]').forEach(input => {
+    autoGrowInput(input);
+  });
 
   // BMI calculation
   const tinggi = row.querySelector('.nadi-tinggi');
@@ -1239,10 +1234,8 @@ function addNadiRow(){
     const weight = parseFloat(berat.value);
     if (height && weight) {
       bmi.value = (weight / (height * height)).toFixed(1);
-      triggerAutoGrow(bmi);
     } else {
       bmi.value = '';
-      triggerAutoGrow(bmi);
     }
   };
   
@@ -1264,7 +1257,6 @@ function addNadiRow(){
       tcaTime.disabled = false;
       staff.disabled = false;
       btnDaftar.disabled = false;
-      triggerAutoGrow(staff);
     } else {
       tcaDate.disabled = true;
       tcaTime.disabled = true;
@@ -1371,23 +1363,32 @@ function updateNadiRowNumbers() {
   nadiRowCounter = counter;
 }
 
-/* ——— AUTO-GROW HELPER (NADI) ——— */
-function triggerAutoGrow(el){
-  if (!el) return;
-  // Pastikan ada kelas auto-grow untuk gaya minimum
-  el.classList.add('auto-grow');
-  // Reset supaya scrollWidth mencerminkan kandungan sebenar
-  el.style.width = 'auto';
-  // Tambah sedikit ruang (padding visual)
-  const target = el.scrollWidth + 12; // 12px buffer
-  el.style.width = target + 'px';
-}
-function autoGrowInput(element) {
-  element.classList.add('auto-grow');
-  // Saiz awal (jika ada nilai/placeholder)
-  triggerAutoGrow(element);
-  // Recalc bila pengguna menaip atau nilai berubah
-  ['input','change'].forEach(ev=> element.addEventListener(ev, ()=>triggerAutoGrow(element)));
+/* -- AUTO-GROW helper: lebarkan input mengikut kandungan (ke kanan) tanpa menukar logik lain -- */
+function autoGrowInput(el){
+  // cermin tersembunyi untuk kira lebar teks sebenar
+  const mirror = document.createElement('span');
+  const cs = getComputedStyle(el);
+  mirror.style.position = 'absolute';
+  mirror.style.visibility = 'hidden';
+  mirror.style.whiteSpace = 'pre';
+  mirror.style.font = `${cs.fontStyle} ${cs.fontVariant} ${cs.fontWeight} ${cs.fontSize} / ${cs.lineHeight} ${cs.fontFamily}`;
+  mirror.style.letterSpacing = cs.letterSpacing;
+  document.body.appendChild(mirror);
+
+  const padding = 14; // ruang tambahan
+  const minW = parseFloat(cs.minWidth) || 60;
+
+  const resize = () => {
+    const val = el.value || el.getAttribute('placeholder') || '';
+    // gantikan space → nbsp agar diukur dengan tepat
+    mirror.textContent = String(val).replace(/ /g, '\u00A0');
+    const w = Math.ceil(mirror.getBoundingClientRect().width) + padding;
+    el.style.width = Math.max(minW, w) + 'px';
+  };
+
+  el.addEventListener('input', resize);
+  // set awal (guna placeholder/min-width)
+  resize();
 }
 
 function exportNadiCSV() {
@@ -1942,4 +1943,3 @@ document.addEventListener('DOMContentLoaded', ()=>{
 </script>
 </body>
 </html>
-```
