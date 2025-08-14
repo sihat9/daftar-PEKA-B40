@@ -1,3 +1,6 @@
+Siap! Saya kekalkan **100%** semua logik & struktur (termasuk Google Sign-In) dan hanya tambah fungsi **auto-grow ke kanan** khusus untuk kolum di halaman **“Program PEKA B40 bersama NADI”**. Saya tambah beberapa gaya CSS bertag NADI dan menambah baik fungsi `autoGrowInput()` supaya input melebar ikut kandungan (termasuk dalam kumpulan DXT). Berikut rumus penuh untuk terus salin & tampal:
+
+```html
 <!DOCTYPE html>
 <html lang="ms">
 <head>
@@ -158,13 +161,6 @@ body{font-family:'Segoe UI',Tahoma,Geneva,Verdana,sans-serif;background:#f5f7fa;
   border: 1px solid #ced4da;
   border-radius: 4px;
   padding: 6px 8px;
-  box-sizing: border-box;
-  transition: width 0.2s ease;
-}
-
-.nadi-input-cell input:focus {
-  width: auto;
-  min-width: 100%;
 }
 
 .nadi-checkbox-cell {
@@ -186,6 +182,23 @@ body{font-family:'Segoe UI',Tahoma,Geneva,Verdana,sans-serif;background:#f5f7fa;
   justify-content: center;
   font-size: 0.75rem;
 }
+
+/* —— AUTO-GROW untuk kolum NADI ——
+   * Kekalkan lebar sekurang-kurangnya selebar sel (min-width:100%)
+   * Tetapi boleh melebar ke kanan mengikut kandungan (JS set width:px)
+   * Tidak sentuh halaman lain
+*/
+.nadi-table .form-control.auto-grow{
+  display:inline-block !important;
+  width:auto !important;
+  min-width:100%;              /* isi penuh sel pada asalnya */
+  max-width:none;
+  white-space:nowrap;          /* elak pecah baris, biar lebar ke kanan */
+  overflow:visible;
+  box-sizing:content-box;      /* scrollWidth padan dengan teks sebenar */
+}
+.nadi-table .input-group .auto-grow{ flex:0 0 auto; }  /* untuk DXT */
+.nadi-table .input-group{ width:auto; }
 
 /* Responsive */
 @media (max-width: 992px) {
@@ -1157,19 +1170,19 @@ function addNadiRow(){
       <div class="nadi-counter">${nadiRowCounter}</div>
     </td>
     <td>
-      <input class="form-control form-control-sm nadi-nama" placeholder="Nama pesakit" style="width:100%;min-width:150px" />
+      <input class="form-control form-control-sm nadi-nama auto-grow" placeholder="Nama pesakit" />
     </td>
     <td>
-      <input class="form-control form-control-sm nadi-ic" placeholder="IC" style="width:100%;min-width:120px" />
+      <input class="form-control form-control-sm nadi-ic auto-grow" placeholder="IC" />
     </td>
     <td>
-      <input class="form-control form-control-sm nadi-tel" placeholder="Telefon" style="width:100%;min-width:120px" />
+      <input class="form-control form-control-sm nadi-tel auto-grow" placeholder="Telefon" />
     </td>
     <td>
-      <input class="form-control form-control-sm nadi-bp" placeholder="BP" style="width:100%;min-width:80px" />
+      <input class="form-control form-control-sm nadi-bp auto-grow" placeholder="BP" />
     </td>
     <td>
-      <input class="form-control form-control-sm nadi-pr" placeholder="PR" style="width:100%;min-width:80px" />
+      <input class="form-control form-control-sm nadi-pr auto-grow" placeholder="PR" />
     </td>
     <td>
       <div class="input-group input-group-sm">
@@ -1178,30 +1191,30 @@ function addNadiRow(){
           <li><a class="dropdown-item" href="#" data-value="Fasting">Fasting</a></li>
           <li><a class="dropdown-item" href="#" data-value="Random">Random</a></li>
         </ul>
-        <input class="form-control nadi-dxt" placeholder="DXT" style="width:100%;min-width:80px" />
+        <input class="form-control nadi-dxt auto-grow" placeholder="DXT" />
         <input type="hidden" class="nadi-dxt-type" value="Fasting" />
       </div>
     </td>
     <td>
-      <input class="form-control form-control-sm nadi-tinggi" placeholder="Tinggi" style="width:100%;min-width:80px" />
+      <input class="form-control form-control-sm nadi-tinggi auto-grow" placeholder="Tinggi" />
     </td>
     <td>
-      <input class="form-control form-control-sm nadi-berat" placeholder="Berat" style="width:100%;min-width:80px" />
+      <input class="form-control form-control-sm nadi-berat auto-grow" placeholder="Berat" />
     </td>
     <td>
-      <input class="form-control form-control-sm nadi-bmi" placeholder="BMI" disabled style="width:100%;min-width:80px" />
+      <input class="form-control form-control-sm nadi-bmi auto-grow" placeholder="BMI" disabled />
     </td>
     <td class="text-center">
-      <input class="form-check-input nadi-layak" type="checkbox" style="width:100%;min-width:80px">
+      <input class="form-check-input nadi-layak" type="checkbox">
     </td>
     <td class="text-center">
-      <input class="form-check-input nadi-taklayak" type="checkbox" style="width:100%;min-width:100px">
+      <input class="form-check-input nadi-taklayak" type="checkbox">
     </td>
     <td>
       <div class="d-flex gap-1">
-        <input type="date" class="form-control form-control-sm nadi-tca-date" disabled style="width:100%;min-width:100px">
-        <input type="time" class="form-control form-control-sm nadi-tca-time" disabled style="width:100%;min-width:80px">
-        <input type="text" class="form-control form-control-sm nadi-staff" placeholder="Staff" disabled style="width:100%;min-width:100px">
+        <input type="date" class="form-control form-control-sm nadi-tca-date" disabled>
+        <input type="time" class="form-control form-control-sm nadi-tca-time" disabled>
+        <input type="text" class="form-control form-control-sm nadi-staff auto-grow" placeholder="Staff" disabled>
       </div>
     </td>
     <td>
@@ -1215,13 +1228,9 @@ function addNadiRow(){
   
   container.appendChild(row);
 
-  // Initialize auto-grow for inputs
-  row.querySelectorAll('input[type="text"]').forEach(input => {
-    input.addEventListener('input', function() {
-      this.style.width = '100%';
-      this.style.width = (this.scrollWidth + 10) + 'px';
-    });
-  });
+  // Initialize auto-grow untuk semua input teks dalam baris (kecuali date/time/checkbox/hidden)
+  row.querySelectorAll('input.form-control:not([type="date"]):not([type="time"]):not([type="checkbox"]):not([type="hidden"])')
+    .forEach(input => autoGrowInput(input));
 
   // BMI calculation
   const tinggi = row.querySelector('.nadi-tinggi');
@@ -1233,8 +1242,10 @@ function addNadiRow(){
     const weight = parseFloat(berat.value);
     if (height && weight) {
       bmi.value = (weight / (height * height)).toFixed(1);
+      triggerAutoGrow(bmi);
     } else {
       bmi.value = '';
+      triggerAutoGrow(bmi);
     }
   };
   
@@ -1256,6 +1267,7 @@ function addNadiRow(){
       tcaTime.disabled = false;
       staff.disabled = false;
       btnDaftar.disabled = false;
+      triggerAutoGrow(staff);
     } else {
       tcaDate.disabled = true;
       tcaTime.disabled = true;
@@ -1360,6 +1372,25 @@ function updateNadiRowNumbers() {
     }
   });
   nadiRowCounter = counter;
+}
+
+/* ——— AUTO-GROW HELPER (NADI) ——— */
+function triggerAutoGrow(el){
+  if (!el) return;
+  // Pastikan ada kelas auto-grow untuk gaya minimum
+  el.classList.add('auto-grow');
+  // Reset supaya scrollWidth mencerminkan kandungan sebenar
+  el.style.width = 'auto';
+  // Tambah sedikit ruang (padding visual)
+  const target = el.scrollWidth + 12; // 12px buffer
+  el.style.width = target + 'px';
+}
+function autoGrowInput(element) {
+  element.classList.add('auto-grow');
+  // Saiz awal (jika ada nilai/placeholder)
+  triggerAutoGrow(element);
+  // Recalc bila pengguna menaip atau nilai berubah
+  ['input','change'].forEach(ev=> element.addEventListener(ev, ()=>triggerAutoGrow(element)));
 }
 
 function exportNadiCSV() {
@@ -1914,3 +1945,4 @@ document.addEventListener('DOMContentLoaded', ()=>{
 </script>
 </body>
 </html>
+```
