@@ -200,6 +200,108 @@ body{font-family:'Segoe UI',Tahoma,Geneva,Verdana,sans-serif;background:#f5f7fa;
   border-top: 1px solid #eee;
   margin-top: 16px;
 }
+
+/* STYLE BARU UNTUK PROGRAM NADI (TABULAR VIEW) */
+.nadi-container {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.nadi-table {
+  width: 100%;
+  border-collapse: separate;
+  border-spacing: 0 8px;
+}
+
+.nadi-table th {
+  background: #f8f9fa;
+  padding: 10px 12px;
+  font-weight: 600;
+  text-align: left;
+  position: sticky;
+  top: 0;
+  z-index: 10;
+}
+
+.nadi-table td {
+  background: white;
+  padding: 12px;
+  border: 1px solid #eee;
+  vertical-align: middle;
+}
+
+.nadi-table tr {
+  transition: all 0.2s;
+}
+
+.nadi-table tr:hover {
+  box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+}
+
+.nadi-cell {
+  min-width: 120px;
+  max-width: 300px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.nadi-input-cell {
+  min-width: 120px;
+  width: auto;
+  max-width: 300px;
+}
+
+.nadi-input-cell input {
+  width: 100%;
+  min-width: 120px;
+  max-width: 300px;
+}
+
+.nadi-checkbox-cell {
+  text-align: center;
+  min-width: 80px;
+}
+
+.nadi-actions-cell {
+  min-width: 200px;
+  display: flex;
+  gap: 6px;
+}
+
+.nadi-scroll-container {
+  overflow-x: auto;
+  width: 100%;
+  padding-bottom: 8px;
+}
+
+.nadi-sticky-header {
+  position: sticky;
+  left: 0;
+}
+
+/* Responsive adjustments */
+@media (max-width: 1200px) {
+  .nadi-cell, .nadi-input-cell {
+    min-width: 100px;
+    max-width: 250px;
+  }
+}
+
+@media (max-width: 992px) {
+  .nadi-cell, .nadi-input-cell {
+    min-width: 80px;
+    max-width: 200px;
+  }
+}
+
+@media (max-width: 768px) {
+  .nadi-actions-cell {
+    flex-direction: column;
+    gap: 4px;
+  }
+}
 </style>
 </head>
 <body>
@@ -387,29 +489,39 @@ body{font-family:'Segoe UI',Tahoma,Geneva,Verdana,sans-serif;background:#f5f7fa;
         <button id="btnNadiExportCsv" class="btn btn-sm btn-outline-success"><i class="bi bi-filetype-csv me-1"></i>Transfer kepada fail Excel (CSV)</button>
       </div>
     </div>
-    <div class="card"><div class="card-body">
-      <div class="nadi-row-header">
-        <div>#</div>
-        <div>Nama Pesakit</div>
-        <div>No IC</div>
-        <div>Telefon</div>
-        <div>BP</div>
-        <div>PR</div>
-        <div>DXT</div>
-        <div>Tinggi</div>
-        <div>Berat</div>
-        <div>BMI</div>
-        <div>Layak</div>
-        <div>Tidak Layak</div>
-        <div>TCA & Staff</div>
-        <div>Tindakan</div>
+    <div class="card">
+      <div class="card-body">
+        <div class="nadi-scroll-container">
+          <table class="nadi-table">
+            <thead>
+              <tr>
+                <th class="nadi-sticky-header">#</th>
+                <th>Nama Pesakit</th>
+                <th>No IC</th>
+                <th>Telefon</th>
+                <th>BP</th>
+                <th>PR</th>
+                <th>DXT</th>
+                <th>Tinggi</th>
+                <th>Berat</th>
+                <th>BMI</th>
+                <th class="nadi-checkbox-cell">Layak</th>
+                <th class="nadi-checkbox-cell">Tidak Layak</th>
+                <th>TCA & Staff</th>
+                <th>Tindakan</th>
+              </tr>
+            </thead>
+            <tbody id="nadiContainer">
+              <!-- Rows will be added dynamically -->
+            </tbody>
+          </table>
+        </div>
+        <div class="sticky-form-actions">
+          <button class="btn btn-primary" onclick="addNadiRow()"><i class="bi bi-plus-circle me-1"></i>Tambah Pesakit</button>
+        </div>
+        <div class="text-muted small mt-2">Nota: Baris "Layak" boleh terus <b>Daftar</b> (simpan ke sheet). Baris "Tidak Layak" <u>tidak</u> disimpan ke sheet tetapi <b>tetap dieksport CSV</b> bersama-sama.</div>
       </div>
-      <div id="nadiContainer"></div>
-      <div class="sticky-form-actions">
-        <button class="btn btn-primary" onclick="addNadiRow()"><i class="bi bi-plus-circle me-1"></i>Tambah Pesakit</button>
-      </div>
-      <div class="text-muted small mt-2">Nota: Baris "Layak" boleh terus <b>Daftar</b> (simpan ke sheet). Baris "Tidak Layak" <u>tidak</u> disimpan ke sheet tetapi <b>tetap dieksport CSV</b> bersama-sama.</div>
-    </div></div>
+    </div>
   </section>
 
   <!-- Daftar Peka -->
@@ -1106,7 +1218,7 @@ async function daftarFromExcel(rowId, encNama, encIC, msisdn){
 }
 
 /* =======================
-   NADI PAGE (auto-expand, PR + dropdown DXT + WA report)
+   NADI PAGE (tabular view)
 ======================= */
 let nadiRowCounter = 0;
 function setupNADI(){
@@ -1115,7 +1227,8 @@ function setupNADI(){
   addNadiRow(); // mula 1 baris
   document.getElementById('btnNadiExportCsv').addEventListener('click', exportNadiCSV);
 }
-function autoGrowInput(el, min=140, max=360, pad=22){
+
+function autoGrowInput(el, min=120, max=300, pad=22){
   const canvas = document.createElement('canvas');
   const ctx = canvas.getContext('2d');
   function update(){
@@ -1130,32 +1243,37 @@ function autoGrowInput(el, min=140, max=360, pad=22){
   ['input','change'].forEach(evt=> el.addEventListener(evt, update));
   update();
 }
-function wireAutoExpandForRow(row){
-  row.querySelectorAll('.nadi-input').forEach(el=>{
-    const isLong = el.classList.contains('nadi-long');
-    autoGrowInput(el, isLong?200:140, isLong?520:360);
-  });
-  const dxt = row.querySelector('.nadi-dxt');
-  if (dxt) autoGrowInput(dxt, 90, 180);
-}
+
 function addNadiRow(){
   const container = document.getElementById('nadiContainer');
   const id = 'n'+Date.now()+Math.random().toString(36).slice(2,6);
-  const row = document.createElement('div');
-  row.className = 'nadi-row-item';
+  const row = document.createElement('tr');
+  row.className = 'nadi-row';
   row.id = id;
   
   nadiRowCounter++;
   
   row.innerHTML = `
-    <div class="nadi-counter">${nadiRowCounter}</div>
-    <div><input class="form-control form-control-sm nadi-input nadi-long nadi-nama" placeholder="Nama pesakit" /></div>
-    <div><input class="form-control form-control-sm nadi-input nadi-ic" placeholder="IC" /></div>
-    <div><input class="form-control form-control-sm nadi-input nadi-tel" placeholder="Telefon (012.. atau 60..)" /></div>
-    <div><input class="form-control form-control-sm nadi-input nadi-bp" placeholder="BP (cth: 120/80)" /></div>
-    <div><input class="form-control form-control-sm nadi-input nadi-pr" placeholder="PR (degupan/min)" /></div>
-    <div>
-      <div class="input-group input-group-sm nadi-dxt-wrap">
+    <td class="nadi-cell">
+      <div class="nadi-counter">${nadiRowCounter}</div>
+    </td>
+    <td class="nadi-input-cell">
+      <input class="form-control form-control-sm nadi-nama" placeholder="Nama pesakit" />
+    </td>
+    <td class="nadi-input-cell">
+      <input class="form-control form-control-sm nadi-ic" placeholder="IC" />
+    </td>
+    <td class="nadi-input-cell">
+      <input class="form-control form-control-sm nadi-tel" placeholder="Telefon (012.. atau 60..)" />
+    </td>
+    <td class="nadi-input-cell">
+      <input class="form-control form-control-sm nadi-bp" placeholder="BP (cth: 120/80)" />
+    </td>
+    <td class="nadi-input-cell">
+      <input class="form-control form-control-sm nadi-pr" placeholder="PR (degupan/min)" />
+    </td>
+    <td class="nadi-input-cell">
+      <div class="input-group input-group-sm">
         <button class="btn btn-outline-secondary dropdown-toggle nadi-dxt-type-btn" data-bs-toggle="dropdown" type="button">Fasting</button>
         <ul class="dropdown-menu">
           <li><a class="dropdown-item" href="#" data-value="Fasting">Fasting</a></li>
@@ -1164,34 +1282,44 @@ function addNadiRow(){
         <input class="form-control nadi-dxt" placeholder="DXT (mmol/L)" />
         <input type="hidden" class="nadi-dxt-type" value="Fasting" />
       </div>
-    </div>
-    <div><input class="form-control form-control-sm nadi-input nadi-tinggi" placeholder="Tinggi (cm)" /></div>
-    <div><input class="form-control form-control-sm nadi-input nadi-berat" placeholder="Berat (kg)" /></div>
-    <div><input class="form-control form-control-sm nadi-input nadi-bmi" placeholder="BMI (auto)" disabled /></div>
-    <div class="form-check"><input class="form-check-input nadi-layak" type="checkbox"><label class="form-check-label">Layak</label></div>
-    <div class="form-check"><input class="form-check-input nadi-taklayak" type="checkbox"><label class="form-check-label">Tidak Layak</label></div>
-    <div>
+    </td>
+    <td class="nadi-input-cell">
+      <input class="form-control form-control-sm nadi-tinggi" placeholder="Tinggi (cm)" />
+    </td>
+    <td class="nadi-input-cell">
+      <input class="form-control form-control-sm nadi-berat" placeholder="Berat (kg)" />
+    </td>
+    <td class="nadi-input-cell">
+      <input class="form-control form-control-sm nadi-bmi" placeholder="BMI (auto)" disabled />
+    </td>
+    <td class="nadi-checkbox-cell">
+      <input class="form-check-input nadi-layak" type="checkbox"><label class="form-check-label">Layak</label>
+    </td>
+    <td class="nadi-checkbox-cell">
+      <input class="form-check-input nadi-taklayak" type="checkbox"><label class="form-check-label">Tidak Layak</label>
+    </td>
+    <td class="nadi-input-cell">
       <div class="d-flex gap-1 align-items-center">
         <input type="date" class="form-control form-control-sm nadi-tca-date" disabled>
         <input type="time" class="form-control form-control-sm nadi-tca-time" disabled>
         <input type="text" class="form-control form-control-sm nadi-staff" placeholder="Nama staff" disabled>
       </div>
-    </div>
-    <div>
-      <div class="d-flex gap-1">
-        <button class="btn btn-sm btn-outline-primary nadi-daftar" disabled>Daftar</button>
-        <button class="btn btn-sm btn-outline-success nadi-wa">WhatsApp Report</button>
-        <button class="btn btn-sm btn-outline-danger nadi-buang">Buang</button>
-      </div>
-    </div>
+    </td>
+    <td class="nadi-actions-cell">
+      <button class="btn btn-sm btn-outline-primary nadi-daftar" disabled>Daftar</button>
+      <button class="btn btn-sm btn-outline-success nadi-wa">WhatsApp Report</button>
+      <button class="btn btn-sm btn-outline-danger nadi-buang">Buang</button>
+    </td>
   `;
   container.appendChild(row);
 
   // Auto-expand kawal
-  wireAutoExpandForRow(row);
+  row.querySelectorAll('.nadi-input-cell input').forEach(el=>{
+    autoGrowInput(el, 120, 300);
+  });
 
   // Dropdown DXT (klik item)
-  row.querySelectorAll('.nadi-dxt-wrap .dropdown-item').forEach(a=>{
+  row.querySelectorAll('.dropdown-item').forEach(a=>{
     a.addEventListener('click', (e)=>{
       e.preventDefault();
       const val = a.getAttribute('data-value') || 'Fasting';
@@ -1221,10 +1349,29 @@ function addNadiRow(){
   const btnReg= row.querySelector('.nadi-daftar');
 
   layak.addEventListener('change', ()=>{
-    if (layak.checked){ tak.checked=false; tcaD.disabled=false; tcaT.disabled=false; staff.disabled=false; btnReg.disabled=false; }
-    else { tcaD.disabled=true; tcaT.disabled=true; staff.disabled=true; btnReg.disabled=true; }
+    if (layak.checked){ 
+      tak.checked=false; 
+      tcaD.disabled=false; 
+      tcaT.disabled=false; 
+      staff.disabled=false; 
+      btnReg.disabled=false; 
+    } else { 
+      tcaD.disabled=true; 
+      tcaT.disabled=true; 
+      staff.disabled=true; 
+      btnReg.disabled=true; 
+    }
   });
-  tak.addEventListener('change', ()=>{ if (tak.checked){ layak.checked=false; tcaD.disabled=true; tcaT.disabled=true; staff.disabled=true; btnReg.disabled=true; } });
+  
+  tak.addEventListener('change', ()=>{ 
+    if (tak.checked){ 
+      layak.checked=false; 
+      tcaD.disabled=true; 
+      tcaT.disabled=true; 
+      staff.disabled=true; 
+      btnReg.disabled=true; 
+    } 
+  });
 
   // Daftar → simpan ke sheet (bagi yang layak sahaja)
   btnReg.addEventListener('click', async ()=>{
@@ -1232,13 +1379,36 @@ function addNadiRow(){
     const ic     = row.querySelector('.nadi-ic').value.trim();
     const telRaw = row.querySelector('.nadi-tel').value.trim();
     const tel    = normalizeMsisdnMY(telRaw);
-    const date   = tcaD.value; const time = tcaT.value; const st = staff.value.trim();
-    if (!nama||!ic||!tel||!date||!time||!st){ toast('Ralat','Sila isi penuh untuk pendaftaran layak','danger'); return; }
+    const date   = tcaD.value; 
+    const time   = tcaT.value; 
+    const st     = staff.value.trim();
+    
+    if (!nama||!ic||!tel||!date||!time||!st){ 
+      toast('Ralat','Sila isi penuh untuk pendaftaran layak','danger'); 
+      return; 
+    }
+    
     try{
-      const res = await postForm({ action:'daftarPesakit', namaPesakit:nama, noIC:ic, noTelefon:tel, namaStaff:st, tarikhTCA:date, masaTCA:time }, { msg:'Mendaftar (NADI)…' });
-      if (res.status==='success'){ toast('Berjaya', `Daftar ${nama}`, 'success'); }
-      else throw new Error(res.message||'Gagal daftar');
-    }catch(e){ toast('Ralat', e.message, 'danger'); }
+      const res = await postForm({ 
+        action:'daftarPesakit', 
+        namaPesakit:nama, 
+        noIC:ic, 
+        noTelefon:tel, 
+        namaStaff:st, 
+        tarikhTCA:date, 
+        masaTCA:time 
+      }, { msg:'Mendaftar (NADI)…' });
+      
+      if (res.status==='success'){ 
+        toast('Berjaya', `Daftar ${nama}`, 'success'); 
+        row.remove();
+        updateNadiRowNumbers();
+      } else {
+        throw new Error(res.message||'Gagal daftar');
+      }
+    }catch(e){ 
+      toast('Ralat', e.message, 'danger'); 
+    }
   });
 
   // WhatsApp Report (imej)
@@ -1257,6 +1427,7 @@ function addNadiRow(){
         bmi: row.querySelector('.nadi-bmi').value.trim(),
         layak: row.querySelector('.nadi-layak').checked
       };
+      
       const file = await buildNadiReportImage(data);
       if (file){
         if (navigator.canShare && navigator.canShare({ files:[file] })){
@@ -1271,12 +1442,19 @@ function addNadiRow(){
           a.href = URL.createObjectURL(file);
           a.download = `Laporan_NADI_${(data.nama||'pesakit').replace(/\s+/g,'_')}.png`;
           document.body.appendChild(a); a.click(); a.remove();
+          
           const ringkas = `Laporan Saringan NADI\nNama: ${data.nama}\nIC: ${data.ic}\nBP: ${data.bp}\nPR: ${data.pr}\nDXT (${data.dxtType}): ${data.dxt}\nTinggi: ${data.tinggi} cm\nBerat: ${data.berat} kg\nBMI: ${data.bmi}\nStatus: ${data.layak?'Layak PEKA B40':'Tidak Layak PEKA B40'}`;
-          if (data.tel){ window.open(waHref(data.tel, ringkas), '_blank'); }
-          else { toast('Makluman','Nombor telefon kosong. Imej telah dimuat turun.','warning'); }
+          
+          if (data.tel){ 
+            window.open(waHref(data.tel, ringkas), '_blank'); 
+          } else { 
+            toast('Makluman','Nombor telefon kosong. Imej telah dimuat turun.','warning'); 
+          }
         }
       }
-    }catch(e){ toast('Ralat','Gagal jana laporan: '+e.message,'danger'); }
+    }catch(e){ 
+      toast('Ralat','Gagal jana laporan: '+e.message,'danger'); 
+    }
   });
 
   // Buang
@@ -1287,7 +1465,7 @@ function addNadiRow(){
 }
 
 function updateNadiRowNumbers() {
-  const rows = document.querySelectorAll('.nadi-row-item');
+  const rows = document.querySelectorAll('.nadi-row');
   nadiRowCounter = 0;
   rows.forEach((row, index) => {
     nadiRowCounter++;
@@ -1298,8 +1476,9 @@ function updateNadiRowNumbers() {
 
 function exportNadiCSV(){
   const container = document.getElementById('nadiContainer');
-  const rows = Array.from(container.querySelectorAll('.nadi-row-item'));
+  const rows = Array.from(container.querySelectorAll('.nadi-row'));
   if (!rows.length){ toast('Makluman','Tiada data untuk diexport','warning'); return; }
+  
   const header = ['Nama','IC','Telefon','BP','PR','DXT_Tipe','DXT','Tinggi(cm)','Berat(kg)','BMI','Layak','TarikhTCA','MasaTCA','Staff'];
   const data = rows.map(r=>{
     const v = (sel) => (r.querySelector(sel)?.value || '').trim();
@@ -1312,29 +1491,40 @@ function exportNadiCSV(){
       v('.nadi-tca-date'), v('.nadi-tca-time'), v('.nadi-staff')
     ];
   });
+  
   const csv = [header, ...data].map(r=>r.map(v=>`"${String(v||'').replace(/"/g,'""')}"`).join(',')).join('\r\n');
   const blob = new Blob([csv], { type:'text/csv;charset=utf-8;' });
   const url = URL.createObjectURL(blob);
   const a = document.createElement('a');
-  a.href = url; a.download = `program_nadi_${new Date().toISOString().slice(0,10)}.csv`;
-  document.body.appendChild(a); a.click(); a.remove(); URL.revokeObjectURL(url);
+  a.href = url; 
+  a.download = `program_nadi_${new Date().toISOString().slice(0,10)}.csv`;
+  document.body.appendChild(a); 
+  a.click(); 
+  a.remove(); 
+  URL.revokeObjectURL(url);
+  
   toast('Export','Fail CSV telah dimuat turun','success');
 }
+
 // Hasilkan imej laporan NADI (canvas → File PNG)
 async function buildNadiReportImage(data){
   const w=900, h=1100, pad=28, line=36;
   const canvas = document.createElement('canvas'); canvas.width=w; canvas.height=h;
   const ctx = canvas.getContext('2d');
+  
   // latar
   ctx.fillStyle='#ffffff'; ctx.fillRect(0,0,w,h);
+  
   // header
   ctx.fillStyle='#2c3e50'; ctx.fillRect(0,0,w,118);
+  
   // logo
   try{
     const img = new Image(); img.crossOrigin='anonymous'; img.src=LOGO_URL;
     await new Promise((res,rej)=>{ img.onload=res; img.onerror=()=>res(); });
     if (img.width) ctx.drawImage(img, pad, 18, 86, 86);
   }catch(_){}
+  
   // tajuk
   ctx.fillStyle='#ffffff'; ctx.font='700 28px Segoe UI, Arial'; ctx.fillText('Klinik SihatSokmo', 118, 54);
   ctx.font='600 20px Segoe UI, Arial'; ctx.fillText('Laporan Saringan Program NADI', 118, 86);
@@ -1344,13 +1534,20 @@ async function buildNadiReportImage(data){
   ctx.fillStyle='#333'; ctx.font='600 20px Segoe UI, Arial'; ctx.fillText('Butiran Pesakit', pad, 160);
   ctx.font='400 18px Segoe UI, Arial';
   let y=196;
-  const write = (label, val)=>{ ctx.fillStyle='#666'; ctx.fillText(label, pad, y); ctx.fillStyle='#111'; ctx.fillText(': '+(val||'-'), pad+180, y); y+=line; };
+  const write = (label, val)=>{ 
+    ctx.fillStyle='#666'; ctx.fillText(label, pad, y); 
+    ctx.fillStyle='#111'; ctx.fillText(': '+(val||'-'), pad+180, y); 
+    y+=line; 
+  };
+  
   write('Nama', data.nama);
   write('No. IC', data.ic);
   write('Tarikh Cetakan', tarikh);
 
   // garisan
-  ctx.strokeStyle='#e5e7eb'; ctx.lineWidth=2; ctx.beginPath(); ctx.moveTo(pad, y+8); ctx.lineTo(w-pad, y+8); ctx.stroke(); y+=30;
+  ctx.strokeStyle='#e5e7eb'; ctx.lineWidth=2; 
+  ctx.beginPath(); ctx.moveTo(pad, y+8); ctx.lineTo(w-pad, y+8); ctx.stroke(); 
+  y+=30;
 
   // bacaan
   ctx.fillStyle='#333'; ctx.font='600 20px Segoe UI, Arial'; ctx.fillText('Keputusan Saringan', pad, y); y+=line;
