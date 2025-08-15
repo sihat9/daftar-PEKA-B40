@@ -1,561 +1,704 @@
 <!DOCTYPE html>
 <html lang="ms">
 <head>
-<meta charset="UTF-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
 
-<!-- COOP/COEP supaya Google Sign-In tidak trigger amaran postMessage -->
-<meta http-equiv="Cross-Origin-Opener-Policy" content="same-origin-allow-popups">
-<meta http-equiv="Cross-Origin-Embedder-Policy" content="unsafe-none">
+  <!-- COOP/COEP supaya Google Sign-In tidak trigger amaran postMessage -->
+  <meta http-equiv="Cross-Origin-Opener-Policy" content="same-origin-allow-popups">
+  <meta http-equiv="Cross-Origin-Embedder-Policy" content="unsafe-none">
 
-<title>Sistem Tracker PEKA B40 - Klinik SihatSokmo</title>
+  <title>Sistem Tracker PEKA B40 - Klinik SihatSokmo</title>
 
-<!-- Bootstrap & Icons -->
-<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
-<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css">
-<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css">
+  <!-- Bootstrap & Icons -->
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css">
 
-<!-- Chart.js + Datalabels -->
-<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2"></script>
+  <!-- Chart.js + Datalabels -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2"></script>
 
-<!-- SheetJS (Excel) -->
-<script src="https://cdn.jsdelivr.net/npm/xlsx@0.19.3/dist/xlsx.full.min.js"></script>
+  <!-- SheetJS (Excel) -->
+  <script src="https://cdn.jsdelivr.net/npm/xlsx@0.19.3/dist/xlsx.full.min.js"></script>
 
-<!-- Google Identity Services (Sign-In) -->
-<script src="https://accounts.google.com/gsi/client" async defer></script>
+  <!-- Google Identity Services (Sign-In) -->
+  <script src="https://accounts.google.com/gsi/client" async defer></script>
 
-<!-- ✨ Tambahan: html2canvas untuk tangkap imej preview laporan -->
-<script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
+  <!-- html2canvas untuk tangkap preview → imej (BARU) -->
+  <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
 
-<style>
-:root{--primary:#2c3e50;--secondary:#3498db;--success:#27ae60;--warning:#f39c12;--danger:#e74c3c;--light:#ecf0f1;--dark:#34495e;--muted:#95a5a6}
-html{font-size:15px}@media (max-width:1200px){html{font-size:14px}}@media (max-width:576px){html{font-size:13px}}
-html,body{height:100%}body{font-family:'Segoe UI',Tahoma,Geneva,Verdana,sans-serif;background:#f5f7fa;color:#333}
+  <style>
+    :root{ --primary:#2c3e50; --secondary:#3498db; --success:#27ae60; --warning:#f39c12; --danger:#e74c3c; --light:#ecf0f1; --dark:#34495e; --muted:#95a5a6; }
+    html{ font-size:15px; }
+    @media (max-width:1200px){ html{ font-size:14px; } }
+    @media (max-width:576px){ html{ font-size:13px; } }
 
-/* Navbar */
-.navbar-main{background:#fff;box-shadow:0 2px 10px rgba(0,0,0,.08);padding:10px 0}
-.navbar-brand{font-weight:700;color:var(--primary);font-size:1.05rem;display:flex;align-items:center;gap:10px}
-.nav-link{color:var(--dark);font-weight:500;margin:0 4px;padding:7px 10px!important;border-radius:8px;transition:.2s;position:relative}
-.nav-link:hover,.nav-link.active{background:rgba(52,152,219,.12);color:var(--secondary)}
-.nav-badge{position:absolute;top:-4px;right:-2px;transform:translate(30%,-30%);background:#dc3545;color:#fff;border-radius:999px;font-size:.65rem;padding:2px 6px;display:none}
+    html,body{height:100%}
+    body{font-family:'Segoe UI',Tahoma,Geneva,Verdana,sans-serif;background:#f5f7fa;color:#333}
 
-/* Header */
-.page-header{background:linear-gradient(135deg,var(--primary),var(--secondary));color:#fff;padding:14px 0;margin-bottom:12px;border-radius:0 0 12px 12px}
+    /* Navbar */
+    .navbar-main{background:#fff;box-shadow:0 2px 10px rgba(0,0,0,.08);padding:10px 0}
+    .navbar-brand{font-weight:700;color:var(--primary);font-size:1.05rem;display:flex;align-items:center;gap:10px}
+    .nav-link{color:var(--dark);font-weight:500;margin:0 4px;padding:7px 10px!important;border-radius:8px;transition:.2s;position:relative}
+    .nav-link:hover,.nav-link.active{background:rgba(52,152,219,.12);color:var(--secondary)}
+    .nav-badge{
+      position:absolute; top:-4px; right:-2px; transform:translate(30%,-30%);
+      background:#dc3545; color:#fff; border-radius:999px; font-size:.65rem; padding:2px 6px; display:none;
+    }
 
-/* Cards & Tables */
-.card{border:none;border-radius:14px;box-shadow:0 8px 24px rgba(0,0,0,.06);margin-bottom:16px}
-.card-header{background:#fff;border-bottom:1px solid rgba(0,0,0,.06);font-weight:600;padding:12px 16px;border-radius:14px 14px 0 0!important}
-.stat-card{padding:14px;border-radius:14px;color:#fff;text-align:center;position:relative;overflow:hidden;cursor:pointer}
-.stat-card .number{font-size:1.45rem;font-weight:800}
-.table td,.table th{vertical-align:middle}.table{font-size:.95rem}
-.searchbar{max-width:340px}.mini-actions .btn{margin-right:6px;margin-bottom:6px}
+    /* Header */
+    .page-header{background:linear-gradient(135deg,var(--primary),var(--secondary));color:#fff;padding:14px 0;margin-bottom:12px;border-radius:0 0 12px 12px}
 
-/* Global App Loader */
-#appLoader{position:fixed;inset:0;z-index:2000;display:none;background:radial-gradient(1200px 600px at 10% -10%, rgba(52,152,219,.18), transparent),radial-gradient(1200px 600px at 110% 110%, rgba(46,204,113,.18), transparent),rgba(255,255,255,.35);backdrop-filter:blur(10px)}
-#appLoader .loader-card{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);background:rgba(255,255,255,.75);border:1px solid rgba(255,255,255,.6);box-shadow:0 20px 40px rgba(0,0,0,.12);border-radius:18px;padding:16px 18px;min-width:220px;text-align:center}
-.spinner-premium{width:36px;height:36px;border-radius:50%;border:4px solid rgba(52,152,219,.25);border-top-color:#3498db;animation:spin .9s linear infinite;margin:6px auto 8px}@keyframes spin{to{transform:rotate(360deg)}}
+    /* Cards */
+    .card{border:none;border-radius:14px;box-shadow:0 8px 24px rgba(0,0,0,.06);margin-bottom:16px}
+    .card-header{background:#fff;border-bottom:1px solid rgba(0,0,0,.06);font-weight:600;padding:12px 16px;border-radius:14px 14px 0 0!important}
+    .stat-card{padding:14px;border-radius:14px;color:#fff;text-align:center;position:relative;overflow:hidden;cursor:pointer}
+    .stat-card .number{font-size:1.45rem;font-weight:800}
+    .table td,.table th{vertical-align:middle}
+    .table{font-size:.95rem}
+    .searchbar{max-width:340px}
+    .mini-actions .btn{margin-right:6px;margin-bottom:6px}
 
-/* Log Calls Drawer */
-#logDrawer{position:fixed;top:0;right:-420px;width:400px;max-width:90vw;height:100%;background:#f8f9fb;box-shadow:-12px 0 35px rgba(0,0,0,.18);z-index:3000;transition:right .25s ease;border-left:1px solid rgba(0,0,0,.05);display:flex;flex-direction:column}
-#logDrawer.open{right:0}
-.log-header{padding:10px 12px;background:#fff;border-bottom:1px solid rgba(0,0,0,.06);display:flex;gap:8px;align-items:center}
-.log-header .title{font-weight:700;color:#222;flex:1}
-.log-search{padding:8px;background:#fff;border-bottom:1px solid rgba(0,0,0,.06)}
-.log-body{padding:10px;overflow:auto;flex:1;display:flex;flex-direction:column;gap:8px}
-.bubble{max-width:80%;padding:8px 10px;border-radius:16px;box-shadow:0 4px 12px rgba(0,0,0,.06);position:relative;font-size:.9rem;line-height:1.2rem}
-.bubble.me{margin-left:auto;background:#007aff;color:#fff;border-bottom-right-radius:6px}
-.bubble.other{margin-right:auto;background:#e9ecef;color:#222;border-bottom-left-radius:6px}
-.bubble .meta{font-size:.72rem;opacity:.8;margin-top:5px}
-.log-loading{display:none;text-align:center;padding:8px}.log-loading.active{display:block}
+    /* Global App Loader (maks 2s) */
+    #appLoader{
+      position:fixed; inset:0; z-index:2000; display:none;
+      background: radial-gradient(1200px 600px at 10% -10%, rgba(52,152,219,.18), transparent),
+                  radial-gradient(1200px 600px at 110% 110%, rgba(46,204,113,.18), transparent),
+                  rgba(255,255,255,.35);
+      backdrop-filter: blur(10px);
+    }
+    #appLoader .loader-card{
+      position:absolute; top:50%; left:50%; transform:translate(-50%,-50%);
+      background:rgba(255,255,255,.75); border:1px solid rgba(255,255,255,.6);
+      box-shadow: 0 20px 40px rgba(0,0,0,.12);
+      border-radius:18px; padding:16px 18px; min-width:220px; text-align:center;
+    }
+    .spinner-premium{
+      width:36px;height:36px;border-radius:50%;
+      border:4px solid rgba(52,152,219,.25);
+      border-top-color:#3498db; animation:spin .9s linear infinite; margin:6px auto 8px;
+    }
+    @keyframes spin{to{transform:rotate(360deg)}}
 
-/* FAB */
-#fabLog{position:fixed;right:18px;bottom:18px;z-index:3500;width:56px;height:56px;border-radius:50%;display:flex;align-items:center;justify-content:center;box-shadow:0 10px 24px rgba(0,0,0,.18)}
+    /* Log Calls Drawer (gaya iPhone) */
+    #logDrawer{
+      position:fixed; top:0; right:-420px; width:400px; max-width:90vw; height:100%;
+      background:#f8f9fb; box-shadow:-12px 0 35px rgba(0,0,0,.18); z-index:3000; /* <— di bawah toast */
+      transition:right .25s ease; border-left:1px solid rgba(0,0,0,.05);
+      display:flex; flex-direction:column;
+    }
+    #logDrawer.open{ right:0; }
+    .log-header{
+      padding:10px 12px; background:#fff; border-bottom:1px solid rgba(0,0,0,.06);
+      display:flex; gap:8px; align-items:center;
+    }
+    .log-header .title{font-weight:700; color:#222; flex:1}
+    .log-search{ padding:8px; background:#fff; border-bottom:1px solid rgba(0,0,0,.06); }
+    .log-body{ padding:10px; overflow:auto; flex:1; display:flex; flex-direction:column; gap:8px; }
+    .bubble{
+      max-width:80%; padding:8px 10px; border-radius:16px; box-shadow:0 4px 12px rgba(0,0,0,.06);
+      position:relative; font-size:.9rem; line-height:1.2rem;
+    }
+    .bubble.me{ margin-left:auto; background:#007aff; color:#fff; border-bottom-right-radius:6px; }
+    .bubble.other{ margin-right:auto; background:#e9ecef; color:#222; border-bottom-left-radius:6px; }
+    .bubble .meta{ font-size:.72rem; opacity:.8; margin-top:5px }
+    .log-loading{ display:none; text-align:center; padding:8px }
+    .log-loading.active{ display:block }
 
-/* Toast Host */
-#toastHost{position:fixed;top:12px;right:12px;z-index:4000;pointer-events:none}#toastHost .toast{pointer-events:auto}
+    /* FAB (tombol terapung) untuk Log Calls */
+    #fabLog{
+      position:fixed; right:18px; bottom:18px; z-index:3500;
+      width:56px; height:56px; border-radius:50%;
+      display:flex; align-items:center; justify-content:center;
+      box-shadow:0 10px 24px rgba(0,0,0,.18);
+    }
 
-/* NADI TABLE STYLES */
-.nadi-scroll-container{overflow-x:auto;width:100%;padding-bottom:8px}
-.nadi-table{width:100%;min-width:1300px;border-collapse:separate;border-spacing:0}
-.nadi-table th{background:#f8f9fa;padding:10px 8px;font-weight:600;text-align:center;position:sticky;top:0;z-index:10;border:1px solid #dee2e6}
-.nadi-table td{padding:8px;vertical-align:middle;border:1px solid #dee2e6}
-.nadi-input-cell{position:relative}
-.nadi-input-cell .view-mode{width:100%;padding:6px 8px;cursor:pointer;border:1px solid transparent;border-radius:4px;min-height:36px;display:flex;align-items:center}
-.nadi-input-cell .view-mode:hover{background-color:#f8f9fa;border:1px solid #dee2e6}
-.nadi-input-cell input{width:100%;min-width:100px;border:1px solid #ced4da;border-radius:4px;padding:6px 8px;transition:width .2s ease}
-.nadi-input-cell input:focus{width:auto;min-width:100px}
-.nadi-checkbox-cell{text-align:center}.nadi-actions-cell{min-width:180px}
-.nadi-counter{background:var(--primary);color:#fff;border-radius:50%;width:24px;height:24px;display:inline-flex;align-items:center;justify-content:center;font-size:.75rem}
+    /* NOTIFIKASI (sentiasa nampak di kanan atas) */
+    #toastHost{ position:fixed; top:12px; right:12px; z-index:4000; pointer-events:none; }
+    #toastHost .toast{ pointer-events:auto; }
 
-/* Responsive */
-@media (max-width: 992px){.stat-card .number{font-size:1.3rem}}
+    /* NADI TABLE STYLES */
+    .nadi-scroll-container { overflow-x: auto; width: 100%; padding-bottom: 8px; }
+    .nadi-table { width: 100%; min-width: 1300px; border-collapse: separate; border-spacing: 0; }
+    .nadi-table th {
+      background: #f8f9fa; padding: 10px 8px; font-weight: 600; text-align: center;
+      position: sticky; top: 0; z-index: 10; border: 1px solid #dee2e6;
+    }
+    .nadi-table td { padding: 8px; vertical-align: middle; border: 1px solid #dee2e6; }
+    .nadi-input-cell { position: relative; }
+    .nadi-input-cell .view-mode {
+      width: 100%; padding: 6px 8px; cursor: pointer; border: 1px solid transparent;
+      border-radius: 4px; min-height: 36px; display: flex; align-items: center;
+    }
+    .nadi-input-cell .view-mode:hover { background-color: #f8f9fa; border: 1px solid #dee2e6; }
+    .nadi-input-cell input {
+      width: 100%; min-width: 100px; border: 1px solid #ced4da; border-radius: 4px; padding: 6px 8px; transition: width 0.2s ease;
+    }
+    .nadi-input-cell input:focus { width: auto; min-width: 100px; }
+    .nadi-checkbox-cell { text-align: center; }
+    .nadi-actions-cell { min-width: 180px; }
+    .nadi-counter {
+      background: var(--primary); color: white; border-radius: 50%;
+      width: 24px; height: 24px; display: inline-flex; align-items: center; justify-content: center; font-size: 0.75rem;
+    }
 
-/* Form sections */
-.form-section{background:#fff;border-radius:12px;padding:16px;margin-bottom:16px;box-shadow:0 2px 8px rgba(0,0,0,0.05)}
-.form-section h5{color:var(--primary);margin-bottom:16px;padding-bottom:8px;border-bottom:1px solid #eee}
-.sticky-form-actions{position:sticky;bottom:0;background:#fff;padding:12px;border-top:1px solid #eee;margin-top:16px}
+    /* Responsive */
+    @media (max-width: 992px) { .stat-card .number{font-size:1.3rem} }
 
-/* WhatsApp Report Image */
-.whatsapp-report{width:100%;max-width:500px;background:#fff;border-radius:12px;padding:20px;box-shadow:0 4px 12px rgba(0,0,0,0.1);margin:0 auto}
-.whatsapp-report-header{display:flex;align-items:center;margin-bottom:15px;padding-bottom:15px;border-bottom:1px solid #eee}
-.whatsapp-report-logo{width:50px;height:50px;border-radius:8px;margin-right:15px;object-fit:cover;border:1px solid rgba(0,0,0,0.08)}
-.whatsapp-report-title{font-size:18px;font-weight:700;color:var(--primary)}
-.whatsapp-report-subtitle{font-size:14px;color:var(--muted)}
-.whatsapp-report-body{margin-bottom:15px}
-.whatsapp-report-row{display:flex;margin-bottom:8px}
-.whatsapp-report-label{font-weight:600;width:120px;color:var(--dark)}
-.whatsapp-report-value{flex:1}
-.whatsapp-report-footer{text-align:center;font-size:12px;color:var(--muted);margin-top:20px;padding-top:15px;border-top:1px solid #eee}
-</style>
+    /* Form sections */
+    .form-section { background: white; border-radius: 12px; padding: 16px; margin-bottom: 16px; box-shadow: 0 2px 8px rgba(0,0,0,0.05); }
+    .form-section h5 { color: var(--primary); margin-bottom: 16px; padding-bottom: 8px; border-bottom: 1px solid #eee; }
+    .sticky-form-actions { position: sticky; bottom: 0; background: white; padding: 12px; border-top: 1px solid #eee; margin-top: 16px; }
+
+    /* WhatsApp Report Image */
+    .whatsapp-report {
+      width: 100%; max-width: 500px; background: white; border-radius: 12px; padding: 20px;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.1); margin: 0 auto;
+    }
+    .whatsapp-report-header {
+      display: flex; align-items: center; margin-bottom: 15px; padding-bottom: 15px; border-bottom: 1px solid #eee;
+    }
+    .whatsapp-report-logo {
+      width: 50px; height: 50px; border-radius: 8px; margin-right: 15px; object-fit: cover; border: 1px solid rgba(0,0,0,0.08);
+    }
+    .whatsapp-report-title { font-size: 18px; font-weight: 700; color: var(--primary); }
+    .whatsapp-report-subtitle { font-size: 14px; color: var(--muted); }
+    .whatsapp-report-body { margin-bottom: 15px; }
+    .whatsapp-report-row { display: flex; margin-bottom: 8px; }
+    .whatsapp-report-label { font-weight: 600; width: 120px; color: var(--dark); }
+    .whatsapp-report-value { flex: 1; }
+    .whatsapp-report-footer { text-align: center; font-size: 12px; color: var(--muted); margin-top: 20px; padding-top: 15px; border-top: 1px solid #eee; }
+  </style>
 </head>
 <body>
-
-<!-- Global Loader -->
-<div id="appLoader" aria-hidden="true">
-  <div class="loader-card">
-    <div class="spinner-premium"></div>
-    <div class="fw-bold">Sila tunggu…</div>
-    <div class="text-muted small" id="loaderMsg">Memproses permintaan anda</div>
-  </div>
-</div>
-
-<!-- Log Calls Drawer -->
-<div id="logDrawer" aria-hidden="true">
-  <div class="log-header">
-    <button class="btn btn-sm btn-outline-secondary" id="btnCloseLog"><i class="bi bi-x-lg"></i></button>
-    <div class="title"><i class="bi bi-chat-dots me-1"></i> Log Calls</div>
-    <div id="logBadge" class="badge text-bg-primary">0</div>
-  </div>
-  <div class="log-search">
-    <input id="logSearch" class="form-control form-control-sm" placeholder="Cari: nama / IC / telefon / staff…" />
-  </div>
-  <div id="logLoading" class="log-loading">
-    <div class="spinner-border spinner-border-sm" role="status"></div>
-    <div class="small text-muted mt-1">Memuat Log Calls…</div>
-  </div>
-  <div id="logBody" class="log-body"></div>
-</div>
-
-<!-- Navbar -->
-<nav class="navbar navbar-expand-lg navbar-main sticky-top">
-  <div class="container">
-    <a class="navbar-brand" href="#dashboard">
-      <img id="brandLogo" alt="Logo" style="width:32px;height:32px;border-radius:8px;object-fit:cover;border:1px solid rgba(0,0,0,.08)">
-      <span>Klinik SihatSokmo</span>
-    </a>
-
-    <!-- Google Sign-in button placeholder -->
-    <div id="signinArea" class="d-lg-none me-2"></div>
-
-    <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarMain">
-      <span class="navbar-toggler-icon"></span>
-    </button>
-
-    <div class="collapse navbar-collapse" id="navbarMain">
-      <ul class="navbar-nav me-auto mb-2 mb-lg-0">
-        <li class="nav-item position-relative"><a class="nav-link active" href="#dashboard"><i class="fas fa-tachometer-alt"></i> Dashboard</a></li>
-        <li class="nav-item position-relative"><a class="nav-link" href="#nadi"><i class="bi bi-clipboard2-pulse"></i> Program PEKA B40 bersama NADI</a></li>
-        <li class="nav-item position-relative"><a class="nav-link" href="#daftar-peka"><i class="fas fa-user-plus"></i> Daftar Peka</a></li>
-        <li class="nav-item position-relative"><a class="nav-link" href="#kelayakan"><i class="fa-solid fa-file-excel"></i> Kelayakan (Excel)</a></li>
-        <li class="nav-item position-relative"><a class="nav-link" href="#tca-call"><i class="fas fa-phone"></i> TCA Call</a><span id="badgeTCA" class="nav-badge">0</span></li>
-        <li class="nav-item position-relative"><a class="nav-link" href="#first-visit"><i class="fas fa-calendar-check"></i> First Visit</a><span id="badgeFirst" class="nav-badge">0</span></li>
-        <li class="nav-item position-relative"><a class="nav-link" href="#lab-followup"><i class="fa-solid fa-flask-vial"></i> Follow-up Lab Report</a><span id="badgeLab" class="nav-badge">0</span></li>
-        <li class="nav-item position-relative"><a class="nav-link" href="#second-visit"><i class="fas fa-calendar-check"></i> Second Visit</a><span id="badgeSecond" class="nav-badge">0</span></li>
-        <li class="nav-item position-relative"><a class="nav-link" href="#selesai"><i class="fas fa-check-circle"></i> Selesai</a></li>
-        <li class="nav-item position-relative"><a class="nav-link" href="#arkib"><i class="fa-solid fa-box-archive"></i> Arkib</a></li>
-      </ul>
-
-      <div class="d-none d-lg-flex align-items-center gap-2">
-        <div id="signinAreaDesktop"></div>
-        <span id="staffBadge" class="badge bg-secondary d-none"><i class="bi bi-person-check me-1"></i><span id="staffEmail"></span></span>
-      </div>
+  <!-- Global Loader -->
+  <div id="appLoader" aria-hidden="true">
+    <div class="loader-card">
+      <div class="spinner-premium"></div>
+      <div class="fw-bold">Sila tunggu…</div>
+      <div class="text-muted small" id="loaderMsg">Memproses permintaan anda</div>
     </div>
   </div>
-</nav>
 
-<!-- Header -->
-<header class="page-header">
-  <div class="container">
-    <div class="row align-items-center g-2">
-      <div class="col-md-6">
-        <h1 class="h5 m-0"><i class="fas fa-heartbeat me-2"></i> Sistem TRacKer PEKA B40</h1>
-        <div class="small opacity-75">Sistem pengurusan pesakit untuk program saringan kesihatan PEKA B40</div>
-      </div>
-      <div class="col-md-6 text-md-end">
-        <span class="badge bg-light text-dark fs-6 p-2"><i class="fas fa-calendar-day me-1"></i> <span id="current-date"></span></span>
-      </div>
+  <!-- Log Calls Drawer -->
+  <div id="logDrawer" aria-hidden="true">
+    <div class="log-header">
+      <button class="btn btn-sm btn-outline-secondary" id="btnCloseLog"><i class="bi bi-x-lg"></i></button>
+      <div class="title"><i class="bi bi-chat-dots me-1"></i> Log Calls</div>
+      <div id="logBadge" class="badge text-bg-primary">0</div>
     </div>
+    <div class="log-search">
+      <input id="logSearch" class="form-control form-control-sm" placeholder="Cari: nama / IC / telefon / staff…" />
+    </div>
+    <div id="logLoading" class="log-loading">
+      <div class="spinner-border spinner-border-sm" role="status"></div>
+      <div class="small text-muted mt-1">Memuat Log Calls…</div>
+    </div>
+    <div id="logBody" class="log-body"></div>
   </div>
-</header>
 
-<main class="container">
+  <!-- Navbar -->
+  <nav class="navbar navbar-expand-lg navbar-main sticky-top">
+    <div class="container">
+      <a class="navbar-brand" href="#dashboard">
+        <img id="brandLogo" alt="Logo" style="width:32px;height:32px;border-radius:8px;object-fit:cover;border:1px solid rgba(0,0,0,.08)">
+        <span>Klinik SihatSokmo</span>
+      </a>
 
-  <!-- Dashboard -->
-  <section id="dashboard" class="mb-4">
-    <div class="d-flex justify-content-between align-items-center mb-3">
-      <h2 class="h6 m-0"><i class="fas fa-tachometer-alt me-2"></i>Dashboard</h2>
-      <div class="d-flex gap-2">
-        <button class="btn btn-sm btn-outline-success" id="btnExportCSV"><i class="fa-solid fa-file-csv me-1"></i>Export (CSV)</button>
+      <!-- Google Sign-in button placeholder -->
+      <div id="signinArea" class="d-lg-none me-2"></div>
+
+      <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarMain">
+        <span class="navbar-toggler-icon"></span>
+      </button>
+      <div class="collapse navbar-collapse" id="navbarMain">
+        <ul class="navbar-nav me-auto mb-2 mb-lg-0">
+          <li class="nav-item position-relative">
+            <a class="nav-link active" href="#dashboard"><i class="fas fa-tachometer-alt"></i> Dashboard</a>
+          </li>
+          <li class="nav-item position-relative">
+            <a class="nav-link" href="#nadi"><i class="bi bi-clipboard2-pulse"></i> Program PEKA B40 bersama NADI</a>
+          </li>
+          <li class="nav-item position-relative">
+            <a class="nav-link" href="#daftar-peka"><i class="fas fa-user-plus"></i> Daftar Peka</a>
+          </li>
+          <li class="nav-item position-relative">
+            <a class="nav-link" href="#kelayakan"><i class="fa-solid fa-file-excel"></i> Kelayakan (Excel)</a>
+          </li>
+          <li class="nav-item position-relative">
+            <a class="nav-link" href="#tca-call"><i class="fas fa-phone"></i> TCA Call</a>
+            <span id="badgeTCA" class="nav-badge">0</span>
+          </li>
+          <li class="nav-item position-relative">
+            <a class="nav-link" href="#first-visit"><i class="fas fa-calendar-check"></i> First Visit</a>
+            <span id="badgeFirst" class="nav-badge">0</span>
+          </li>
+          <li class="nav-item position-relative">
+            <a class="nav-link" href="#lab-followup"><i class="fa-solid fa-flask-vial"></i> Follow-up Lab Report</a>
+            <span id="badgeLab" class="nav-badge">0</span>
+          </li>
+          <li class="nav-item position-relative">
+            <a class="nav-link" href="#second-visit"><i class="fas fa-calendar-check"></i> Second Visit</a>
+            <span id="badgeSecond" class="nav-badge">0</span>
+          </li>
+          <li class="nav-item position-relative">
+            <a class="nav-link" href="#selesai"><i class="fas fa-check-circle"></i> Selesai</a>
+          </li>
+          <li class="nav-item position-relative">
+            <a class="nav-link" href="#arkib"><i class="fa-solid fa-box-archive"></i> Arkib</a>
+          </li>
+        </ul>
+
+        <div class="d-none d-lg-flex align-items-center gap-2">
+          <div id="signinAreaDesktop"></div>
+          <span id="staffBadge" class="badge bg-secondary d-none"><i class="bi bi-person-check me-1"></i><span id="staffEmail"></span></span>
+          <!-- (Butang Log Calls terapung di bawah – tidak dalam navbar) -->
+        </div>
       </div>
     </div>
+  </nav>
 
-    <div class="row g-3 mb-3">
-      <div class="col-6 col-md-2"><div class="stat-card" data-goto="#tca-call" style="background:linear-gradient(135deg,var(--secondary),#2980b9)"><div class="number" id="totalDaftar">0</div><div class="small">Aktif</div></div></div>
-      <div class="col-6 col-md-2"><div class="stat-card" data-goto="#first-visit" style="background:linear-gradient(135deg,var(--warning),#e67e22)"><div class="number" id="totalFirstVisit">0</div><div class="small">First Visit (Pending)</div></div></div>
-      <div class="col-6 col-md-2"><div class="stat-card" data-goto="#second-visit" style="background:linear-gradient(135deg,#9b59b6,#8e44ad)"><div class="number" id="totalSecondVisit">0</div><div class="small">Second Visit (Pending)</div></div></div>
-      <div class="col-6 col-md-2"><div class="stat-card" data-goto="#selesai" style="background:linear-gradient(135deg,var(--success),#16a085)"><div class="number" id="totalSelesai">0</div><div class="small">Selesai</div></div></div>
-      <div class="col-6 col-md-2"><div class="stat-card" data-goto="#lab-followup" style="background:linear-gradient(135deg,#8e44ad,#6c5ce7)"><div class="number" id="labFollowUpDue">0</div><div class="small">Result > 3 Hari</div></div></div>
-      <div class="col-6 col-md-2"><div class="stat-card" data-goto="#lab-followup" style="background:linear-gradient(135deg,#d35400,#c0392b)"><div class="number" id="labFollowUpPending">0</div><div class="small">Perlu Follow-up</div></div></div>
-    </div>
-
-    <div class="card mb-3">
-      <div class="card-header d-flex justify-content-between align-items-center">
-        <span><i class="fas fa-phone me-2"></i>Pesakit Perlu Dihubungi Hari Ini</span>
-        <input class="form-control form-control-sm searchbar" id="searchTCA" placeholder="Cari nama/IC/telefon…" />
+  <!-- Header -->
+  <header class="page-header">
+    <div class="container">
+      <div class="row align-items-center g-2">
+        <div class="col-md-6">
+          <h1 class="h5 m-0"><i class="fas fa-heartbeat me-2"></i> Sistem TRacKer PEKA B40</h1>
+          <div class="small opacity-75">Sistem pengurusan pesakit untuk program saringan kesihatan PEKA B40</div>
+        </div>
+        <div class="col-md-6 text-md-end">
+          <span class="badge bg-light text-dark fs-6 p-2"><i class="fas fa-calendar-day me-1"></i> <span id="current-date"></span></span>
+        </div>
       </div>
-      <div class="card-body">
+    </div>
+  </header>
+
+  <main class="container">
+
+    <!-- Dashboard -->
+    <section id="dashboard" class="mb-4">
+      <div class="d-flex justify-content-between align-items-center mb-3">
+        <h2 class="h6 m-0"><i class="fas fa-tachometer-alt me-2"></i>Dashboard</h2>
+        <div class="d-flex gap-2">
+          <button class="btn btn-sm btn-outline-success" id="btnExportCSV"><i class="fa-solid fa-file-csv me-1"></i>Export (CSV)</button>
+        </div>
+      </div>
+
+      <div class="row g-3 mb-3">
+        <div class="col-6 col-md-2">
+          <div class="stat-card" data-goto="#tca-call" style="background:linear-gradient(135deg,var(--secondary),#2980b9)">
+            <div class="number" id="totalDaftar">0</div><div class="small">Aktif</div>
+          </div>
+        </div>
+        <div class="col-6 col-md-2">
+          <div class="stat-card" data-goto="#first-visit" style="background:linear-gradient(135deg,var(--warning),#e67e22)">
+            <div class="number" id="totalFirstVisit">0</div><div class="small">First Visit (Pending)</div>
+          </div>
+        </div>
+        <div class="col-6 col-md-2">
+          <div class="stat-card" data-goto="#second-visit" style="background:linear-gradient(135deg,#9b59b6,#8e44ad)">
+            <div class="number" id="totalSecondVisit">0</div><div class="small">Second Visit (Pending)</div>
+          </div>
+        </div>
+        <div class="col-6 col-md-2">
+          <div class="stat-card" data-goto="#selesai" style="background:linear-gradient(135deg,var(--success),#16a085)">
+            <div class="number" id="totalSelesai">0</div><div class="small">Selesai</div>
+          </div>
+        </div>
+        <div class="col-6 col-md-2">
+          <div class="stat-card" data-goto="#lab-followup" style="background:linear-gradient(135deg,#8e44ad,#6c5ce7)">
+            <div class="number" id="labFollowUpDue">0</div><div class="small">Result > 3 Hari</div>
+          </div>
+        </div>
+        <div class="col-6 col-md-2">
+          <div class="stat-card" data-goto="#lab-followup" style="background:linear-gradient(135deg,#d35400,#c0392b)">
+            <div class="number" id="labFollowUpPending">0</div><div class="small">Perlu Follow-up</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Pesakit perlu dihubungi (ringkas hari ini mengikut backend lalai) -->
+      <div class="card mb-3">
+        <div class="card-header d-flex justify-content-between align-items-center">
+          <span><i class="fas fa-phone me-2"></i>Pesakit Perlu Dihubungi Hari Ini</span>
+          <input class="form-control form-control-sm searchbar" id="searchTCA" placeholder="Cari nama/IC/telefon…" />
+        </div>
+        <div class="card-body">
+          <div class="table-responsive">
+            <table class="table table-hover align-middle">
+              <thead class="table-light"><tr><th>Nama Pesakit</th><th>No IC</th><th>No Telefon</th><th>Alamat</th><th>Tarikh TCA</th><th>Status</th></tr></thead>
+              <tbody id="tcaCallTable"><tr><td colspan="6" class="text-center text-muted">Memuat data...</td></tr></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      <!-- Statistik -->
+      <div class="card">
+        <div class="card-header d-flex justify-content-between align-items-center">
+          <span><i class="fas fa-chart-bar me-2"></i>Statistik Pesakit Selesai</span>
+          <select id="statPeriod" class="form-select form-select-sm" style="max-width:200px">
+            <option value="3months">3 Bulan Terakhir</option>
+            <option value="6months">6 Bulan Terakhir</option>
+            <option value="12months">12 Bulan Terakhir</option>
+          </select>
+        </div>
+        <div class="card-body"><div style="height:320px;"><canvas id="stats3dChart"></canvas></div></div>
+      </div>
+    </section>
+
+    <!-- Program NADI -->
+    <section id="nadi" class="mb-4 d-none">
+      <div class="d-flex justify-content-between align-items-center mb-2">
+        <h2 class="h6 m-0"><i class="bi bi-clipboard2-pulse me-2"></i>Program PEKA B40 bersama NADI</h2>
+        <div class="d-flex gap-2">
+          <button id="btnNadiExportCsv" class="btn btn-sm btn-outline-success"><i class="bi bi-filetype-csv me-1"></i>Export to CSV</button>
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-body">
+          <div class="nadi-scroll-container">
+            <table class="nadi-table">
+              <thead>
+                <tr>
+                  <th style="width: 40px;">#</th>
+                  <th style="min-width: 150px;">Nama Pesakit</th>
+                  <th style="min-width: 120px;">No IC</th>
+                  <th style="min-width: 120px;">Telefon</th>
+                  <th style="min-width: 150px;">Alamat</th>
+                  <th style="min-width: 80px;">BP</th>
+                  <th style="min-width: 80px;">PR</th>
+                  <th style="min-width: 120px;">DXT</th>
+                  <th style="min-width: 80px;">Tinggi</th>
+                  <th style="min-width: 80px;">Berat</th>
+                  <th style="min-width: 80px;">BMI</th>
+                  <th style="width: 80px;">Layak</th>
+                  <th style="width: 100px;">Tidak Layak</th>
+                  <th style="min-width: 200px;">TCA & Staff</th>
+                  <th style="min-width: 180px;">Tindakan</th>
+                </tr>
+              </thead>
+              <tbody id="nadiContainer">
+                <!-- Rows will be added dynamically -->
+              </tbody>
+            </table>
+          </div>
+          <div class="sticky-form-actions">
+            <button class="btn btn-primary" onclick="addNadiRow()"><i class="bi bi-plus-circle me-1"></i>Tambah Pesakit</button>
+          </div>
+          <div class="text-muted small mt-2">Nota: Baris "Layak" boleh terus <b>Daftar</b> (simpan ke sheet). Baris "Tidak Layak" <u>tidak</u> disimpan ke sheet tetapi <b>tetap dieksport CSV</b> bersama-sama.</div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Daftar Peka -->
+    <section id="daftar-peka" class="mb-4 d-none">
+      <div class="d-flex justify-content-between align-items-center mb-3">
+        <h2 class="h6 m-0"><i class="fas fa-user-plus me-2"></i>Daftar Peka</h2>
+      </div>
+
+      <div class="form-section">
+        <h5><i class="fas fa-user-circle me-2"></i>Maklumat Pesakit</h5>
+        <div class="row g-3">
+          <div class="col-md-6">
+            <label class="form-label">Nama Penuh Pesakit</label>
+            <input id="namaPesakit" class="form-control" required>
+          </div>
+          <div class="col-md-6">
+            <label class="form-label">Nombor IC</label>
+            <input id="noIC" class="form-control" required>
+          </div>
+          <div class="col-md-6">
+            <label class="form-label">Nombor Telefon</label>
+            <input id="noTelefon" class="form-control" type="tel" required placeholder="cth: 0123456789 atau 60123456789">
+          </div>
+          <div class="col-md-6">
+            <label class="form-label">Alamat Pesakit</label>
+            <textarea id="alamatPesakit" class="form-control" rows="2"></textarea>
+          </div>
+        </div>
+      </div>
+
+      <div class="form-section">
+        <h5><i class="fas fa-calendar-alt me-2"></i>Tarikh Temujanji</h5>
+        <div class="row g-3">
+          <div class="col-md-6">
+            <label class="form-label">Tarikh TCA</label>
+            <input id="tarikhTCA" class="form-control" type="date" required>
+          </div>
+          <div class="col-md-6">
+            <label class="form-label">Masa TCA</label>
+            <input id="masaTCA" class="form-control" type="time" required>
+          </div>
+        </div>
+      </div>
+
+      <div class="form-section">
+        <h5><i class="fas fa-user-tie me-2"></i>Maklumat Staff</h5>
+        <div class="row g-3">
+          <div class="col-md-6">
+            <label class="form-label">Nama Staff</label>
+            <input id="namaStaff" class="form-control" required>
+          </div>
+        </div>
+      </div>
+
+      <div class="sticky-form-actions">
+        <button class="btn btn-primary" id="btnDaftarPesakit"><i class="fas fa-save me-1"></i>Daftar Pesakit</button>
+      </div>
+    </section>
+
+    <!-- Kelayakan (Excel) -->
+    <section id="kelayakan" class="mb-4 d-none">
+      <h2 class="h6 mb-3"><i class="fa-solid fa-file-excel me-2"></i>Semak Kelayakan (Import Excel)</h2>
+      <div class="card"><div class="card-body">
+        <div class="row g-2 align-items-center mb-3">
+          <div class="col-md-6">
+            <input type="file" id="excelFile" class="form-control" accept=".xlsx,.xls" />
+            <div class="form-text">Fail perlu ada lajur: <b>Nama</b>, <b>IC</b>, <b>Telefon</b>, <b>Alamat</b>. (Sistem tapis umur ≥40 ikut IC)</div>
+          </div>
+        </div>
+        <div class="table-responsive">
+          <table class="table table-hover align-middle">
+            <thead class="table-light">
+              <tr>
+                <th>Nama</th><th>IC</th><th>Telefon</th><th>Alamat</th>
+                <th class="text-center">Layak</th><th class="text-center">Tidak Layak</th>
+                <th style="width:360px">Jika Layak → TCA & Masa & Staff</th><th>Tindakan</th>
+              </tr>
+            </thead>
+            <tbody id="kelayakanTable"><tr><td colspan="8" class="text-center text-muted">Muat naik Excel untuk mula.</td></tr></tbody>
+          </table>
+        </div>
+      </div></div>
+    </section>
+
+    <!-- TCA Call (senarai rekod — tiada tanda selesai manual) -->
+    <section id="tca-call" class="mb-4 d-none">
+      <div class="d-flex justify-content-between align-items-center mb-2">
+        <h2 class="h6 m-0"><i class="fas fa-phone me-2"></i>Senarai Rekod TCA Call</h2>
+        <div class="d-flex align-items-center gap-2">
+          <div class="btn-group btn-group-sm" role="group" id="tcaFilter">
+            <button class="btn btn-outline-primary active" data-filter="today">Hari ini</button>
+            <button class="btn btn-outline-primary" data-filter="upcoming">Akan datang</button>
+            <button class="btn btn-outline-primary" data-filter="past">Lepas</button>
+            <button class="btn btn-outline-secondary" data-filter="all">Semua</button>
+          </div>
+          <input class="form-control form-control-sm searchbar" id="searchTCAPage" placeholder="Cari nama/IC/telefon…"/>
+        </div>
+      </div>
+      <div class="card"><div class="card-body">
         <div class="table-responsive">
           <table class="table table-hover align-middle">
             <thead class="table-light"><tr><th>Nama Pesakit</th><th>No IC</th><th>No Telefon</th><th>Alamat</th><th>Tarikh TCA</th><th>Status</th></tr></thead>
-            <tbody id="tcaCallTable"><tr><td colspan="6" class="text-center text-muted">Memuat data...</td></tr></tbody>
+            <tbody id="tcaCallList"><tr><td colspan="6" class="text-center text-muted">Memuat data...</td></tr></tbody>
           </table>
         </div>
-      </div>
-    </div>
+      </div></div>
+    </section>
 
-    <div class="card">
-      <div class="card-header d-flex justify-content-between align-items-center">
-        <span><i class="fas fa-chart-bar me-2"></i>Statistik Pesakit Selesai</span>
-        <select id="statPeriod" class="form-select form-select-sm" style="max-width:200px">
-          <option value="3months">3 Bulan Terakhir</option>
-          <option value="6months">6 Bulan Terakhir</option>
-          <option value="12months">12 Bulan Terakhir</option>
-        </select>
+    <!-- First Visit -->
+    <section id="first-visit" class="mb-4 d-none">
+      <div class="d-flex justify-content-between align-items-center mb-2">
+        <h2 class="h6 m-0"><i class="fas fa-calendar-check me-2"></i>First Visit</h2>
+        <input class="form-control form-control-sm searchbar" id="searchFirst" placeholder="Cari nama/IC/telefon…"/>
       </div>
-      <div class="card-body"><div style="height:320px;"><canvas id="stats3dChart"></canvas></div></div>
-    </div>
-  </section>
-
-  <!-- Program NADI -->
-  <section id="nadi" class="mb-4 d-none">
-    <div class="d-flex justify-content-between align-items-center mb-2">
-      <h2 class="h6 m-0"><i class="bi bi-clipboard2-pulse me-2"></i>Program PEKA B40 bersama NADI</h2>
-      <div class="d-flex gap-2">
-        <button id="btnNadiExportCsv" class="btn btn-sm btn-outline-success"><i class="bi bi-filetype-csv me-1"></i>Export to CSV</button>
-      </div>
-    </div>
-    <div class="card"><div class="card-body">
-      <div class="nadi-scroll-container">
-        <table class="nadi-table">
-          <thead>
-            <tr>
-              <th style="width:40px;">#</th>
-              <th style="min-width:150px;">Nama Pesakit</th>
-              <th style="min-width:120px;">No IC</th>
-              <th style="min-width:120px;">Telefon</th>
-              <th style="min-width:150px;">Alamat</th>
-              <th style="min-width:80px;">BP</th>
-              <th style="min-width:80px;">PR</th>
-              <th style="min-width:120px;">DXT</th>
-              <th style="min-width:80px;">Tinggi</th>
-              <th style="min-width:80px;">Berat</th>
-              <th style="min-width:80px;">BMI</th>
-              <th style="width:80px;">Layak</th>
-              <th style="width:100px;">Tidak Layak</th>
-              <th style="min-width:200px;">TCA & Staff</th>
-              <th style="min-width:180px;">Tindakan</th>
-            </tr>
-          </thead>
-          <tbody id="nadiContainer"></tbody>
-        </table>
-      </div>
-      <div class="sticky-form-actions">
-        <button class="btn btn-primary" onclick="addNadiRow()"><i class="bi bi-plus-circle me-1"></i>Tambah Pesakit</button>
-      </div>
-      <div class="text-muted small mt-2">Nota: Baris "Layak" boleh terus <b>Daftar</b> (simpan ke sheet). Baris "Tidak Layak" <u>tidak</u> disimpan ke sheet tetapi <b>tetap dieksport CSV</b> bersama-sama.</div>
-    </div></div>
-  </section>
-
-  <!-- Daftar Peka -->
-  <section id="daftar-peka" class="mb-4 d-none">
-    <div class="d-flex justify-content-between align-items-center mb-3">
-      <h2 class="h6 m-0"><i class="fas fa-user-plus me-2"></i>Daftar Peka</h2>
-    </div>
-
-    <div class="form-section">
-      <h5><i class="fas fa-user-circle me-2"></i>Maklumat Pesakit</h5>
-      <div class="row g-3">
-        <div class="col-md-6"><label class="form-label">Nama Penuh Pesakit</label><input id="namaPesakit" class="form-control" required></div>
-        <div class="col-md-6"><label class="form-label">Nombor IC</label><input id="noIC" class="form-control" required></div>
-        <div class="col-md-6"><label class="form-label">Nombor Telefon</label><input id="noTelefon" class="form-control" type="tel" required placeholder="cth: 0123456789 atau 60123456789"></div>
-        <div class="col-md-6"><label class="form-label">Alamat Pesakit</label><textarea id="alamatPesakit" class="form-control" rows="2"></textarea></div>
-      </div>
-    </div>
-
-    <div class="form-section">
-      <h5><i class="fas fa-calendar-alt me-2"></i>Tarikh Temujanji</h5>
-      <div class="row g-3">
-        <div class="col-md-6"><label class="form-label">Tarikh TCA</label><input id="tarikhTCA" class="form-control" type="date" required></div>
-        <div class="col-md-6"><label class="form-label">Masa TCA</label><input id="masaTCA" class="form-control" type="time" required></div>
-      </div>
-    </div>
-
-    <div class="form-section">
-      <h5><i class="fas fa-user-tie me-2"></i>Maklumat Staff</h5>
-      <div class="row g-3">
-        <div class="col-md-6"><label class="form-label">Nama Staff</label><input id="namaStaff" class="form-control" required></div>
-      </div>
-    </div>
-
-    <div class="sticky-form-actions">
-      <button class="btn btn-primary" id="btnDaftarPesakit"><i class="fas fa-save me-1"></i>Daftar Pesakit</button>
-    </div>
-  </section>
-
-  <!-- Kelayakan (Excel) -->
-  <section id="kelayakan" class="mb-4 d-none">
-    <h2 class="h6 mb-3"><i class="fa-solid fa-file-excel me-2"></i>Semak Kelayakan (Import Excel)</h2>
-    <div class="card"><div class="card-body">
-      <div class="row g-2 align-items-center mb-3">
-        <div class="col-md-6">
-          <input type="file" id="excelFile" class="form-control" accept=".xlsx,.xls" />
-          <div class="form-text">Fail perlu ada lajur: <b>Nama</b>, <b>IC</b>, <b>Telefon</b>, <b>Alamat</b>. (Sistem tapis umur ≥40 ikut IC)</div>
+      <div class="card"><div class="card-body">
+        <div class="table-responsive">
+          <table class="table table-hover align-middle">
+            <thead class="table-light"><tr><th>Nama Pesakit</th><th>No IC</th><th>Alamat</th><th>Tarikh TCA</th><th>PDPA</th><th>Status</th><th>Tindakan</th></tr></thead>
+            <tbody id="firstVisitList"><tr><td colspan="7" class="text-center text-muted">Memuat data...</td></tr></tbody>
+          </table>
         </div>
-      </div>
-      <div class="table-responsive">
-        <table class="table table-hover align-middle">
-          <thead class="table-light">
-            <tr>
-              <th>Nama</th><th>IC</th><th>Telefon</th><th>Alamat</th>
-              <th class="text-center">Layak</th><th class="text-center">Tidak Layak</th>
-              <th style="width:360px">Jika Layak → TCA & Masa & Staff</th><th>Tindakan</th>
-            </tr>
-          </thead>
-          <tbody id="kelayakanTable"><tr><td colspan="8" class="text-center text-muted">Muat naik Excel untuk mula.</td></tr></tbody>
-        </table>
-      </div>
-    </div></div>
-  </section>
+      </div></div>
+    </section>
 
-  <!-- TCA Call -->
-  <section id="tca-call" class="mb-4 d-none">
-    <div class="d-flex justify-content-between align-items-center mb-2">
-      <h2 class="h6 m-0"><i class="fas fa-phone me-2"></i>Senarai Rekod TCA Call</h2>
-      <div class="d-flex align-items-center gap-2">
-        <div class="btn-group btn-group-sm" role="group" id="tcaFilter">
-          <button class="btn btn-outline-primary active" data-filter="today">Hari ini</button>
-          <button class="btn btn-outline-primary" data-filter="upcoming">Akan datang</button>
-          <button class="btn btn-outline-primary" data-filter="past">Lepas</button>
-          <button class="btn btn-outline-secondary" data-filter="all">Semua</button>
+    <!-- Follow-up Lab Report -->
+    <section id="lab-followup" class="mb-4 d-none">
+      <div class="d-flex justify-content-between align-items-center mb-2">
+        <h2 class="h6 m-0"><i class="fa-solid fa-flask-vial me-2"></i>Follow-up Lab Report</h2>
+        <input class="form-control form-control-sm searchbar" id="searchLab" placeholder="Cari nama/IC/telefon…"/>
+      </div>
+      <div class="card"><div class="card-body">
+        <div class="table-responsive">
+          <table class="table table-hover align-middle">
+            <thead class="table-light">
+              <tr><th>Nama</th><th>IC</th><th>Telefon</th><th>Alamat</th><th>Tarikh First Visit</th><th>Hari Ke-</th><th>Status</th><th>Tindakan</th></tr>
+            </thead>
+            <tbody id="labFollowupTable"><tr><td colspan="8" class="text-center text-muted">Memuat data...</td></tr></tbody>
+          </table>
         </div>
-        <input class="form-control form-control-sm searchbar" id="searchTCAPage" placeholder="Cari nama/IC/telefon…"/>
-      </div>
-    </div>
-    <div class="card"><div class="card-body">
-      <div class="table-responsive">
-        <table class="table table-hover align-middle">
-          <thead class="table-light"><tr><th>Nama Pesakit</th><th>No IC</th><th>No Telefon</th><th>Alamat</th><th>Tarikh TCA</th><th>Status</th></tr></thead>
-          <tbody id="tcaCallList"><tr><td colspan="6" class="text-center text-muted">Memuat data...</td></tr></tbody>
-        </table>
-      </div>
-    </div></div>
-  </section>
+      </div></div>
+    </section>
 
-  <!-- First Visit -->
-  <section id="first-visit" class="mb-4 d-none">
-    <div class="d-flex justify-content-between align-items-center mb-2">
-      <h2 class="h6 m-0"><i class="fas fa-calendar-check me-2"></i>First Visit</h2>
-      <input class="form-control form-control-sm searchbar" id="searchFirst" placeholder="Cari nama/IC/telefon…"/>
-    </div>
-    <div class="card"><div class="card-body">
-      <div class="table-responsive">
-        <table class="table table-hover align-middle">
-          <thead class="table-light"><tr><th>Nama Pesakit</th><th>No IC</th><th>Alamat</th><th>Tarikh TCA</th><th>PDPA</th><th>Status</th><th>Tindakan</th></tr></thead>
-          <tbody id="firstVisitList"><tr><td colspan="7" class="text-center text-muted">Memuat data...</td></tr></tbody>
-        </table>
+    <!-- Second Visit -->
+    <section id="second-visit" class="mb-4 d-none">
+      <div class="d-flex justify-content-between align-items-center mb-2">
+        <h2 class="h6 m-0"><i class="fas fa-calendar-check me-2"></i>Second Visit</h2>
+        <input class="form-control form-control-sm searchbar" id="searchSecond" placeholder="Cari nama/IC/telefon…"/>
       </div>
-    </div></div>
-  </section>
+      <div class="card"><div class="card-body">
+        <div class="table-responsive">
+          <table class="table table-hover align-middle">
+            <thead class="table-light"><tr><th>Nama Pesakit</th><th>No IC</th><th>Alamat</th><th>Tarikh TCA</th><th>PDPA</th><th>Status</th><th>Tindakan</th></tr></thead>
+            <tbody id="secondVisitList"><tr><td colspan="7" class="text-center text-muted">Memuat data...</td></tr></tbody>
+          </table>
+        </div>
+      </div></div>
+    </section>
 
-  <!-- Follow-up Lab Report -->
-  <section id="lab-followup" class="mb-4 d-none">
-    <div class="d-flex justify-content-between align-items-center mb-2">
-      <h2 class="h6 m-0"><i class="fa-solid fa-flask-vial me-2"></i>Follow-up Lab Report</h2>
-      <input class="form-control form-control-sm searchbar" id="searchLab" placeholder="Cari nama/IC/telefon…"/>
-    </div>
-    <div class="card"><div class="card-body">
-      <div class="table-responsive">
-        <table class="table table-hover align-middle">
-          <thead class="table-light">
-            <tr><th>Nama</th><th>IC</th><th>Telefon</th><th>Alamat</th><th>Tarikh First Visit</th><th>Hari Ke-</th><th>Status</th><th>Tindakan</th></tr>
-          </thead>
-          <tbody id="labFollowupTable"><tr><td colspan="8" class="text-center text-muted">Memuat data...</td></tr></tbody>
-        </table>
+    <!-- Selesai -->
+    <section id="selesai" class="mb-4 d-none">
+      <div class="d-flex justify-content-between align-items-center mb-2">
+        <h2 class="h6 m-0"><i class="fas fa-check-circle me-2"></i>Pesakit Selesai</h2>
+        <input class="form-control form-control-sm searchbar" id="searchCompleted" placeholder="Cari nama/IC/telefon…"/>
       </div>
-    </div></div>
-  </section>
+      <div class="card mb-3"><div class="card-body">
+        <div class="table-responsive">
+          <table class="table table-hover align-middle">
+            <thead class="table-light">
+              <tr>
+                <th>Nama Pesakit</th><th>No IC</th><th>No Telefon</th><th>Alamat</th><th>PDPA</th>
+                <th>Tarikh Daftar</th><th>First Visit</th><th>Lab Report Completed</th><th>Second Visit</th><th>Tarikh Selesai</th><th>Tindakan</th>
+              </tr>
+            </thead>
+            <tbody id="completedTable"><tr><td colspan="11" class="text-center text-muted">Memuat data...</td></tr></tbody>
+          </table>
+        </div>
+      </div></div>
 
-  <!-- Second Visit -->
-  <section id="second-visit" class="mb-4 d-none">
-    <div class="d-flex justify-content-between align-items-center mb-2">
-      <h2 class="h6 m-0"><i class="fas fa-calendar-check me-2"></i>Second Visit</h2>
-      <input class="form-control form-control-sm searchbar" id="searchSecond" placeholder="Cari nama/IC/telefon…"/>
-    </div>
-    <div class="card"><div class="card-body">
-      <div class="table-responsive">
-        <table class="table table-hover align-middle">
-          <thead class="table-light"><tr><th>Nama Pesakit</th><th>No IC</th><th>Alamat</th><th>Tarikh TCA</th><th>PDPA</th><th>Status</th><th>Tindakan</th></tr></thead>
-          <tbody id="secondVisitList"><tr><td colspan="7" class="text-center text-muted">Memuat data...</td></tr></tbody>
-        </table>
+      <div class="card">
+        <div class="card-header d-flex justify-content-between align-items-center">
+          <span><i class="fas fa-chart-bar me-2"></i>Statistik Pesakit Selesai</span>
+          <select id="statPeriodCompleted" class="form-select form-select-sm" style="max-width:200px">
+            <option value="3months">3 Bulan Terakhir</option>
+            <option value="6months">6 Bulan Terakhir</option>
+            <option value="12months">12 Bulan Terakhir</option>
+          </select>
+        </div>
+        <div class="card-body"><div style="height:300px;"><canvas id="completed3dChart"></canvas></div></div>
       </div>
-    </div></div>
-  </section>
+    </section>
 
-  <!-- Selesai -->
-  <section id="selesai" class="mb-4 d-none">
-    <div class="d-flex justify-content-between align-items-center mb-2">
-      <h2 class="h6 m-0"><i class="fas fa-check-circle me-2"></i>Pesakit Selesai</h2>
-      <input class="form-control form-control-sm searchbar" id="searchCompleted" placeholder="Cari nama/IC/telefon…"/>
-    </div>
-    <div class="card mb-3"><div class="card-body">
-      <div class="table-responsive">
-        <table class="table table-hover align-middle">
-          <thead class="table-light">
-            <tr>
-              <th>Nama Pesakit</th><th>No IC</th><th>No Telefon</th><th>Alamat</th><th>PDPA</th>
-              <th>Tarikh Daftar</th><th>First Visit</th><th>Lab Report Completed</th><th>Second Visit</th><th>Tarikh Selesai</th><th>Tindakan</th>
-            </tr>
-          </thead>
-          <tbody id="completedTable"><tr><td colspan="11" class="text-center text-muted">Memuat data...</td></tr></tbody>
-        </table>
+    <!-- Arkib -->
+    <section id="arkib" class="mb-4 d-none">
+      <div class="d-flex justify-content-between align-items-center mb-2">
+        <h2 class="h6 m-0"><i class="fa-solid fa-box-archive me-2"></i>Arkib</h2>
+        <input class="form-control form-control-sm searchbar" id="searchArchive" placeholder="Cari nama/IC/telefon…"/>
       </div>
-    </div></div>
+      <div class="card"><div class="card-body">
+        <div class="table-responsive">
+          <table class="table table-hover align-middle">
+            <thead class="table-light"><tr><th>Nama Pesakit</th><th>No IC</th><th>No Telefon</th><th>Alamat</th><th>Tarikh Daftar</th><th>Tarikh Selesai</th><th>Diarkib</th><th>Tindakan</th></tr></thead>
+            <tbody id="archiveTable"><tr><td colspan="8" class="text-center text-muted">Tiada rekod arkib</td></tr></tbody>
+          </table>
+        </div>
+      </div></div>
+    </section>
+  </main>
 
-    <div class="card">
-      <div class="card-header d-flex justify-content-between align-items-center">
-        <span><i class="fas fa-chart-bar me-2"></i>Statistik Pesakit Selesai</span>
-        <select id="statPeriodCompleted" class="form-select form-select-sm" style="max-width:200px">
-          <option value="3months">3 Bulan Terakhir</option>
-          <option value="6months">6 Bulan Terakhir</option>
-          <option value="12months">12 Bulan Terakhir</option>
-        </select>
+  <!-- Modal Re-TCA -->
+  <div class="modal fade" id="retcaModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered"><div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title"><i class="fa-solid fa-calendar-plus me-2"></i>Daftar TCA Semula</h5>
+        <button class="btn-close" data-bs-dismiss="modal"></button>
       </div>
-      <div class="card-body"><div style="height:300px;"><canvas id="completed3dChart"></canvas></div></div>
-    </div>
-  </section>
-
-  <!-- Arkib -->
-  <section id="arkib" class="mb-4 d-none">
-    <div class="d-flex justify-content-between align-items-center mb-2">
-      <h2 class="h6 m-0"><i class="fa-solid fa-box-archive me-2"></i>Arkib</h2>
-      <input class="form-control form-control-sm searchbar" id="searchArchive" placeholder="Cari nama/IC/telefon…"/>
-    </div>
-    <div class="card"><div class="card-body">
-      <div class="table-responsive">
-        <table class="table table-hover align-middle">
-          <thead class="table-light"><tr><th>Nama Pesakit</th><th>No IC</th><th>No Telefon</th><th>Alamat</th><th>Tarikh Daftar</th><th>Tarikh Selesai</th><th>Diarkib</th><th>Tindakan</th></tr></thead>
-          <tbody id="archiveTable"><tr><td colspan="8" class="text-center text-muted">Memuat data...</td></tr></tbody>
-        </table>
+      <div class="modal-body">
+        <input type="hidden" id="retcaIC">
+        <div class="mb-3"><label class="form-label">Tarikh TCA Baharu</label><input type="date" id="retcaDate" class="form-control" required></div>
+        <div class="mb-2"><label class="form-label">Masa TCA Baharu</label><input type="time" id="retcaTime" class="form-control" required></div>
+        <small class="text-muted">Status pesakit akan ditukar kepada <b>TCA CALL</b>.</small>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-secondary" data-bs-dismiss="modal">Batal</button>
+        <button class="btn btn-primary" id="btnSubmitRetca"><i class="fa-solid fa-floppy-disk me-1"></i>Simpan</button>
       </div>
     </div></div>
-  </section>
+  </div>
 
-</main>
+  <!-- Modal Set Second Visit TCA (Lab Complete & Call) -->
+  <div class="modal fade" id="secondTcaModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered"><div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title"><i class="fa-solid fa-calendar-check me-2"></i>Tetapkan TCA Second Visit</h5>
+        <button class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body">
+        <input type="hidden" id="secondTcaIC">
+        <div class="mb-2"><label class="form-label">Tarikh TCA Second Visit</label><input type="date" id="secondTcaDate" class="form-control" required></div>
+        <div class="mb-2"><label class="form-label">Masa TCA</label><input type="time" id="secondTcaTime" class="form-control" required></div>
+        <div class="mb-2"><label class="form-label">Nama Staff (wajib isi)</label><input type="text" id="secondTcaStaff" class="form-control" required placeholder="cth: Dayah"></div>
+        <small class="text-muted">Maklumat ini akan direkod ke Log Calls & ruangan "Lab Report Completed".</small>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-secondary" data-bs-dismiss="modal">Batal</button>
+        <button class="btn btn-primary" id="btnSubmitSecondTca"><i class="fa-solid fa-floppy-disk me-1"></i>Simpan</button>
+      </div>
+    </div></div>
+  </div>
 
-<!-- Modal Re-TCA -->
-<div class="modal fade" id="retcaModal" tabindex="-1" aria-hidden="true">
-  <div class="modal-dialog modal-dialog-centered"><div class="modal-content">
-    <div class="modal-header">
-      <h5 class="modal-title"><i class="fa-solid fa-calendar-plus me-2"></i>Daftar TCA Semula</h5>
-      <button class="btn-close" data-bs-dismiss="modal"></button>
-    </div>
-    <div class="modal-body">
-      <input type="hidden" id="retcaIC">
-      <div class="mb-3"><label class="form-label">Tarikh TCA Baharu</label><input type="date" id="retcaDate" class="form-control" required></div>
-      <div class="mb-2"><label class="form-label">Masa TCA Baharu</label><input type="time" id="retcaTime" class="form-control" required></div>
-      <small class="text-muted">Status pesakit akan ditukar kepada <b>TCA CALL</b>.</small>
-    </div>
-    <div class="modal-footer">
-      <button class="btn btn-secondary" data-bs-dismiss="modal">Batal</button>
-      <button class="btn btn-primary" id="btnSubmitRetca"><i class="fa-solid fa-floppy-disk me-1"></i>Simpan</button>
-    </div>
-  </div></div>
-</div>
+  <!-- Modal Upload PDPA -->
+  <div class="modal fade" id="pdpaModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered"><div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title"><i class="fa-solid fa-file-arrow-up me-2"></i>Muat Naik Borang PDPA</h5>
+        <button class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body">
+        <input type="hidden" id="pdpaIC">
+        <input type="file" id="pdpaFile" class="form-control" accept="application/pdf,image/*" />
+        <div class="form-text">Muat naik PDF / imej borang PDPA pesakit.</div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-secondary" data-bs-dismiss="modal">Tutup</button>
+        <button class="btn btn-primary" id="btnUploadPDPA"><i class="fa-solid fa-cloud-arrow-up me-1"></i>Upload</button>
+      </div>
+    </div></div>
+  </div>
 
-<!-- Modal Set Second Visit TCA -->
-<div class="modal fade" id="secondTcaModal" tabindex="-1" aria-hidden="true">
-  <div class="modal-dialog modal-dialog-centered"><div class="modal-content">
-    <div class="modal-header">
-      <h5 class="modal-title"><i class="fa-solid fa-calendar-check me-2"></i>Tetapkan TCA Second Visit</h5>
-      <button class="btn-close" data-bs-dismiss="modal"></button>
-    </div>
-    <div class="modal-body">
-      <input type="hidden" id="secondTcaIC">
-      <div class="mb-2"><label class="form-label">Tarikh TCA Second Visit</label><input type="date" id="secondTcaDate" class="form-control" required></div>
-      <div class="mb-2"><label class="form-label">Masa TCA</label><input type="time" id="secondTcaTime" class="form-control" required></div>
-      <div class="mb-2"><label class="form-label">Nama Staff (wajib isi)</label><input type="text" id="secondTcaStaff" class="form-control" required placeholder="cth: Dayah"></div>
-      <small class="text-muted">Maklumat ini akan direkod ke Log Calls & ruangan "Lab Report Completed".</small>
-    </div>
-    <div class="modal-footer">
-      <button class="btn btn-secondary" data-bs-dismiss="modal">Batal</button>
-      <button class="btn btn-primary" id="btnSubmitSecondTca"><i class="fa-solid fa-floppy-disk me-1"></i>Simpan</button>
-    </div>
-  </div></div>
-</div>
+  <!-- Modal WhatsApp Report Preview -->
+  <div class="modal fade" id="whatsappReportModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-lg modal-dialog-centered"><div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title"><i class="fa-brands fa-whatsapp me-2"></i>Pratonton Laporan WhatsApp</h5>
+        <button class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body">
+        <div id="whatsappReportPreview"></div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-secondary" data-bs-dismiss="modal">Tutup</button>
+        <!-- Kekalkan butang lama (teks) -->
+        <button class="btn btn-outline-success" id="btnSendWhatsApp">
+          <i class="fa-brands fa-whatsapp me-1"></i> Hantar WhatsApp (Teks)
+        </button>
+        <!-- Butang baharu: hantar Gambar ke WhatsApp + auto-buka chat -->
+        <button class="btn btn-success" id="btnSendWhatsAppImage">
+          <i class="fa-brands fa-whatsapp me-1"></i> Hantar Gambar ke WhatsApp
+        </button>
+      </div>
+    </div></div>
+  </div>
 
-<!-- Modal Upload PDPA -->
-<div class="modal fade" id="pdpaModal" tabindex="-1" aria-hidden="true">
-  <div class="modal-dialog modal-dialog-centered"><div class="modal-content">
-    <div class="modal-header">
-      <h5 class="modal-title"><i class="fa-solid fa-file-arrow-up me-2"></i>Muat Naik Borang PDPA</h5>
-      <button class="btn-close" data-bs-dismiss="modal"></button>
-    </div>
-    <div class="modal-body">
-      <input type="hidden" id="pdpaIC">
-      <input type="file" id="pdpaFile" class="form-control" accept="application/pdf,image/*" />
-      <div class="form-text">Muat naik PDF / imej borang PDPA pesakit.</div>
-    </div>
-    <div class="modal-footer">
-      <button class="btn btn-secondary" data-bs-dismiss="modal">Tutup</button>
-      <button class="btn btn-primary" id="btnUploadPDPA"><i class="fa-solid fa-cloud-arrow-up me-1"></i>Upload</button>
-    </div>
-  </div></div>
-</div>
+  <!-- Toast Host (kanan atas) -->
+  <div id="toastHost"><div id="toastContainer" class="toast-container"></div></div>
 
-<!-- Modal WhatsApp Report Preview -->
-<div class="modal fade" id="whatsappReportModal" tabindex="-1" aria-hidden="true">
-  <div class="modal-dialog modal-lg modal-dialog-centered"><div class="modal-content">
-    <div class="modal-header">
-      <h5 class="modal-title"><i class="fa-brands fa-whatsapp me-2"></i>Pratonton Laporan WhatsApp</h5>
-      <button class="btn-close" data-bs-dismiss="modal"></button>
-    </div>
-    <div class="modal-body">
-      <div id="whatsappReportPreview"></div>
-    </div>
-    <div class="modal-footer">
-      <button class="btn btn-secondary" data-bs-dismiss="modal">Tutup</button>
-      <button class="btn btn-success" id="btnSendWhatsApp"><i class="fa-brands fa-whatsapp me-1"></i>Hantar WhatsApp</button>
-    </div>
-  </div></div>
-</div>
+  <!-- FAB Log Calls -->
+  <button id="fabLog" class="btn btn-primary">
+    <i class="bi bi-chat-dots fs-5"></i>
+  </button>
 
-<!-- Toast Host -->
-<div id="toastHost"><div id="toastContainer" class="toast-container"></div></div>
+  <footer class="footer mt-4 py-3 bg-light">
+    <div class="container"><div class="d-flex justify-content-between">
+      <div>&copy; 2025 Klinik SihatSokmo. Untuk kegunaan Klinik sahaja.</div>
+      <div>Versi 3.1 (Secure)</div>
+    </div></div>
+  </footer>
 
-<!-- FAB Log Calls -->
-<button id="fabLog" class="btn btn-primary"><i class="bi bi-chat-dots fs-5"></i></button>
-
-<footer class="footer mt-4 py-3 bg-light">
-  <div class="container"><div class="d-flex justify-content-between">
-    <div>&copy; 2025 Klinik SihatSokmo. Untuk kegunaan Klinik sahaja.</div>
-    <div>Versi 3.1 (Secure)</div>
-  </div></div>
-</footer>
-
-<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
-
-<script>
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+  <script>
 /* =======================
    KONFIG (EDIT INI SAHAJA)
    ======================= */
@@ -639,6 +782,7 @@ async function getJSON(params={}, {silent=false, msg='Memuat data…'}={}){
     return await r.json();
   } finally { if (!silent) hideLoader(); }
 }
+
 async function postForm(params={}, {silent=false, msg='Menyimpan data…'}={}){
   if (!ID_TOKEN) throw new Error('Belum login');
   if (!silent) showLoader(msg);
@@ -675,6 +819,7 @@ const parseDDMMYYYY = (s) => {
   if (!m) return null; const D=+m[1], M=+m[2], Y=+m[3]; return new Date(Y,M-1,D);
 };
 function isSameDay(a,b){ return a.getFullYear()==b.getFullYear() && a.getMonth()==b.getMonth() && a.getDate()==b.getDate(); }
+
 function toast(title, message, variant='primary'){
   const container = document.getElementById('toastContainer');
   const id = 't'+Date.now();
@@ -690,6 +835,123 @@ function toast(title, message, variant='primary'){
   const t = new bootstrap.Toast(el, { delay: 3000 });
   t.show();
   el.addEventListener('hidden.bs.toast', ()=>el.remove());
+}
+
+/* =======================
+   WHATSAPP HELPERS (TEKS) – dikekalkan
+   ======================= */
+function composeNadiWhatsAppText(data){
+  const lines = [
+    'Assalamualaikum, ini dari Klinik SihatSokmo.',
+    '',
+    'Laporan Saringan NADI:',
+    `• Nama: ${data.nama || '-'}`,
+    `• IC: ${data.ic || '-'}`,
+    `• Alamat: ${data.alamat || '-'}`,
+    `• BP: ${data.bp || '-'} mmHg`,
+    `• PR: ${data.pr || '-'} bpm`,
+    `• DXT (${data.dxtType || 'Fasting'}): ${data.dxt || '-'} mmol/L`,
+    `• Tinggi: ${data.tinggi || '-'} cm`,
+    `• Berat: ${data.berat || '-'} kg`,
+    `• BMI: ${data.bmi || '-'}`,
+    `• Status: ${data.layak ? 'Layak PEKA B40' : 'Tidak Layak PEKA B40'}`,
+    '',
+    'Jika ada soalan, balas mesej ini ya. Terima kasih.'
+  ];
+  return lines.join('\n');
+}
+function openWhatsAppTo(rawMsisdn, text){
+  const msisdn = normalizeMsisdnMY(rawMsisdn);
+  if (!/^\d{10,15}$/.test(msisdn)){
+    toast('Ralat', 'Nombor telefon tidak sah', 'danger');
+    return;
+  }
+  const encoded = encodeURIComponent(text || '');
+  const scheme = `whatsapp://send?phone=${msisdn}&text=${encoded}`;
+  const web    = `https://wa.me/${msisdn}?text=${encoded}`;
+  const isMobile = /Android|iPhone|iPad|iPod|Windows Phone/i.test(navigator.userAgent);
+  const url = isMobile ? scheme : web;
+  window.open(url, '_blank');
+  toast('WhatsApp', 'Membuka WhatsApp dengan mesej siap-isi…', 'success');
+}
+
+/* =======================
+   WHATSAPP IMAGE SEND HELPERS (BARU)
+   ======================= */
+let CURRENT_WA_MSISDN = ''; // diset ketika preview dibuka
+
+async function captureReportAsBlob() {
+  const card = document.querySelector('#whatsappReportPreview .whatsapp-report');
+  if (!card) throw new Error('Gagal capai preview');
+  const canvas = await html2canvas(card, {
+    backgroundColor: '#ffffff',
+    scale: Math.min(window.devicePixelRatio || 1.5, 2.5)
+  });
+  return await new Promise((resolve)=> canvas.toBlob(resolve, 'image/png', 0.95));
+}
+
+function openWhatsAppDeepLink(msisdn, text='') {
+  const encoded = encodeURIComponent(text || '');
+  const scheme = `whatsapp://send?phone=${msisdn}&text=${encoded}`;
+  const web    = `https://wa.me/${msisdn}?text=${encoded}`;
+  // cuba app dahulu, kemudian fallback
+  window.open(scheme, '_blank');
+  setTimeout(()=>window.open(web,'_blank'), 600);
+}
+
+// Versi yang memenuhi kehendak: terus buka chat → siapkan imej (clipboard/share/fallback)
+async function sendWhatsAppReportImageFlow(msisdn) {
+  const phone = normalizeMsisdnMY(msisdn||'');
+  if (!/^\d{10,15}$/.test(phone)) {
+    toast('Ralat', 'Nombor telefon tidak sah', 'danger');
+    return;
+  }
+
+  // 1) TERUS buka chat ke nombor pesakit
+  openWhatsAppDeepLink(phone, '');
+
+  // 2) Jana imej daripada kad preview
+  showLoader('Menjana imej laporan…');
+  let blob;
+  try {
+    blob = await captureReportAsBlob();
+  } catch(e){
+    hideLoader();
+    toast('Ralat', 'Gagal jana imej laporan', 'danger');
+    return;
+  }
+  hideLoader();
+
+  const file = new File([blob], `laporan_nadi_${Date.now()}.png`, { type: 'image/png' });
+
+  // 3) MOBILE: cuba Web Share API (anda pilih WhatsApp kemudian chat; had OS)
+  if (navigator.canShare && navigator.canShare({ files: [file] })) {
+    try {
+      await navigator.share({ files: [file], title: 'Laporan Saringan NADI', text: '' });
+      toast('Berjaya', 'Imej dikongsi melalui aplikasi pilihan anda', 'success');
+      return;
+    } catch(e){
+      // pengguna batal → teruskan fallback
+    }
+  }
+
+  // 4) DESKTOP: salin imej ke clipboard, tampal di chat yang sudah dibuka
+  if (navigator.clipboard && window.ClipboardItem) {
+    try {
+      await navigator.clipboard.write([ new ClipboardItem({ 'image/png': blob }) ]);
+      toast('Siap', 'Imej disalin ke clipboard. Tampal (Ctrl/Cmd+V) dalam chat WhatsApp.', 'success');
+      return;
+    } catch(e){
+      // fallback terakhir
+    }
+  }
+
+  // 5) Fallback: muat turun imej untuk dilampirkan manual
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url; a.download = `laporan_nadi_${Date.now()}.png`;
+  document.body.appendChild(a); a.click(); a.remove(); URL.revokeObjectURL(url);
+  toast('Makluman', 'Imej dimuat turun. Lampirkan imej itu dalam chat WhatsApp dan hantar.', 'warning');
 }
 
 /* =======================
@@ -780,7 +1042,16 @@ function setupModals(){
   document.getElementById('btnUploadPDPA').addEventListener('click', uploadPDPA);
 
   whatsappReportModal = new bootstrap.Modal(document.getElementById('whatsappReportModal'));
+  // Kekalkan fungsi lama (hantar teks)
   document.getElementById('btnSendWhatsApp').addEventListener('click', sendWhatsAppReport);
+  // Butang baharu: hantar gambar + auto buka chat
+  document.getElementById('btnSendWhatsAppImage').addEventListener('click', async ()=>{
+    if (!CURRENT_WA_MSISDN){
+      toast('Ralat','Nombor telefon tidak ditemui pada baris NADI','danger'); return;
+    }
+    await sendWhatsAppReportImageFlow(CURRENT_WA_MSISDN);
+    // whatsappReportModal.hide(); // pilihan: biar terbuka untuk pantau status
+  });
 }
 
 function setupFab(){
@@ -889,7 +1160,10 @@ function setupExcel(){
       const ws = wb.Sheets[wb.SheetNames[0]];
       const json = XLSX.utils.sheet_to_json(ws, { defval:'' });
       tbody.innerHTML = '';
-      if (!json.length) { tbody.innerHTML = `<tr><td colspan="8" class="text-center text-muted">Tiada data.</td></tr>`; return; }
+      if (!json.length) {
+        tbody.innerHTML = `<tr><td colspan="8" class="text-center text-muted">Tiada data.</td></tr>`;
+        return;
+      }
       json.forEach((row, idx)=>{
         const nama = row.Nama || row.NAMA || row.name || '';
         const ic = row.IC || row.Ic || row.ic || '';
@@ -898,7 +1172,7 @@ function setupExcel(){
         const msisdn = normalizeMsisdnMY(tel);
         const id = 'x'+Date.now()+idx;
 
-        // Kelayakan ikut umur ≥40 dari IC
+        // Kelayakan lalai ikut umur >=40 dari IC (format: YYMMDD-..)
         const lahirYY = ic.slice(0,2), lahirMM = ic.slice(2,4), lahirDD = ic.slice(4,6);
         let ageOk = false;
         if (/^\d{6}/.test(ic)){
@@ -973,10 +1247,10 @@ async function daftarFromExcel(rowId, encNama, encIC, msisdn, encAlamat){
 }
 
 /* =======================
-   NADI PAGE
+   NADI PAGE (tabular view)
    ======================= */
 let nadiRowCounter = 0;
-let nadiRows = [];
+let nadiRows = []; // Array to store all NADI rows data
 
 function setupNADI(){
   const container = document.getElementById('nadiContainer');
@@ -995,13 +1269,33 @@ function addNadiRow(){
   nadiRowCounter++;
 
   row.innerHTML = `
-    <td class="text-center"><div class="nadi-counter">${nadiRowCounter}</div></td>
-    <td class="nadi-input-cell"><div class="view-mode" onclick="editNadiCell(this)"></div><input class="form-control form-control-sm nadi-nama" placeholder="Nama pesakit" style="display:none" onblur="saveNadiCell(this)" /></td>
-    <td class="nadi-input-cell"><div class="view-mode" onclick="editNadiCell(this)"></div><input class="form-control form-control-sm nadi-ic" placeholder="IC" style="display:none" onblur="saveNadiCell(this)" /></td>
-    <td class="nadi-input-cell"><div class="view-mode" onclick="editNadiCell(this)"></div><input class="form-control form-control-sm nadi-tel" placeholder="Telefon" style="display:none" onblur="saveNadiCell(this)" /></td>
-    <td class="nadi-input-cell"><div class="view-mode" onclick="editNadiCell(this)"></div><input class="form-control form-control-sm nadi-alamat" placeholder="Alamat" style="display:none" onblur="saveNadiCell(this)" /></td>
-    <td class="nadi-input-cell"><div class="view-mode" onclick="editNadiCell(this)"></div><input class="form-control form-control-sm nadi-bp" placeholder="BP" style="display:none" onblur="saveNadiCell(this)" /></td>
-    <td class="nadi-input-cell"><div class="view-mode" onclick="editNadiCell(this)"></div><input class="form-control form-control-sm nadi-pr" placeholder="PR" style="display:none" onblur="saveNadiCell(this)" /></td>
+    <td class="text-center">
+      <div class="nadi-counter">${nadiRowCounter}</div>
+    </td>
+    <td class="nadi-input-cell">
+      <div class="view-mode" onclick="editNadiCell(this)"></div>
+      <input class="form-control form-control-sm nadi-nama" placeholder="Nama pesakit" style="display:none" onblur="saveNadiCell(this)" />
+    </td>
+    <td class="nadi-input-cell">
+      <div class="view-mode" onclick="editNadiCell(this)"></div>
+      <input class="form-control form-control-sm nadi-ic" placeholder="IC" style="display:none" onblur="saveNadiCell(this)" />
+    </td>
+    <td class="nadi-input-cell">
+      <div class="view-mode" onclick="editNadiCell(this)"></div>
+      <input class="form-control form-control-sm nadi-tel" placeholder="Telefon" style="display:none" onblur="saveNadiCell(this)" />
+    </td>
+    <td class="nadi-input-cell">
+      <div class="view-mode" onclick="editNadiCell(this)"></div>
+      <input class="form-control form-control-sm nadi-alamat" placeholder="Alamat" style="display:none" onblur="saveNadiCell(this)" />
+    </td>
+    <td class="nadi-input-cell">
+      <div class="view-mode" onclick="editNadiCell(this)"></div>
+      <input class="form-control form-control-sm nadi-bp" placeholder="BP" style="display:none" onblur="saveNadiCell(this)" />
+    </td>
+    <td class="nadi-input-cell">
+      <div class="view-mode" onclick="editNadiCell(this)"></div>
+      <input class="form-control form-control-sm nadi-pr" placeholder="PR" style="display:none" onblur="saveNadiCell(this)" />
+    </td>
     <td>
       <div class="input-group input-group-sm">
         <button class="btn btn-outline-secondary dropdown-toggle nadi-dxt-type-btn" data-bs-toggle="dropdown" type="button">Fasting</button>
@@ -1013,11 +1307,24 @@ function addNadiRow(){
         <input type="hidden" class="nadi-dxt-type" value="Fasting" />
       </div>
     </td>
-    <td class="nadi-input-cell"><div class="view-mode" onclick="editNadiCell(this)"></div><input class="form-control form-control-sm nadi-tinggi" placeholder="Tinggi" style="display:none" onblur="saveNadiCell(this)" /></td>
-    <td class="nadi-input-cell"><div class="view-mode" onclick="editNadiCell(this)"></div><input class="form-control form-control-sm nadi-berat" placeholder="Berat" style="display:none" onblur="saveNadiCell(this)" /></td>
-    <td class="nadi-input-cell"><div class="view-mode" onclick="editNadiCell(this)"></div><input class="form-control form-control-sm nadi-bmi" placeholder="BMI" disabled style="display:none" onblur="saveNadiCell(this)" /></td>
-    <td class="text-center"><input class="form-check-input nadi-layak" type="checkbox"></td>
-    <td class="text-center"><input class="form-check-input nadi-taklayak" type="checkbox"></td>
+    <td class="nadi-input-cell">
+      <div class="view-mode" onclick="editNadiCell(this)"></div>
+      <input class="form-control form-control-sm nadi-tinggi" placeholder="Tinggi" style="display:none" onblur="saveNadiCell(this)" />
+    </td>
+    <td class="nadi-input-cell">
+      <div class="view-mode" onclick="editNadiCell(this)"></div>
+      <input class="form-control form-control-sm nadi-berat" placeholder="Berat" style="display:none" onblur="saveNadiCell(this)" />
+    </td>
+    <td class="nadi-input-cell">
+      <div class="view-mode" onclick="editNadiCell(this)"></div>
+      <input class="form-control form-control-sm nadi-bmi" placeholder="BMI" disabled style="display:none" onblur="saveNadiCell(this)" />
+    </td>
+    <td class="text-center">
+      <input class="form-check-input nadi-layak" type="checkbox">
+    </td>
+    <td class="text-center">
+      <input class="form-check-input nadi-taklayak" type="checkbox">
+    </td>
     <td>
       <div class="d-flex gap-1">
         <input type="date" class="form-control form-control-sm nadi-tca-date" disabled style="min-width:100px">
@@ -1033,14 +1340,16 @@ function addNadiRow(){
       </div>
     </td>
   `;
+
   container.appendChild(row);
 
-  // Dropdown DXT type
+  // Initialize dropdown for DXT type
   const dxtTypeBtn = row.querySelector('.nadi-dxt-type-btn');
   const dxtTypeMenu = row.querySelector('.dropdown-menu');
   const dxtTypeInput = row.querySelector('.nadi-dxt-type');
-  dxtTypeMenu.querySelectorAll('.dropdown-item').forEach(item=>{
-    item.addEventListener('click', function(e){
+
+  dxtTypeMenu.querySelectorAll('.dropdown-item').forEach(item => {
+    item.addEventListener('click', function(e) {
       e.preventDefault();
       dxtTypeBtn.textContent = this.textContent;
       dxtTypeInput.value = this.getAttribute('data-value');
@@ -1051,6 +1360,7 @@ function addNadiRow(){
   const tinggi = row.querySelector('.nadi-tinggi');
   const berat = row.querySelector('.nadi-berat');
   const bmi = row.querySelector('.nadi-bmi');
+
   const calculateBMI = () => {
     const height = parseFloat(tinggi.value) / 100;
     const weight = parseFloat(berat.value);
@@ -1062,10 +1372,11 @@ function addNadiRow(){
       bmi.previousElementSibling.textContent = '';
     }
   };
+
   tinggi.addEventListener('input', calculateBMI);
   berat.addEventListener('input', calculateBMI);
 
-  // Layak / Tidak Layak
+  // Layak/Tidak Layak toggle
   const layak = row.querySelector('.nadi-layak');
   const takLayak = row.querySelector('.nadi-taklayak');
   const tcaDate = row.querySelector('.nadi-tca-date');
@@ -1073,23 +1384,33 @@ function addNadiRow(){
   const staff = row.querySelector('.nadi-staff');
   const btnDaftar = row.querySelector('.nadi-daftar');
 
-  layak.addEventListener('change', ()=>{
+  layak.addEventListener('change', () => {
     if (layak.checked) {
       takLayak.checked = false;
-      tcaDate.disabled = false; tcaTime.disabled = false; staff.disabled = false; btnDaftar.disabled = false;
+      tcaDate.disabled = false;
+      tcaTime.disabled = false;
+      staff.disabled = false;
+      btnDaftar.disabled = false;
     } else {
-      tcaDate.disabled = true; tcaTime.disabled = true; staff.disabled = true; btnDaftar.disabled = true;
-    }
-  });
-  takLayak.addEventListener('change', ()=>{
-    if (takLayak.checked) {
-      layak.checked = false;
-      tcaDate.disabled = true; tcaTime.disabled = true; staff.disabled = true; btnDaftar.disabled = true;
+      tcaDate.disabled = true;
+      tcaTime.disabled = true;
+      staff.disabled = true;
+      btnDaftar.disabled = true;
     }
   });
 
-  // Daftar
-  btnDaftar.addEventListener('click', async ()=>{
+  takLayak.addEventListener('change', () => {
+    if (takLayak.checked) {
+      layak.checked = false;
+      tcaDate.disabled = true;
+      tcaTime.disabled = true;
+      staff.disabled = true;
+      btnDaftar.disabled = true;
+    }
+  });
+
+  // Daftar button action
+  btnDaftar.addEventListener('click', async () => {
     const nama = row.querySelector('.nadi-nama').value.trim();
     const ic = row.querySelector('.nadi-ic').value.trim();
     const tel = row.querySelector('.nadi-tel').value.trim();
@@ -1099,23 +1420,37 @@ function addNadiRow(){
     const staffName = staff.value.trim();
 
     if (!nama || !ic || !tel || !date || !time || !staffName) {
-      toast('Ralat', 'Sila isi semua maklumat', 'danger'); return;
+      toast('Ralat', 'Sila isi semua maklumat', 'danger');
+      return;
     }
-    try{
+
+    try {
       const res = await postForm({
-        action:'daftarPesakit', namaPesakit:nama, noIC: ic, noTelefon: tel, alamat: alamat,
-        tarikhTCA: date, masaTCA: time, namaStaff: staffName
-      }, { msg:'Mendaftar pesakit...' });
-      if (res.status === 'success'){
+        action: 'daftarPesakit',
+        namaPesakit: nama,
+        noIC: ic,
+        noTelefon: tel,
+        alamat: alamat,
+        tarikhTCA: date,
+        masaTCA: time,
+        namaStaff: staffName
+      }, { msg: 'Mendaftar pesakit...' });
+
+      if (res.status === 'success') {
         toast('Berjaya', 'Pesakit berjaya didaftarkan', 'success');
+        // Update the row data in nadiRows array
         updateNadiRowData(row);
-      } else { throw new Error(res.message || 'Gagal mendaftar pesakit'); }
-    }catch(e){ toast('Ralat', e.message, 'danger'); }
+      } else {
+        throw new Error(res.message || 'Gagal mendaftar pesakit');
+      }
+    } catch (e) {
+      toast('Ralat', e.message, 'danger');
+    }
   });
 
-  // WhatsApp Report (Preview)
-  row.querySelector('.nadi-wa').addEventListener('click', async ()=>{
-    try{
+  // WhatsApp Report (Preview) – KEKAL
+  row.querySelector('.nadi-wa').addEventListener('click', async () => {
+    try {
       const data = {
         nama: row.querySelector('.nadi-nama').value.trim(),
         ic: row.querySelector('.nadi-ic').value.trim(),
@@ -1130,21 +1465,31 @@ function addNadiRow(){
         bmi: row.querySelector('.nadi-bmi').value.trim(),
         layak: row.querySelector('.nadi-layak').checked
       };
+
+      // Generate WhatsApp report image (preview)
       generateWhatsAppReport(data);
-    }catch(e){ toast('Ralat', 'Gagal buat laporan: ' + e.message, 'danger'); }
+
+    } catch (e) {
+      toast('Ralat', 'Gagal buat laporan: ' + e.message, 'danger');
+    }
   });
 
-  // Buang
-  row.querySelector('.nadi-buang').addEventListener('click', ()=>{
+  // Buang button
+  row.querySelector('.nadi-buang').addEventListener('click', () => {
     if (confirm('Adakah anda pasti ingin membuang baris ini?')) {
       row.remove();
       updateNadiRowNumbers();
     }
   });
 
-  nadiRows.push({ id, rowElement: row });
+  // Add row data to nadiRows array
+  nadiRows.push({
+    id: id,
+    rowElement: row
+  });
 }
-function updateNadiRowData(row){
+
+function updateNadiRowData(row) {
   const rowData = {
     nama: row.querySelector('.nadi-nama').value.trim(),
     ic: row.querySelector('.nadi-ic').value.trim(),
@@ -1163,21 +1508,36 @@ function updateNadiRowData(row){
     tcaTime: row.querySelector('.nadi-tca-time').value.trim(),
     staff: row.querySelector('.nadi-staff').value.trim()
   };
+
+  // Update the row data in nadiRows array
   const rowId = row.id;
   const rowIndex = nadiRows.findIndex(r => r.id === rowId);
-  if (rowIndex !== -1) { nadiRows[rowIndex].data = rowData; }
+  if (rowIndex !== -1) {
+    nadiRows[rowIndex].data = rowData;
+  }
 }
-function editNadiCell(viewModeEl){ const input = viewModeEl.nextElementSibling; viewModeEl.style.display='none'; input.style.display='block'; input.value = viewModeEl.textContent || ''; input.focus(); }
-function saveNadiCell(inputEl){
+
+function editNadiCell(viewModeEl) {
+  const input = viewModeEl.nextElementSibling;
+  viewModeEl.style.display = 'none';
+  input.style.display = 'block';
+  input.value = viewModeEl.textContent || '';
+  input.focus();
+}
+
+function saveNadiCell(inputEl) {
   const viewMode = inputEl.previousElementSibling;
   viewMode.textContent = inputEl.value || '';
   viewMode.style.display = 'block';
   inputEl.style.display = 'none';
+
+  // If this is height or weight, calculate BMI
   if (inputEl.classList.contains('nadi-tinggi') || inputEl.classList.contains('nadi-berat')) {
     const row = inputEl.closest('tr');
     const tinggi = row.querySelector('.nadi-tinggi').value;
     const berat = row.querySelector('.nadi-berat').value;
     const bmi = row.querySelector('.nadi-bmi');
+
     if (tinggi && berat) {
       const height = parseFloat(tinggi) / 100;
       const weight = parseFloat(berat);
@@ -1190,19 +1550,22 @@ function saveNadiCell(inputEl){
     }
   }
 }
-function updateNadiRowNumbers(){
+
+function updateNadiRowNumbers() {
   const rows = document.querySelectorAll('#nadiContainer tr');
   let counter = 0;
-  rows.forEach(row=>{
+  rows.forEach(row => {
     counter++;
     const counterEl = row.querySelector('.nadi-counter');
     if (counterEl) { counterEl.textContent = counter; }
   });
   nadiRowCounter = counter;
 }
-function generateWhatsAppReport(data){
+
+function generateWhatsAppReport(data) {
   const reportContainer = document.getElementById('whatsappReportPreview');
   reportContainer.innerHTML = '';
+
   const reportHTML = `
     <div class="whatsapp-report">
       <div class="whatsapp-report-header">
@@ -1213,190 +1576,512 @@ function generateWhatsAppReport(data){
         </div>
       </div>
       <div class="whatsapp-report-body">
-        <div class="whatsapp-report-row"><div class="whatsapp-report-label">Nama Pesakit:</div><div class="whatsapp-report-value">${data.nama || '-'}</div></div>
-        <div class="whatsapp-report-row"><div class="whatsapp-report-label">No. IC:</div><div class="whatsapp-report-value">${data.ic || '-'}</div></div>
-        <div class="whatsapp-report-row"><div class="whatsapp-report-label">Alamat:</div><div class="whatsapp-report-value">${data.alamat || '-'}</div></div>
-        <div class="whatsapp-report-row"><div class="whatsapp-report-label">BP:</div><div class="whatsapp-report-value">${data.bp || '-'} mmHg</div></div>
-        <div class="whatsapp-report-row"><div class="whatsapp-report-label">PR:</div><div class="whatsapp-report-value">${data.pr || '-'} bpm</div></div>
-        <div class="whatsapp-report-row"><div class="whatsapp-report-label">DXT (${data.dxtType || 'Fasting'}):</div><div class="whatsapp-report-value">${data.dxt || '-'} mmol/L</div></div>
-        <div class="whatsapp-report-row"><div class="whatsapp-report-label">Tinggi:</div><div class="whatsapp-report-value">${data.tinggi || '-'} cm</div></div>
-        <div class="whatsapp-report-row"><div class="whatsapp-report-label">Berat:</div><div class="whatsapp-report-value">${data.berat || '-'} kg</div></div>
-        <div class="whatsapp-report-row"><div class="whatsapp-report-label">BMI:</div><div class="whatsapp-report-value">${data.bmi || '-'}</div></div>
-        <div class="whatsapp-report-row"><div class="whatsapp-report-label">Status:</div><div class="whatsapp-report-value">${data.layak ? 'Layak PEKA B40' : 'Tidak Layak PEKA B40'}</div></div>
+        <div class="whatsapp-report-row">
+          <div class="whatsapp-report-label">Nama Pesakit:</div>
+          <div class="whatsapp-report-value">${data.nama || '-'}</div>
+        </div>
+        <div class="whatsapp-report-row">
+          <div class="whatsapp-report-label">No. IC:</div>
+          <div class="whatsapp-report-value">${data.ic || '-'}</div>
+        </div>
+        <div class="whatsapp-report-row">
+          <div class="whatsapp-report-label">Alamat:</div>
+          <div class="whatsapp-report-value">${data.alamat || '-'}</div>
+        </div>
+        <div class="whatsapp-report-row">
+          <div class="whatsapp-report-label">BP:</div>
+          <div class="whatsapp-report-value">${data.bp || '-'} mmHg</div>
+        </div>
+        <div class="whatsapp-report-row">
+          <div class="whatsapp-report-label">PR:</div>
+          <div class="whatsapp-report-value">${data.pr || '-'} bpm</div>
+        </div>
+        <div class="whatsapp-report-row">
+          <div class="whatsapp-report-label">DXT (${data.dxtType || 'Fasting'}):</div>
+          <div class="whatsapp-report-value">${data.dxt || '-'} mmol/L</div>
+        </div>
+        <div class="whatsapp-report-row">
+          <div class="whatsapp-report-label">Tinggi:</div>
+          <div class="whatsapp-report-value">${data.tinggi || '-'} cm</div>
+        </div>
+        <div class="whatsapp-report-row">
+          <div class="whatsapp-report-label">Berat:</div>
+          <div class="whatsapp-report-value">${data.berat || '-'} kg</div>
+        </div>
+        <div class="whatsapp-report-row">
+          <div class="whatsapp-report-label">BMI:</div>
+          <div class="whatsapp-report-value">${data.bmi || '-'}</div>
+        </div>
+        <div class="whatsapp-report-row">
+          <div class="whatsapp-report-label">Status:</div>
+          <div class="whatsapp-report-value">${data.layak ? 'Layak PEKA B40' : 'Tidak Layak PEKA B40'}</div>
+        </div>
       </div>
-      <div class="whatsapp-report-footer">Sila hubungi klinik untuk maklumat lanjut. Terima kasih.</div>
-    </div>`;
+      <div class="whatsapp-report-footer">
+        Sila hubungi klinik untuk maklumat lanjut. Terima kasih.
+      </div>
+    </div>
+  `;
+
   reportContainer.innerHTML = reportHTML;
   currentWhatsAppData = data;
+  CURRENT_WA_MSISDN = data.tel || '';  // SIMPAN no. telefon untuk hantar gambar
   whatsappReportModal.show();
 }
 
-/* =======================
-   DATA LOADERS & ACTIONS
-   ======================= */
-// ——— Dashboard counts
-async function loadDashboardData(){
-  try{
-    const res = await getJSON({ action:'getDashboard' }, { msg:'Memuat dashboard…' });
-    if (res.status==='success'){
-      const d = res.data || {};
-      setNumber('totalDaftar', d.totalDaftar ?? 0);
-      setNumber('totalFirstVisit', d.totalFirstVisit ?? 0);
-      setNumber('totalSecondVisit', d.totalSecondVisit ?? 0);
-      setNumber('totalSelesai', d.totalSelesai ?? 0);
-      setNumber('labFollowUpDue', d.labFollowUpDue ?? 0);
-      setNumber('labFollowUpPending', d.labFollowUpPending ?? 0);
-      setBadge('badgeTCA', d.badgeTCA ?? 0);
-      setBadge('badgeFirst', d.badgeFirst ?? 0);
-      setBadge('badgeLab', d.badgeLab ?? 0);
-      setBadge('badgeSecond', d.badgeSecond ?? 0);
-    }
-  }catch(e){ /* fallback: biar nombor sedia ada */ }
-}
-function setNumber(id, num){ const el = document.getElementById(id); if (el) el.textContent = String(num); }
-function setBadge(id, num){ const el = document.getElementById(id); if (!el) return; el.textContent = num; el.style.display = (Number(num)>0)?'inline-block':'none'; }
+function sendWhatsAppReport() {
+  if (!currentWhatsAppData) return;
 
-// ——— Dashboard chart (Selesai)
-async function loadStatistics(period='3months'){
-  try{
-    const res = await getJSON({ action:'getStats', period }, { msg:'Memuat statistik…' });
-    const arr = (res.status==='success' ? (res.data||[]) : []);
-    if (stats3dChart) stats3dChart.destroy();
-    stats3dChart = buildBarChart('stats3dChart', arr, 'Selesai per Bulan');
-  }catch(e){
-    const arr = []; if (stats3dChart) stats3dChart.destroy();
-    stats3dChart = buildBarChart('stats3dChart', arr, 'Selesai per Bulan');
-  }
-}
-async function loadCompletedStatistics(period='3months'){
-  try{
-    const res = await getJSON({ action:'getCompletedStats', period }, { msg:'Memuat statistik selesai…' });
-    const arr = (res.status==='success' ? (res.data||[]) : []);
-    if (completed3dChart) completed3dChart.destroy();
-    completed3dChart = buildBarChart('completed3dChart', arr, 'Selesai per Bulan');
-  }catch(e){
-    const arr = []; if (completed3dChart) completed3dChart.destroy();
-    completed3dChart = buildBarChart('completed3dChart', arr, 'Selesai per Bulan');
+  const nama = currentWhatsAppData.nama || '';
+  const ic = currentWhatsAppData.ic || '';
+  const bp = currentWhatsAppData.bp || '';
+  const pr = currentWhatsAppData.pr || '';
+  const dxtType = currentWhatsAppData.dxtType || 'Fasting';
+  const dxt = currentWhatsAppData.dxt || '';
+  const tinggi = currentWhatsAppData.tinggi || '';
+  const berat = currentWhatsAppData.berat || '';
+  const bmi = currentWhatsAppData.bmi || '';
+  const layak = currentWhatsAppData.layak ? 'Layak PEKA B40' : 'Tidak Layak PEKA B40';
+
+  const message = `Laporan Saringan NADI
+Nama: ${nama}
+IC: ${ic}
+BP: ${bp} mmHg
+PR: ${pr} bpm
+DXT (${dxtType}): ${dxt} mmol/L
+Tinggi: ${tinggi} cm
+Berat: ${berat} kg
+BMI: ${bmi}
+Status: ${layak}
+
+Sila hubungi klinik untuk maklumat lanjut. Terima kasih.`;
+
+  if (currentWhatsAppData.tel) {
+    window.open(waHref(currentWhatsAppData.tel, message), '_blank');
+    whatsappReportModal.hide();
+    toast('Berjaya', 'Laporan (teks) dihantar melalui WhatsApp', 'success');
+  } else {
+    toast('Ralat', 'Nombor telefon tidak sah', 'danger');
   }
 }
 
-// ——— TCA (dashboard list hari ini)
-async function loadTCACallData(){
-  const tbody = document.getElementById('tcaCallTable');
-  try{
-    const res = await getJSON({ action:'getTCACalls', filter:'today' }, { msg:'Memuat senarai TCA hari ini…' });
-    const arr = (res.status==='success' ? (res.data||[]) : []);
-    if (!arr.length){ tbody.innerHTML = `<tr><td colspan="6" class="text-center text-muted">Tiada rekod.</td></tr>`; return; }
-    tbody.innerHTML = arr.map(x=>`
-      <tr>
-        <td>${x.nama||'-'}</td>
-        <td>${x.noIC||'-'}</td>
-        <td><a href="${telHref(normalizeMsisdnMY(x.noTelefon||''))}">${normalizeMsisdnMY(x.noTelefon||'')}</a></td>
-        <td>${x.alamat||'-'}</td>
-        <td>${x.tarikhTCA||'-'}</td>
-        <td>${x.status||'TCA CALL'}</td>
-      </tr>
-    `).join('');
-  }catch(e){
-    tbody.innerHTML = `<tr><td colspan="6" class="text-center text-muted">Gagal memuat data.</td></tr>`;
-  }
-}
+function exportNadiCSV() {
+  const container = document.getElementById('nadiContainer');
+  const rows = Array.from(container.querySelectorAll('.nadi-row'));
+  if (!rows.length){ toast('Makluman','Tiada data untuk diexport','warning'); return; }
 
-// ——— TCA Page
-let tcaPageFilter='today';
-async function loadTCACallPage(){
-  const group = document.getElementById('tcaFilter');
-  group.querySelectorAll('button').forEach(btn=>{
-    btn.onclick = ()=>{
-      group.querySelectorAll('button').forEach(b=>b.classList.remove('active'));
-      btn.classList.add('active');
-      tcaPageFilter = btn.getAttribute('data-filter');
-      renderTcaList();
+  const header = ['Nama','IC','Telefon','Alamat','BP','PR','DXT_Tipe','DXT','Tinggi(cm)','Berat(kg)','BMI','Layak','TarikhTCA','MasaTCA','Staff'];
+
+  const data = rows.map(row => {
+    return {
+      nama: row.querySelector('.nadi-nama').value.trim(),
+      ic: row.querySelector('.nadi-ic').value.trim(),
+      tel: row.querySelector('.nadi-tel').value.trim(),
+      alamat: row.querySelector('.nadi-alamat').value.trim(),
+      bp: row.querySelector('.nadi-bp').value.trim(),
+      pr: row.querySelector('.nadi-pr').value.trim(),
+      dxtType: row.querySelector('.nadi-dxt-type').value,
+      dxt: row.querySelector('.nadi-dxt').value.trim(),
+      tinggi: row.querySelector('.nadi-tinggi').value.trim(),
+      berat: row.querySelector('.nadi-berat').value.trim(),
+      bmi: row.querySelector('.nadi-bmi').value.trim(),
+      layak: row.querySelector('.nadi-layak').checked ? 'Ya' : 'Tidak',
+      tcaDate: row.querySelector('.nadi-tca-date').value.trim(),
+      tcaTime: row.querySelector('.nadi-tca-time').value.trim(),
+      staff: row.querySelector('.nadi-staff').value.trim()
     };
   });
-  renderTcaList();
-}
-async function renderTcaList(){
-  const tbody = document.getElementById('tcaCallList');
-  try{
-    const res = await getJSON({ action:'getTCACalls', filter: tcaPageFilter }, { msg:'Memuat rekod TCA…' });
-    const arr = (res.status==='success' ? (res.data||[]) : []);
-    if (!arr.length){ tbody.innerHTML = `<tr><td colspan="6" class="text-center text-muted">Tiada rekod.</td></tr>`; return; }
-    tbody.innerHTML = arr.map(x=>`
-      <tr>
-        <td>${x.nama||'-'}</td>
-        <td>${x.noIC||'-'}</td>
-        <td><a href="${telHref(normalizeMsisdnMY(x.noTelefon||''))}">${normalizeMsisdnMY(x.noTelefon||'')}</a></td>
-        <td>${x.alamat||'-'}</td>
-        <td>${x.tarikhTCA||'-'} ${x.masaTCA||''}</td>
-        <td>${x.status||'TCA CALL'}</td>
-      </tr>
-    `).join('');
-  }catch(e){
-    tbody.innerHTML = `<tr><td colspan="6" class="text-center text-muted">Gagal memuat data.</td></tr>`;
-  }
+
+  const csvRows = data.map(row => [
+    row.nama, row.ic, row.tel, row.alamat, row.bp, row.pr, row.dxtType, row.dxt,
+    row.tinggi, row.berat, row.bmi, row.layak, row.tcaDate, row.tcaTime, row.staff
+  ]);
+
+  const csv = [header, ...csvRows].map(r => r.map(v => `"${String(v||'').replace(/"/g,'""')}"`).join(',')).join('\r\n');
+  const blob = new Blob([csv], { type:'text/csv;charset=utf-8;' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `program_nadi_${new Date().toISOString().slice(0,10)}.csv`;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  URL.revokeObjectURL(url);
+  toast('Export','Fail CSV telah dimuat turun','success');
 }
 
-// ——— First Visit
-async function loadFirstVisitData(){
-  const tbody = document.getElementById('firstVisitList');
+/* =======================
+   DATA LOADERS
+   ======================= */
+async function loadDashboardData(){
   try{
-    const res = await getJSON({ action:'getFirstVisitList' }, { msg:'Memuat First Visit…' });
-    const arr = (res.status==='success' ? (res.data||[]) : []);
-    if (!arr.length){ tbody.innerHTML = `<tr><td colspan="7" class="text-center text-muted">Tiada rekod.</td></tr>`; return; }
-    tbody.innerHTML = arr.map(x=>{
-      const ic = x.noIC||'-';
-      const pdpaBtn = `<button class="btn btn-sm btn-outline-primary" onclick="openPDPA('${ic}')"><i class="fa-solid fa-file-arrow-up me-1"></i>PDPA</button>`;
-      const hadirBtn = `<button class="btn btn-sm btn-success" onclick="markFirstVisit('${ic}')"><i class="fa-solid fa-check me-1"></i>Hadir</button>`;
-      return `
-        <tr>
-          <td>${x.nama||'-'}</td>
-          <td>${ic}</td>
-          <td>${x.alamat||'-'}</td>
-          <td>${x.tarikhTCA||'-'} ${x.masaTCA||''}</td>
-          <td>${x.pdpa?'Ada':'Tiada'}</td>
-          <td>${x.status||'First Visit'}</td>
-          <td class="mini-actions">${pdpaBtn} ${hadirBtn}</td>
-        </tr>`;
-    }).join('');
-  }catch(e){
-    tbody.innerHTML = `<tr><td colspan="7" class="text-center text-muted">Gagal memuat data.</td></tr>`;
-  }
+    const data = await getJSON({ action:'getDashboardData' }, { msg:'Memuat Dashboard…' });
+    if (data.status==='success'){
+      const d = data.data || {};
+      totalDaftar.textContent = d.totalDaftar || 0;
+      totalFirstVisit.textContent = d.totalFirstVisit || 0;
+      totalSecondVisit.textContent = d.totalSecondVisit || 0;
+      totalSelesai.textContent = d.totalSelesai || 0;
+      labFollowUpDue.textContent = d.labFollowUpDue || 0;
+      labFollowUpPending.textContent = d.labFollowUpPending || 0;
+
+      // Badges navbar (tunjuk hanya jika >0)
+      setBadge('badgeTCA', d.totalDaftar);
+      setBadge('badgeFirst', d.totalFirstVisit);
+      setBadge('badgeSecond', d.totalSecondVisit);
+      setBadge('badgeLab', d.labFollowUpDue + d.labFollowUpPending);
+    }
+  }catch(e){ toast('Ralat','Gagal memuat data dashboard','danger'); }
 }
+function setBadge(id,val){
+  const el = document.getElementById(id);
+  if (!el) return;
+  if (val>0){ el.textContent = val; el.style.display='inline-block'; }
+  else { el.style.display='none'; }
+}
+
+async function loadStatistics(period){
+  try{
+    const data = await getJSON({ action:'getStatistics', period }, { msg:'Memuat statistik…' });
+    if (data.status==='success'){
+      if (stats3dChart) stats3dChart.destroy();
+      stats3dChart = buildBarChart('stats3dChart', data.data, `Statistik Pesakit Selesai (${getPeriodLabel(period)})`);
+    }
+  }catch(e){}
+}
+async function loadCompletedStatistics(period){
+  try{
+    const data = await getJSON({ action:'getStatistics', period }, { msg:'Memuat statistik…' });
+    if (data.status==='success'){
+      if (completed3dChart) completed3dChart.destroy();
+      completed3dChart = buildBarChart('completed3dChart', data.data, `Statistik Pesakit Selesai (${getPeriodLabel(period)})`);
+    }
+  }catch(e){}
+}
+function getPeriodLabel(p){ if(p==='3months')return'3 Bulan Terakhir'; if(p==='6months')return'6 Bulan Terakhir'; if(p==='12months')return'12 Bulan Terakhir'; return p; }
+
+async function loadTCACallData(){
+  try{
+    const data = await getJSON({ action:'getTCACall' }, { msg:'Memuat TCA Hari Ini…' });
+    const tb1 = document.getElementById('tcaCallTable');
+    if (tb1) tb1.innerHTML = '';
+
+    const renderRow = (p) => {
+      const msisdn = normalizeMsisdnMY(p.noTelefon||'');
+      return `
+      <tr data-ic="${p.noIC}">
+        <td>${p.nama}</td>
+        <td>${p.noIC}</td>
+        <td class="mini-actions">
+          <a class="btn btn-sm btn-outline-secondary" href="${telHref(msisdn)}"><i class="fa-solid fa-phone"></i> Call</a>
+          <a class="btn btn-sm btn-outline-success" target="_blank" href="${waHref(msisdn)}"><i class="fa-brands fa-whatsapp"></i> WhatsApp</a>
+          <div class="small text-muted mt-1">${msisdn}</div>
+        </td>
+        <td>${p.alamat || '-'}</td>
+        <td>${p.tarikhTCA}</td>
+        <td><span class="badge ${p.status==='CALLED'?'bg-success':'bg-warning'}">${p.status || 'PENDING'}</span></td>
+      </tr>`;
+    };
+
+    if (data.status==='success' && data.data.length>0){
+      data.data.forEach(p=>{ if (tb1) tb1.insertAdjacentHTML('beforeend', renderRow(p)); });
+    } else {
+      if (tb1) tb1.innerHTML = `<tr><td colspan="6" class="text-center text-muted">Tiada pesakit perlu dihubungi hari ini</td></tr>`;
+    }
+  }catch(e){ /* senyap */ }
+}
+
+/* === TCA PAGE (rekod; tiada tanda selesai manual) === */
+let TCA_ALL = [];
+async function loadTCACallPage(){
+  try{
+    const res = await getJSON({ action:'getTCACall', all:1 }, { msg:'Memuat rekod TCA…' });
+    TCA_ALL = (res.status==='success') ? (res.data||[]) : [];
+    renderTcaList('today');
+  }catch(e){ renderTcaList('all'); }
+  document.querySelectorAll('#tcaFilter [data-filter]').forEach(btn=>{
+    btn.addEventListener('click', ()=>{
+      document.querySelectorAll('#tcaFilter [data-filter]').forEach(b=>b.classList.remove('active'));
+      btn.classList.add('active');
+      renderTcaList(btn.getAttribute('data-filter'));
+    });
+  });
+}
+function renderTcaList(mode){
+  const tbody = document.getElementById('tcaCallList');
+  if (!tbody) return;
+  tbody.innerHTML = '';
+  const today = new Date(); today.setHours(0,0,0,0);
+
+  const filtered = TCA_ALL.filter(p=>{
+    const d = parseDDMMYYYY(p.tarikhTCA);
+    if (!d) return mode==='all';
+    d.setHours(0,0,0,0);
+    if (mode==='today') return isSameDay(d, today);
+    if (mode==='upcoming') return d.getTime() > today.getTime();
+    if (mode==='past') return d.getTime() < today.getTime();
+    return true;
+  });
+
+  if (!filtered.length){
+    tbody.innerHTML = `<tr><td colspan="6" class="text-center text-muted">Tiada rekod untuk paparan ini.</td></tr>`;
+    return;
+  }
+
+  filtered.forEach(p=>{
+    const msisdn = normalizeMsisdnMY(p.noTelefon||'');
+    const badgeCls = p.status==='CALLED' ? 'bg-success' : (parseDDMMYYYY(p.tarikhTCA)?.getTime()<today.getTime() ? 'bg-secondary' : 'bg-warning');
+    const label = p.status==='CALLED' ? 'CALLED' : (parseDDMMYYYY(p.tarikhTCA)?.getTime()<today.getTime() ? 'LEPAS' : (isSameDay(parseDDMMYYYY(p.tarikhTCA), today) ? 'HARI INI' : 'AKAN DATANG'));
+    const row = `
+      <tr data-ic="${p.noIC}">
+        <td>${p.nama}</td>
+        <td>${p.noIC}</td>
+        <td class="mini-actions">
+          <a class="btn btn-sm btn-outline-secondary" href="${telHref(msisdn)}"><i class="fa-solid fa-phone"></i> Call</a>
+          <a class="btn btn-sm btn-outline-success" target="_blank" href="${waHref(msisdn)}"><i class="fa-brands fa-whatsapp"></i> WhatsApp</a>
+          <div class="small text-muted mt-1">${msisdn}</div>
+        </td>
+        <td>${p.alamat || '-'}</td>
+        <td>${p.tarikhTCA||'-'}</td>
+        <td><span class="badge ${badgeCls}">${label}</span></td>
+      </tr>`;
+    tbody.insertAdjacentHTML('beforeend', row);
+  });
+}
+
+async function loadFirstVisitData(){
+  try{
+    const data = await getJSON({ action:'getFirstVisit' }, { msg:'Memuat First Visit…' });
+    const tbody = document.getElementById('firstVisitList');
+    tbody.innerHTML = '';
+    if (data.status==='success' && data.data.length>0){
+      data.data.forEach(p=>{
+        const hadir = p.status==='HADIR';
+        const within = isWithin24hOfDate(p.tarikhTCA);
+        const msisdn = normalizeMsisdnMY(p.noTelefon||'');
+
+        let pdpaHTML = '';
+        if (p.pdpaFileId){
+          pdpaHTML = `
+            <div class="d-flex flex-wrap gap-1">
+              <a class="btn btn-sm btn-outline-success" target="_blank" href="https://drive.google.com/file/d/${p.pdpaFileId}/preview"><i class="fa-solid fa-eye"></i> Lihat</a>
+              <a class="btn btn-sm btn-outline-primary" target="_blank" href="https://drive.google.com/uc?export=download&id=${p.pdpaFileId}"><i class="fa-solid fa-download"></i> Muat Turun</a>
+              <button class="btn btn-sm btn-outline-danger" onclick="deletePDPA('${p.noIC}')"><i class="fa-solid fa-trash"></i> Padam</button>
+            </div>`;
+        } else {
+          pdpaHTML = hadir ? `<button class="btn btn-sm btn-outline-primary" onclick="openPDPA('${p.noIC}')"><i class="fa-solid fa-file-arrow-up"></i> Upload</button>`
+                           : `<span class="text-muted">-</span>`;
+        }
+
+        const row = `
+        <tr data-ic="${p.noIC}">
+          <td>${p.nama}</td>
+          <td>${p.noIC}</td>
+          <td>${p.alamat || '-'}</td>
+          <td>${p.tarikhTCA||'-'}</td>
+          <td>${pdpaHTML}</td>
+          <td><span class="badge ${hadir?'bg-success':'bg-warning'}">${hadir?'Hadir':'Belum Hadir'}</span></td>
+          <td class="mini-actions">
+            ${within && !hadir ? `<button class="btn btn-sm btn-success" onclick="markFirstVisit('${p.noIC}')"><i class="fa-solid fa-circle-check"></i> Hadir</button>` : ''}
+            ${!hadir ? `<button class="btn btn-sm btn-primary" onclick="openRetcaModal('${p.noIC}')"><i class="fa-solid fa-calendar-plus"></i> Re-TCA</button>` : ''}
+            ${msisdn ? `
+              <a class="btn btn-sm btn-outline-secondary" href="${telHref(msisdn)}"><i class="fa-solid fa-phone"></i></a>
+              <a class="btn btn-sm btn-outline-success" target="_blank" href="${waHref(msisdn)}"><i class="fa-brands fa-whatsapp"></i></a>` : ''}
+          </td>
+        </tr>`;
+        tbody.insertAdjacentHTML('beforeend', row);
+      });
+    } else {
+      tbody.innerHTML = `<tr><td colspan="7" class="text-center text-muted">Tiada data First Visit</td></tr>`;
+    }
+  }catch(e){ /* senyap */ }
+}
+
+function isWithin24hOfDate(dateStr){
+  const d = parseDDMMYYYY(dateStr);
+  if (!d) return false;
+  const start = new Date(d.getFullYear(), d.getMonth(), d.getDate(), 0,0,0,0);
+  const end = new Date(start.getTime() + 24*60*60*1000);
+  const now = new Date();
+  return now >= start && now < end;
+}
+
+async function loadLabFollowUp(){
+  try{
+    const data = await getJSON({ action:'getLabFollowUp' }, { msg:'Memuat Follow-up Lab…' });
+    const tbody = document.getElementById('labFollowupTable');
+    tbody.innerHTML = '';
+    if (data.status==='success' && data.data.length>0){
+      data.data.forEach(p=>{
+        const msisdn = normalizeMsisdnMY(p.noTelefon||'');
+        const badge = p.labStatus==='DONE' ? 'bg-success' : (p.labStatus==='REPEAT' ? 'bg-danger' : (p.labStatus==='IN_PROCESS' ? 'bg-warning' : 'bg-secondary'));
+        const label = p.labStatus || 'PENDING';
+        const row = `
+        <tr data-ic="${p.noIC}">
+          <td>${p.nama}</td>
+          <td>${p.noIC}</td>
+          <td class="mini-actions">
+            <a class="btn btn-sm btn-outline-secondary" href="${telHref(msisdn)}"><i class="fa-solid fa-phone"></i> Call</a>
+            <a class="btn btn-sm btn-outline-success" target="_blank" href="${waHref(msisdn,'Keputusan makmal anda telah siap.')}"><i class="fa-brands fa-whatsapp"></i> WhatsApp</a>
+            <div class="small text-muted mt-1">${msisdn}</div>
+          </td>
+          <td>${p.alamat || '-'}</td>
+          <td>${p.firstVisitDate}</td>
+          <td>${p.daysSince}</td>
+          <td><span class="badge ${badge}">${label}</span></td>
+          <td class="mini-actions">
+            <button class="btn btn-sm btn-success" onclick="openSecondTca('${p.noIC}')"><i class="fa-solid fa-square-check"></i> Result complete & berjaya call</button>
+            <button class="btn btn-sm btn-warning" onclick="markLabStatus('${p.noIC}','IN_PROCESS')"><i class="fa-solid fa-hourglass-half"></i> In process</button>
+            <button class="btn btn-sm btn-danger" onclick="markLabStatus('${p.noIC}','REPEAT')"><i class="fa-solid fa-rotate-left"></i> Repeat sample</button>
+          </td>
+        </tr>`;
+        tbody.insertAdjacentHTML('beforeend', row);
+      });
+    } else {
+      tbody.innerHTML = `<tr><td colspan="8" class="text-center text-muted">Tiada pesakit untuk follow-up.</td></tr>`;
+    }
+  }catch(e){ /* senyap */ }
+}
+
+async function loadSecondVisitData(){
+  try{
+    const data = await getJSON({ action:'getSecondVisit' }, { msg:'Memuat Second Visit…' });
+    const tbody = document.getElementById('secondVisitList');
+    tbody.innerHTML = '';
+    if (data.status==='success' && data.data.length>0){
+      data.data.forEach(p=>{
+        const hadir = p.status==='HADIR';
+        const within = isWithin24hOfDate(p.tarikhTCA);
+        const msisdn = normalizeMsisdnMY(p.noTelefon||'');
+
+        let pdpaHTML = p.pdpaFileId
+          ? `<div class="d-flex flex-wrap gap-1">
+              <a class="btn btn-sm btn-outline-success" target="_blank" href="https://drive.google.com/file/d/${p.pdpaFileId}/preview"><i class="fa-solid fa-eye"></i> Lihat</a>
+              <a class="btn btn-sm btn-outline-primary" target="_blank" href="https://drive.google.com/uc?export=download&id=${p.pdpaFileId}"><i class="fa-solid fa-download"></i> Muat Turun</a>
+            </div>`
+          : `<span class="text-danger">PDPA tiada</span>`;
+
+        const row = `
+        <tr data-ic="${p.noIC}">
+          <td>${p.nama}</td>
+          <td>${p.noIC}</td>
+          <td>${p.alamat || '-'}</td>
+          <td>${p.tarikhTCA||'-'}</td>
+          <td>${pdpaHTML}</td>
+          <td><span class="badge ${hadir?'bg-success':'bg-warning'}">${hadir?'Hadir':'Belum Hadir'}</span></td>
+          <td class="mini-actions">
+            ${within && !hadir ? `<button class="btn btn-sm btn-success" onclick="markSecondVisitHadir('${p.noIC}')"><i class="fa-solid fa-circle-check"></i> Hadir</button>` : ''}
+            ${msisdn ? `
+              <a class="btn btn-sm btn-outline-secondary" href="${telHref(msisdn)}"><i class="fa-solid fa-phone"></i></a>
+              <a class="btn btn-sm btn-outline-success" target="_blank" href="${waHref(msisdn)}"><i class="fa-brands fa-whatsapp"></i></a>` : ''}
+          </td>
+        </tr>`;
+        tbody.insertAdjacentHTML('beforeend', row);
+      });
+    } else {
+      tbody.innerHTML = `<tr><td colspan="7" class="text-center text-muted">Tiada data Second Visit</td></tr>`;
+    }
+  }catch(e){ /* senyap */ }
+}
+
+async function loadCompletedData(){
+  try{
+    const data = await getJSON({ action:'getCompleted' }, { msg:'Memuat Selesai…' });
+    const tbody = document.getElementById('completedTable');
+    tbody.innerHTML = '';
+    if (data.status==='success' && data.data.length>0){
+      data.data.forEach(p=>{
+        const msisdn = normalizeMsisdnMY(p.noTelefon||'');
+        const pdpaHTML = p.pdpaFileId
+          ? `<div class="d-flex flex-wrap gap-1">
+              <a class="btn btn-sm btn-outline-success" target="_blank" href="https://drive.google.com/file/d/${p.pdpaFileId}/preview"><i class="fa-solid fa-eye"></i> Lihat</a>
+              <a class="btn btn-sm btn-outline-primary" target="_blank" href="https://drive.google.com/uc?export=download&id=${p.pdpaFileId}"><i class="fa-solid fa-download"></i> Muat Turun</a>
+            </div>`
+          : `<span class="text-muted">-</span>`;
+
+        const labCompleted = p.labCompletedAt ? `${p.labCompletedAt}` : '-';
+        const row = `<tr data-ic="${p.noIC}">
+          <td>${p.nama}</td><td>${p.noIC}</td><td>${msisdn}</td><td>${p.alamat || '-'}</td><td>${pdpaHTML}</td>
+          <td>${p.tarikhDaftar||'-'}</td>
+          <td>${p.firstVisitDate||'-'}</td>
+          <td>${labCompleted}</td>
+          <td>${p.secondVisitDate||'-'}</td>
+          <td>${p.tarikhSelesai||'-'}</td>
+          <td><button class="btn btn-sm btn-outline-secondary" onclick="archivePatient('${p.noIC}')"><i class="fa-solid fa-box-archive"></i> Arkib</button></td>
+        </tr>`;
+        tbody.insertAdjacentHTML('beforeend', row);
+      });
+    } else {
+      tbody.innerHTML = `<tr><td colspan="11" class="text-center text-muted">Tiada data pesakit selesai</td></tr>`;
+    }
+  }catch(e){ /* senyap */ }
+}
+
+async function loadArchivedData(){
+  try{
+    const data = await getJSON({ action:'getArchived' }, { msg:'Memuat Arkib…' });
+    const tbody = document.getElementById('archiveTable');
+    tbody.innerHTML = '';
+    if (data.status==='success' && data.data.length>0){
+      data.data.forEach(p=>{
+        const msisdn = normalizeMsisdnMY(p.noTelefon||'');
+        const row = `<tr data-ic="${p.noIC}">
+          <td>${p.nama}</td><td>${p.noIC}</td><td>${msisdn}</td><td>${p.alamat || '-'}</td><td>${p.tarikhDaftar}</td><td>${p.tarikhSelesai}</td><td>${p.archivedAt||'-'}</td>
+          <td><button class="btn btn-sm btn-outline-primary" onclick="restorePatient('${p.noIC}')"><i class="fa-solid fa-rotate-left"></i> Pulihkan</button></td>
+        </tr>`;
+        tbody.insertAdjacentHTML('beforeend', row);
+      });
+    } else {
+      tbody.innerHTML = `<tr><td colspan="8" class="text-center text-muted">Tiada rekod arkib</td></tr>`;
+    }
+  }catch(e){ /* senyap */ }
+}
+
+/* =======================
+   ACTIONS
+   ======================= */
 async function markFirstVisit(noIC){
   try{
-    const res = await postForm({ action:'markFirstVisitHadir', noIC }, { msg:'Menanda hadir…' });
-    if (res.status==='success'){ toast('Berjaya','Ditanda hadir','success'); loadFirstVisitData(); loadLabFollowUp(); }
-    else throw new Error(res.message||'Gagal menanda hadir');
-  }catch(e){ toast('Ralat', e.message,'danger'); }
+    const res = await postForm({ action:'updateStatus', op:'firstVisit', noIC, staff: STAFF_EMAIL }, { msg:'Merekod Hadir (First Visit)…' });
+    if (res.status==='success'){
+      toast('Berjaya','Hadir (First Visit) direkodkan. Sila muat naik PDPA.', 'success');
+      openPDPA(noIC);
+      loadFirstVisitData(); loadLabFollowUp(); loadSecondVisitData(); loadDashboardData();
+    } else throw new Error(res.message||'Gagal rekod hadir');
+  }catch(e){ toast('Ralat', e.message, 'danger'); }
+}
+async function markSecondVisitHadir(noIC){
+  try{
+    const res = await postForm({ action:'updateStatus', op:'secondVisitHadir', noIC, staff: STAFF_EMAIL }, { msg:'Menandakan Hadir (Second Visit)…' });
+    if (res.status==='success'){
+      toast('Berjaya','Second Visit selesai → Selesai','success');
+      loadSecondVisitData(); loadCompletedData(); loadDashboardData();
+    } else throw new Error(res.message||'Gagal menandakan hadir');
+  }catch(e){ toast('Ralat', e.message, 'danger'); }
 }
 
-// ——— Lab Follow-up
-async function loadLabFollowUp(){
-  const tbody = document.getElementById('labFollowupTable');
-  try{
-    const res = await getJSON({ action:'getLabFollowupList' }, { msg:'Memuat Follow-up Lab…' });
-    const arr = (res.status==='success' ? (res.data||[]) : []);
-    if (!arr.length){ tbody.innerHTML = `<tr><td colspan="8" class="text-center text-muted">Tiada rekod.</td></tr>`; return; }
-    tbody.innerHTML = arr.map(x=>{
-      const ic = x.noIC||'-';
-      const secondBtn = `<button class="btn btn-sm btn-outline-primary" onclick="openSecondTca('${ic}')"><i class="fa-solid fa-calendar-check me-1"></i>Set Second TCA</button>`;
-      return `
-        <tr>
-          <td>${x.nama||'-'}</td>
-          <td>${ic}</td>
-          <td>${normalizeMsisdnMY(x.noTelefon||'')}</td>
-          <td>${x.alamat||'-'}</td>
-          <td>${x.firstVisitDate||'-'}</td>
-          <td>${x.daysSince||'-'}</td>
-          <td>${x.status||'Menunggu'}</td>
-          <td class="mini-actions">${secondBtn}</td>
-        </tr>`;
-    }).join('');
-  }catch(e){
-    tbody.innerHTML = `<tr><td colspan="8" class="text-center text-muted">Gagal memuat data.</td></tr>`;
-  }
+function openRetcaModal(noIC){
+  document.getElementById('retcaIC').value = noIC;
+  document.getElementById('retcaDate').value = '';
+  document.getElementById('retcaTime').value = '';
+  retcaModal.show();
 }
+async function submitRetca(){
+  const noIC = document.getElementById('retcaIC').value;
+  const tarikhTCA = document.getElementById('retcaDate').value;
+  const masaTCA = document.getElementById('retcaTime').value;
+  if (!noIC || !tarikhTCA || !masaTCA) return toast('Ralat','Sila lengkapkan tarikh & masa','danger');
+  try{
+    const res = await postForm({ action:'updateStatus', op:'retca', noIC, tarikhTCA, masaTCA, staff: STAFF_EMAIL }, { msg:'Mendaftar TCA semula…' });
+    if (res.status==='success'){
+      retcaModal.hide();
+      toast('Berjaya','TCA baharu disimpan','success');
+      loadTCACallData(); loadFirstVisitData(); loadSecondVisitData(); loadDashboardData();
+    } else throw new Error(res.message||'Gagal kemaskini TCA');
+  }catch(e){ toast('Ralat', e.message, 'danger'); }
+}
+
+/* Lab complete → set second TCA + log caller + set Lab DONE */
 function openSecondTca(noIC){
   document.getElementById('secondTcaIC').value = noIC;
   document.getElementById('secondTcaDate').value = '';
@@ -1408,140 +2093,26 @@ async function submitSecondTca(){
   const noIC = document.getElementById('secondTcaIC').value;
   const date = document.getElementById('secondTcaDate').value;
   const time = document.getElementById('secondTcaTime').value;
-  const staff = document.getElementById('secondTcaStaff').value.trim();
-  if (!noIC || !date || !time || !staff){ toast('Ralat','Sila isi semua maklumat','danger'); return; }
+  const staff= document.getElementById('secondTcaStaff').value.trim();
+  if (!date || !time || !staff) { toast('Ralat','Sila isi tarikh, masa & nama staff','danger'); return; }
   try{
-    const res = await postForm({ action:'setSecondVisitTCA', noIC, date, time, staff }, { msg:'Menyimpan second visit…' });
-    if (res.status==='success'){ toast('Berjaya','Second visit ditetapkan','success'); secondTcaModal.hide(); loadLabFollowUp(); loadSecondVisitData(); }
-    else throw new Error(res.message||'Gagal simpan');
+    const a = await postForm({ action:'updatePatient', noIC, tarikhTCA:date, masaTCA:time, staff }, { msg:'Menetapkan TCA Second Visit…' });
+    if (a.status!=='success') throw new Error(a.message||'Gagal tetapkan TCA');
+
+    const b = await postForm({ action:'logCall', noIC, staff, event:'LAB_COMPLETE_CALL' }, { msg:'Merekod log panggilan…' });
+    if (b.status!=='success') throw new Error(b.message||'Gagal rekod log');
+
+    const c = await postForm({ action:'updateLabStatus', noIC, status:'DONE', staff }, { msg:'Mengemas kini status follow-up…' });
+    if (c.status!=='success') throw new Error(c.message||'Gagal set follow-up DONE');
+
+    secondTcaModal.hide();
+    toast('Berjaya','TCA Second Visit ditetapkan, log disimpan & lab ditanda Selesai','success');
+
+    loadLabFollowUp(); loadSecondVisitData(); loadCompletedData(); loadDashboardData();
+    refreshLogs({silent:true});
   }catch(e){ toast('Ralat', e.message, 'danger'); }
 }
 
-// ——— Second Visit
-async function loadSecondVisitData(){
-  const tbody = document.getElementById('secondVisitList');
-  try{
-    const res = await getJSON({ action:'getSecondVisitList' }, { msg:'Memuat Second Visit…' });
-    const arr = (res.status==='success' ? (res.data||[]) : []);
-    if (!arr.length){ tbody.innerHTML = `<tr><td colspan="7" class="text-center text-muted">Tiada rekod.</td></tr>`; return; }
-    tbody.innerHTML = arr.map(x=>{
-      const ic = x.noIC||'-';
-      const hadirBtn = `<button class="btn btn-sm btn-success" onclick="markSecondVisitHadir('${ic}')"><i class="fa-solid fa-check me-1"></i>Hadir</button>`;
-      const pdpaBtn = `<button class="btn btn-sm btn-outline-primary" onclick="openPDPA('${ic}')"><i class="fa-solid fa-file-arrow-up me-1"></i>PDPA</button>`;
-      return `
-        <tr>
-          <td>${x.nama||'-'}</td>
-          <td>${ic}</td>
-          <td>${x.alamat||'-'}</td>
-          <td>${x.tarikhTCA||'-'} ${x.masaTCA||''}</td>
-          <td>${x.pdpa?'Ada':'Tiada'}</td>
-          <td>${x.status||'Second Visit'}</td>
-          <td class="mini-actions">${pdpaBtn} ${hadirBtn}</td>
-        </tr>`;
-    }).join('');
-  }catch(e){
-    tbody.innerHTML = `<tr><td colspan="7" class="text-center text-muted">Gagal memuat data.</td></tr>`;
-  }
-}
-async function markSecondVisitHadir(noIC){
-  try{
-    const res = await postForm({ action:'markSecondVisitHadir', noIC }, { msg:'Menanda hadir…' });
-    if (res.status==='success'){ toast('Berjaya','Second visit ditanda hadir','success'); loadSecondVisitData(); loadCompletedData(); }
-    else throw new Error(res.message||'Gagal menanda');
-  }catch(e){ toast('Ralat', e.message,'danger'); }
-}
-
-// ——— Completed
-async function loadCompletedData(){
-  const tbody = document.getElementById('completedTable');
-  try{
-    const res = await getJSON({ action:'getCompletedList' }, { msg:'Memuat senarai selesai…' });
-    const arr = (res.status==='success' ? (res.data||[]) : []);
-    if (!arr.length){ tbody.innerHTML = `<tr><td colspan="11" class="text-center text-muted">Tiada rekod.</td></tr>`; return; }
-    tbody.innerHTML = arr.map(x=>{
-      const ic = x.noIC||'-';
-      const arkibBtn = `<button class="btn btn-sm btn-outline-secondary" onclick="archivePatient('${ic}')"><i class="fa-solid fa-box-archive me-1"></i>Arkib</button>`;
-      return `
-        <tr>
-          <td>${x.nama||'-'}</td>
-          <td>${ic}</td>
-          <td>${normalizeMsisdnMY(x.noTelefon||'')}</td>
-          <td>${x.alamat||'-'}</td>
-          <td>${x.pdpa?'Ada':'Tiada'}</td>
-          <td>${x.tarikhDaftar||'-'}</td>
-          <td>${x.firstVisitDate||'-'}</td>
-          <td>${x.labCompletedDate||'-'}</td>
-          <td>${x.secondVisitDate||'-'}</td>
-          <td>${x.tarikhSelesai||'-'}</td>
-          <td class="mini-actions">${arkibBtn}</td>
-        </tr>`;
-    }).join('');
-  }catch(e){
-    tbody.innerHTML = `<tr><td colspan="11" class="text-center text-muted">Gagal memuat data.</td></tr>`;
-  }
-}
-
-// ——— Arkib
-async function loadArchivedData(){
-  const tbody = document.getElementById('archiveTable');
-  try{
-    const res = await getJSON({ action:'getArchiveList' }, { msg:'Memuat arkib…' });
-    const arr = (res.status==='success' ? (res.data||[]) : []);
-    if (!arr.length){ tbody.innerHTML = `<tr><td colspan="8" class="text-center text-muted">Tiada rekod.</td></tr>`; return; }
-    tbody.innerHTML = arr.map(x=>{
-      const ic = x.noIC||'-';
-      const restoreBtn = `<button class="btn btn-sm btn-outline-primary" onclick="restorePatient('${ic}')"><i class="fa-solid fa-rotate-left me-1"></i>Pulih</button>`;
-      return `
-        <tr>
-          <td>${x.nama||'-'}</td>
-          <td>${ic}</td>
-          <td>${normalizeMsisdnMY(x.noTelefon||'')}</td>
-          <td>${x.alamat||'-'}</td>
-          <td>${x.tarikhDaftar||'-'}</td>
-          <td>${x.tarikhSelesai||'-'}</td>
-          <td>${x.tarikhArkib||'-'}</td>
-          <td class="mini-actions">${restoreBtn}</td>
-        </tr>`;
-    }).join('');
-  }catch(e){
-    tbody.innerHTML = `<tr><td colspan="8" class="text-center text-muted">Gagal memuat data.</td></tr>`;
-  }
-}
-async function archivePatient(noIC){
-  try{
-    const res = await postForm({ action:'archivePatient', noIC }, { msg:'Mengarkib…' });
-    if (res.status==='success'){ toast('Berjaya','Diarkibkan','success'); loadCompletedData(); loadArchivedData(); }
-    else throw new Error(res.message||'Gagal arkib');
-  }catch(e){ toast('Ralat', e.message,'danger'); }
-}
-async function restorePatient(noIC){
-  try{
-    const res = await postForm({ action:'restorePatient', noIC }, { msg:'Memulihkan…' });
-    if (res.status==='success'){ toast('Berjaya','Dipulihkan','success'); loadArchivedData(); loadDashboardData(); }
-    else throw new Error(res.message||'Gagal pulih');
-  }catch(e){ toast('Ralat', e.message,'danger'); }
-}
-
-// ——— Re-TCA
-function openRetcaModal(noIC){
-  document.getElementById('retcaIC').value = noIC;
-  document.getElementById('retcaDate').value = '';
-  document.getElementById('retcaTime').value = '';
-  retcaModal.show();
-}
-async function submitRetca(){
-  const noIC = document.getElementById('retcaIC').value;
-  const date = document.getElementById('retcaDate').value;
-  const time = document.getElementById('retcaTime').value;
-  if (!noIC || !date || !time){ toast('Ralat','Sila isi tarikh & masa','danger'); return; }
-  try{
-    const res = await postForm({ action:'retca', noIC, date, time }, { msg:'Menyimpan re-TCA…' });
-    if (res.status==='success'){ toast('Berjaya','TCA baharu didaftarkan','success'); retcaModal.hide(); loadTCACallPage(); }
-    else throw new Error(res.message||'Gagal simpan');
-  }catch(e){ toast('Ralat', e.message, 'danger'); }
-}
-
-// ——— PDPA
 function openPDPA(noIC){
   document.getElementById('pdpaIC').value = noIC;
   document.getElementById('pdpaFile').value = '';
@@ -1550,169 +2121,126 @@ function openPDPA(noIC){
 async function uploadPDPA(){
   const noIC = document.getElementById('pdpaIC').value;
   const file = document.getElementById('pdpaFile').files[0];
-  if (!noIC || !file){ toast('Ralat','Sila pilih fail PDPA','danger'); return; }
+  if (!file) { toast('Ralat','Sila pilih fail PDPA','danger'); return; }
+
+  showLoader('Memuat naik PDPA…');
   try{
-    const base64 = await fileToBase64(file);
-    const res = await postForm({ action:'uploadPDPA', noIC, filename:file.name, mime:file.type, data:base64 }, { msg:'Memuat naik PDPA…' });
-    if (res.status==='success'){ toast('Berjaya','PDPA dimuat naik','success'); pdpaModal.hide(); loadFirstVisitData(); loadSecondVisitData(); loadCompletedData(); }
-    else throw new Error(res.message||'Gagal upload');
-  }catch(e){ toast('Ralat', e.message, 'danger'); }
+    const base64 = await fileToBase64(file); const pure64 = base64.split(',').pop();
+    const res = await fetch(SCRIPT_URL, {
+      method: 'POST',
+      headers: { 'Content-Type':'application/x-www-form-urlencoded' },
+      body: new URLSearchParams({
+        action: 'uploadPDPA', id_token: ID_TOKEN, noIC, staff: STAFF_EMAIL,
+        fileBase64: pure64, fileName: file.name, fileType: file.type || 'application/octet-stream'
+      })
+    });
+    const json = await res.json();
+    if (json.status === 'success'){
+      pdpaModal.hide();
+      toast('Berjaya','PDPA dimuat naik','success');
+      loadFirstVisitData(); loadSecondVisitData(); loadCompletedData();
+    } else { throw new Error(json.message || 'Gagal muat naik PDPA'); }
+  } catch(e){
+    toast('Ralat', e.message, 'danger');
+  } finally { hideLoader(); }
 }
 function fileToBase64(file){
-  return new Promise((resolve,reject)=>{
-    const reader = new FileReader();
-    reader.onload = ()=> resolve(String(reader.result).split(',')[1]);
-    reader.onerror = reject;
-    reader.readAsDataURL(file);
+  return new Promise((resolve, reject)=>{
+    const fr = new FileReader();
+    fr.onload = () => resolve(fr.result);
+    fr.onerror = reject;
+    fr.readAsDataURL(file);
   });
 }
+
 async function deletePDPA(noIC){
+  if (!confirm('Padam PDPA untuk pesakit ini?')) return;
   try{
-    const res = await postForm({ action:'deletePDPA', noIC }, { msg:'Memadam PDPA…' });
-    if (res.status==='success'){ toast('Berjaya','PDPA dipadam','success'); loadFirstVisitData(); loadSecondVisitData(); loadCompletedData(); }
-    else throw new Error(res.message||'Gagal padam');
+    const res = await postForm({ action:'deletePDPA', noIC, staff: STAFF_EMAIL }, { msg:'Memadam PDPA…' });
+    if (res.status==='success'){
+      toast('Berjaya','PDPA dipadam.','success');
+      loadFirstVisitData(); loadSecondVisitData(); loadCompletedData();
+    } else throw new Error(res.message||'Gagal padam PDPA');
   }catch(e){ toast('Ralat', e.message, 'danger'); }
 }
 
-// ——— Daftar Peka (borang manual)
+async function archivePatient(noIC){
+  if (!confirm('Arkibkan rekod pesakit ini?')) return;
+  try{
+    const res = await postForm({ action:'archivePatient', noIC, staff: STAFF_EMAIL }, { msg:'Mengarkib rekod…' });
+    if (res.status==='success'){
+      toast('Arkib','Rekod telah diarkibkan','success');
+      loadCompletedData();
+    } else throw new Error(res.message||'Gagal arkib');
+  }catch(e){ toast('Ralat', e.message, 'danger'); }
+}
+async function restorePatient(noIC){
+  if (!confirm('Pulihkan rekod ini ke senarai utama?')) return;
+  try{
+    const res = await postForm({ action:'restorePatient', noIC, staff: STAFF_EMAIL }, { msg:'Memulihkan rekod…' });
+    if (res.status==='success'){
+      toast('Pulih','Rekod telah dipulihkan','success');
+      loadArchivedData(); loadCompletedData(); loadDashboardData();
+    } else throw new Error(res.message||'Gagal pulih');
+  }catch(e){ toast('Ralat', e.message, 'danger'); }
+}
+
+/* =======================
+   PENDAFTARAN & EXPORT
+   ======================= */
 async function daftarPesakit(){
-  const namaPesakit = document.getElementById('namaPesakit').value.trim();
-  const noIC = document.getElementById('noIC').value.trim();
-  const noTelefon = normalizeMsisdnMY(document.getElementById('noTelefon').value.trim());
-  const alamatPesakit = document.getElementById('alamatPesakit').value.trim();
-  const tarikhTCA = document.getElementById('tarikhTCA').value;
-  const masaTCA = document.getElementById('masaTCA').value;
-  const namaStaff = document.getElementById('namaStaff').value.trim();
-  if (!namaPesakit || !noIC || !noTelefon || !tarikhTCA || !masaTCA || !namaStaff){
+  const formData = {
+    action:'daftarPesakit',
+    namaPesakit: document.getElementById('namaPesakit').value.trim(),
+    noIC:        document.getElementById('noIC').value.trim(),
+    noTelefon:   normalizeMsisdnMY(document.getElementById('noTelefon').value.trim()),
+    alamat:      document.getElementById('alamatPesakit').value.trim(),
+    namaStaff:   document.getElementById('namaStaff').value.trim() || STAFF_EMAIL || 'SYSTEM',
+    tarikhTCA:   document.getElementById('tarikhTCA').value,
+    masaTCA:     document.getElementById('masaTCA').value
+  };
+  if (!formData.namaPesakit || !formData.noIC || !formData.noTelefon || !formData.namaStaff || !formData.tarikhTCA || !formData.masaTCA){
     toast('Ralat','Sila isi semua maklumat','danger'); return;
   }
   try{
-    const res = await postForm({ action:'daftarPesakit',
-      namaPesakit,noIC,noTelefon,alamat:alamatPesakit,tarikhTCA,masaTCA,namaStaff
-    }, { msg:'Mendaftar pesakit…' });
-    if (res.status==='success'){
-      toast('Berjaya','Pesakit didaftarkan ke TCA','success');
-      // Reset form ringkas
-      ['namaPesakit','noIC','noTelefon','alamatPesakit','tarikhTCA','masaTCA','namaStaff'].forEach(id=>{
-        const el = document.getElementById(id); if (el) el.value='';
-      });
+    const result = await postForm(formData, { msg:'Mendaftar pesakit…' });
+    if (result.status==='success'){
+      toast('Berjaya','Pendaftaran berjaya (IC sebagai kunci, tiada duplikasi)','success');
+      document.getElementById('namaPesakit').value = '';
+      document.getElementById('noIC').value = '';
+      document.getElementById('noTelefon').value = '';
+      document.getElementById('alamatPesakit').value = '';
       loadDashboardData(); loadTCACallData();
-    } else throw new Error(res.message||'Gagal daftar');
+    } else throw new Error(result.message||'Gagal mendaftar');
   }catch(e){ toast('Ralat', e.message, 'danger'); }
 }
 
-// ——— Export CSV (Selesai)
 async function exportCompletedCSV(){
   try{
-    const res = await getJSON({ action:'getCompletedCSV' }, { msg:'Menjana CSV…' });
-    if (res.status==='success'){
-      const csv = res.csv || '';
-      if (!csv){ toast('Ralat','Tiada data CSV','danger'); return; }
-      const blob = new Blob([csv], { type:'text/csv;charset=utf-8;' });
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url; a.download = `pesakit_selesai_${new Date().toISOString().slice(0,10)}.csv`;
-      document.body.appendChild(a); a.click(); a.remove(); URL.revokeObjectURL(url);
-      toast('Berjaya','CSV dimuat turun','success');
-    } else throw new Error(res.message||'Gagal jana CSV');
+    const data = await getJSON({ action:'getCompleted' }, { msg:'Menjana CSV…' });
+    if (data.status!=='success' || !data.data.length) {
+      toast('Makluman','Tiada data untuk diexport','warning'); return;
+    }
+    const header = ['Nama','NoIC','Telefon','Alamat','TarikhDaftar','FirstVisit','LabCompleted','SecondVisit','TarikhSelesai'];
+    const rows = data.data.map(x=>[
+      x.nama, x.noIC, normalizeMsisdnMY(x.noTelefon||''), x.alamat || '', x.tarikhDaftar, x.firstVisitDate||'', x.labCompletedAt||'', x.secondVisitDate||'', x.tarikhSelesai
+    ]);
+    const csv = [header, ...rows].map(r=>r.map(v=>`"${String(v||'').replace(/"/g,'""')}"`).join(',')).join('\r\n');
+    const blob = new Blob([csv], { type:'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url; a.download = `pesakit_selesai_${new Date().toISOString().slice(0,10)}.csv`;
+    document.body.appendChild(a); a.click(); a.remove(); URL.revokeObjectURL(url);
+    toast('Export','Fail CSV telah dimuat turun','success');
   }catch(e){ toast('Ralat', e.message, 'danger'); }
-}
-
-// ——— NADI Export CSV (front-end only, dari jadual NADI)
-function exportNadiCSV(){
-  const rows = Array.from(document.querySelectorAll('#nadiContainer tr')).map(tr=>{
-    const get = sel => (tr.querySelector(sel)?.value || tr.querySelector(sel)?.textContent || '').toString().trim();
-    return {
-      nama: get('.nadi-nama'), ic: get('.nadi-ic'), tel:get('.nadi-tel'), alamat:get('.nadi-alamat'),
-      bp:get('.nadi-bp'), pr:get('.nadi-pr'),
-      dxtType: tr.querySelector('.nadi-dxt-type')?.value || 'Fasting',
-      dxt:get('.nadi-dxt'), tinggi:get('.nadi-tinggi'), berat:get('.nadi-berat'), bmi:get('.nadi-bmi'),
-      layak: tr.querySelector('.nadi-layak')?.checked ? 'Ya' : 'Tidak',
-      takLayak: tr.querySelector('.nadi-taklayak')?.checked ? 'Ya' : 'Tidak',
-      tcaDate:get('.nadi-tca-date'), tcaTime:get('.nadi-tca-time'), staff:get('.nadi-staff')
-    };
-  });
-  const headers = Object.keys(rows[0]||{nama:'',ic:'',tel:'',alamat:'',bp:'',pr:'',dxtType:'',dxt:'',tinggi:'',berat:'',bmi:'',layak:'',takLayak:'',tcaDate:'',tcaTime:'',staff:''});
-  const csv = [headers.join(',')].concat(
-    rows.map(r=> headers.map(h=> `"${String(r[h]??'').replace(/"/g,'""')}"`).join(','))
-  ).join('\n');
-  const blob = new Blob([csv], { type:'text/csv;charset=utf-8;' });
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement('a');
-  a.href = url; a.download = `nadi_${new Date().toISOString().slice(0,10)}.csv`;
-  document.body.appendChild(a); a.click(); a.remove(); URL.revokeObjectURL(url);
-  toast('Berjaya','CSV NADI dimuat turun','success');
-}
-
-/***********************
- * HANTAR WHATSAPP (IMEJ)
- ***********************/
-async function sendWhatsAppReport(){
-  if (!currentWhatsAppData) return;
-  const msisdn = currentWhatsAppData.tel || '';
-  if (!msisdn){ toast('Ralat','Nombor telefon tidak sah','danger'); return; }
-
-  try{
-    const targetEl = document.querySelector('#whatsappReportPreview .whatsapp-report');
-    if (!targetEl){ toast('Ralat','Preview laporan tidak ditemui','danger'); return; }
-
-    // 1) Render DOM → Canvas → Blob (PNG)
-    const canvas = await html2canvas(targetEl, { backgroundColor:'#ffffff', scale:2, useCORS:true });
-    const blob = await new Promise(res => canvas.toBlob(res, 'image/png', 0.95));
-    const file = new File([blob], `laporan_nadi_${Date.now()}.png`, { type:'image/png' });
-
-    // 2) Keutamaan: Telefon (Android/iOS) → Web Share API (fail)
-    const canShareFiles = (navigator.canShare && navigator.canShare({ files:[file] }));
-    if (canShareFiles && typeof navigator.share === 'function'){
-      try{
-        await navigator.share({ files:[file], title:'Laporan Saringan NADI', text:'' });
-        whatsappReportModal.hide();
-        toast('Berjaya','Imej laporan dihantar melalui aplikasi WhatsApp','success');
-        return;
-      }catch(err){
-        // Jika pengguna batal, kita teruskan fallback desktop
-      }
-    }
-
-    // 3) Desktop / Fallback:
-    // 3a) Cuba salin imej ke Clipboard (Chrome/Edge/Opera/Firefox terkini)
-    let copiedToClipboard = false;
-    if (navigator.clipboard && window.ClipboardItem){
-      try{
-        await navigator.clipboard.write([ new ClipboardItem({ 'image/png': blob }) ]);
-        copiedToClipboard = true;
-      }catch(e){ /* Sambung ke fallback */ }
-    }
-
-    // 3b) Buka Apps WhatsApp (bukan web) pada desktop/telefon menggunakan skema
-    const rawPhone = msisdn.replace(/\D/g,'');
-    const schemeUrl = `whatsapp://send?phone=${rawPhone}`;
-    window.open(schemeUrl, '_blank');
-
-    // 3c) Maklumkan pengguna langkah seterusnya jika perlu
-    whatsappReportModal.hide();
-    if (copiedToClipboard){
-      toast('Sedia!', 'Imej telah disalin ke Clipboard. Tampal (Ctrl+V) di WhatsApp dan hantar.', 'success');
-    }else{
-      // 3d) Jika Clipboard tak disokong, muat turun fail PNG sebagai fallback
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url; a.download = file.name;
-      document.body.appendChild(a); a.click(); a.remove(); URL.revokeObjectURL(url);
-      toast('Muat Turun', 'Imej laporan dimuat turun. Sila lampirkan imej itu dalam WhatsApp.', 'warning');
-    }
-
-  }catch(e){
-    toast('Ralat', 'Gagal menjana/ menghantar imej: ' + (e.message||e), 'danger');
-  }
 }
 
 /* =======================
    STARTUP
    ======================= */
 document.addEventListener('DOMContentLoaded', ()=>{
-  initGoogleSignIn(); // <— KEKAL, TANPA UBAHAN
+  initGoogleSignIn();
 });
-</script>
+  </script>
 </body>
 </html>
