@@ -302,6 +302,16 @@ body{font-family:'Segoe UI',Tahoma,Geneva,Verdana,sans-serif;background:#f5f7fa;
   padding-top: 15px;
   border-top: 1px solid #eee;
 }
+
+/* WhatsApp Report Image Preview */
+.whatsapp-report-image {
+  width: 100%;
+  max-width: 500px;
+  border-radius: 12px;
+  margin: 10px auto;
+  display: block;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+}
 </style>
 </head>
 <body>
@@ -801,6 +811,9 @@ body{font-family:'Segoe UI',Tahoma,Geneva,Verdana,sans-serif;background:#f5f7fa;
     </div>
     <div class="modal-body">
       <div id="whatsappReportPreview"></div>
+      <div id="whatsappReportImageContainer" class="text-center mt-3">
+        <img id="whatsappReportImage" class="whatsapp-report-image" src="" alt="Laporan WhatsApp">
+      </div>
     </div>
     <div class="modal-footer">
       <button class="btn btn-secondary" data-bs-dismiss="modal">Tutup</button>
@@ -1437,8 +1450,13 @@ function addNadiRow(){
       
       if (res.status === 'success') {
         toast('Berjaya', 'Pesakit berjaya didaftarkan', 'success');
-        row.remove();
-        updateNadiRowNumbers();
+        // Tidak remove row, hanya reset checkbox layak
+        layak.checked = false;
+        takLayak.checked = false;
+        tcaDate.disabled = true;
+        tcaTime.disabled = true;
+        staff.disabled = true;
+        btnDaftar.disabled = true;
       } else {
         throw new Error(res.message || 'Gagal mendaftar pesakit');
       }
@@ -1531,7 +1549,11 @@ function updateNadiRowNumbers() {
 
 function generateWhatsAppReport(data) {
   const reportContainer = document.getElementById('whatsappReportPreview');
+  const imageContainer = document.getElementById('whatsappReportImageContainer');
+  const reportImage = document.getElementById('whatsappReportImage');
+  
   reportContainer.innerHTML = '';
+  imageContainer.style.display = 'none';
   
   const reportHTML = `
     <div class="whatsapp-report">
@@ -1592,6 +1614,15 @@ function generateWhatsAppReport(data) {
   
   reportContainer.innerHTML = reportHTML;
   currentWhatsAppData = data;
+  
+  // Generate image of the report
+  setTimeout(() => {
+    html2canvas(reportContainer.querySelector('.whatsapp-report')).then(canvas => {
+      reportImage.src = canvas.toDataURL('image/png');
+      imageContainer.style.display = 'block';
+    });
+  }, 500);
+  
   whatsappReportModal.show();
 }
 
@@ -1613,6 +1644,14 @@ function sendWhatsAppReport() {
   
   if (currentWhatsAppData.tel) {
     window.open(waHref(currentWhatsAppData.tel, message), '_blank');
+    
+    // Also send the image if available
+    const reportImage = document.getElementById('whatsappReportImage');
+    if (reportImage && reportImage.src) {
+      const imageMessage = `Laporan Saringan NADI untuk ${nama}`;
+      window.open(`https://wa.me/${currentWhatsAppData.tel}?text=${encodeURIComponent(imageMessage)}`, '_blank');
+    }
+    
     whatsappReportModal.hide();
     toast('Berjaya', 'Laporan dihantar melalui WhatsApp', 'success');
   } else {
@@ -1766,7 +1805,7 @@ function renderTcaList(mode){
   filtered.forEach(p=>{
     const msisdn = normalizeMsisdnMY(p.noTelefon||'');
     const badgeCls = p.status==='CALLED' ? 'bg-success' : (parseDDMMYYYY(p.tarikhTCA)?.getTime()<today.getTime() ? 'bg-secondary' : 'bg-warning');
-    const label = p.status==='CALLED' ? 'CALLED' : (parseDDMMYYYY(p.tarikhTCA)?.getTime()<today.getTime() ? 'LEPAS' : (isSameDay(parseDDMMYYYY(p.tarikhTCA), today) ? 'HARI INI' : 'AKAN DATANG'));
+    const label = p.status==='CALLED' ? 'CALLED' : (parseDDMMYYYY(p.tarikhTCA)?.getTime()<today.getTime() ? 'LEPAS' : (isSameDay(parseDDMMYYYY(p.tarikhTCA), today) ? 'HARI INI' : 'AKAN DATANG');
     const row = `
       <tr data-ic="${p.noIC}">
         <td>${p.nama}</td>
@@ -2177,5 +2216,7 @@ document.addEventListener('DOMContentLoaded', ()=>{
   initGoogleSignIn();
 });
 </script>
+<!-- HTML to Canvas library for generating report image -->
+<script src="https://html2canvas.hertzen.com/dist/html2canvas.min.js"></script>
 </body>
 </html>
