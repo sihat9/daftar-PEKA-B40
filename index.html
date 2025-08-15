@@ -25,7 +25,7 @@
 <!-- Google Identity Services (Sign-In) -->
 <script src="https://accounts.google.com/gsi/client" async defer></script>
 
-<!-- html2canvas untuk capture gambar WhatsApp report -->
+<!-- html2canvas untuk capture laporan WhatsApp -->
 <script src="https://html2canvas.hertzen.com/dist/html2canvas.min.js"></script>
 
 <style>
@@ -307,12 +307,20 @@ body{font-family:'Segoe UI',Tahoma,Geneva,Verdana,sans-serif;background:#f5f7fa;
 }
 
 /* WhatsApp Report Image Preview */
+#whatsappReportPreview {
+  background: white;
+  padding: 20px;
+  border-radius: 12px;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+  max-width: 500px;
+  margin: 0 auto;
+}
+
 #whatsappReportImage {
   max-width: 100%;
   height: auto;
   border-radius: 8px;
-  box-shadow: 0 2px 8px rgba(0,0,0,0.1);
-  margin-bottom: 15px;
+  border: 1px solid #eee;
 }
 </style>
 </head>
@@ -813,9 +821,6 @@ body{font-family:'Segoe UI',Tahoma,Geneva,Verdana,sans-serif;background:#f5f7fa;
     </div>
     <div class="modal-body">
       <div id="whatsappReportPreview"></div>
-      <div id="whatsappReportImageContainer" class="text-center mt-3">
-        <img id="whatsappReportImage" class="d-none">
-      </div>
     </div>
     <div class="modal-footer">
       <button class="btn btn-secondary" data-bs-dismiss="modal">Tutup</button>
@@ -984,7 +989,7 @@ function toast(title, message, variant='primary'){
 let stats3dChart, completed3dChart;
 let retcaModal, secondTcaModal, pdpaModal, whatsappReportModal;
 let currentWhatsAppData = null;
-let whatsappReportImage = null;
+let currentWhatsAppImage = null;
 
 /* =======================
    BOOTSTRAP APP
@@ -1644,48 +1649,38 @@ function generateWhatsAppReport(data) {
   reportContainer.innerHTML = reportHTML;
   currentWhatsAppData = data;
   
-  // Capture the report as image using html2canvas
+  // Capture the report as an image
   html2canvas(reportContainer.querySelector('.whatsapp-report')).then(canvas => {
-    const imgContainer = document.getElementById('whatsappReportImageContainer');
-    const img = document.getElementById('whatsappReportImage');
-    img.src = canvas.toDataURL('image/png');
-    img.classList.remove('d-none');
-    whatsappReportImage = img.src;
+    currentWhatsAppImage = canvas.toDataURL('image/png');
+    whatsappReportModal.show();
   });
-  
-  whatsappReportModal.show();
 }
 
 function sendWhatsAppReport() {
-  if (!currentWhatsAppData || !whatsappReportImage) return;
+  if (!currentWhatsAppData || !currentWhatsAppImage) return;
   
-  const nama = currentWhatsAppData.nama || '';
-  const ic = currentWhatsAppData.ic || '';
-  const bp = currentWhatsAppData.bp || '';
-  const pr = currentWhatsAppData.pr || '';
-  const dxtType = currentWhatsAppData.dxtType || 'Fasting';
-  const dxt = currentWhatsAppData.dxt || '';
-  const tinggi = currentWhatsAppData.tinggi || '';
-  const berat = currentWhatsAppData.berat || '';
-  const bmi = currentWhatsAppData.bmi || '';
-  const layak = currentWhatsAppData.layak ? 'Layak PEKA B40' : 'Tidak Layak PEKA B40';
-  
-  // Create a temporary link to download the image
-  const link = document.createElement('a');
-  link.href = whatsappReportImage;
-  link.download = `laporan_nadi_${nama}_${ic}.png`;
-  document.body.appendChild(link);
-  link.click();
-  document.body.removeChild(link);
-  
-  // Open WhatsApp with the image
-  if (currentWhatsAppData.tel) {
-    const waUrl = `https://wa.me/${currentWhatsAppData.tel}`;
-    window.open(waUrl, '_blank');
-    whatsappReportModal.hide();
-    toast('Berjaya', 'Laporan dihantar melalui WhatsApp', 'success');
-  } else {
+  const tel = currentWhatsAppData.tel;
+  if (!tel) {
     toast('Ralat', 'Nombor telefon tidak sah', 'danger');
+    return;
+  }
+  
+  try {
+    // Create a temporary link to download the image
+    const link = document.createElement('a');
+    link.href = currentWhatsAppImage;
+    link.download = `laporan_nadi_${currentWhatsAppData.ic || currentWhatsAppData.nama || 'pesakit'}.png`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    
+    // Open WhatsApp with the phone number
+    window.open(`whatsapp://send?phone=${tel}`, '_blank');
+    
+    whatsappReportModal.hide();
+    toast('Berjaya', 'Laporan sedia untuk dihantar melalui WhatsApp', 'success');
+  } catch (e) {
+    toast('Ralat', 'Gagal membuka WhatsApp: ' + e.message, 'danger');
   }
 }
 
@@ -2185,6 +2180,16 @@ async function deletePDPA(noIC){
       toast('Berjaya','PDPA dipadam.','success');
       loadFirstVisitData(); loadSecondVisitData(); loadCompletedData();
     } else throw new Error(res.message||'Gagal padam PDPA');
+  }catch(e){ toast('Ralat', e.message, 'danger'); }
+}
+
+async function markLabStatus(noIC, status){
+  try{
+    const res = await postForm({ action:'updateLabStatus', noIC, status, staff: STAFF_EMAIL }, { msg:'Mengemas kini status lab…' });
+    if (res.status==='success'){
+      toast('Berjaya','Status lab dikemaskini','success');
+      loadLabFollowUp(); loadDashboardData();
+    } else throw new Error(res.message||'Gagal kemaskini status');
   }catch(e){ toast('Ralat', e.message, 'danger'); }
 }
 
