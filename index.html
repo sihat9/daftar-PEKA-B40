@@ -312,6 +312,7 @@ body{font-family:'Segoe UI',Tahoma,Geneva,Verdana,sans-serif;background:#f5f7fa;
   height: auto;
   border-radius: 8px;
   box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+  margin-bottom: 15px;
 }
 </style>
 </head>
@@ -812,8 +813,8 @@ body{font-family:'Segoe UI',Tahoma,Geneva,Verdana,sans-serif;background:#f5f7fa;
     </div>
     <div class="modal-body">
       <div id="whatsappReportPreview"></div>
-      <div class="text-center mt-3">
-        <img id="whatsappReportImage" class="img-fluid" style="display:none;">
+      <div id="whatsappReportImageContainer" class="text-center mt-3">
+        <img id="whatsappReportImage" class="d-none">
       </div>
     </div>
     <div class="modal-footer">
@@ -983,6 +984,7 @@ function toast(title, message, variant='primary'){
 let stats3dChart, completed3dChart;
 let retcaModal, secondTcaModal, pdpaModal, whatsappReportModal;
 let currentWhatsAppData = null;
+let whatsappReportImage = null;
 
 /* =======================
    BOOTSTRAP APP
@@ -1554,7 +1556,7 @@ function saveNadiCell(inputEl) {
     
     if (tinggi && berat) {
       const height = parseFloat(tinggi) / 100;
-      const weight = parseFloat(berat.value);
+      const weight = parseFloat(berat);
       const bmiValue = (weight / (height * height)).toFixed(1);
       bmi.value = bmiValue;
       bmi.previousElementSibling.textContent = bmiValue;
@@ -1583,7 +1585,7 @@ function generateWhatsAppReport(data) {
   reportContainer.innerHTML = '';
   
   const reportHTML = `
-    <div class="whatsapp-report" id="whatsappReportContent">
+    <div class="whatsapp-report">
       <div class="whatsapp-report-header">
         <img src="${LOGO_URL}" alt="Logo Klinik" class="whatsapp-report-logo" onerror="this.src='https://via.placeholder.com/50x50.png?text=KS'">
         <div>
@@ -1642,56 +1644,49 @@ function generateWhatsAppReport(data) {
   reportContainer.innerHTML = reportHTML;
   currentWhatsAppData = data;
   
-  // Capture the report as an image
-  captureWhatsAppReport();
+  // Capture the report as image using html2canvas
+  html2canvas(reportContainer.querySelector('.whatsapp-report')).then(canvas => {
+    const imgContainer = document.getElementById('whatsappReportImageContainer');
+    const img = document.getElementById('whatsappReportImage');
+    img.src = canvas.toDataURL('image/png');
+    img.classList.remove('d-none');
+    whatsappReportImage = img.src;
+  });
   
   whatsappReportModal.show();
 }
 
-function captureWhatsAppReport() {
-  const element = document.getElementById('whatsappReportContent');
-  const imgPreview = document.getElementById('whatsappReportImage');
-  
-  html2canvas(element, {
-    scale: 2, // Higher quality
-    logging: false,
-    useCORS: true,
-    allowTaint: true
-  }).then(canvas => {
-    imgPreview.src = canvas.toDataURL('image/png');
-    imgPreview.style.display = 'block';
-  }).catch(err => {
-    console.error('Error capturing report:', err);
-    toast('Ralat', 'Gagal menjana imej laporan', 'danger');
-  });
-}
-
 function sendWhatsAppReport() {
-  if (!currentWhatsAppData || !currentWhatsAppData.tel) {
-    toast('Ralat', 'Nombor telefon tidak sah', 'danger');
-    return;
-  }
+  if (!currentWhatsAppData || !whatsappReportImage) return;
   
-  const imgPreview = document.getElementById('whatsappReportImage');
-  if (!imgPreview.src || imgPreview.style.display === 'none') {
-    toast('Ralat', 'Sila tunggu imej laporan siap dijana', 'warning');
-    return;
-  }
+  const nama = currentWhatsAppData.nama || '';
+  const ic = currentWhatsAppData.ic || '';
+  const bp = currentWhatsAppData.bp || '';
+  const pr = currentWhatsAppData.pr || '';
+  const dxtType = currentWhatsAppData.dxtType || 'Fasting';
+  const dxt = currentWhatsAppData.dxt || '';
+  const tinggi = currentWhatsAppData.tinggi || '';
+  const berat = currentWhatsAppData.berat || '';
+  const bmi = currentWhatsAppData.bmi || '';
+  const layak = currentWhatsAppData.layak ? 'Layak PEKA B40' : 'Tidak Layak PEKA B40';
   
   // Create a temporary link to download the image
   const link = document.createElement('a');
-  link.href = imgPreview.src;
-  link.download = 'laporan_saringan_nadi.png';
+  link.href = whatsappReportImage;
+  link.download = `laporan_nadi_${nama}_${ic}.png`;
   document.body.appendChild(link);
-  
-  // We can't directly send the image via WhatsApp web, but we can open chat with message
-  const message = `Laporan Saringan NADI\nNama: ${currentWhatsAppData.nama || '-'}\nIC: ${currentWhatsAppData.ic || '-'}\nStatus: ${currentWhatsAppData.layak ? 'Layak PEKA B40' : 'Tidak Layak PEKA B40'}\n\nSila rujuk gambar laporan yang dilampirkan.`;
-  window.open(waHref(currentWhatsAppData.tel, message), '_blank');
-  
-  // Clean up
+  link.click();
   document.body.removeChild(link);
-  whatsappReportModal.hide();
-  toast('Berjaya', 'Laporan dihantar melalui WhatsApp', 'success');
+  
+  // Open WhatsApp with the image
+  if (currentWhatsAppData.tel) {
+    const waUrl = `https://wa.me/${currentWhatsAppData.tel}`;
+    window.open(waUrl, '_blank');
+    whatsappReportModal.hide();
+    toast('Berjaya', 'Laporan dihantar melalui WhatsApp', 'success');
+  } else {
+    toast('Ralat', 'Nombor telefon tidak sah', 'danger');
+  }
 }
 
 function exportNadiCSV() {
@@ -2190,16 +2185,6 @@ async function deletePDPA(noIC){
       toast('Berjaya','PDPA dipadam.','success');
       loadFirstVisitData(); loadSecondVisitData(); loadCompletedData();
     } else throw new Error(res.message||'Gagal padam PDPA');
-  }catch(e){ toast('Ralat', e.message, 'danger'); }
-}
-
-async function markLabStatus(noIC, status){
-  try{
-    const res = await postForm({ action:'updateLabStatus', noIC, status, staff: STAFF_EMAIL }, { msg:'Mengemas kini status lab…' });
-    if (res.status==='success'){
-      toast('Berjaya','Status lab dikemaskini','success');
-      loadLabFollowUp(); loadDashboardData();
-    } else throw new Error(res.message||'Gagal kemaskini status');
   }catch(e){ toast('Ralat', e.message, 'danger'); }
 }
 
