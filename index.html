@@ -1674,11 +1674,40 @@ function sendWhatsAppReport() {
     link.click();
     document.body.removeChild(link);
     
-    // Open WhatsApp with the phone number
-    window.open(`whatsapp://send?phone=${tel}`, '_blank');
+    // Handle different platforms
+    const isMobile = /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
+    const isIOS = /iPhone|iPad|iPod/i.test(navigator.userAgent);
+    
+    if (isMobile) {
+      // For mobile devices
+      const message = encodeURIComponent(
+        `Laporan NADI untuk ${currentWhatsAppData.nama || 'Pesakit'}\n` +
+        `No IC: ${currentWhatsAppData.ic || '-'}\n` +
+        `Sila lihat lampiran untuk keputusan penuh.`
+      );
+      
+      if (isIOS) {
+        // iOS needs special handling
+        window.location.href = `whatsapp://send?phone=${tel}&text=${message}`;
+        setTimeout(() => {
+          window.location.href = `https://wa.me/${tel}?text=${message}`;
+        }, 500);
+      } else {
+        // Android
+        window.open(`whatsapp://send?phone=${tel}&text=${message}`, '_blank');
+      }
+      
+      // Show instructions for attaching the image
+      setTimeout(() => {
+        alert('Sila lampirkan gambar laporan yang telah dimuat turun');
+      }, 1000);
+    } else {
+      // For desktop
+      window.open(`whatsapp://send?phone=${tel}`, '_blank');
+    }
     
     whatsappReportModal.hide();
-    toast('Berjaya', 'Laporan sedia untuk dihantar melalui WhatsApp', 'success');
+    toast('Berjaya', 'Sediakan untuk menghantar laporan', 'success');
   } catch (e) {
     toast('Ralat', 'Gagal membuka WhatsApp: ' + e.message, 'danger');
   }
