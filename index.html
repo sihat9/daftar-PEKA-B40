@@ -3,7 +3,6 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-
   <!-- COOP/COEP supaya Google Sign-In tidak trigger amaran postMessage -->
   <meta http-equiv="Cross-Origin-Opener-Policy" content="same-origin-allow-popups">
   <meta http-equiv="Cross-Origin-Embedder-Policy" content="unsafe-none">
@@ -25,11 +24,14 @@
   <!-- Google Identity Services (Sign-In) -->
   <script src="https://accounts.google.com/gsi/client" async defer></script>
 
-  <!-- html2canvas untuk tangkap preview → imej (BARU) -->
+  <!-- html2canvas (capture preview → image) -->
   <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
 
   <style>
-    :root{ --primary:#2c3e50; --secondary:#3498db; --success:#27ae60; --warning:#f39c12; --danger:#e74c3c; --light:#ecf0f1; --dark:#34495e; --muted:#95a5a6; }
+    :root{
+      --primary:#2c3e50; --secondary:#3498db; --success:#27ae60; --warning:#f39c12;
+      --danger:#e74c3c; --light:#ecf0f1; --dark:#34495e; --muted:#95a5a6;
+    }
     html{ font-size:15px; }
     @media (max-width:1200px){ html{ font-size:14px; } }
     @media (max-width:576px){ html{ font-size:13px; } }
@@ -84,7 +86,7 @@
     /* Log Calls Drawer (gaya iPhone) */
     #logDrawer{
       position:fixed; top:0; right:-420px; width:400px; max-width:90vw; height:100%;
-      background:#f8f9fb; box-shadow:-12px 0 35px rgba(0,0,0,.18); z-index:3000; /* <— di bawah toast */
+      background:#f8f9fb; box-shadow:-12px 0 35px rgba(0,0,0,.18); z-index:3000;
       transition:right .25s ease; border-left:1px solid rgba(0,0,0,.05);
       display:flex; flex-direction:column;
     }
@@ -114,8 +116,11 @@
       box-shadow:0 10px 24px rgba(0,0,0,.18);
     }
 
-    /* NOTIFIKASI (sentiasa nampak di kanan atas) */
-    #toastHost{ position:fixed; top:12px; right:12px; z-index:4000; pointer-events:none; }
+    /* NOTIFIKASI (kanan atas) */
+    #toastHost{
+      position:fixed; top:12px; right:12px; z-index:4000; /* tertinggi */
+      pointer-events:none;
+    }
     #toastHost .toast{ pointer-events:auto; }
 
     /* NADI TABLE STYLES */
@@ -139,8 +144,8 @@
     .nadi-checkbox-cell { text-align: center; }
     .nadi-actions-cell { min-width: 180px; }
     .nadi-counter {
-      background: var(--primary); color: white; border-radius: 50%;
-      width: 24px; height: 24px; display: inline-flex; align-items: center; justify-content: center; font-size: 0.75rem;
+      background: var(--primary); color: white; border-radius: 50%; width: 24px; height: 24px;
+      display: inline-flex; align-items: center; justify-content: center; font-size: 0.75rem;
     }
 
     /* Responsive */
@@ -151,17 +156,15 @@
     .form-section h5 { color: var(--primary); margin-bottom: 16px; padding-bottom: 8px; border-bottom: 1px solid #eee; }
     .sticky-form-actions { position: sticky; bottom: 0; background: white; padding: 12px; border-top: 1px solid #eee; margin-top: 16px; }
 
-    /* WhatsApp Report Image */
+    /* WhatsApp Report Image (Preview) */
     .whatsapp-report {
       width: 100%; max-width: 500px; background: white; border-radius: 12px; padding: 20px;
-      box-shadow: 0 4px 12px rgba(0,0,0,0.1); margin: 0 auto;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.1); margin: 0 auto; border: 1px solid #eee;
     }
     .whatsapp-report-header {
       display: flex; align-items: center; margin-bottom: 15px; padding-bottom: 15px; border-bottom: 1px solid #eee;
     }
-    .whatsapp-report-logo {
-      width: 50px; height: 50px; border-radius: 8px; margin-right: 15px; object-fit: cover; border: 1px solid rgba(0,0,0,0.08);
-    }
+    .whatsapp-report-logo { width: 50px; height: 50px; border-radius: 8px; margin-right: 15px; object-fit: cover; border: 1px solid rgba(0,0,0,0.08); }
     .whatsapp-report-title { font-size: 18px; font-weight: 700; color: var(--primary); }
     .whatsapp-report-subtitle { font-size: 14px; color: var(--muted); }
     .whatsapp-report-body { margin-bottom: 15px; }
@@ -474,7 +477,7 @@
       </div></div>
     </section>
 
-    <!-- TCA Call (senarai rekod — tiada tanda selesai manual) -->
+    <!-- TCA Call -->
     <section id="tca-call" class="mb-4 d-none">
       <div class="d-flex justify-content-between align-items-center mb-2">
         <h2 class="h6 m-0"><i class="fas fa-phone me-2"></i>Senarai Rekod TCA Call</h2>
@@ -591,7 +594,7 @@
         <div class="table-responsive">
           <table class="table table-hover align-middle">
             <thead class="table-light"><tr><th>Nama Pesakit</th><th>No IC</th><th>No Telefon</th><th>Alamat</th><th>Tarikh Daftar</th><th>Tarikh Selesai</th><th>Diarkib</th><th>Tindakan</th></tr></thead>
-            <tbody id="archiveTable"><tr><td colspan="8" class="text-center text-muted">Tiada rekod arkib</td></tr></tbody>
+            <tbody id="archiveTable"><tr><td colspan="8" class="text-center text-muted">Memuat data...</td></tr></tbody>
           </table>
         </div>
       </div></div>
@@ -618,7 +621,7 @@
     </div></div>
   </div>
 
-  <!-- Modal Set Second Visit TCA (Lab Complete & Call) -->
+  <!-- Modal Set Second Visit TCA -->
   <div class="modal fade" id="secondTcaModal" tabindex="-1" aria-hidden="true">
     <div class="modal-dialog modal-dialog-centered"><div class="modal-content">
       <div class="modal-header">
@@ -670,19 +673,12 @@
       </div>
       <div class="modal-footer">
         <button class="btn btn-secondary" data-bs-dismiss="modal">Tutup</button>
-        <!-- Kekalkan butang lama (teks) -->
-        <button class="btn btn-outline-success" id="btnSendWhatsApp">
-          <i class="fa-brands fa-whatsapp me-1"></i> Hantar WhatsApp (Teks)
-        </button>
-        <!-- Butang baharu: hantar Gambar ke WhatsApp + auto-buka chat -->
-        <button class="btn btn-success" id="btnSendWhatsAppImage">
-          <i class="fa-brands fa-whatsapp me-1"></i> Hantar Gambar ke WhatsApp
-        </button>
+        <button class="btn btn-success" id="btnSendWhatsApp"><i class="fa-brands fa-whatsapp me-1"></i>Hantar WhatsApp</button>
       </div>
     </div></div>
   </div>
 
-  <!-- Toast Host (kanan atas) -->
+  <!-- Toast Host -->
   <div id="toastHost"><div id="toastContainer" class="toast-container"></div></div>
 
   <!-- FAB Log Calls -->
@@ -706,8 +702,8 @@
 const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbx6TKE0vDDPO3-36cY7xjacAbGL0HIRKCrORNm-sED9y5NpIeIUk9gyrpiWy-S7vbc/exec';
 // 2) Google OAuth Client ID (Google Cloud Console)
 const GOOGLE_CLIENT_ID = '863564124015-838ksbuk27f0kkomm16hnc3bu608pbrr.apps.googleusercontent.com';
-// 3) Logo (optional)
-const LOGO_URL = 'https://github.com/sihat9/mari-jalan-dengan-doktor/blob/main/img/logo-kss.png?raw=true';
+// 3) Logo (optional) — disyorkan guna URL yang benarkan CORS
+const LOGO_URL = 'https://raw.githubusercontent.com/sihat9/mari-jalan-dengan-doktor/main/img/logo-kss.png';
 
 /* =======================
    AUTH (Google Identity)
@@ -811,7 +807,9 @@ const normalizeMsisdnMY = (raw) => {
   return '60' + s;
 };
 const telHref = (msisdn) => `tel:+${msisdn}`;
-const waHref  = (msisdn, txt='Assalamualaikum, ini dari Klinik SihatSokmo.') => `https://wa.me/${msisdn}?text=${encodeURIComponent(txt)}`;
+const waHref  = (msisdn, txt='') => `whatsapp://send?phone=${msisdn}${txt?('&text='+encodeURIComponent(txt)):''}`; // guna app WhatsApp kalau ada
+const waWebHref = (msisdn, txt='') => `https://wa.me/${msisdn}${txt?('?text='+encodeURIComponent(txt)):''}`;
+
 const parseDDMMYYYY = (s) => {
   if (!s) return null;
   if (/^\d{4}-\d{2}-\d{2}$/.test(s)) { const [Y,M,D]=s.split('-').map(Number); return new Date(Y,M-1,D); }
@@ -838,128 +836,24 @@ function toast(title, message, variant='primary'){
 }
 
 /* =======================
-   WHATSAPP HELPERS (TEKS) – dikekalkan
-   ======================= */
-function composeNadiWhatsAppText(data){
-  const lines = [
-    'Assalamualaikum, ini dari Klinik SihatSokmo.',
-    '',
-    'Laporan Saringan NADI:',
-    `• Nama: ${data.nama || '-'}`,
-    `• IC: ${data.ic || '-'}`,
-    `• Alamat: ${data.alamat || '-'}`,
-    `• BP: ${data.bp || '-'} mmHg`,
-    `• PR: ${data.pr || '-'} bpm`,
-    `• DXT (${data.dxtType || 'Fasting'}): ${data.dxt || '-'} mmol/L`,
-    `• Tinggi: ${data.tinggi || '-'} cm`,
-    `• Berat: ${data.berat || '-'} kg`,
-    `• BMI: ${data.bmi || '-'}`,
-    `• Status: ${data.layak ? 'Layak PEKA B40' : 'Tidak Layak PEKA B40'}`,
-    '',
-    'Jika ada soalan, balas mesej ini ya. Terima kasih.'
-  ];
-  return lines.join('\n');
-}
-function openWhatsAppTo(rawMsisdn, text){
-  const msisdn = normalizeMsisdnMY(rawMsisdn);
-  if (!/^\d{10,15}$/.test(msisdn)){
-    toast('Ralat', 'Nombor telefon tidak sah', 'danger');
-    return;
-  }
-  const encoded = encodeURIComponent(text || '');
-  const scheme = `whatsapp://send?phone=${msisdn}&text=${encoded}`;
-  const web    = `https://wa.me/${msisdn}?text=${encoded}`;
-  const isMobile = /Android|iPhone|iPad|iPod|Windows Phone/i.test(navigator.userAgent);
-  const url = isMobile ? scheme : web;
-  window.open(url, '_blank');
-  toast('WhatsApp', 'Membuka WhatsApp dengan mesej siap-isi…', 'success');
-}
-
-/* =======================
-   WHATSAPP IMAGE SEND HELPERS (BARU)
-   ======================= */
-let CURRENT_WA_MSISDN = ''; // diset ketika preview dibuka
-
-async function captureReportAsBlob() {
-  const card = document.querySelector('#whatsappReportPreview .whatsapp-report');
-  if (!card) throw new Error('Gagal capai preview');
-  const canvas = await html2canvas(card, {
-    backgroundColor: '#ffffff',
-    scale: Math.min(window.devicePixelRatio || 1.5, 2.5)
-  });
-  return await new Promise((resolve)=> canvas.toBlob(resolve, 'image/png', 0.95));
-}
-
-function openWhatsAppDeepLink(msisdn, text='') {
-  const encoded = encodeURIComponent(text || '');
-  const scheme = `whatsapp://send?phone=${msisdn}&text=${encoded}`;
-  const web    = `https://wa.me/${msisdn}?text=${encoded}`;
-  // cuba app dahulu, kemudian fallback
-  window.open(scheme, '_blank');
-  setTimeout(()=>window.open(web,'_blank'), 600);
-}
-
-// Versi yang memenuhi kehendak: terus buka chat → siapkan imej (clipboard/share/fallback)
-async function sendWhatsAppReportImageFlow(msisdn) {
-  const phone = normalizeMsisdnMY(msisdn||'');
-  if (!/^\d{10,15}$/.test(phone)) {
-    toast('Ralat', 'Nombor telefon tidak sah', 'danger');
-    return;
-  }
-
-  // 1) TERUS buka chat ke nombor pesakit
-  openWhatsAppDeepLink(phone, '');
-
-  // 2) Jana imej daripada kad preview
-  showLoader('Menjana imej laporan…');
-  let blob;
-  try {
-    blob = await captureReportAsBlob();
-  } catch(e){
-    hideLoader();
-    toast('Ralat', 'Gagal jana imej laporan', 'danger');
-    return;
-  }
-  hideLoader();
-
-  const file = new File([blob], `laporan_nadi_${Date.now()}.png`, { type: 'image/png' });
-
-  // 3) MOBILE: cuba Web Share API (anda pilih WhatsApp kemudian chat; had OS)
-  if (navigator.canShare && navigator.canShare({ files: [file] })) {
-    try {
-      await navigator.share({ files: [file], title: 'Laporan Saringan NADI', text: '' });
-      toast('Berjaya', 'Imej dikongsi melalui aplikasi pilihan anda', 'success');
-      return;
-    } catch(e){
-      // pengguna batal → teruskan fallback
-    }
-  }
-
-  // 4) DESKTOP: salin imej ke clipboard, tampal di chat yang sudah dibuka
-  if (navigator.clipboard && window.ClipboardItem) {
-    try {
-      await navigator.clipboard.write([ new ClipboardItem({ 'image/png': blob }) ]);
-      toast('Siap', 'Imej disalin ke clipboard. Tampal (Ctrl/Cmd+V) dalam chat WhatsApp.', 'success');
-      return;
-    } catch(e){
-      // fallback terakhir
-    }
-  }
-
-  // 5) Fallback: muat turun imej untuk dilampirkan manual
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement('a');
-  a.href = url; a.download = `laporan_nadi_${Date.now()}.png`;
-  document.body.appendChild(a); a.click(); a.remove(); URL.revokeObjectURL(url);
-  toast('Makluman', 'Imej dimuat turun. Lampirkan imej itu dalam chat WhatsApp dan hantar.', 'warning');
-}
-
-/* =======================
    GLOBALS
    ======================= */
 let stats3dChart, completed3dChart;
 let retcaModal, secondTcaModal, pdpaModal, whatsappReportModal;
 let currentWhatsAppData = null;
+
+/* === LOGO cache as Data URL (untuk pastikan muncul dalam imej) === */
+let LOGO_DATA_URL = '';
+async function cacheLogoAsDataURL(){
+  try{
+    const res = await fetch(LOGO_URL, { mode:'cors', cache:'force-cache' });
+    const blob = await res.blob();
+    const reader = new FileReader();
+    LOGO_DATA_URL = await new Promise((resolve)=>{ reader.onload=()=>resolve(reader.result); reader.readAsDataURL(blob); });
+  }catch(e){
+    LOGO_DATA_URL = ''; // fallback — html2canvas masih cuba guna src asal
+  }
+}
 
 /* =======================
    BOOTSTRAP APP
@@ -980,6 +874,9 @@ function bootstrapApp(){
   setupNADI();
   setupLogDrawer();
   setupFab();
+
+  // Cache logo → data URL untuk rendering dalam imej
+  cacheLogoAsDataURL();
 
   loadDashboardData();
   loadStatistics('3months');
@@ -1042,16 +939,7 @@ function setupModals(){
   document.getElementById('btnUploadPDPA').addEventListener('click', uploadPDPA);
 
   whatsappReportModal = new bootstrap.Modal(document.getElementById('whatsappReportModal'));
-  // Kekalkan fungsi lama (hantar teks)
   document.getElementById('btnSendWhatsApp').addEventListener('click', sendWhatsAppReport);
-  // Butang baharu: hantar gambar + auto buka chat
-  document.getElementById('btnSendWhatsAppImage').addEventListener('click', async ()=>{
-    if (!CURRENT_WA_MSISDN){
-      toast('Ralat','Nombor telefon tidak ditemui pada baris NADI','danger'); return;
-    }
-    await sendWhatsAppReportImageFlow(CURRENT_WA_MSISDN);
-    // whatsappReportModal.hide(); // pilihan: biar terbuka untuk pantau status
-  });
 }
 
 function setupFab(){
@@ -1186,13 +1074,13 @@ function setupExcel(){
         }
 
         const tr = `
-          <tr id="${id}">
-            <td>${nama}</td>
-            <td>${ic}</td>
-            <td>${msisdn}</td>
-            <td>${alamat}</td>
-            <td class="text-center"><input type="checkbox" class="form-check-input" ${ageOk?'checked':''} onchange="toggleLayak('${id}', true)"></td>
-            <td class="text-center"><input type="checkbox" class="form-check-input" ${ageOk?'':'checked'} onchange="toggleLayak('${id}', false)"></td>
+          <tr id="\${id}">
+            <td>\${nama}</td>
+            <td>\${ic}</td>
+            <td>\${msisdn}</td>
+            <td>\${alamat}</td>
+            <td class="text-center"><input type="checkbox" class="form-check-input" \${ageOk?'checked':''} onchange="toggleLayak('\${id}', true)"></td>
+            <td class="text-center"><input type="checkbox" class="form-check-input" \${ageOk?'':'checked'} onchange="toggleLayak('\${id}', false)"></td>
             <td>
               <div class="row g-1 align-items-center">
                 <div class="col"><input type="date" class="form-control form-control-sm tca-date" disabled></div>
@@ -1201,7 +1089,7 @@ function setupExcel(){
               </div>
             </td>
             <td>
-              <button class="btn btn-sm btn-primary" onclick="daftarFromExcel('${id}', '${encodeURIComponent(nama)}', '${encodeURIComponent(ic)}', '${msisdn}', '${encodeURIComponent(alamat)}')" disabled>Daftar</button>
+              <button class="btn btn-sm btn-primary" onclick="daftarFromExcel('\${id}', '\${encodeURIComponent(nama)}', '\${encodeURIComponent(ic)}', '\${msisdn}', '\${encodeURIComponent(alamat)}')" disabled>Daftar</button>
             </td>
           </tr>`;
         tbody.insertAdjacentHTML('beforeend', tr);
@@ -1438,7 +1326,6 @@ function addNadiRow(){
 
       if (res.status === 'success') {
         toast('Berjaya', 'Pesakit berjaya didaftarkan', 'success');
-        // Update the row data in nadiRows array
         updateNadiRowData(row);
       } else {
         throw new Error(res.message || 'Gagal mendaftar pesakit');
@@ -1448,7 +1335,7 @@ function addNadiRow(){
     }
   });
 
-  // WhatsApp Report (Preview) – KEKAL
+  // WhatsApp Report button
   row.querySelector('.nadi-wa').addEventListener('click', async () => {
     try {
       const data = {
@@ -1466,7 +1353,7 @@ function addNadiRow(){
         layak: row.querySelector('.nadi-layak').checked
       };
 
-      // Generate WhatsApp report image (preview)
+      // Generate WhatsApp report preview (dengan logo)
       generateWhatsAppReport(data);
 
     } catch (e) {
@@ -1557,19 +1444,25 @@ function updateNadiRowNumbers() {
   rows.forEach(row => {
     counter++;
     const counterEl = row.querySelector('.nadi-counter');
-    if (counterEl) { counterEl.textContent = counter; }
+    if (counterEl) {
+      counterEl.textContent = counter;
+    }
   });
   nadiRowCounter = counter;
 }
 
+/* ====== WhatsApp Report (Preview + Hantar Imej) ====== */
 function generateWhatsAppReport(data) {
   const reportContainer = document.getElementById('whatsappReportPreview');
   reportContainer.innerHTML = '';
 
+  const logoSrc = LOGO_DATA_URL || LOGO_URL; // cuba data URL dahulu
+
   const reportHTML = `
-    <div class="whatsapp-report">
+    <div class="whatsapp-report" id="whatsappReportCard" style="background:#ffffff;">
       <div class="whatsapp-report-header">
-        <img src="${LOGO_URL}" alt="Logo Klinik" class="whatsapp-report-logo" onerror="this.src='https://via.placeholder.com/50x50.png?text=KS'">
+        <img id="reportLogoImg" src="${logoSrc}" alt="Logo Klinik" class="whatsapp-report-logo" crossOrigin="anonymous"
+             onerror="this.src='https://via.placeholder.com/50x50.png?text=KS'">
         <div>
           <div class="whatsapp-report-title">Laporan Saringan NADI</div>
           <div class="whatsapp-report-subtitle">Klinik SihatSokmo - Program PEKA B40</div>
@@ -1625,46 +1518,88 @@ function generateWhatsAppReport(data) {
 
   reportContainer.innerHTML = reportHTML;
   currentWhatsAppData = data;
-  CURRENT_WA_MSISDN = data.tel || '';  // SIMPAN no. telefon untuk hantar gambar
   whatsappReportModal.show();
 }
 
-function sendWhatsAppReport() {
+/* Tangkap preview → Blob PNG resolusi tinggi */
+async function captureReportBlob(){
+  const el = document.getElementById('whatsappReportCard');
+  if (!el) throw new Error('Tiada komponen laporan untuk ditangkap');
+
+  // Pastikan logo pakai data URL jika ada
+  const img = document.getElementById('reportLogoImg');
+  if (img && LOGO_DATA_URL) img.src = LOGO_DATA_URL;
+
+  // Tunggu seketika supaya imej termuat
+  await new Promise(r=>setTimeout(r, 120));
+
+  const canvas = await html2canvas(el, {
+    useCORS: true,
+    backgroundColor: '#ffffff',
+    scale: Math.min(2, window.devicePixelRatio || 2)
+  });
+  return await new Promise((resolve)=> canvas.toBlob(resolve, 'image/png', 0.95));
+}
+
+/* Cuba share imej (mobile) / muat turun + buka WhatsApp (desktop) */
+async function sendWhatsAppReport(){
   if (!currentWhatsAppData) return;
 
-  const nama = currentWhatsAppData.nama || '';
-  const ic = currentWhatsAppData.ic || '';
-  const bp = currentWhatsAppData.bp || '';
-  const pr = currentWhatsAppData.pr || '';
-  const dxtType = currentWhatsAppData.dxtType || 'Fasting';
-  const dxt = currentWhatsAppData.dxt || '';
-  const tinggi = currentWhatsAppData.tinggi || '';
-  const berat = currentWhatsAppData.berat || '';
-  const bmi = currentWhatsAppData.bmi || '';
-  const layak = currentWhatsAppData.layak ? 'Layak PEKA B40' : 'Tidak Layak PEKA B40';
+  try{
+    showLoader('Menjana imej laporan…');
+    const blob = await captureReportBlob();
+    if (!blob) throw new Error('Gagal menjana imej');
 
-  const message = `Laporan Saringan NADI
-Nama: ${nama}
-IC: ${ic}
-BP: ${bp} mmHg
-PR: ${pr} bpm
-DXT (${dxtType}): ${dxt} mmol/L
-Tinggi: ${tinggi} cm
-Berat: ${berat} kg
-BMI: ${bmi}
-Status: ${layak}
+    const msisdn = currentWhatsAppData.tel || '';
+    const fileName = `laporan_nadi_${(currentWhatsAppData.ic||'').replace(/\W+/g,'')||'pesakit'}.png`;
+    const file = new File([blob], fileName, { type: 'image/png' });
 
-Sila hubungi klinik untuk maklumat lanjut. Terima kasih.`;
+    // 1) Cuba Web Share API dengan fail (Android/iOS)
+    if (navigator.canShare && navigator.canShare({ files: [file] })){
+      await navigator.share({
+        files: [file],
+        title: 'Laporan Saringan NADI',
+        text: '' // kosong – fokus hantar imej
+      });
+      // Selepas share, cuba buka chat nombor spesifik (jika WhatsApp sokong deep link)
+      if (msisdn){
+        // Cuba app WhatsApp:
+        const opened = window.open(waHref(msisdn), '_blank');
+        // Fallback ke web:
+        setTimeout(()=>{ if (!opened) window.open(waWebHref(msisdn), '_blank'); }, 600);
+      }
+      whatsappReportModal.hide();
+      toast('Berjaya', 'Imej laporan dihantar melalui WhatsApp', 'success');
+      return;
+    }
 
-  if (currentWhatsAppData.tel) {
-    window.open(waHref(currentWhatsAppData.tel, message), '_blank');
+    // 2) Desktop/fallback: muat turun imej + buka chat nombor
+    // Muat turun automatik
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url; a.download = fileName;
+    document.body.appendChild(a); a.click(); a.remove();
+    URL.revokeObjectURL(url);
+
+    // Buka app WhatsApp (jika ada) ke chat nombor spesifik
+    if (msisdn){
+      const opened = window.open(waHref(msisdn), '_blank');
+      setTimeout(()=>{ if (!opened) window.open(waWebHref(msisdn), '_blank'); }, 600);
+    }else{
+      toast('Makluman','Nombor telefon tidak sah – hanya muat turun imej dibuat','warning');
+    }
+
     whatsappReportModal.hide();
-    toast('Berjaya', 'Laporan (teks) dihantar melalui WhatsApp', 'success');
-  } else {
-    toast('Ralat', 'Nombor telefon tidak sah', 'danger');
+    toast('Berjaya', 'Imej laporan dimuat turun & WhatsApp dibuka ke chat pesakit', 'success');
+
+  }catch(e){
+    toast('Ralat', e.message || 'Gagal menghantar laporan', 'danger');
+  }finally{
+    hideLoader();
   }
 }
 
+/* Export NADI CSV */
 function exportNadiCSV() {
   const container = document.getElementById('nadiContainer');
   const rows = Array.from(container.querySelectorAll('.nadi-row'));
@@ -1744,503 +1679,4 @@ async function loadStatistics(period){
   try{
     const data = await getJSON({ action:'getStatistics', period }, { msg:'Memuat statistik…' });
     if (data.status==='success'){
-      if (stats3dChart) stats3dChart.destroy();
-      stats3dChart = buildBarChart('stats3dChart', data.data, `Statistik Pesakit Selesai (${getPeriodLabel(period)})`);
-    }
-  }catch(e){}
-}
-async function loadCompletedStatistics(period){
-  try{
-    const data = await getJSON({ action:'getStatistics', period }, { msg:'Memuat statistik…' });
-    if (data.status==='success'){
-      if (completed3dChart) completed3dChart.destroy();
-      completed3dChart = buildBarChart('completed3dChart', data.data, `Statistik Pesakit Selesai (${getPeriodLabel(period)})`);
-    }
-  }catch(e){}
-}
-function getPeriodLabel(p){ if(p==='3months')return'3 Bulan Terakhir'; if(p==='6months')return'6 Bulan Terakhir'; if(p==='12months')return'12 Bulan Terakhir'; return p; }
-
-async function loadTCACallData(){
-  try{
-    const data = await getJSON({ action:'getTCACall' }, { msg:'Memuat TCA Hari Ini…' });
-    const tb1 = document.getElementById('tcaCallTable');
-    if (tb1) tb1.innerHTML = '';
-
-    const renderRow = (p) => {
-      const msisdn = normalizeMsisdnMY(p.noTelefon||'');
-      return `
-      <tr data-ic="${p.noIC}">
-        <td>${p.nama}</td>
-        <td>${p.noIC}</td>
-        <td class="mini-actions">
-          <a class="btn btn-sm btn-outline-secondary" href="${telHref(msisdn)}"><i class="fa-solid fa-phone"></i> Call</a>
-          <a class="btn btn-sm btn-outline-success" target="_blank" href="${waHref(msisdn)}"><i class="fa-brands fa-whatsapp"></i> WhatsApp</a>
-          <div class="small text-muted mt-1">${msisdn}</div>
-        </td>
-        <td>${p.alamat || '-'}</td>
-        <td>${p.tarikhTCA}</td>
-        <td><span class="badge ${p.status==='CALLED'?'bg-success':'bg-warning'}">${p.status || 'PENDING'}</span></td>
-      </tr>`;
-    };
-
-    if (data.status==='success' && data.data.length>0){
-      data.data.forEach(p=>{ if (tb1) tb1.insertAdjacentHTML('beforeend', renderRow(p)); });
-    } else {
-      if (tb1) tb1.innerHTML = `<tr><td colspan="6" class="text-center text-muted">Tiada pesakit perlu dihubungi hari ini</td></tr>`;
-    }
-  }catch(e){ /* senyap */ }
-}
-
-/* === TCA PAGE (rekod; tiada tanda selesai manual) === */
-let TCA_ALL = [];
-async function loadTCACallPage(){
-  try{
-    const res = await getJSON({ action:'getTCACall', all:1 }, { msg:'Memuat rekod TCA…' });
-    TCA_ALL = (res.status==='success') ? (res.data||[]) : [];
-    renderTcaList('today');
-  }catch(e){ renderTcaList('all'); }
-  document.querySelectorAll('#tcaFilter [data-filter]').forEach(btn=>{
-    btn.addEventListener('click', ()=>{
-      document.querySelectorAll('#tcaFilter [data-filter]').forEach(b=>b.classList.remove('active'));
-      btn.classList.add('active');
-      renderTcaList(btn.getAttribute('data-filter'));
-    });
-  });
-}
-function renderTcaList(mode){
-  const tbody = document.getElementById('tcaCallList');
-  if (!tbody) return;
-  tbody.innerHTML = '';
-  const today = new Date(); today.setHours(0,0,0,0);
-
-  const filtered = TCA_ALL.filter(p=>{
-    const d = parseDDMMYYYY(p.tarikhTCA);
-    if (!d) return mode==='all';
-    d.setHours(0,0,0,0);
-    if (mode==='today') return isSameDay(d, today);
-    if (mode==='upcoming') return d.getTime() > today.getTime();
-    if (mode==='past') return d.getTime() < today.getTime();
-    return true;
-  });
-
-  if (!filtered.length){
-    tbody.innerHTML = `<tr><td colspan="6" class="text-center text-muted">Tiada rekod untuk paparan ini.</td></tr>`;
-    return;
-  }
-
-  filtered.forEach(p=>{
-    const msisdn = normalizeMsisdnMY(p.noTelefon||'');
-    const badgeCls = p.status==='CALLED' ? 'bg-success' : (parseDDMMYYYY(p.tarikhTCA)?.getTime()<today.getTime() ? 'bg-secondary' : 'bg-warning');
-    const label = p.status==='CALLED' ? 'CALLED' : (parseDDMMYYYY(p.tarikhTCA)?.getTime()<today.getTime() ? 'LEPAS' : (isSameDay(parseDDMMYYYY(p.tarikhTCA), today) ? 'HARI INI' : 'AKAN DATANG'));
-    const row = `
-      <tr data-ic="${p.noIC}">
-        <td>${p.nama}</td>
-        <td>${p.noIC}</td>
-        <td class="mini-actions">
-          <a class="btn btn-sm btn-outline-secondary" href="${telHref(msisdn)}"><i class="fa-solid fa-phone"></i> Call</a>
-          <a class="btn btn-sm btn-outline-success" target="_blank" href="${waHref(msisdn)}"><i class="fa-brands fa-whatsapp"></i> WhatsApp</a>
-          <div class="small text-muted mt-1">${msisdn}</div>
-        </td>
-        <td>${p.alamat || '-'}</td>
-        <td>${p.tarikhTCA||'-'}</td>
-        <td><span class="badge ${badgeCls}">${label}</span></td>
-      </tr>`;
-    tbody.insertAdjacentHTML('beforeend', row);
-  });
-}
-
-async function loadFirstVisitData(){
-  try{
-    const data = await getJSON({ action:'getFirstVisit' }, { msg:'Memuat First Visit…' });
-    const tbody = document.getElementById('firstVisitList');
-    tbody.innerHTML = '';
-    if (data.status==='success' && data.data.length>0){
-      data.data.forEach(p=>{
-        const hadir = p.status==='HADIR';
-        const within = isWithin24hOfDate(p.tarikhTCA);
-        const msisdn = normalizeMsisdnMY(p.noTelefon||'');
-
-        let pdpaHTML = '';
-        if (p.pdpaFileId){
-          pdpaHTML = `
-            <div class="d-flex flex-wrap gap-1">
-              <a class="btn btn-sm btn-outline-success" target="_blank" href="https://drive.google.com/file/d/${p.pdpaFileId}/preview"><i class="fa-solid fa-eye"></i> Lihat</a>
-              <a class="btn btn-sm btn-outline-primary" target="_blank" href="https://drive.google.com/uc?export=download&id=${p.pdpaFileId}"><i class="fa-solid fa-download"></i> Muat Turun</a>
-              <button class="btn btn-sm btn-outline-danger" onclick="deletePDPA('${p.noIC}')"><i class="fa-solid fa-trash"></i> Padam</button>
-            </div>`;
-        } else {
-          pdpaHTML = hadir ? `<button class="btn btn-sm btn-outline-primary" onclick="openPDPA('${p.noIC}')"><i class="fa-solid fa-file-arrow-up"></i> Upload</button>`
-                           : `<span class="text-muted">-</span>`;
-        }
-
-        const row = `
-        <tr data-ic="${p.noIC}">
-          <td>${p.nama}</td>
-          <td>${p.noIC}</td>
-          <td>${p.alamat || '-'}</td>
-          <td>${p.tarikhTCA||'-'}</td>
-          <td>${pdpaHTML}</td>
-          <td><span class="badge ${hadir?'bg-success':'bg-warning'}">${hadir?'Hadir':'Belum Hadir'}</span></td>
-          <td class="mini-actions">
-            ${within && !hadir ? `<button class="btn btn-sm btn-success" onclick="markFirstVisit('${p.noIC}')"><i class="fa-solid fa-circle-check"></i> Hadir</button>` : ''}
-            ${!hadir ? `<button class="btn btn-sm btn-primary" onclick="openRetcaModal('${p.noIC}')"><i class="fa-solid fa-calendar-plus"></i> Re-TCA</button>` : ''}
-            ${msisdn ? `
-              <a class="btn btn-sm btn-outline-secondary" href="${telHref(msisdn)}"><i class="fa-solid fa-phone"></i></a>
-              <a class="btn btn-sm btn-outline-success" target="_blank" href="${waHref(msisdn)}"><i class="fa-brands fa-whatsapp"></i></a>` : ''}
-          </td>
-        </tr>`;
-        tbody.insertAdjacentHTML('beforeend', row);
-      });
-    } else {
-      tbody.innerHTML = `<tr><td colspan="7" class="text-center text-muted">Tiada data First Visit</td></tr>`;
-    }
-  }catch(e){ /* senyap */ }
-}
-
-function isWithin24hOfDate(dateStr){
-  const d = parseDDMMYYYY(dateStr);
-  if (!d) return false;
-  const start = new Date(d.getFullYear(), d.getMonth(), d.getDate(), 0,0,0,0);
-  const end = new Date(start.getTime() + 24*60*60*1000);
-  const now = new Date();
-  return now >= start && now < end;
-}
-
-async function loadLabFollowUp(){
-  try{
-    const data = await getJSON({ action:'getLabFollowUp' }, { msg:'Memuat Follow-up Lab…' });
-    const tbody = document.getElementById('labFollowupTable');
-    tbody.innerHTML = '';
-    if (data.status==='success' && data.data.length>0){
-      data.data.forEach(p=>{
-        const msisdn = normalizeMsisdnMY(p.noTelefon||'');
-        const badge = p.labStatus==='DONE' ? 'bg-success' : (p.labStatus==='REPEAT' ? 'bg-danger' : (p.labStatus==='IN_PROCESS' ? 'bg-warning' : 'bg-secondary'));
-        const label = p.labStatus || 'PENDING';
-        const row = `
-        <tr data-ic="${p.noIC}">
-          <td>${p.nama}</td>
-          <td>${p.noIC}</td>
-          <td class="mini-actions">
-            <a class="btn btn-sm btn-outline-secondary" href="${telHref(msisdn)}"><i class="fa-solid fa-phone"></i> Call</a>
-            <a class="btn btn-sm btn-outline-success" target="_blank" href="${waHref(msisdn,'Keputusan makmal anda telah siap.')}"><i class="fa-brands fa-whatsapp"></i> WhatsApp</a>
-            <div class="small text-muted mt-1">${msisdn}</div>
-          </td>
-          <td>${p.alamat || '-'}</td>
-          <td>${p.firstVisitDate}</td>
-          <td>${p.daysSince}</td>
-          <td><span class="badge ${badge}">${label}</span></td>
-          <td class="mini-actions">
-            <button class="btn btn-sm btn-success" onclick="openSecondTca('${p.noIC}')"><i class="fa-solid fa-square-check"></i> Result complete & berjaya call</button>
-            <button class="btn btn-sm btn-warning" onclick="markLabStatus('${p.noIC}','IN_PROCESS')"><i class="fa-solid fa-hourglass-half"></i> In process</button>
-            <button class="btn btn-sm btn-danger" onclick="markLabStatus('${p.noIC}','REPEAT')"><i class="fa-solid fa-rotate-left"></i> Repeat sample</button>
-          </td>
-        </tr>`;
-        tbody.insertAdjacentHTML('beforeend', row);
-      });
-    } else {
-      tbody.innerHTML = `<tr><td colspan="8" class="text-center text-muted">Tiada pesakit untuk follow-up.</td></tr>`;
-    }
-  }catch(e){ /* senyap */ }
-}
-
-async function loadSecondVisitData(){
-  try{
-    const data = await getJSON({ action:'getSecondVisit' }, { msg:'Memuat Second Visit…' });
-    const tbody = document.getElementById('secondVisitList');
-    tbody.innerHTML = '';
-    if (data.status==='success' && data.data.length>0){
-      data.data.forEach(p=>{
-        const hadir = p.status==='HADIR';
-        const within = isWithin24hOfDate(p.tarikhTCA);
-        const msisdn = normalizeMsisdnMY(p.noTelefon||'');
-
-        let pdpaHTML = p.pdpaFileId
-          ? `<div class="d-flex flex-wrap gap-1">
-              <a class="btn btn-sm btn-outline-success" target="_blank" href="https://drive.google.com/file/d/${p.pdpaFileId}/preview"><i class="fa-solid fa-eye"></i> Lihat</a>
-              <a class="btn btn-sm btn-outline-primary" target="_blank" href="https://drive.google.com/uc?export=download&id=${p.pdpaFileId}"><i class="fa-solid fa-download"></i> Muat Turun</a>
-            </div>`
-          : `<span class="text-danger">PDPA tiada</span>`;
-
-        const row = `
-        <tr data-ic="${p.noIC}">
-          <td>${p.nama}</td>
-          <td>${p.noIC}</td>
-          <td>${p.alamat || '-'}</td>
-          <td>${p.tarikhTCA||'-'}</td>
-          <td>${pdpaHTML}</td>
-          <td><span class="badge ${hadir?'bg-success':'bg-warning'}">${hadir?'Hadir':'Belum Hadir'}</span></td>
-          <td class="mini-actions">
-            ${within && !hadir ? `<button class="btn btn-sm btn-success" onclick="markSecondVisitHadir('${p.noIC}')"><i class="fa-solid fa-circle-check"></i> Hadir</button>` : ''}
-            ${msisdn ? `
-              <a class="btn btn-sm btn-outline-secondary" href="${telHref(msisdn)}"><i class="fa-solid fa-phone"></i></a>
-              <a class="btn btn-sm btn-outline-success" target="_blank" href="${waHref(msisdn)}"><i class="fa-brands fa-whatsapp"></i></a>` : ''}
-          </td>
-        </tr>`;
-        tbody.insertAdjacentHTML('beforeend', row);
-      });
-    } else {
-      tbody.innerHTML = `<tr><td colspan="7" class="text-center text-muted">Tiada data Second Visit</td></tr>`;
-    }
-  }catch(e){ /* senyap */ }
-}
-
-async function loadCompletedData(){
-  try{
-    const data = await getJSON({ action:'getCompleted' }, { msg:'Memuat Selesai…' });
-    const tbody = document.getElementById('completedTable');
-    tbody.innerHTML = '';
-    if (data.status==='success' && data.data.length>0){
-      data.data.forEach(p=>{
-        const msisdn = normalizeMsisdnMY(p.noTelefon||'');
-        const pdpaHTML = p.pdpaFileId
-          ? `<div class="d-flex flex-wrap gap-1">
-              <a class="btn btn-sm btn-outline-success" target="_blank" href="https://drive.google.com/file/d/${p.pdpaFileId}/preview"><i class="fa-solid fa-eye"></i> Lihat</a>
-              <a class="btn btn-sm btn-outline-primary" target="_blank" href="https://drive.google.com/uc?export=download&id=${p.pdpaFileId}"><i class="fa-solid fa-download"></i> Muat Turun</a>
-            </div>`
-          : `<span class="text-muted">-</span>`;
-
-        const labCompleted = p.labCompletedAt ? `${p.labCompletedAt}` : '-';
-        const row = `<tr data-ic="${p.noIC}">
-          <td>${p.nama}</td><td>${p.noIC}</td><td>${msisdn}</td><td>${p.alamat || '-'}</td><td>${pdpaHTML}</td>
-          <td>${p.tarikhDaftar||'-'}</td>
-          <td>${p.firstVisitDate||'-'}</td>
-          <td>${labCompleted}</td>
-          <td>${p.secondVisitDate||'-'}</td>
-          <td>${p.tarikhSelesai||'-'}</td>
-          <td><button class="btn btn-sm btn-outline-secondary" onclick="archivePatient('${p.noIC}')"><i class="fa-solid fa-box-archive"></i> Arkib</button></td>
-        </tr>`;
-        tbody.insertAdjacentHTML('beforeend', row);
-      });
-    } else {
-      tbody.innerHTML = `<tr><td colspan="11" class="text-center text-muted">Tiada data pesakit selesai</td></tr>`;
-    }
-  }catch(e){ /* senyap */ }
-}
-
-async function loadArchivedData(){
-  try{
-    const data = await getJSON({ action:'getArchived' }, { msg:'Memuat Arkib…' });
-    const tbody = document.getElementById('archiveTable');
-    tbody.innerHTML = '';
-    if (data.status==='success' && data.data.length>0){
-      data.data.forEach(p=>{
-        const msisdn = normalizeMsisdnMY(p.noTelefon||'');
-        const row = `<tr data-ic="${p.noIC}">
-          <td>${p.nama}</td><td>${p.noIC}</td><td>${msisdn}</td><td>${p.alamat || '-'}</td><td>${p.tarikhDaftar}</td><td>${p.tarikhSelesai}</td><td>${p.archivedAt||'-'}</td>
-          <td><button class="btn btn-sm btn-outline-primary" onclick="restorePatient('${p.noIC}')"><i class="fa-solid fa-rotate-left"></i> Pulihkan</button></td>
-        </tr>`;
-        tbody.insertAdjacentHTML('beforeend', row);
-      });
-    } else {
-      tbody.innerHTML = `<tr><td colspan="8" class="text-center text-muted">Tiada rekod arkib</td></tr>`;
-    }
-  }catch(e){ /* senyap */ }
-}
-
-/* =======================
-   ACTIONS
-   ======================= */
-async function markFirstVisit(noIC){
-  try{
-    const res = await postForm({ action:'updateStatus', op:'firstVisit', noIC, staff: STAFF_EMAIL }, { msg:'Merekod Hadir (First Visit)…' });
-    if (res.status==='success'){
-      toast('Berjaya','Hadir (First Visit) direkodkan. Sila muat naik PDPA.', 'success');
-      openPDPA(noIC);
-      loadFirstVisitData(); loadLabFollowUp(); loadSecondVisitData(); loadDashboardData();
-    } else throw new Error(res.message||'Gagal rekod hadir');
-  }catch(e){ toast('Ralat', e.message, 'danger'); }
-}
-async function markSecondVisitHadir(noIC){
-  try{
-    const res = await postForm({ action:'updateStatus', op:'secondVisitHadir', noIC, staff: STAFF_EMAIL }, { msg:'Menandakan Hadir (Second Visit)…' });
-    if (res.status==='success'){
-      toast('Berjaya','Second Visit selesai → Selesai','success');
-      loadSecondVisitData(); loadCompletedData(); loadDashboardData();
-    } else throw new Error(res.message||'Gagal menandakan hadir');
-  }catch(e){ toast('Ralat', e.message, 'danger'); }
-}
-
-function openRetcaModal(noIC){
-  document.getElementById('retcaIC').value = noIC;
-  document.getElementById('retcaDate').value = '';
-  document.getElementById('retcaTime').value = '';
-  retcaModal.show();
-}
-async function submitRetca(){
-  const noIC = document.getElementById('retcaIC').value;
-  const tarikhTCA = document.getElementById('retcaDate').value;
-  const masaTCA = document.getElementById('retcaTime').value;
-  if (!noIC || !tarikhTCA || !masaTCA) return toast('Ralat','Sila lengkapkan tarikh & masa','danger');
-  try{
-    const res = await postForm({ action:'updateStatus', op:'retca', noIC, tarikhTCA, masaTCA, staff: STAFF_EMAIL }, { msg:'Mendaftar TCA semula…' });
-    if (res.status==='success'){
-      retcaModal.hide();
-      toast('Berjaya','TCA baharu disimpan','success');
-      loadTCACallData(); loadFirstVisitData(); loadSecondVisitData(); loadDashboardData();
-    } else throw new Error(res.message||'Gagal kemaskini TCA');
-  }catch(e){ toast('Ralat', e.message, 'danger'); }
-}
-
-/* Lab complete → set second TCA + log caller + set Lab DONE */
-function openSecondTca(noIC){
-  document.getElementById('secondTcaIC').value = noIC;
-  document.getElementById('secondTcaDate').value = '';
-  document.getElementById('secondTcaTime').value = '';
-  document.getElementById('secondTcaStaff').value = '';
-  secondTcaModal.show();
-}
-async function submitSecondTca(){
-  const noIC = document.getElementById('secondTcaIC').value;
-  const date = document.getElementById('secondTcaDate').value;
-  const time = document.getElementById('secondTcaTime').value;
-  const staff= document.getElementById('secondTcaStaff').value.trim();
-  if (!date || !time || !staff) { toast('Ralat','Sila isi tarikh, masa & nama staff','danger'); return; }
-  try{
-    const a = await postForm({ action:'updatePatient', noIC, tarikhTCA:date, masaTCA:time, staff }, { msg:'Menetapkan TCA Second Visit…' });
-    if (a.status!=='success') throw new Error(a.message||'Gagal tetapkan TCA');
-
-    const b = await postForm({ action:'logCall', noIC, staff, event:'LAB_COMPLETE_CALL' }, { msg:'Merekod log panggilan…' });
-    if (b.status!=='success') throw new Error(b.message||'Gagal rekod log');
-
-    const c = await postForm({ action:'updateLabStatus', noIC, status:'DONE', staff }, { msg:'Mengemas kini status follow-up…' });
-    if (c.status!=='success') throw new Error(c.message||'Gagal set follow-up DONE');
-
-    secondTcaModal.hide();
-    toast('Berjaya','TCA Second Visit ditetapkan, log disimpan & lab ditanda Selesai','success');
-
-    loadLabFollowUp(); loadSecondVisitData(); loadCompletedData(); loadDashboardData();
-    refreshLogs({silent:true});
-  }catch(e){ toast('Ralat', e.message, 'danger'); }
-}
-
-function openPDPA(noIC){
-  document.getElementById('pdpaIC').value = noIC;
-  document.getElementById('pdpaFile').value = '';
-  pdpaModal.show();
-}
-async function uploadPDPA(){
-  const noIC = document.getElementById('pdpaIC').value;
-  const file = document.getElementById('pdpaFile').files[0];
-  if (!file) { toast('Ralat','Sila pilih fail PDPA','danger'); return; }
-
-  showLoader('Memuat naik PDPA…');
-  try{
-    const base64 = await fileToBase64(file); const pure64 = base64.split(',').pop();
-    const res = await fetch(SCRIPT_URL, {
-      method: 'POST',
-      headers: { 'Content-Type':'application/x-www-form-urlencoded' },
-      body: new URLSearchParams({
-        action: 'uploadPDPA', id_token: ID_TOKEN, noIC, staff: STAFF_EMAIL,
-        fileBase64: pure64, fileName: file.name, fileType: file.type || 'application/octet-stream'
-      })
-    });
-    const json = await res.json();
-    if (json.status === 'success'){
-      pdpaModal.hide();
-      toast('Berjaya','PDPA dimuat naik','success');
-      loadFirstVisitData(); loadSecondVisitData(); loadCompletedData();
-    } else { throw new Error(json.message || 'Gagal muat naik PDPA'); }
-  } catch(e){
-    toast('Ralat', e.message, 'danger');
-  } finally { hideLoader(); }
-}
-function fileToBase64(file){
-  return new Promise((resolve, reject)=>{
-    const fr = new FileReader();
-    fr.onload = () => resolve(fr.result);
-    fr.onerror = reject;
-    fr.readAsDataURL(file);
-  });
-}
-
-async function deletePDPA(noIC){
-  if (!confirm('Padam PDPA untuk pesakit ini?')) return;
-  try{
-    const res = await postForm({ action:'deletePDPA', noIC, staff: STAFF_EMAIL }, { msg:'Memadam PDPA…' });
-    if (res.status==='success'){
-      toast('Berjaya','PDPA dipadam.','success');
-      loadFirstVisitData(); loadSecondVisitData(); loadCompletedData();
-    } else throw new Error(res.message||'Gagal padam PDPA');
-  }catch(e){ toast('Ralat', e.message, 'danger'); }
-}
-
-async function archivePatient(noIC){
-  if (!confirm('Arkibkan rekod pesakit ini?')) return;
-  try{
-    const res = await postForm({ action:'archivePatient', noIC, staff: STAFF_EMAIL }, { msg:'Mengarkib rekod…' });
-    if (res.status==='success'){
-      toast('Arkib','Rekod telah diarkibkan','success');
-      loadCompletedData();
-    } else throw new Error(res.message||'Gagal arkib');
-  }catch(e){ toast('Ralat', e.message, 'danger'); }
-}
-async function restorePatient(noIC){
-  if (!confirm('Pulihkan rekod ini ke senarai utama?')) return;
-  try{
-    const res = await postForm({ action:'restorePatient', noIC, staff: STAFF_EMAIL }, { msg:'Memulihkan rekod…' });
-    if (res.status==='success'){
-      toast('Pulih','Rekod telah dipulihkan','success');
-      loadArchivedData(); loadCompletedData(); loadDashboardData();
-    } else throw new Error(res.message||'Gagal pulih');
-  }catch(e){ toast('Ralat', e.message, 'danger'); }
-}
-
-/* =======================
-   PENDAFTARAN & EXPORT
-   ======================= */
-async function daftarPesakit(){
-  const formData = {
-    action:'daftarPesakit',
-    namaPesakit: document.getElementById('namaPesakit').value.trim(),
-    noIC:        document.getElementById('noIC').value.trim(),
-    noTelefon:   normalizeMsisdnMY(document.getElementById('noTelefon').value.trim()),
-    alamat:      document.getElementById('alamatPesakit').value.trim(),
-    namaStaff:   document.getElementById('namaStaff').value.trim() || STAFF_EMAIL || 'SYSTEM',
-    tarikhTCA:   document.getElementById('tarikhTCA').value,
-    masaTCA:     document.getElementById('masaTCA').value
-  };
-  if (!formData.namaPesakit || !formData.noIC || !formData.noTelefon || !formData.namaStaff || !formData.tarikhTCA || !formData.masaTCA){
-    toast('Ralat','Sila isi semua maklumat','danger'); return;
-  }
-  try{
-    const result = await postForm(formData, { msg:'Mendaftar pesakit…' });
-    if (result.status==='success'){
-      toast('Berjaya','Pendaftaran berjaya (IC sebagai kunci, tiada duplikasi)','success');
-      document.getElementById('namaPesakit').value = '';
-      document.getElementById('noIC').value = '';
-      document.getElementById('noTelefon').value = '';
-      document.getElementById('alamatPesakit').value = '';
-      loadDashboardData(); loadTCACallData();
-    } else throw new Error(result.message||'Gagal mendaftar');
-  }catch(e){ toast('Ralat', e.message, 'danger'); }
-}
-
-async function exportCompletedCSV(){
-  try{
-    const data = await getJSON({ action:'getCompleted' }, { msg:'Menjana CSV…' });
-    if (data.status!=='success' || !data.data.length) {
-      toast('Makluman','Tiada data untuk diexport','warning'); return;
-    }
-    const header = ['Nama','NoIC','Telefon','Alamat','TarikhDaftar','FirstVisit','LabCompleted','SecondVisit','TarikhSelesai'];
-    const rows = data.data.map(x=>[
-      x.nama, x.noIC, normalizeMsisdnMY(x.noTelefon||''), x.alamat || '', x.tarikhDaftar, x.firstVisitDate||'', x.labCompletedAt||'', x.secondVisitDate||'', x.tarikhSelesai
-    ]);
-    const csv = [header, ...rows].map(r=>r.map(v=>`"${String(v||'').replace(/"/g,'""')}"`).join(',')).join('\r\n');
-    const blob = new Blob([csv], { type:'text/csv;charset=utf-8;' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url; a.download = `pesakit_selesai_${new Date().toISOString().slice(0,10)}.csv`;
-    document.body.appendChild(a); a.click(); a.remove(); URL.revokeObjectURL(url);
-    toast('Export','Fail CSV telah dimuat turun','success');
-  }catch(e){ toast('Ralat', e.message, 'danger'); }
-}
-
-/* =======================
-   STARTUP
-   ======================= */
-document.addEventListener('DOMContentLoaded', ()=>{
-  initGoogleSignIn();
-});
-  </script>
-</body>
-</html>
+      if (stats3dChart) stats3dChart
