@@ -706,7 +706,7 @@
 const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbx6TKE0vDDPO3-36cY7xjacAbGL0HIRKCrORNm-sED9y5NpIeIUk9gyrpiWy-S7vbc/exec';
 // 2) Google OAuth Client ID (Google Cloud Console)
 const GOOGLE_CLIENT_ID = '863564124015-838ksbuk27f0kkomm16hnc3bu608pbrr.apps.googleusercontent.com';
-// 3) Logo (optional)
+// 3) Logo (optional) - Ganti dengan URL logo klinik anda
 const LOGO_URL = 'https://github.com/sihat9/mari-jalan-dengan-doktor/blob/main/img/logo-kss.png?raw=true';
 
 /* =======================
@@ -2034,7 +2034,7 @@ async function loadArchivedData(){
     } else {
       tbody.innerHTML = `<tr><td colspan="8" class="text-center text-muted">Tiada rekod arkib</td></tr>`;
     }
- }catch(e){ /* senyap */ }
+  }catch(e){ /* senyap */ }
 }
 
 /* =======================
@@ -2182,7 +2182,7 @@ async function restorePatient(noIC){
       toast('Pulih','Rekod telah dipulihkan','success');
       loadArchivedData(); loadCompletedData(); loadDashboardData();
     } else throw new Error(res.message||'Gagal pulih');
- }catch(e){ toast('Ralat', e.message, 'danger'); }
+  }catch(e){ toast('Ralat', e.message, 'danger'); }
 }
 
 /* =======================
