@@ -3,6 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+
   <!-- COOP/COEP supaya Google Sign-In tidak trigger amaran postMessage -->
   <meta http-equiv="Cross-Origin-Opener-Policy" content="same-origin-allow-popups">
   <meta http-equiv="Cross-Origin-Embedder-Policy" content="unsafe-none">
@@ -24,14 +25,15 @@
   <!-- Google Identity Services (Sign-In) -->
   <script src="https://accounts.google.com/gsi/client" async defer></script>
 
-  <!-- html2canvas untuk render DOM → imej PNG (diguna untuk WA report) -->
+  <!-- html2canvas untuk tangkap preview → imej (BARU) -->
   <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
 
   <style>
-    :root{ --primary:#2c3e50; --secondary:#3498db; --success:#27ae60; --warning:#f39c12;
-      --danger:#e74c3c; --light:#ecf0f1; --dark:#34495e; --muted:#95a5a6; }
-    html{ font-size:15px; } @media (max-width:1200px){ html{ font-size:14px; } }
+    :root{ --primary:#2c3e50; --secondary:#3498db; --success:#27ae60; --warning:#f39c12; --danger:#e74c3c; --light:#ecf0f1; --dark:#34495e; --muted:#95a5a6; }
+    html{ font-size:15px; }
+    @media (max-width:1200px){ html{ font-size:14px; } }
     @media (max-width:576px){ html{ font-size:13px; } }
+
     html,body{height:100%}
     body{font-family:'Segoe UI',Tahoma,Geneva,Verdana,sans-serif;background:#f5f7fa;color:#333}
 
@@ -40,8 +42,10 @@
     .navbar-brand{font-weight:700;color:var(--primary);font-size:1.05rem;display:flex;align-items:center;gap:10px}
     .nav-link{color:var(--dark);font-weight:500;margin:0 4px;padding:7px 10px!important;border-radius:8px;transition:.2s;position:relative}
     .nav-link:hover,.nav-link.active{background:rgba(52,152,219,.12);color:var(--secondary)}
-    .nav-badge{ position:absolute; top:-4px; right:-2px; transform:translate(30%,-30%);
-      background:#dc3545; color:#fff; border-radius:999px; font-size:.65rem; padding:2px 6px; display:none; }
+    .nav-badge{
+      position:absolute; top:-4px; right:-2px; transform:translate(30%,-30%);
+      background:#dc3545; color:#fff; border-radius:999px; font-size:.65rem; padding:2px 6px; display:none;
+    }
 
     /* Header */
     .page-header{background:linear-gradient(135deg,var(--primary),var(--secondary));color:#fff;padding:14px 0;margin-bottom:12px;border-radius:0 0 12px 12px}
@@ -57,56 +61,87 @@
     .mini-actions .btn{margin-right:6px;margin-bottom:6px}
 
     /* Global App Loader (maks 2s) */
-    #appLoader{ position:fixed; inset:0; z-index:2000; display:none;
+    #appLoader{
+      position:fixed; inset:0; z-index:2000; display:none;
       background: radial-gradient(1200px 600px at 10% -10%, rgba(52,152,219,.18), transparent),
                   radial-gradient(1200px 600px at 110% 110%, rgba(46,204,113,.18), transparent),
-                  rgba(255,255,255,.35); backdrop-filter: blur(10px); }
-    #appLoader .loader-card{ position:absolute; top:50%; left:50%; transform:translate(-50%,-50%);
+                  rgba(255,255,255,.35);
+      backdrop-filter: blur(10px);
+    }
+    #appLoader .loader-card{
+      position:absolute; top:50%; left:50%; transform:translate(-50%,-50%);
       background:rgba(255,255,255,.75); border:1px solid rgba(255,255,255,.6);
-      box-shadow: 0 20px 40px rgba(0,0,0,.12); border-radius:18px; padding:16px 18px; min-width:220px; text-align:center; }
-    .spinner-premium{ width:36px;height:36px;border-radius:50%;
-      border:4px solid rgba(52,152,219,.25); border-top-color:#3498db; animation:spin .9s linear infinite; margin:6px auto 8px; }
+      box-shadow: 0 20px 40px rgba(0,0,0,.12);
+      border-radius:18px; padding:16px 18px; min-width:220px; text-align:center;
+    }
+    .spinner-premium{
+      width:36px;height:36px;border-radius:50%;
+      border:4px solid rgba(52,152,219,.25);
+      border-top-color:#3498db; animation:spin .9s linear infinite; margin:6px auto 8px;
+    }
     @keyframes spin{to{transform:rotate(360deg)}}
 
     /* Log Calls Drawer (gaya iPhone) */
-    #logDrawer{ position:fixed; top:0; right:-420px; width:400px; max-width:90vw; height:100%;
-      background:#f8f9fb; box-shadow:-12px 0 35px rgba(0,0,0,.18); z-index:3000;
-      transition:right .25s ease; border-left:1px solid rgba(0,0,0,.05); display:flex; flex-direction:column; }
+    #logDrawer{
+      position:fixed; top:0; right:-420px; width:400px; max-width:90vw; height:100%;
+      background:#f8f9fb; box-shadow:-12px 0 35px rgba(0,0,0,.18); z-index:3000; /* <— di bawah toast */
+      transition:right .25s ease; border-left:1px solid rgba(0,0,0,.05);
+      display:flex; flex-direction:column;
+    }
     #logDrawer.open{ right:0; }
-    .log-header{ padding:10px 12px; background:#fff; border-bottom:1px solid rgba(0,0,0,.06);
-      display:flex; gap:8px; align-items:center; }
+    .log-header{
+      padding:10px 12px; background:#fff; border-bottom:1px solid rgba(0,0,0,.06);
+      display:flex; gap:8px; align-items:center;
+    }
     .log-header .title{font-weight:700; color:#222; flex:1}
     .log-search{ padding:8px; background:#fff; border-bottom:1px solid rgba(0,0,0,.06); }
     .log-body{ padding:10px; overflow:auto; flex:1; display:flex; flex-direction:column; gap:8px; }
-    .bubble{ max-width:80%; padding:8px 10px; border-radius:16px; box-shadow:0 4px 12px rgba(0,0,0,.06);
-      position:relative; font-size:.9rem; line-height:1.2rem; }
+    .bubble{
+      max-width:80%; padding:8px 10px; border-radius:16px; box-shadow:0 4px 12px rgba(0,0,0,.06);
+      position:relative; font-size:.9rem; line-height:1.2rem;
+    }
     .bubble.me{ margin-left:auto; background:#007aff; color:#fff; border-bottom-right-radius:6px; }
     .bubble.other{ margin-right:auto; background:#e9ecef; color:#222; border-bottom-left-radius:6px; }
     .bubble .meta{ font-size:.72rem; opacity:.8; margin-top:5px }
     .log-loading{ display:none; text-align:center; padding:8px }
     .log-loading.active{ display:block }
 
-    /* FAB */
-    #fabLog{ position:fixed; right:18px; bottom:18px; z-index:3500; width:56px; height:56px; border-radius:50%;
-      display:flex; align-items:center; justify-content:center; box-shadow:0 10px 24px rgba(0,0,0,.18); }
+    /* FAB (tombol terapung) untuk Log Calls */
+    #fabLog{
+      position:fixed; right:18px; bottom:18px; z-index:3500;
+      width:56px; height:56px; border-radius:50%;
+      display:flex; align-items:center; justify-content:center;
+      box-shadow:0 10px 24px rgba(0,0,0,.18);
+    }
 
-    /* TOASTS */
+    /* NOTIFIKASI (sentiasa nampak di kanan atas) */
     #toastHost{ position:fixed; top:12px; right:12px; z-index:4000; pointer-events:none; }
     #toastHost .toast{ pointer-events:auto; }
 
     /* NADI TABLE STYLES */
     .nadi-scroll-container { overflow-x: auto; width: 100%; padding-bottom: 8px; }
     .nadi-table { width: 100%; min-width: 1300px; border-collapse: separate; border-spacing: 0; }
-    .nadi-table th { background: #f8f9fa; padding: 10px 8px; font-weight: 600; text-align: center; position: sticky; top: 0; z-index: 10; border: 1px solid #dee2e6; }
+    .nadi-table th {
+      background: #f8f9fa; padding: 10px 8px; font-weight: 600; text-align: center;
+      position: sticky; top: 0; z-index: 10; border: 1px solid #dee2e6;
+    }
     .nadi-table td { padding: 8px; vertical-align: middle; border: 1px solid #dee2e6; }
     .nadi-input-cell { position: relative; }
-    .nadi-input-cell .view-mode { width: 100%; padding: 6px 8px; cursor: pointer; border: 1px solid transparent; border-radius: 4px; min-height: 36px; display: flex; align-items: center; }
+    .nadi-input-cell .view-mode {
+      width: 100%; padding: 6px 8px; cursor: pointer; border: 1px solid transparent;
+      border-radius: 4px; min-height: 36px; display: flex; align-items: center;
+    }
     .nadi-input-cell .view-mode:hover { background-color: #f8f9fa; border: 1px solid #dee2e6; }
-    .nadi-input-cell input { width: 100%; min-width: 100px; border: 1px solid #ced4da; border-radius: 4px; padding: 6px 8px; transition: width 0.2s ease; }
+    .nadi-input-cell input {
+      width: 100%; min-width: 100px; border: 1px solid #ced4da; border-radius: 4px; padding: 6px 8px; transition: width 0.2s ease;
+    }
     .nadi-input-cell input:focus { width: auto; min-width: 100px; }
     .nadi-checkbox-cell { text-align: center; }
     .nadi-actions-cell { min-width: 180px; }
-    .nadi-counter { background: var(--primary); color: white; border-radius: 50%; width: 24px; height: 24px; display: inline-flex; align-items: center; justify-content: center; font-size: 0.75rem; }
+    .nadi-counter {
+      background: var(--primary); color: white; border-radius: 50%;
+      width: 24px; height: 24px; display: inline-flex; align-items: center; justify-content: center; font-size: 0.75rem;
+    }
 
     /* Responsive */
     @media (max-width: 992px) { .stat-card .number{font-size:1.3rem} }
@@ -116,31 +151,16 @@
     .form-section h5 { color: var(--primary); margin-bottom: 16px; padding-bottom: 8px; border-bottom: 1px solid #eee; }
     .sticky-form-actions { position: sticky; bottom: 0; background: white; padding: 12px; border-top: 1px solid #eee; margin-top: 16px; }
 
-    /* WhatsApp Report Image (Preview Card) */
+    /* WhatsApp Report Image */
     .whatsapp-report {
-      width: 100%;
-      max-width: 500px;
-      background: white;
-      border-radius: 12px;
-      padding: 20px;
-      box-shadow: 0 4px 12px rgba(0,0,0,0.1);
-      margin: 0 auto;
+      width: 100%; max-width: 500px; background: white; border-radius: 12px; padding: 20px;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.1); margin: 0 auto;
     }
     .whatsapp-report-header {
-      display: flex;
-      align-items: center;
-      margin-bottom: 15px;
-      padding-bottom: 15px;
-      border-bottom: 1px solid #eee;
+      display: flex; align-items: center; margin-bottom: 15px; padding-bottom: 15px; border-bottom: 1px solid #eee;
     }
     .whatsapp-report-logo {
-      width: 50px;
-      height: 50px;
-      border-radius: 8px;
-      margin-right: 15px;
-      object-fit: cover;
-      border: 1px solid rgba(0,0,0,0.08);
-      background:#fff;
+      width: 50px; height: 50px; border-radius: 8px; margin-right: 15px; object-fit: cover; border: 1px solid rgba(0,0,0,0.08);
     }
     .whatsapp-report-title { font-size: 18px; font-weight: 700; color: var(--primary); }
     .whatsapp-report-subtitle { font-size: 14px; color: var(--muted); }
@@ -194,16 +214,40 @@
       </button>
       <div class="collapse navbar-collapse" id="navbarMain">
         <ul class="navbar-nav me-auto mb-2 mb-lg-0">
-          <li class="nav-item position-relative"><a class="nav-link active" href="#dashboard"><i class="fas fa-tachometer-alt"></i> Dashboard</a></li>
-          <li class="nav-item position-relative"><a class="nav-link" href="#nadi"><i class="bi bi-clipboard2-pulse"></i> Program PEKA B40 bersama NADI</a></li>
-          <li class="nav-item position-relative"><a class="nav-link" href="#daftar-peka"><i class="fas fa-user-plus"></i> Daftar Peka</a></li>
-          <li class="nav-item position-relative"><a class="nav-link" href="#kelayakan"><i class="fa-solid fa-file-excel"></i> Kelayakan (Excel)</a></li>
-          <li class="nav-item position-relative"><a class="nav-link" href="#tca-call"><i class="fas fa-phone"></i> TCA Call</a><span id="badgeTCA" class="nav-badge">0</span></li>
-          <li class="nav-item position-relative"><a class="nav-link" href="#first-visit"><i class="fas fa-calendar-check"></i> First Visit</a><span id="badgeFirst" class="nav-badge">0</span></li>
-          <li class="nav-item position-relative"><a class="nav-link" href="#lab-followup"><i class="fa-solid fa-flask-vial"></i> Follow-up Lab Report</a><span id="badgeLab" class="nav-badge">0</span></li>
-          <li class="nav-item position-relative"><a class="nav-link" href="#second-visit"><i class="fas fa-calendar-check"></i> Second Visit</a><span id="badgeSecond" class="nav-badge">0</span></li>
-          <li class="nav-item position-relative"><a class="nav-link" href="#selesai"><i class="fas fa-check-circle"></i> Selesai</a></li>
-          <li class="nav-item position-relative"><a class="nav-link" href="#arkib"><i class="fa-solid fa-box-archive"></i> Arkib</a></li>
+          <li class="nav-item position-relative">
+            <a class="nav-link active" href="#dashboard"><i class="fas fa-tachometer-alt"></i> Dashboard</a>
+          </li>
+          <li class="nav-item position-relative">
+            <a class="nav-link" href="#nadi"><i class="bi bi-clipboard2-pulse"></i> Program PEKA B40 bersama NADI</a>
+          </li>
+          <li class="nav-item position-relative">
+            <a class="nav-link" href="#daftar-peka"><i class="fas fa-user-plus"></i> Daftar Peka</a>
+          </li>
+          <li class="nav-item position-relative">
+            <a class="nav-link" href="#kelayakan"><i class="fa-solid fa-file-excel"></i> Kelayakan (Excel)</a>
+          </li>
+          <li class="nav-item position-relative">
+            <a class="nav-link" href="#tca-call"><i class="fas fa-phone"></i> TCA Call</a>
+            <span id="badgeTCA" class="nav-badge">0</span>
+          </li>
+          <li class="nav-item position-relative">
+            <a class="nav-link" href="#first-visit"><i class="fas fa-calendar-check"></i> First Visit</a>
+            <span id="badgeFirst" class="nav-badge">0</span>
+          </li>
+          <li class="nav-item position-relative">
+            <a class="nav-link" href="#lab-followup"><i class="fa-solid fa-flask-vial"></i> Follow-up Lab Report</a>
+            <span id="badgeLab" class="nav-badge">0</span>
+          </li>
+          <li class="nav-item position-relative">
+            <a class="nav-link" href="#second-visit"><i class="fas fa-calendar-check"></i> Second Visit</a>
+            <span id="badgeSecond" class="nav-badge">0</span>
+          </li>
+          <li class="nav-item position-relative">
+            <a class="nav-link" href="#selesai"><i class="fas fa-check-circle"></i> Selesai</a>
+          </li>
+          <li class="nav-item position-relative">
+            <a class="nav-link" href="#arkib"><i class="fa-solid fa-box-archive"></i> Arkib</a>
+          </li>
         </ul>
 
         <div class="d-none d-lg-flex align-items-center gap-2">
@@ -335,7 +379,9 @@
                   <th style="min-width: 180px;">Tindakan</th>
                 </tr>
               </thead>
-              <tbody id="nadiContainer"></tbody>
+              <tbody id="nadiContainer">
+                <!-- Rows will be added dynamically -->
+              </tbody>
             </table>
           </div>
           <div class="sticky-form-actions">
@@ -355,25 +401,46 @@
       <div class="form-section">
         <h5><i class="fas fa-user-circle me-2"></i>Maklumat Pesakit</h5>
         <div class="row g-3">
-          <div class="col-md-6"><label class="form-label">Nama Penuh Pesakit</label><input id="namaPesakit" class="form-control" required></div>
-          <div class="col-md-6"><label class="form-label">Nombor IC</label><input id="noIC" class="form-control" required></div>
-          <div class="col-md-6"><label class="form-label">Nombor Telefon</label><input id="noTelefon" class="form-control" type="tel" required placeholder="cth: 0123456789 atau 60123456789"></div>
-          <div class="col-md-6"><label class="form-label">Alamat Pesakit</label><textarea id="alamatPesakit" class="form-control" rows="2"></textarea></div>
+          <div class="col-md-6">
+            <label class="form-label">Nama Penuh Pesakit</label>
+            <input id="namaPesakit" class="form-control" required>
+          </div>
+          <div class="col-md-6">
+            <label class="form-label">Nombor IC</label>
+            <input id="noIC" class="form-control" required>
+          </div>
+          <div class="col-md-6">
+            <label class="form-label">Nombor Telefon</label>
+            <input id="noTelefon" class="form-control" type="tel" required placeholder="cth: 0123456789 atau 60123456789">
+          </div>
+          <div class="col-md-6">
+            <label class="form-label">Alamat Pesakit</label>
+            <textarea id="alamatPesakit" class="form-control" rows="2"></textarea>
+          </div>
         </div>
       </div>
 
       <div class="form-section">
         <h5><i class="fas fa-calendar-alt me-2"></i>Tarikh Temujanji</h5>
         <div class="row g-3">
-          <div class="col-md-6"><label class="form-label">Tarikh TCA</label><input id="tarikhTCA" class="form-control" type="date" required></div>
-          <div class="col-md-6"><label class="form-label">Masa TCA</label><input id="masaTCA" class="form-control" type="time" required></div>
+          <div class="col-md-6">
+            <label class="form-label">Tarikh TCA</label>
+            <input id="tarikhTCA" class="form-control" type="date" required>
+          </div>
+          <div class="col-md-6">
+            <label class="form-label">Masa TCA</label>
+            <input id="masaTCA" class="form-control" type="time" required>
+          </div>
         </div>
       </div>
 
       <div class="form-section">
         <h5><i class="fas fa-user-tie me-2"></i>Maklumat Staff</h5>
         <div class="row g-3">
-          <div class="col-md-6"><label class="form-label">Nama Staff</label><input id="namaStaff" class="form-control" required></div>
+          <div class="col-md-6">
+            <label class="form-label">Nama Staff</label>
+            <input id="namaStaff" class="form-control" required>
+          </div>
         </div>
       </div>
 
@@ -407,7 +474,7 @@
       </div></div>
     </section>
 
-    <!-- TCA Call -->
+    <!-- TCA Call (senarai rekod — tiada tanda selesai manual) -->
     <section id="tca-call" class="mb-4 d-none">
       <div class="d-flex justify-content-between align-items-center mb-2">
         <h2 class="h6 m-0"><i class="fas fa-phone me-2"></i>Senarai Rekod TCA Call</h2>
@@ -524,7 +591,7 @@
         <div class="table-responsive">
           <table class="table table-hover align-middle">
             <thead class="table-light"><tr><th>Nama Pesakit</th><th>No IC</th><th>No Telefon</th><th>Alamat</th><th>Tarikh Daftar</th><th>Tarikh Selesai</th><th>Diarkib</th><th>Tindakan</th></tr></thead>
-            <tbody id="archiveTable"><tr><td colspan="8" class="text-center text-muted">Memuat data...</td></tr></tbody>
+            <tbody id="archiveTable"><tr><td colspan="8" class="text-center text-muted">Tiada rekod arkib</td></tr></tbody>
           </table>
         </div>
       </div></div>
@@ -603,12 +670,19 @@
       </div>
       <div class="modal-footer">
         <button class="btn btn-secondary" data-bs-dismiss="modal">Tutup</button>
-        <button class="btn btn-success" id="btnSendWhatsApp"><i class="fa-brands fa-whatsapp me-1"></i>Hantar WhatsApp</button>
+        <!-- Kekalkan butang lama (teks) -->
+        <button class="btn btn-outline-success" id="btnSendWhatsApp">
+          <i class="fa-brands fa-whatsapp me-1"></i> Hantar WhatsApp (Teks)
+        </button>
+        <!-- Butang baharu: hantar Gambar ke WhatsApp + auto-buka chat -->
+        <button class="btn btn-success" id="btnSendWhatsAppImage">
+          <i class="fa-brands fa-whatsapp me-1"></i> Hantar Gambar ke WhatsApp
+        </button>
       </div>
     </div></div>
   </div>
 
-  <!-- Toast Host -->
+  <!-- Toast Host (kanan atas) -->
   <div id="toastHost"><div id="toastContainer" class="toast-container"></div></div>
 
   <!-- FAB Log Calls -->
@@ -632,7 +706,7 @@
 const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbx6TKE0vDDPO3-36cY7xjacAbGL0HIRKCrORNm-sED9y5NpIeIUk9gyrpiWy-S7vbc/exec';
 // 2) Google OAuth Client ID (Google Cloud Console)
 const GOOGLE_CLIENT_ID = '863564124015-838ksbuk27f0kkomm16hnc3bu608pbrr.apps.googleusercontent.com';
-// 3) Logo (optional) — kekal
+// 3) Logo (optional)
 const LOGO_URL = 'https://github.com/sihat9/mari-jalan-dengan-doktor/blob/main/img/logo-kss.png?raw=true';
 
 /* =======================
@@ -657,6 +731,7 @@ function initGoogleSignIn(){
     { theme: 'outline', size: 'medium', text:'signin_with' }
   );
 }
+
 async function handleCredentialResponse(resp){
   ID_TOKEN = resp.credential;
   // Semak whoami di backend
@@ -707,6 +782,7 @@ async function getJSON(params={}, {silent=false, msg='Memuat data…'}={}){
     return await r.json();
   } finally { if (!silent) hideLoader(); }
 }
+
 async function postForm(params={}, {silent=false, msg='Menyimpan data…'}={}){
   if (!ID_TOKEN) throw new Error('Belum login');
   if (!silent) showLoader(msg);
@@ -743,6 +819,7 @@ const parseDDMMYYYY = (s) => {
   if (!m) return null; const D=+m[1], M=+m[2], Y=+m[3]; return new Date(Y,M-1,D);
 };
 function isSameDay(a,b){ return a.getFullYear()==b.getFullYear() && a.getMonth()==b.getMonth() && a.getDate()==b.getDate(); }
+
 function toast(title, message, variant='primary'){
   const container = document.getElementById('toastContainer');
   const id = 't'+Date.now();
@@ -758,6 +835,123 @@ function toast(title, message, variant='primary'){
   const t = new bootstrap.Toast(el, { delay: 3000 });
   t.show();
   el.addEventListener('hidden.bs.toast', ()=>el.remove());
+}
+
+/* =======================
+   WHATSAPP HELPERS (TEKS) – dikekalkan
+   ======================= */
+function composeNadiWhatsAppText(data){
+  const lines = [
+    'Assalamualaikum, ini dari Klinik SihatSokmo.',
+    '',
+    'Laporan Saringan NADI:',
+    `• Nama: ${data.nama || '-'}`,
+    `• IC: ${data.ic || '-'}`,
+    `• Alamat: ${data.alamat || '-'}`,
+    `• BP: ${data.bp || '-'} mmHg`,
+    `• PR: ${data.pr || '-'} bpm`,
+    `• DXT (${data.dxtType || 'Fasting'}): ${data.dxt || '-'} mmol/L`,
+    `• Tinggi: ${data.tinggi || '-'} cm`,
+    `• Berat: ${data.berat || '-'} kg`,
+    `• BMI: ${data.bmi || '-'}`,
+    `• Status: ${data.layak ? 'Layak PEKA B40' : 'Tidak Layak PEKA B40'}`,
+    '',
+    'Jika ada soalan, balas mesej ini ya. Terima kasih.'
+  ];
+  return lines.join('\n');
+}
+function openWhatsAppTo(rawMsisdn, text){
+  const msisdn = normalizeMsisdnMY(rawMsisdn);
+  if (!/^\d{10,15}$/.test(msisdn)){
+    toast('Ralat', 'Nombor telefon tidak sah', 'danger');
+    return;
+  }
+  const encoded = encodeURIComponent(text || '');
+  const scheme = `whatsapp://send?phone=${msisdn}&text=${encoded}`;
+  const web    = `https://wa.me/${msisdn}?text=${encoded}`;
+  const isMobile = /Android|iPhone|iPad|iPod|Windows Phone/i.test(navigator.userAgent);
+  const url = isMobile ? scheme : web;
+  window.open(url, '_blank');
+  toast('WhatsApp', 'Membuka WhatsApp dengan mesej siap-isi…', 'success');
+}
+
+/* =======================
+   WHATSAPP IMAGE SEND HELPERS (BARU)
+   ======================= */
+let CURRENT_WA_MSISDN = ''; // diset ketika preview dibuka
+
+async function captureReportAsBlob() {
+  const card = document.querySelector('#whatsappReportPreview .whatsapp-report');
+  if (!card) throw new Error('Gagal capai preview');
+  const canvas = await html2canvas(card, {
+    backgroundColor: '#ffffff',
+    scale: Math.min(window.devicePixelRatio || 1.5, 2.5)
+  });
+  return await new Promise((resolve)=> canvas.toBlob(resolve, 'image/png', 0.95));
+}
+
+function openWhatsAppDeepLink(msisdn, text='') {
+  const encoded = encodeURIComponent(text || '');
+  const scheme = `whatsapp://send?phone=${msisdn}&text=${encoded}`;
+  const web    = `https://wa.me/${msisdn}?text=${encoded}`;
+  // cuba app dahulu, kemudian fallback
+  window.open(scheme, '_blank');
+  setTimeout(()=>window.open(web,'_blank'), 600);
+}
+
+// Versi yang memenuhi kehendak: terus buka chat → siapkan imej (clipboard/share/fallback)
+async function sendWhatsAppReportImageFlow(msisdn) {
+  const phone = normalizeMsisdnMY(msisdn||'');
+  if (!/^\d{10,15}$/.test(phone)) {
+    toast('Ralat', 'Nombor telefon tidak sah', 'danger');
+    return;
+  }
+
+  // 1) TERUS buka chat ke nombor pesakit
+  openWhatsAppDeepLink(phone, '');
+
+  // 2) Jana imej daripada kad preview
+  showLoader('Menjana imej laporan…');
+  let blob;
+  try {
+    blob = await captureReportAsBlob();
+  } catch(e){
+    hideLoader();
+    toast('Ralat', 'Gagal jana imej laporan', 'danger');
+    return;
+  }
+  hideLoader();
+
+  const file = new File([blob], `laporan_nadi_${Date.now()}.png`, { type: 'image/png' });
+
+  // 3) MOBILE: cuba Web Share API (anda pilih WhatsApp kemudian chat; had OS)
+  if (navigator.canShare && navigator.canShare({ files: [file] })) {
+    try {
+      await navigator.share({ files: [file], title: 'Laporan Saringan NADI', text: '' });
+      toast('Berjaya', 'Imej dikongsi melalui aplikasi pilihan anda', 'success');
+      return;
+    } catch(e){
+      // pengguna batal → teruskan fallback
+    }
+  }
+
+  // 4) DESKTOP: salin imej ke clipboard, tampal di chat yang sudah dibuka
+  if (navigator.clipboard && window.ClipboardItem) {
+    try {
+      await navigator.clipboard.write([ new ClipboardItem({ 'image/png': blob }) ]);
+      toast('Siap', 'Imej disalin ke clipboard. Tampal (Ctrl/Cmd+V) dalam chat WhatsApp.', 'success');
+      return;
+    } catch(e){
+      // fallback terakhir
+    }
+  }
+
+  // 5) Fallback: muat turun imej untuk dilampirkan manual
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url; a.download = `laporan_nadi_${Date.now()}.png`;
+  document.body.appendChild(a); a.click(); a.remove(); URL.revokeObjectURL(url);
+  toast('Makluman', 'Imej dimuat turun. Lampirkan imej itu dalam chat WhatsApp dan hantar.', 'warning');
 }
 
 /* =======================
@@ -836,6 +1030,7 @@ function setupNavigation(){
   document.getElementById('statPeriod').addEventListener('change', function(){ loadStatistics(this.value); });
   document.getElementById('statPeriodCompleted').addEventListener('change', function(){ loadCompletedStatistics(this.value); });
 }
+
 function setupModals(){
   retcaModal = new bootstrap.Modal(document.getElementById('retcaModal'));
   document.getElementById('btnSubmitRetca').addEventListener('click', submitRetca);
@@ -847,8 +1042,18 @@ function setupModals(){
   document.getElementById('btnUploadPDPA').addEventListener('click', uploadPDPA);
 
   whatsappReportModal = new bootstrap.Modal(document.getElementById('whatsappReportModal'));
+  // Kekalkan fungsi lama (hantar teks)
   document.getElementById('btnSendWhatsApp').addEventListener('click', sendWhatsAppReport);
+  // Butang baharu: hantar gambar + auto buka chat
+  document.getElementById('btnSendWhatsAppImage').addEventListener('click', async ()=>{
+    if (!CURRENT_WA_MSISDN){
+      toast('Ralat','Nombor telefon tidak ditemui pada baris NADI','danger'); return;
+    }
+    await sendWhatsAppReportImageFlow(CURRENT_WA_MSISDN);
+    // whatsappReportModal.hide(); // pilihan: biar terbuka untuk pantau status
+  });
 }
+
 function setupFab(){
   const btn = document.getElementById('fabLog');
   const drawer  = document.getElementById('logDrawer');
@@ -856,6 +1061,7 @@ function setupFab(){
   btn.addEventListener('click', ()=>{ drawer.classList.add('open'); refreshLogs(); autoRefreshLogs(); });
   btnClose.addEventListener('click', ()=>{ drawer.classList.remove('open'); stopAutoRefreshLogs(); });
 }
+
 function setupSearchBars(){
   const pairs = [
     ['searchTCA','tcaCallTable'], ['searchTCAPage','tcaCallList'],
@@ -875,6 +1081,7 @@ function setupSearchBars(){
     });
   });
 }
+
 function setupExports(){
   document.getElementById('btnExportCSV').addEventListener('click', exportCompletedCSV);
 }
@@ -1051,6 +1258,7 @@ function setupNADI(){
   addNadiRow(); // Start with 1 row
   document.getElementById('btnNadiExportCsv').addEventListener('click', exportNadiCSV);
 }
+
 function addNadiRow(){
   const container = document.getElementById('nadiContainer');
   const id = 'n'+Date.now()+Math.random().toString(36).slice(2,6);
@@ -1061,13 +1269,33 @@ function addNadiRow(){
   nadiRowCounter++;
 
   row.innerHTML = `
-    <td class="text-center"><div class="nadi-counter">${nadiRowCounter}</div></td>
-    <td class="nadi-input-cell"><div class="view-mode" onclick="editNadiCell(this)"></div><input class="form-control form-control-sm nadi-nama" placeholder="Nama pesakit" style="display:none" onblur="saveNadiCell(this)" /></td>
-    <td class="nadi-input-cell"><div class="view-mode" onclick="editNadiCell(this)"></div><input class="form-control form-control-sm nadi-ic" placeholder="IC" style="display:none" onblur="saveNadiCell(this)" /></td>
-    <td class="nadi-input-cell"><div class="view-mode" onclick="editNadiCell(this)"></div><input class="form-control form-control-sm nadi-tel" placeholder="Telefon" style="display:none" onblur="saveNadiCell(this)" /></td>
-    <td class="nadi-input-cell"><div class="view-mode" onclick="editNadiCell(this)"></div><input class="form-control form-control-sm nadi-alamat" placeholder="Alamat" style="display:none" onblur="saveNadiCell(this)" /></td>
-    <td class="nadi-input-cell"><div class="view-mode" onclick="editNadiCell(this)"></div><input class="form-control form-control-sm nadi-bp" placeholder="BP" style="display:none" onblur="saveNadiCell(this)" /></td>
-    <td class="nadi-input-cell"><div class="view-mode" onclick="editNadiCell(this)"></div><input class="form-control form-control-sm nadi-pr" placeholder="PR" style="display:none" onblur="saveNadiCell(this)" /></td>
+    <td class="text-center">
+      <div class="nadi-counter">${nadiRowCounter}</div>
+    </td>
+    <td class="nadi-input-cell">
+      <div class="view-mode" onclick="editNadiCell(this)"></div>
+      <input class="form-control form-control-sm nadi-nama" placeholder="Nama pesakit" style="display:none" onblur="saveNadiCell(this)" />
+    </td>
+    <td class="nadi-input-cell">
+      <div class="view-mode" onclick="editNadiCell(this)"></div>
+      <input class="form-control form-control-sm nadi-ic" placeholder="IC" style="display:none" onblur="saveNadiCell(this)" />
+    </td>
+    <td class="nadi-input-cell">
+      <div class="view-mode" onclick="editNadiCell(this)"></div>
+      <input class="form-control form-control-sm nadi-tel" placeholder="Telefon" style="display:none" onblur="saveNadiCell(this)" />
+    </td>
+    <td class="nadi-input-cell">
+      <div class="view-mode" onclick="editNadiCell(this)"></div>
+      <input class="form-control form-control-sm nadi-alamat" placeholder="Alamat" style="display:none" onblur="saveNadiCell(this)" />
+    </td>
+    <td class="nadi-input-cell">
+      <div class="view-mode" onclick="editNadiCell(this)"></div>
+      <input class="form-control form-control-sm nadi-bp" placeholder="BP" style="display:none" onblur="saveNadiCell(this)" />
+    </td>
+    <td class="nadi-input-cell">
+      <div class="view-mode" onclick="editNadiCell(this)"></div>
+      <input class="form-control form-control-sm nadi-pr" placeholder="PR" style="display:none" onblur="saveNadiCell(this)" />
+    </td>
     <td>
       <div class="input-group input-group-sm">
         <button class="btn btn-outline-secondary dropdown-toggle nadi-dxt-type-btn" data-bs-toggle="dropdown" type="button">Fasting</button>
@@ -1079,11 +1307,24 @@ function addNadiRow(){
         <input type="hidden" class="nadi-dxt-type" value="Fasting" />
       </div>
     </td>
-    <td class="nadi-input-cell"><div class="view-mode" onclick="editNadiCell(this)"></div><input class="form-control form-control-sm nadi-tinggi" placeholder="Tinggi" style="display:none" onblur="saveNadiCell(this)" /></td>
-    <td class="nadi-input-cell"><div class="view-mode" onclick="editNadiCell(this)"></div><input class="form-control form-control-sm nadi-berat" placeholder="Berat" style="display:none" onblur="saveNadiCell(this)" /></td>
-    <td class="nadi-input-cell"><div class="view-mode" onclick="editNadiCell(this)"></div><input class="form-control form-control-sm nadi-bmi" placeholder="BMI" disabled style="display:none" onblur="saveNadiCell(this)" /></td>
-    <td class="text-center"><input class="form-check-input nadi-layak" type="checkbox"></td>
-    <td class="text-center"><input class="form-check-input nadi-taklayak" type="checkbox"></td>
+    <td class="nadi-input-cell">
+      <div class="view-mode" onclick="editNadiCell(this)"></div>
+      <input class="form-control form-control-sm nadi-tinggi" placeholder="Tinggi" style="display:none" onblur="saveNadiCell(this)" />
+    </td>
+    <td class="nadi-input-cell">
+      <div class="view-mode" onclick="editNadiCell(this)"></div>
+      <input class="form-control form-control-sm nadi-berat" placeholder="Berat" style="display:none" onblur="saveNadiCell(this)" />
+    </td>
+    <td class="nadi-input-cell">
+      <div class="view-mode" onclick="editNadiCell(this)"></div>
+      <input class="form-control form-control-sm nadi-bmi" placeholder="BMI" disabled style="display:none" onblur="saveNadiCell(this)" />
+    </td>
+    <td class="text-center">
+      <input class="form-check-input nadi-layak" type="checkbox">
+    </td>
+    <td class="text-center">
+      <input class="form-check-input nadi-taklayak" type="checkbox">
+    </td>
     <td>
       <div class="d-flex gap-1">
         <input type="date" class="form-control form-control-sm nadi-tca-date" disabled style="min-width:100px">
@@ -1099,12 +1340,14 @@ function addNadiRow(){
       </div>
     </td>
   `;
+
   container.appendChild(row);
 
-  // DXT type dropdown
+  // Initialize dropdown for DXT type
   const dxtTypeBtn = row.querySelector('.nadi-dxt-type-btn');
   const dxtTypeMenu = row.querySelector('.dropdown-menu');
   const dxtTypeInput = row.querySelector('.nadi-dxt-type');
+
   dxtTypeMenu.querySelectorAll('.dropdown-item').forEach(item => {
     item.addEventListener('click', function(e) {
       e.preventDefault();
@@ -1113,10 +1356,11 @@ function addNadiRow(){
     });
   });
 
-  // BMI calc
+  // BMI calculation
   const tinggi = row.querySelector('.nadi-tinggi');
   const berat = row.querySelector('.nadi-berat');
   const bmi = row.querySelector('.nadi-bmi');
+
   const calculateBMI = () => {
     const height = parseFloat(tinggi.value) / 100;
     const weight = parseFloat(berat.value);
@@ -1124,13 +1368,15 @@ function addNadiRow(){
       bmi.value = (weight / (height * height)).toFixed(1);
       bmi.previousElementSibling.textContent = bmi.value;
     } else {
-      bmi.value = ''; bmi.previousElementSibling.textContent = '';
+      bmi.value = '';
+      bmi.previousElementSibling.textContent = '';
     }
   };
+
   tinggi.addEventListener('input', calculateBMI);
   berat.addEventListener('input', calculateBMI);
 
-  // Layak toggles
+  // Layak/Tidak Layak toggle
   const layak = row.querySelector('.nadi-layak');
   const takLayak = row.querySelector('.nadi-taklayak');
   const tcaDate = row.querySelector('.nadi-tca-date');
@@ -1140,14 +1386,30 @@ function addNadiRow(){
 
   layak.addEventListener('change', () => {
     if (layak.checked) {
-      takLayak.checked = false; tcaDate.disabled = false; tcaTime.disabled = false; staff.disabled = false; btnDaftar.disabled = false;
-    } else { tcaDate.disabled = true; tcaTime.disabled = true; staff.disabled = true; btnDaftar.disabled = true; }
-  });
-  takLayak.addEventListener('change', () => {
-    if (takLayak.checked) { layak.checked = false; tcaDate.disabled = true; tcaTime.disabled = true; staff.disabled = true; btnDaftar.disabled = true; }
+      takLayak.checked = false;
+      tcaDate.disabled = false;
+      tcaTime.disabled = false;
+      staff.disabled = false;
+      btnDaftar.disabled = false;
+    } else {
+      tcaDate.disabled = true;
+      tcaTime.disabled = true;
+      staff.disabled = true;
+      btnDaftar.disabled = true;
+    }
   });
 
-  // Daftar
+  takLayak.addEventListener('change', () => {
+    if (takLayak.checked) {
+      layak.checked = false;
+      tcaDate.disabled = true;
+      tcaTime.disabled = true;
+      staff.disabled = true;
+      btnDaftar.disabled = true;
+    }
+  });
+
+  // Daftar button action
   btnDaftar.addEventListener('click', async () => {
     const nama = row.querySelector('.nadi-nama').value.trim();
     const ic = row.querySelector('.nadi-ic').value.trim();
@@ -1158,21 +1420,35 @@ function addNadiRow(){
     const staffName = staff.value.trim();
 
     if (!nama || !ic || !tel || !date || !time || !staffName) {
-      toast('Ralat', 'Sila isi semua maklumat', 'danger'); return;
+      toast('Ralat', 'Sila isi semua maklumat', 'danger');
+      return;
     }
+
     try {
       const res = await postForm({
-        action: 'daftarPesakit', namaPesakit: nama, noIC: ic, noTelefon: tel, alamat: alamat,
-        tarikhTCA: date, masaTCA: time, namaStaff: staffName
+        action: 'daftarPesakit',
+        namaPesakit: nama,
+        noIC: ic,
+        noTelefon: tel,
+        alamat: alamat,
+        tarikhTCA: date,
+        masaTCA: time,
+        namaStaff: staffName
       }, { msg: 'Mendaftar pesakit...' });
+
       if (res.status === 'success') {
         toast('Berjaya', 'Pesakit berjaya didaftarkan', 'success');
+        // Update the row data in nadiRows array
         updateNadiRowData(row);
-      } else { throw new Error(res.message || 'Gagal mendaftar pesakit'); }
-    } catch (e) { toast('Ralat', e.message, 'danger'); }
+      } else {
+        throw new Error(res.message || 'Gagal mendaftar pesakit');
+      }
+    } catch (e) {
+      toast('Ralat', e.message, 'danger');
+    }
   });
 
-  // WA Report (preview dahulu)
+  // WhatsApp Report (Preview) – KEKAL
   row.querySelector('.nadi-wa').addEventListener('click', async () => {
     try {
       const data = {
@@ -1189,20 +1465,30 @@ function addNadiRow(){
         bmi: row.querySelector('.nadi-bmi').value.trim(),
         layak: row.querySelector('.nadi-layak').checked
       };
-      await generateWhatsAppReport(data);
-    } catch (e) { toast('Ralat', 'Gagal buat laporan: ' + e.message, 'danger'); }
-  });
 
-  // Buang baris
-  row.querySelector('.nadi-buang').addEventListener('click', () => {
-    if (confirm('Adakah anda pasti ingin membuang baris ini?')) {
-      row.remove(); updateNadiRowNumbers();
+      // Generate WhatsApp report image (preview)
+      generateWhatsAppReport(data);
+
+    } catch (e) {
+      toast('Ralat', 'Gagal buat laporan: ' + e.message, 'danger');
     }
   });
 
-  // Cache rows
-  nadiRows.push({ id: id, rowElement: row });
+  // Buang button
+  row.querySelector('.nadi-buang').addEventListener('click', () => {
+    if (confirm('Adakah anda pasti ingin membuang baris ini?')) {
+      row.remove();
+      updateNadiRowNumbers();
+    }
+  });
+
+  // Add row data to nadiRows array
+  nadiRows.push({
+    id: id,
+    rowElement: row
+  });
 }
+
 function updateNadiRowData(row) {
   const rowData = {
     nama: row.querySelector('.nadi-nama').value.trim(),
@@ -1222,10 +1508,15 @@ function updateNadiRowData(row) {
     tcaTime: row.querySelector('.nadi-tca-time').value.trim(),
     staff: row.querySelector('.nadi-staff').value.trim()
   };
+
+  // Update the row data in nadiRows array
   const rowId = row.id;
   const rowIndex = nadiRows.findIndex(r => r.id === rowId);
-  if (rowIndex !== -1) { nadiRows[rowIndex].data = rowData; }
+  if (rowIndex !== -1) {
+    nadiRows[rowIndex].data = rowData;
+  }
 }
+
 function editNadiCell(viewModeEl) {
   const input = viewModeEl.nextElementSibling;
   viewModeEl.style.display = 'none';
@@ -1233,27 +1524,33 @@ function editNadiCell(viewModeEl) {
   input.value = viewModeEl.textContent || '';
   input.focus();
 }
+
 function saveNadiCell(inputEl) {
   const viewMode = inputEl.previousElementSibling;
   viewMode.textContent = inputEl.value || '';
   viewMode.style.display = 'block';
   inputEl.style.display = 'none';
 
+  // If this is height or weight, calculate BMI
   if (inputEl.classList.contains('nadi-tinggi') || inputEl.classList.contains('nadi-berat')) {
     const row = inputEl.closest('tr');
     const tinggi = row.querySelector('.nadi-tinggi').value;
     const berat = row.querySelector('.nadi-berat').value;
     const bmi = row.querySelector('.nadi-bmi');
+
     if (tinggi && berat) {
       const height = parseFloat(tinggi) / 100;
       const weight = parseFloat(berat);
       const bmiValue = (weight / (height * height)).toFixed(1);
-      bmi.value = bmiValue; bmi.previousElementSibling.textContent = bmiValue;
+      bmi.value = bmiValue;
+      bmi.previousElementSibling.textContent = bmiValue;
     } else {
-      bmi.value = ''; bmi.previousElementSibling.textContent = '';
+      bmi.value = '';
+      bmi.previousElementSibling.textContent = '';
     }
   }
 }
+
 function updateNadiRowNumbers() {
   const rows = document.querySelectorAll('#nadiContainer tr');
   let counter = 0;
@@ -1265,156 +1562,109 @@ function updateNadiRowNumbers() {
   nadiRowCounter = counter;
 }
 
-/* ====== LOGO INLINE (BASE64) untuk elak CORS hilang dalam imej ====== */
-let INLINE_LOGO_DATAURL = null;
-async function getInlineLogoDataUrl(){
-  if (INLINE_LOGO_DATAURL) return INLINE_LOGO_DATAURL;
-  try{
-    const res = await fetch(LOGO_URL, {mode:'cors', cache:'force-cache'});
-    const blob = await res.blob();
-    const dataUrl = await new Promise((resolve,reject)=>{
-      const fr = new FileReader(); fr.onload = ()=>resolve(fr.result); fr.onerror = reject; fr.readAsDataURL(blob);
-    });
-    INLINE_LOGO_DATAURL = dataUrl;
-    return dataUrl;
-  } catch(e){
-    // fallback: gunakan URL asal (mungkin tidak ter-render dalam html2canvas jika CORS tak benarkan)
-    return LOGO_URL;
-  }
-}
-
-/* ====== PREVIEW + SHARE KE WHATSAPP (gambar) ====== */
-async function generateWhatsAppReport(data) {
+function generateWhatsAppReport(data) {
   const reportContainer = document.getElementById('whatsappReportPreview');
   reportContainer.innerHTML = '';
 
-  const logoSrc = await getInlineLogoDataUrl(); // inline agar confirm muncul dalam imej
-
   const reportHTML = `
-    <div class="whatsapp-report" id="wa-report-card">
+    <div class="whatsapp-report">
       <div class="whatsapp-report-header">
-        <img src="${logoSrc}" alt="Logo Klinik" class="whatsapp-report-logo" crossorigin="anonymous"
-             onerror="this.src='https://via.placeholder.com/50x50.png?text=KS'">
+        <img src="${LOGO_URL}" alt="Logo Klinik" class="whatsapp-report-logo" onerror="this.src='https://via.placeholder.com/50x50.png?text=KS'">
         <div>
           <div class="whatsapp-report-title">Laporan Saringan NADI</div>
           <div class="whatsapp-report-subtitle">Klinik SihatSokmo - Program PEKA B40</div>
         </div>
       </div>
       <div class="whatsapp-report-body">
-        <div class="whatsapp-report-row"><div class="whatsapp-report-label">Nama Pesakit:</div><div class="whatsapp-report-value">${data.nama || '-'}</div></div>
-        <div class="whatsapp-report-row"><div class="whatsapp-report-label">No. IC:</div><div class="whatsapp-report-value">${data.ic || '-'}</div></div>
-        <div class="whatsapp-report-row"><div class="whatsapp-report-label">Alamat:</div><div class="whatsapp-report-value">${data.alamat || '-'}</div></div>
-        <div class="whatsapp-report-row"><div class="whatsapp-report-label">BP:</div><div class="whatsapp-report-value">${data.bp || '-'} mmHg</div></div>
-        <div class="whatsapp-report-row"><div class="whatsapp-report-label">PR:</div><div class="whatsapp-report-value">${data.pr || '-'} bpm</div></div>
-        <div class="whatsapp-report-row"><div class="whatsapp-report-label">DXT (${data.dxtType || 'Fasting'}):</div><div class="whatsapp-report-value">${data.dxt || '-'} mmol/L</div></div>
-        <div class="whatsapp-report-row"><div class="whatsapp-report-label">Tinggi:</div><div class="whatsapp-report-value">${data.tinggi || '-'} cm</div></div>
-        <div class="whatsapp-report-row"><div class="whatsapp-report-label">Berat:</div><div class="whatsapp-report-value">${data.berat || '-'} kg</div></div>
-        <div class="whatsapp-report-row"><div class="whatsapp-report-label">BMI:</div><div class="whatsapp-report-value">${data.bmi || '-'}</div></div>
-        <div class="whatsapp-report-row"><div class="whatsapp-report-label">Status:</div><div class="whatsapp-report-value">${data.layak ? 'Layak PEKA B40' : 'Tidak Layak PEKA B40'}</div></div>
+        <div class="whatsapp-report-row">
+          <div class="whatsapp-report-label">Nama Pesakit:</div>
+          <div class="whatsapp-report-value">${data.nama || '-'}</div>
+        </div>
+        <div class="whatsapp-report-row">
+          <div class="whatsapp-report-label">No. IC:</div>
+          <div class="whatsapp-report-value">${data.ic || '-'}</div>
+        </div>
+        <div class="whatsapp-report-row">
+          <div class="whatsapp-report-label">Alamat:</div>
+          <div class="whatsapp-report-value">${data.alamat || '-'}</div>
+        </div>
+        <div class="whatsapp-report-row">
+          <div class="whatsapp-report-label">BP:</div>
+          <div class="whatsapp-report-value">${data.bp || '-'} mmHg</div>
+        </div>
+        <div class="whatsapp-report-row">
+          <div class="whatsapp-report-label">PR:</div>
+          <div class="whatsapp-report-value">${data.pr || '-'} bpm</div>
+        </div>
+        <div class="whatsapp-report-row">
+          <div class="whatsapp-report-label">DXT (${data.dxtType || 'Fasting'}):</div>
+          <div class="whatsapp-report-value">${data.dxt || '-'} mmol/L</div>
+        </div>
+        <div class="whatsapp-report-row">
+          <div class="whatsapp-report-label">Tinggi:</div>
+          <div class="whatsapp-report-value">${data.tinggi || '-'} cm</div>
+        </div>
+        <div class="whatsapp-report-row">
+          <div class="whatsapp-report-label">Berat:</div>
+          <div class="whatsapp-report-value">${data.berat || '-'} kg</div>
+        </div>
+        <div class="whatsapp-report-row">
+          <div class="whatsapp-report-label">BMI:</div>
+          <div class="whatsapp-report-value">${data.bmi || '-'}</div>
+        </div>
+        <div class="whatsapp-report-row">
+          <div class="whatsapp-report-label">Status:</div>
+          <div class="whatsapp-report-value">${data.layak ? 'Layak PEKA B40' : 'Tidak Layak PEKA B40'}</div>
+        </div>
       </div>
       <div class="whatsapp-report-footer">
         Sila hubungi klinik untuk maklumat lanjut. Terima kasih.
       </div>
     </div>
   `;
+
   reportContainer.innerHTML = reportHTML;
   currentWhatsAppData = data;
+  CURRENT_WA_MSISDN = data.tel || '';  // SIMPAN no. telefon untuk hantar gambar
   whatsappReportModal.show();
 }
 
-/* Cubaan buka WhatsApp App terus ke nombor (bukan Web) */
-function openWhatsAppChat(msisdn){
-  // Cuba skema native
-  const scheme = `whatsapp://send?phone=${msisdn}`;
-  // Android intent fallback
-  const intent = `intent://send?phone=${msisdn}#Intent;scheme=whatsapp;package=com.whatsapp;end`;
-  // iOS akan guna scheme di atas
-  try {
-    // Gunakan anchor click (lebih mesra gesture user)
-    const a = document.createElement('a');
-    a.href = scheme;
-    document.body.appendChild(a);
-    a.click();
-    setTimeout(()=>{ try{ document.body.removeChild(a); }catch(_){} }, 3000);
-    // Fallback untuk Android Chrome jika skema ditolak
-    setTimeout(()=>{ try{ window.location.href = intent; } catch(_){} }, 1200);
-  } catch(e){
-    // sebagai paling akhir, JANGAN guna wa.me untuk elak web; kita diamkan
-  }
-}
-
-/* Hantar WA: Render → cuba share fail → fallback clipboard + buka chat */
-async function sendWhatsAppReport(){
+function sendWhatsAppReport() {
   if (!currentWhatsAppData) return;
-  const msisdn = currentWhatsAppData.tel;
-  if (!msisdn) { toast('Ralat','Nombor telefon tidak sah','danger'); return; }
 
-  // Render kad ke PNG
-  try{
-    const node = document.querySelector('#whatsappReportPreview .whatsapp-report');
-    if (!node){ toast('Ralat','Laporan tidak ditemui','danger'); return; }
+  const nama = currentWhatsAppData.nama || '';
+  const ic = currentWhatsAppData.ic || '';
+  const bp = currentWhatsAppData.bp || '';
+  const pr = currentWhatsAppData.pr || '';
+  const dxtType = currentWhatsAppData.dxtType || 'Fasting';
+  const dxt = currentWhatsAppData.dxt || '';
+  const tinggi = currentWhatsAppData.tinggi || '';
+  const berat = currentWhatsAppData.berat || '';
+  const bmi = currentWhatsAppData.bmi || '';
+  const layak = currentWhatsAppData.layak ? 'Layak PEKA B40' : 'Tidak Layak PEKA B40';
 
-    showLoader('Menjana imej laporan…');
-    await new Promise(r=>setTimeout(r,100)); // beri masa reflow
+  const message = `Laporan Saringan NADI
+Nama: ${nama}
+IC: ${ic}
+BP: ${bp} mmHg
+PR: ${pr} bpm
+DXT (${dxtType}): ${dxt} mmol/L
+Tinggi: ${tinggi} cm
+Berat: ${berat} kg
+BMI: ${bmi}
+Status: ${layak}
 
-    const canvas = await html2canvas(node, {
-      backgroundColor:'#ffffff',
-      useCORS:true,            // benarkan cross-origin images (logo inline juga bantu)
-      scale: 2                 // resolusi lebih tajam
-    });
+Sila hubungi klinik untuk maklumat lanjut. Terima kasih.`;
 
-    const blob = await new Promise(resolve => canvas.toBlob(resolve, 'image/png', 0.95));
-    if (!blob){ throw new Error('Gagal hasilkan imej'); }
-    const file = new File([blob], `laporan_nadi_${Date.now()}.png`, { type:'image/png' });
-
-    // Cuba share fail terus (mobile/desktop yang sokong)
-    let shared = false;
-    try{
-      if (navigator.canShare && navigator.canShare({ files: [file] })) {
-        await navigator.share({
-          files: [file],
-          title: 'Laporan Saringan NADI',
-          text: '' // kosong — kita hantar imej sahaja
-        });
-        shared = true;
-      }
-    }catch(e){ /* jika user batal atau tak disokong, terus ke fallback */ }
-
-    hideLoader();
-
-    // Tutup preview modal
+  if (currentWhatsAppData.tel) {
+    window.open(waHref(currentWhatsAppData.tel, message), '_blank');
     whatsappReportModal.hide();
-
-    if (shared){
-      // Selepas share (user pilih WhatsApp), sesetengah OS buka app secara automatik.
-      // Kita juga cuba buka chat ke nombor khusus (jika OS belum pre-pilih contact).
-      openWhatsAppChat(msisdn);
-      toast('Berjaya','Laporan dikongsi. Membuka chat WhatsApp…','success');
-      return;
-    }
-
-    // Fallback: salin ke clipboard (jika disokong), kemudian buka WhatsApp chat
-    let copied = false;
-    try{
-      await navigator.clipboard.write([new ClipboardItem({ 'image/png': blob })]);
-      copied = true;
-    } catch(_) { /* tidak disokong */ }
-
-    openWhatsAppChat(msisdn);
-    if (copied){
-      toast('Siap','Gambar laporan disalin. Tampal dalam chat WhatsApp.','success');
-    } else {
-      // Jika tidak boleh salin, sekurangnya chat dibuka — pengguna boleh lampirkan fail manual.
-      toast('Makluman','Tidak dapat salin imej automatik. Chat WhatsApp dibuka.','warning');
-    }
-
-  }catch(e){
-    hideLoader();
-    toast('Ralat', e.message || 'Gagal hantar laporan', 'danger');
+    toast('Berjaya', 'Laporan (teks) dihantar melalui WhatsApp', 'success');
+  } else {
+    toast('Ralat', 'Nombor telefon tidak sah', 'danger');
   }
 }
 
-/* Export NADI CSV */
 function exportNadiCSV() {
   const container = document.getElementById('nadiContainer');
   const rows = Array.from(container.querySelectorAll('.nadi-row'));
@@ -1461,7 +1711,7 @@ function exportNadiCSV() {
 }
 
 /* =======================
-   DATA LOADERS (ASAL)
+   DATA LOADERS
    ======================= */
 async function loadDashboardData(){
   try{
@@ -1475,6 +1725,7 @@ async function loadDashboardData(){
       labFollowUpDue.textContent = d.labFollowUpDue || 0;
       labFollowUpPending.textContent = d.labFollowUpPending || 0;
 
+      // Badges navbar (tunjuk hanya jika >0)
       setBadge('badgeTCA', d.totalDaftar);
       setBadge('badgeFirst', d.totalFirstVisit);
       setBadge('badgeSecond', d.totalSecondVisit);
@@ -1488,6 +1739,7 @@ function setBadge(id,val){
   if (val>0){ el.textContent = val; el.style.display='inline-block'; }
   else { el.style.display='none'; }
 }
+
 async function loadStatistics(period){
   try{
     const data = await getJSON({ action:'getStatistics', period }, { msg:'Memuat statistik…' });
@@ -1539,7 +1791,7 @@ async function loadTCACallData(){
   }catch(e){ /* senyap */ }
 }
 
-/* === TCA PAGE === */
+/* === TCA PAGE (rekod; tiada tanda selesai manual) === */
 let TCA_ALL = [];
 async function loadTCACallPage(){
   try{
@@ -1644,6 +1896,7 @@ async function loadFirstVisitData(){
     }
   }catch(e){ /* senyap */ }
 }
+
 function isWithin24hOfDate(dateStr){
   const d = parseDDMMYYYY(dateStr);
   if (!d) return false;
@@ -1703,9 +1956,9 @@ async function loadSecondVisitData(){
 
         let pdpaHTML = p.pdpaFileId
           ? `<div class="d-flex flex-wrap gap-1">
-               <a class="btn btn-sm btn-outline-success" target="_blank" href="https://drive.google.com/file/d/${p.pdpaFileId}/preview"><i class="fa-solid fa-eye"></i> Lihat</a>
-               <a class="btn btn-sm btn-outline-primary" target="_blank" href="https://drive.google.com/uc?export=download&id=${p.pdpaFileId}"><i class="fa-solid fa-download"></i> Muat Turun</a>
-             </div>`
+              <a class="btn btn-sm btn-outline-success" target="_blank" href="https://drive.google.com/file/d/${p.pdpaFileId}/preview"><i class="fa-solid fa-eye"></i> Lihat</a>
+              <a class="btn btn-sm btn-outline-primary" target="_blank" href="https://drive.google.com/uc?export=download&id=${p.pdpaFileId}"><i class="fa-solid fa-download"></i> Muat Turun</a>
+            </div>`
           : `<span class="text-danger">PDPA tiada</span>`;
 
         const row = `
@@ -1741,9 +1994,9 @@ async function loadCompletedData(){
         const msisdn = normalizeMsisdnMY(p.noTelefon||'');
         const pdpaHTML = p.pdpaFileId
           ? `<div class="d-flex flex-wrap gap-1">
-               <a class="btn btn-sm btn-outline-success" target="_blank" href="https://drive.google.com/file/d/${p.pdpaFileId}/preview"><i class="fa-solid fa-eye"></i> Lihat</a>
-               <a class="btn btn-sm btn-outline-primary" target="_blank" href="https://drive.google.com/uc?export=download&id=${p.pdpaFileId}"><i class="fa-solid fa-download"></i> Muat Turun</a>
-             </div>`
+              <a class="btn btn-sm btn-outline-success" target="_blank" href="https://drive.google.com/file/d/${p.pdpaFileId}/preview"><i class="fa-solid fa-eye"></i> Lihat</a>
+              <a class="btn btn-sm btn-outline-primary" target="_blank" href="https://drive.google.com/uc?export=download&id=${p.pdpaFileId}"><i class="fa-solid fa-download"></i> Muat Turun</a>
+            </div>`
           : `<span class="text-muted">-</span>`;
 
         const labCompleted = p.labCompletedAt ? `${p.labCompletedAt}` : '-';
@@ -1781,7 +2034,7 @@ async function loadArchivedData(){
     } else {
       tbody.innerHTML = `<tr><td colspan="8" class="text-center text-muted">Tiada rekod arkib</td></tr>`;
     }
-  }catch(e){ /* senyap */ }
+ }catch(e){ /* senyap */ }
 }
 
 /* =======================
@@ -1899,6 +2152,7 @@ function fileToBase64(file){
     fr.readAsDataURL(file);
   });
 }
+
 async function deletePDPA(noIC){
   if (!confirm('Padam PDPA untuk pesakit ini?')) return;
   try{
@@ -1909,6 +2163,7 @@ async function deletePDPA(noIC){
     } else throw new Error(res.message||'Gagal padam PDPA');
   }catch(e){ toast('Ralat', e.message, 'danger'); }
 }
+
 async function archivePatient(noIC){
   if (!confirm('Arkibkan rekod pesakit ini?')) return;
   try{
@@ -1927,7 +2182,7 @@ async function restorePatient(noIC){
       toast('Pulih','Rekod telah dipulihkan','success');
       loadArchivedData(); loadCompletedData(); loadDashboardData();
     } else throw new Error(res.message||'Gagal pulih');
-  }catch(e){ toast('Ralat', e.message, 'danger'); }
+ }catch(e){ toast('Ralat', e.message, 'danger'); }
 }
 
 /* =======================
