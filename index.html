@@ -458,9 +458,6 @@
             <input type="file" id="excelFile" class="form-control" accept=".xlsx,.xls" />
             <div class="form-text">Fail perlu ada lajur: <b>Nama</b>, <b>IC</b>, <b>Telefon</b>, <b>Alamat</b>. (Sistem tapis umur ≥40 ikut IC)</div>
           </div>
-          <div class="col-md-6">
-            <button class="btn btn-sm btn-primary" id="btnProcessExcel"><i class="fas fa-file-import me-1"></i> Proses Excel</button>
-          </div>
         </div>
         <div class="table-responsive">
           <table class="table table-hover align-middle">
@@ -1152,30 +1149,21 @@ async function refreshLogs(opts={}){
    ======================= */
 function setupExcel(){
   const input = document.getElementById('excelFile');
-  const btnProcess = document.getElementById('btnProcessExcel');
   const tbody = document.getElementById('kelayakanTable');
-  
-  btnProcess.addEventListener('click', async ()=>{
-    const file = input.files[0];
-    if (!file) {
-      toast('Ralat', 'Sila pilih fail Excel terlebih dahulu', 'danger');
-      return;
-    }
-    
+  input.addEventListener('change', async (e)=>{
+    const file = e.target.files[0];
+    if (!file) return;
     showLoader('Memproses Excel…');
-    try {
+    try{
       const data = await file.arrayBuffer();
       const wb = XLSX.read(data, { type:'array' });
       const ws = wb.Sheets[wb.SheetNames[0]];
       const json = XLSX.utils.sheet_to_json(ws, { defval:'' });
-      
       tbody.innerHTML = '';
       if (!json.length) {
         tbody.innerHTML = `<tr><td colspan="8" class="text-center text-muted">Tiada data.</td></tr>`;
-        toast('Makluman', 'Tiada data dalam fail Excel', 'warning');
         return;
       }
-      
       json.forEach((row, idx)=>{
         const nama = row.Nama || row.NAMA || row.name || '';
         const ic = row.IC || row.Ic || row.ic || '';
@@ -1218,16 +1206,14 @@ function setupExcel(){
           </tr>`;
         tbody.insertAdjacentHTML('beforeend', tr);
       });
-      
       toast('Berjaya', `Berjaya memuat naik ${json.length} rekod dari Excel`, 'success');
-    } catch (e) {
+    } catch(e) {
       toast('Ralat', 'Gagal memproses fail Excel: ' + e.message, 'danger');
-    } finally {
-      hideLoader();
+    } finally { 
+      hideLoader(); 
     }
   });
 }
-
 function toggleLayak(rowId, isLayak){
   const tr = document.getElementById(rowId);
   if (!tr) return;
@@ -1243,7 +1229,6 @@ function toggleLayak(rowId, isLayak){
     date.disabled = true;  time.disabled = true; staff.disabled=true;  btn.disabled = true;
   }
 }
-
 async function daftarFromExcel(rowId, encNama, encIC, msisdn, encAlamat){
   const tr = document.getElementById(rowId);
   const nama = decodeURIComponent(encNama);
@@ -1252,35 +1237,18 @@ async function daftarFromExcel(rowId, encNama, encIC, msisdn, encAlamat){
   const date  = tr.querySelector('.tca-date').value;
   const time  = tr.querySelector('.tca-time').value;
   const staff = tr.querySelector('.tca-staff').value.trim();
-  
-  if (!date || !time || !staff) { 
-    toast('Ralat','Sila isi tarikh, masa & nama staff','danger'); 
-    return; 
-  }
-  
-  try {
+  if (!date || !time || !staff) { toast('Ralat','Sila isi tarikh, masa & nama staff','danger'); return; }
+  try{
     const res = await postForm({
-      action:'daftarPesakit', 
-      namaPesakit:nama, 
-      noIC: ic, 
-      noTelefon: msisdn, 
-      alamat: alamat,
-      namaStaff: staff, 
-      tarikhTCA: date, 
-      masaTCA: time
+      action:'daftarPesakit', namaPesakit:nama, noIC: ic, noTelefon: msisdn, alamat: alamat,
+      namaStaff: staff, tarikhTCA: date, masaTCA: time
     }, { msg:'Mendaftar pesakit…' });
-    
     if (res.status==='success'){
       toast('Berjaya',`Pesakit ${nama} didaftarkan ke TCA`, 'success');
       tr.remove();
-      loadDashboardData(); 
-      loadTCACallData();
-    } else {
-      throw new Error(res.message||'Gagal daftar');
-    }
-  } catch(e) { 
-    toast('Ralat', e.message, 'danger'); 
-  }
+      loadDashboardData(); loadTCACallData();
+    } else throw new Error(res.message||'Gagal daftar');
+  }catch(e){ toast('Ralat',e.message,'danger'); }
 }
 
 /* =======================
