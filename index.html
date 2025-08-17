@@ -459,7 +459,7 @@
             <div class="form-text">Fail perlu ada lajur: <b>Nama</b>, <b>IC</b>, <b>Telefon</b>, <b>Alamat</b>. (Sistem tapis umur ≥40 ikut IC)</div>
           </div>
           <div class="col-md-6">
-            <button class="btn btn-sm btn-primary" id="btnImportExcel"><i class="fa-solid fa-file-import me-1"></i> Import Excel</button>
+            <button class="btn btn-sm btn-primary" id="btnProcessExcel"><i class="fas fa-file-import me-1"></i> Proses Excel</button>
           </div>
         </div>
         <div class="table-responsive">
@@ -1152,10 +1152,10 @@ async function refreshLogs(opts={}){
    ======================= */
 function setupExcel(){
   const input = document.getElementById('excelFile');
+  const btnProcess = document.getElementById('btnProcessExcel');
   const tbody = document.getElementById('kelayakanTable');
-  const btnImport = document.getElementById('btnImportExcel');
   
-  btnImport.addEventListener('click', async () => {
+  btnProcess.addEventListener('click', async ()=>{
     const file = input.files[0];
     if (!file) {
       toast('Ralat', 'Sila pilih fail Excel terlebih dahulu', 'danger');
@@ -1165,38 +1165,36 @@ function setupExcel(){
     showLoader('Memproses Excel…');
     try {
       const data = await file.arrayBuffer();
-      const wb = XLSX.read(data, { type: 'array' });
+      const wb = XLSX.read(data, { type:'array' });
       const ws = wb.Sheets[wb.SheetNames[0]];
-      const json = XLSX.utils.sheet_to_json(ws, { defval: '' });
+      const json = XLSX.utils.sheet_to_json(ws, { defval:'' });
       
       tbody.innerHTML = '';
       if (!json.length) {
-        tbody.innerHTML = `<tr><td colspan="8" class="text-center text-muted">Tiada data dalam fail Excel.</td></tr>`;
+        tbody.innerHTML = `<tr><td colspan="8" class="text-center text-muted">Tiada data.</td></tr>`;
         toast('Makluman', 'Tiada data dalam fail Excel', 'warning');
         return;
       }
       
-      let importedCount = 0;
-      json.forEach((row, idx) => {
+      json.forEach((row, idx)=>{
         const nama = row.Nama || row.NAMA || row.name || '';
         const ic = row.IC || row.Ic || row.ic || '';
         const tel = row.Telefon || row.TELEFON || row.Phone || row.phone || '';
         const alamat = row.Alamat || row.ALAMAT || row.alamat || row.address || '';
         const msisdn = normalizeMsisdnMY(tel);
-        const id = 'x' + Date.now() + idx;
+        const id = 'x'+Date.now()+idx;
 
         // Kelayakan lalai ikut umur >=40 dari IC (format: YYMMDD-..)
+        const lahirYY = ic.slice(0,2), lahirMM = ic.slice(2,4), lahirDD = ic.slice(4,6);
         let ageOk = false;
-        if (/^\d{6}/.test(ic)) {
-          const lahirYY = ic.slice(0,2), lahirMM = ic.slice(2,4), lahirDD = ic.slice(4,6);
-          const y = Number(lahirYY); 
-          const fullY = (y >= 0 && y <= 29) ? (2000 + y) : (1900 + y);
+        if (/^\d{6}/.test(ic)){
+          const y = Number(lahirYY); const fullY = (y>=0 && y<=29) ? (2000+y) : (1900+y);
           const dob = new Date(fullY, Number(lahirMM)-1, Number(lahirDD));
           const now = new Date();
-          let age = now.getFullYear() - dob.getFullYear();
-          const m = now.getMonth() - dob.getMonth();
-          if (m < 0 || (m === 0 && now.getDate() < dob.getDate())) age--;
-          ageOk = age >= 40;
+          let age = now.getFullYear()-dob.getFullYear();
+          const m = now.getMonth()-dob.getMonth();
+          if (m<0 || (m===0 && now.getDate()<dob.getDate())) age--;
+          ageOk = age>=40;
         }
 
         const tr = `
@@ -1219,12 +1217,10 @@ function setupExcel(){
             </td>
           </tr>`;
         tbody.insertAdjacentHTML('beforeend', tr);
-        importedCount++;
       });
       
-      toast('Berjaya', `Berjaya import ${importedCount} rekod dari Excel`, 'success');
+      toast('Berjaya', `Berjaya memuat naik ${json.length} rekod dari Excel`, 'success');
     } catch (e) {
-      console.error('Error processing Excel:', e);
       toast('Ralat', 'Gagal memproses fail Excel: ' + e.message, 'danger');
     } finally {
       hideLoader();
@@ -1264,23 +1260,23 @@ async function daftarFromExcel(rowId, encNama, encIC, msisdn, encAlamat){
   
   try {
     const res = await postForm({
-      action: 'daftarPesakit', 
-      namaPesakit: nama, 
+      action:'daftarPesakit', 
+      namaPesakit:nama, 
       noIC: ic, 
       noTelefon: msisdn, 
       alamat: alamat,
       namaStaff: staff, 
       tarikhTCA: date, 
       masaTCA: time
-    }, { msg: 'Mendaftar pesakit…' });
+    }, { msg:'Mendaftar pesakit…' });
     
-    if (res.status === 'success') {
-      toast('Berjaya', `Pesakit ${nama} didaftarkan ke TCA`, 'success');
+    if (res.status==='success'){
+      toast('Berjaya',`Pesakit ${nama} didaftarkan ke TCA`, 'success');
       tr.remove();
       loadDashboardData(); 
       loadTCACallData();
     } else {
-      throw new Error(res.message || 'Gagal daftar');
+      throw new Error(res.message||'Gagal daftar');
     }
   } catch(e) { 
     toast('Ralat', e.message, 'danger'); 
@@ -1872,7 +1868,7 @@ function renderTcaList(mode){
   filtered.forEach(p=>{
     const msisdn = normalizeMsisdnMY(p.noTelefon||'');
     const badgeCls = p.status==='CALLED' ? 'bg-success' : (parseDDMMYYYY(p.tarikhTCA)?.getTime()<today.getTime() ? 'bg-secondary' : 'bg-warning');
-    const label = p.status==='CALLED' ? 'CALLED' : (parseDDMMYYYY(p.tarikhTCA)?.getTime()<today.getTime() ? 'LEPAS' : (isSameDay(parseDDMMYYYY(p.tarikhTCA), today) ? 'HARI INI' : 'AKAN DATANG');
+    const label = p.status==='CALLED' ? 'CALLED' : (parseDDMMYYYY(p.tarikhTCA)?.getTime()<today.getTime() ? 'LEPAS' : (isSameDay(parseDDMMYYYY(p.tarikhTCA), today) ? 'HARI INI' : 'AKAN DATANG'));
     const row = `
       <tr data-ic="${p.noIC}">
         <td>${p.nama}</td>
@@ -2202,16 +2198,6 @@ async function deletePDPA(noIC){
       toast('Berjaya','PDPA dipadam.','success');
       loadFirstVisitData(); loadSecondVisitData(); loadCompletedData();
     } else throw new Error(res.message||'Gagal padam PDPA');
-  }catch(e){ toast('Ralat', e.message, 'danger'); }
-}
-
-async function markLabStatus(noIC, status){
-  try{
-    const res = await postForm({ action:'updateLabStatus', noIC, status, staff: STAFF_EMAIL }, { msg:'Mengemas kini status lab…' });
-    if (res.status==='success'){
-      toast('Berjaya',`Status lab dikemaskini ke ${status}`,'success');
-      loadLabFollowUp(); loadDashboardData();
-    } else throw new Error(res.message||'Gagal kemaskini status');
   }catch(e){ toast('Ralat', e.message, 'danger'); }
 }
 
