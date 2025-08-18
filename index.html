@@ -881,7 +881,7 @@ const normalizeMsisdnMY = (raw) => {
 
 const telHref = (msisdn) => `tel:+${msisdn}`;
 
-const waHref  = (msisdn, txt='Assalamualaikum, ini dari Klinik SihatSokmo.') =>
+const waHref  = (msisdn, txt='Assalamualaikum, saya dari Klinik SihatSokmo.') =>
   `https://wa.me/${msisdn}?text=${encodeURIComponent(txt)}`;
 
 const parseDDMMYYYY = (s) => {
@@ -1884,7 +1884,7 @@ function sendWhatsAppReport() {
   const bmi = currentWhatsAppData.bmi || '';
   const layak = currentWhatsAppData.layak ? 'Layak PEKA B40' : 'Tidak Layak PEKA B40';
 
-  const message = `Laporan Saringan NADI
+  const message = `Laporan Saringan Kesihatan Bersama NADI
 Nama: ${nama}
 IC: ${ic}
 BP: ${bp} mmHg
