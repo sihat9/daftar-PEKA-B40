@@ -195,6 +195,34 @@
   .whatsapp-report-label { font-weight: 600; width: 120px; color: var(--dark); }
   .whatsapp-report-value { flex: 1; }
   .whatsapp-report-footer { text-align: center; font-size: 12px; color: var(--muted); margin-top: 20px; padding-top: 15px; border-top: 1px solid #eee; }
+
+  /* NADI Summary Cards */
+  .nadi-summary-container {
+    display: flex;
+    gap: 12px;
+    margin-bottom: 16px;
+    flex-wrap: wrap;
+  }
+  .nadi-summary-card {
+    flex: 1;
+    min-width: 200px;
+    background: white;
+    border-radius: 10px;
+    padding: 12px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+    text-align: center;
+  }
+  .nadi-summary-card .title {
+    font-size: 0.9rem;
+    color: var(--muted);
+    margin-bottom: 8px;
+  }
+  .nadi-summary-card .count {
+    font-size: 1.5rem;
+    font-weight: 700;
+  }
+  .nadi-summary-card.layak { border-top: 4px solid var(--success); }
+  .nadi-summary-card.tak-layak { border-top: 4px solid var(--danger); }
 </style>
 </head>
 <body>
@@ -382,6 +410,19 @@
           <button id="btnNadiExportCsv" class="btn btn-sm btn-outline-success"><i class="bi bi-filetype-csv me-1"></i>Export to CSV</button>
         </div>
       </div>
+      
+      <!-- Summary Cards -->
+      <div class="nadi-summary-container">
+        <div class="nadi-summary-card layak">
+          <div class="title">Layak PEKA B40</div>
+          <div class="count" id="nadiLayakCount">0</div>
+        </div>
+        <div class="nadi-summary-card tak-layak">
+          <div class="title">Tidak Layak</div>
+          <div class="count" id="nadiTakLayakCount">0</div>
+        </div>
+      </div>
+      
       <div class="card">
         <div class="card-body">
           <div class="nadi-scroll-container">
@@ -391,6 +432,7 @@
                   <th style="width: 40px;">#</th>
                   <th style="min-width: 150px;">Nama Pesakit</th>
                   <th style="min-width: 120px;">No IC</th>
+                  <th style="min-width: 80px;">Umur</th>
                   <th style="min-width: 120px;">Telefon</th>
                   <th style="min-width: 150px;">Alamat</th>
                   <th style="min-width: 80px;">BP</th>
@@ -902,8 +944,8 @@ function clampToastIntoView(el){
   });
 }
 
-/* Toast “kebal”: guna Bootstrap jika ada; jika tidak, fallback manual.
-   — Auto “clamp” supaya tidak tenggelam di tepi skrin
+/* Toast "kebal": guna Bootstrap jika ada; jika tidak, fallback manual.
+   — Auto "clamp" supaya tidak tenggelam di tepi skrin
    — Re-clamp bila saiz tetingkap berubah */
 function toast(title, message, variant = 'primary') {
   const container = ensureToastContainer();
@@ -1020,7 +1062,7 @@ function openWhatsAppDeepLink(msisdn, text='') {
 async function sendWhatsAppReportImageFlow(msisdn) {
   const phone = normalizeMsisdnMY(msisdn||'');
   if (!/^\d{10,15}$/.test(phone)) {
-    toast('Ralat', 'Nombor telefon tidak sah', 'danger');
+    toast('Ralat','Nombor telefon tidak sah','danger');
     return;
   }
 
@@ -1034,7 +1076,7 @@ async function sendWhatsAppReportImageFlow(msisdn) {
     blob = await captureReportAsBlob();
   } catch(e){
     hideLoader();
-    toast('Ralat', 'Gagal jana imej laporan', 'danger');
+    toast('Ralat','Gagal jana imej laporan','danger');
     return;
   }
   hideLoader();
@@ -1381,6 +1423,63 @@ function setupNADI(){
   document.getElementById('btnNadiExportCsv').addEventListener('click', exportNadiCSV);
 }
 
+function calculateAgeFromIC(ic) {
+  if (!ic || ic.length < 6) return '';
+  
+  // Extract birth date from IC (YYMMDD)
+  const birthYY = parseInt(ic.substring(0, 2));
+  const birthMM = parseInt(ic.substring(2, 4)) - 1; // Months are 0-indexed
+  const birthDD = parseInt(ic.substring(4, 6));
+  
+  // Determine full year (handle 2000s vs 1900s)
+  const currentYear = new Date().getFullYear();
+  const currentShortYear = currentYear % 100;
+  const fullBirthYear = birthYY <= currentShortYear ? 2000 + birthYY : 1900 + birthYY;
+  
+  const birthDate = new Date(fullBirthYear, birthMM, birthDD);
+  const today = new Date();
+  
+  // Calculate age in years
+  let age = today.getFullYear() - birthDate.getFullYear();
+  const m = today.getMonth() - birthDate.getMonth();
+  if (m < 0 || (m === 0 && today.getDate() < birthDate.getDate())) {
+    age--;
+  }
+  
+  // Calculate months and days since last birthday
+  let months = today.getMonth() - birthDate.getMonth();
+  let days = today.getDate() - birthDate.getDate();
+  
+  if (days < 0) {
+    const lastMonth = new Date(today.getFullYear(), today.getMonth() - 1, birthDate.getDate());
+    const daysInLastMonth = new Date(today.getFullYear(), today.getMonth(), 0).getDate();
+    days = daysInLastMonth - birthDate.getDate() + today.getDate();
+    months--;
+  }
+  
+  if (months < 0) {
+    months += 12;
+  }
+  
+  return `${age}t ${months}b ${days}h`;
+}
+
+function updateNadiSummary() {
+  let layakCount = 0;
+  let takLayakCount = 0;
+  
+  document.querySelectorAll('.nadi-row').forEach(row => {
+    if (row.querySelector('.nadi-layak').checked) {
+      layakCount++;
+    } else if (row.querySelector('.nadi-taklayak').checked) {
+      takLayakCount++;
+    }
+  });
+  
+  document.getElementById('nadiLayakCount').textContent = layakCount;
+  document.getElementById('nadiTakLayakCount').textContent = takLayakCount;
+}
+
 function addNadiRow(){
   const container = document.getElementById('nadiContainer');
   const id = 'n'+Date.now()+Math.random().toString(36).slice(2,6);
@@ -1401,6 +1500,9 @@ function addNadiRow(){
     <td class="nadi-input-cell">
       <div class="view-mode" onclick="editNadiCell(this)"></div>
       <input class="form-control form-control-sm nadi-ic" placeholder="IC" style="display:none" onblur="saveNadiCell(this)" />
+    </td>
+    <td class="nadi-input-cell">
+      <div class="view-mode nadi-umur-view"></div>
     </td>
     <td class="nadi-input-cell">
       <div class="view-mode" onclick="editNadiCell(this)"></div>
@@ -1498,6 +1600,13 @@ function addNadiRow(){
   tinggi.addEventListener('input', calculateBMI);
   berat.addEventListener('input', calculateBMI);
 
+  // IC change handler to update age
+  const icInput = row.querySelector('.nadi-ic');
+  icInput.addEventListener('input', function() {
+    const umurView = row.querySelector('.nadi-umur-view');
+    umurView.textContent = calculateAgeFromIC(this.value);
+  });
+
   // Layak/Tidak Layak toggle
   const layak = row.querySelector('.nadi-layak');
   const takLayak = row.querySelector('.nadi-taklayak');
@@ -1519,6 +1628,7 @@ function addNadiRow(){
       staff.disabled = true;
       btnDaftar.disabled = true;
     }
+    updateNadiSummary();
   });
 
   takLayak.addEventListener('change', () => {
@@ -1529,6 +1639,7 @@ function addNadiRow(){
       staff.disabled = true;
       btnDaftar.disabled = true;
     }
+    updateNadiSummary();
   });
 
   // Daftar button action
@@ -1601,6 +1712,7 @@ function addNadiRow(){
     if (confirm('Adakah anda pasti ingin membuang baris ini?')) {
       row.remove();
       updateNadiRowNumbers();
+      updateNadiSummary();
     }
   });
 
@@ -1652,6 +1764,13 @@ function saveNadiCell(inputEl) {
   viewMode.textContent = inputEl.value || '';
   viewMode.style.display = 'block';
   inputEl.style.display = 'none';
+
+  // If this is IC field, update age
+  if (inputEl.classList.contains('nadi-ic')) {
+    const row = inputEl.closest('tr');
+    const umurView = row.querySelector('.nadi-umur-view');
+    umurView.textContent = calculateAgeFromIC(inputEl.value);
+  }
 
   // If this is height or weight, calculate BMI
   if (inputEl.classList.contains('nadi-tinggi') || inputEl.classList.contains('nadi-berat')) {
@@ -1792,12 +1911,13 @@ function exportNadiCSV() {
   const rows = Array.from(container.querySelectorAll('.nadi-row'));
   if (!rows.length){ toast('Makluman','Tiada data untuk diexport','warning'); return; }
 
-  const header = ['Nama','IC','Telefon','Alamat','BP','PR','DXT_Tipe','DXT','Tinggi(cm)','Berat(kg)','BMI','Layak','TarikhTCA','MasaTCA','Staff'];
+  const header = ['Nama','IC','Umur','Telefon','Alamat','BP','PR','DXT_Tipe','DXT','Tinggi(cm)','Berat(kg)','BMI','Layak','TarikhTCA','MasaTCA','Staff'];
 
   const data = rows.map(row => {
     return {
       nama: row.querySelector('.nadi-nama').value.trim(),
       ic: row.querySelector('.nadi-ic').value.trim(),
+      umur: row.querySelector('.nadi-umur-view').textContent.trim(),
       tel: row.querySelector('.nadi-tel').value.trim(),
       alamat: row.querySelector('.nadi-alamat').value.trim(),
       bp: row.querySelector('.nadi-bp').value.trim(),
@@ -1815,7 +1935,7 @@ function exportNadiCSV() {
   });
 
   const csvRows = data.map(row => [
-    row.nama, row.ic, row.tel, row.alamat, row.bp, row.pr, row.dxtType, row.dxt,
+    row.nama, row.ic, row.umur, row.tel, row.alamat, row.bp, row.pr, row.dxtType, row.dxt,
     row.tinggi, row.berat, row.bmi, row.layak, row.tcaDate, row.tcaTime, row.staff
   ]);
 
@@ -2343,7 +2463,7 @@ async function exportCompletedCSV(){
     if (data.status!=='success' || !data.data.length) {
       toast('Makluman','Tiada data untuk diexport','warning'); return;
     }
-    const header = ['Nama','NoIC','Telefon','Alamat','TarikhDaftar','FirstVisit','LabCompleted','SecondVisit','TarikhSelesai'];
+    const header = ['Nama','NoIC','NoTelefon','Alamat','TarikhDaftar','FirstVisit','LabReportCompleted','SecondVisit','TarikhSelesai'];
     const rows = data.data.map(x=>[
       x.nama, x.noIC, normalizeMsisdnMY(x.noTelefon||''), x.alamat || '', x.tarikhDaftar, x.firstVisitDate||'', x.labCompletedAt||'', x.secondVisitDate||'', x.tarikhSelesai
     ]);
