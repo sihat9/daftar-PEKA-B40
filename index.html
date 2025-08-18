@@ -24,7 +24,7 @@
   <!-- html2canvas untuk tangkap preview → imej (BARU) -->
   <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
 
- <style>
+<style>
   :root{ --primary:#2c3e50; --secondary:#3498db; --success:#27ae60; --warning:#f39c12; --danger:#e74c3c; --light:#ecf0f1; --dark:#34495e; --muted:#95a5a6; }
   html{ font-size:15px; }
   @media (max-width:1200px){ html{ font-size:14px; } }
@@ -46,7 +46,7 @@
   /* Header */
   .page-header{background:linear-gradient(135deg,var(--primary),var(--secondary));color:#fff;padding:14px 0;margin-bottom:12px;border-radius:0 0 12px 12px}
 
-  /* Cards */
+  /* Cards & tables */
   .card{border:none;border-radius:14px;box-shadow:0 8px 24px rgba(0,0,0,.06);margin-bottom:16px}
   .card-header{background:#fff;border-bottom:1px solid rgba(0,0,0,.06);font-weight:600;padding:12px 16px;border-radius:14px 14px 0 0!important}
   .stat-card{padding:14px;border-radius:14px;color:#fff;text-align:center;position:relative;overflow:hidden;cursor:pointer}
@@ -80,7 +80,7 @@
   /* Log Calls Drawer (gaya iPhone) */
   #logDrawer{
     position:fixed; top:0; right:-420px; width:400px; max-width:90vw; height:100%;
-    background:#f8f9fb; box-shadow:-12px 0 35px rgba(0,0,0,.18); z-index:3000; /* <— di bawah toast */
+    background:#f8f9fb; box-shadow:-12px 0 35px rgba(0,0,0,.18); z-index:3000;
     transition:right .25s ease; border-left:1px solid rgba(0,0,0,.05);
     display:flex; flex-direction:column;
   }
@@ -110,38 +110,38 @@
     box-shadow:0 10px 24px rgba(0,0,0,.18);
   }
 
-  /* === TOAST: sentiasa penuh dalam viewport & tak bertembung drawer === */
+  /* ===== Toast: kebal overflow & tidak tenggelam di kanan ===== */
   #toastHost{
     position: fixed;
-    top: 12px;
-    right: 12px;
-    left: auto;
+    top: 0; left: 0; right: 0;             /* bentang penuh lebar skrin */
+    padding: 12px;
     z-index: 4000;
-    pointer-events: none;           /* host tak halang klik */
+    pointer-events: none;                   /* host tak halang klik elemen lain */
+    display: flex;
+    justify-content: flex-end;              /* toasts rapat ke kanan */
+    align-items: flex-start;
+    box-sizing: border-box;
+  }
+  #toastContainer{
+    display: flex;
+    flex-direction: column;
+    gap: 8px;                               /* jarak antara toast */
   }
   #toastHost .toast{
-    pointer-events: auto;           /* toast boleh diklik */
+    pointer-events: auto;                   /* toast masih boleh diklik */
     box-sizing: border-box;
-    width: max-content;             /* ikut kandungan… */
-    max-width: calc(100vw - 24px);  /* …tapi jangan lebih skrin */
+    width: max-content;
+    max-width: min(92vw, 420px);            /* jangan lebih viewport */
+    word-wrap: break-word;
+    overflow-wrap: anywhere;
   }
-  /* Bila #logDrawer dibuka, tolak ke kiri */
+  /* Bila Log Drawer dibuka, tolak ke kiri supaya tak bertembung */
   #logDrawer.open ~ #toastHost{
-    right: auto !important;
-    left: 12px !important;
+    justify-content: flex-start;
   }
-  /* Skrin kecil */
   @media (max-width: 576px){
-    #toastHost{ top: 8px; right: 8px; }
-    #logDrawer.open ~ #toastHost{ left: 8px !important; }
-  }
-  /* Sangat sempit → center supaya tak terpotong */
-  @media (max-width: 360px){
-    #toastHost{
-      left: 50% !important;
-      right: auto !important;
-      transform: translateX(-50%);
-    }
+    #toastHost{ padding: 8px; }
+    #toastHost .toast{ max-width: 96vw; }
   }
 
   /* NADI TABLE STYLES */
@@ -826,10 +826,7 @@ async function postForm(params={}, {silent=false, msg='Menyimpan data…'}={}){
 }
 
 /* =======================
-   UTIL
-   ======================= */
-/* =======================
-   UTIL
+   UTIL  (GANTI KESELURUHAN BLOK INI)
    ======================= */
 const normalizeMsisdnMY = (raw) => {
   if (!raw) return '';
@@ -847,13 +844,11 @@ const waHref  = (msisdn, txt='Assalamualaikum, ini dari Klinik SihatSokmo.') =>
 
 const parseDDMMYYYY = (s) => {
   if (!s) return null;
-  // Sokong "YYYY-MM-DD"
-  if (/^\d{4}-\d{2}-\d{2}$/.test(s)) {
+  if (/^\d{4}-\d{2}-\d{2}$/.test(s)) { // "YYYY-MM-DD"
     const [Y, M, D] = s.split('-').map(Number);
     return new Date(Y, M - 1, D);
   }
-  // Sokong "DD/MM/YYYY"
-  const m = /^(\d{1,2})\/(\d{1,2})\/(\d{4})$/.exec(s);
+  const m = /^(\d{1,2})\/(\d{1,2})\/(\d{4})$/.exec(s); // "DD/MM/YYYY"
   if (!m) return null;
   const D = +m[1], M = +m[2], Y = +m[3];
   return new Date(Y, M - 1, D);
@@ -865,23 +860,15 @@ function isSameDay(a, b) {
       && a.getDate() === b.getDate();
 }
 
-/* Pastikan bekas notifikasi wujud & boleh diguna walaupun Bootstrap Toast belum siap */
+/* Pastikan bekas notifikasi (#toastHost/#toastContainer) wujud.
+   — Tidak set inline style supaya ikut CSS di <style>. */
 function ensureToastContainer() {
-  // Host luaran (anda sudah ada #toastHost dalam HTML + CSS), kalau tiada kita buat
   let host = document.getElementById('toastHost');
   if (!host) {
     host = document.createElement('div');
     host.id = 'toastHost';
-    host.style.position = 'fixed';
-    host.style.top = '12px';
-    host.style.right = '12px';
-    host.style.zIndex = 4000;
-    // pointer-events: none pada host; setiap .toast akan boleh diklik semula
-    host.style.pointerEvents = 'none';
     document.body.appendChild(host);
   }
-
-  // Kontena dalaman (biar bootstrap letak positioning biasa pada host)
   let container = document.getElementById('toastContainer');
   if (!container) {
     container = document.createElement('div');
@@ -889,13 +876,35 @@ function ensureToastContainer() {
     container.className = 'toast-container';
     host.appendChild(container);
   }
-
-  // Pastikan toast masih boleh diklik (tutup, dsb.)
+  // Biar toast boleh diklik (tutup dsb.)
   container.style.pointerEvents = 'auto';
   return container;
 }
 
-/* Versi toast yang "kebal": guna Bootstrap jika ada; kalau belum siap, fallback manual */
+/* Pastikan toast sentiasa kekal dalam viewport */
+function clampToastIntoView(el){
+  requestAnimationFrame(() => {
+    const PAD = 12;
+    // hadkan lebar ikut viewport
+    el.style.maxWidth = Math.min(window.innerWidth - PAD*2, 420) + 'px';
+
+    const r = el.getBoundingClientRect();
+    let tx = 0, ty = 0;
+
+    if (r.right > window.innerWidth - PAD) tx -= (r.right - (window.innerWidth - PAD));
+    if (r.left  < PAD)                     tx += (PAD - r.left);
+    if (r.top   < PAD)                     ty += (PAD - r.top);
+
+    if (tx || ty){
+      el.style.transform  = `translate(${tx}px, ${ty}px)`;
+      el.style.willChange = 'transform';
+    }
+  });
+}
+
+/* Toast “kebal”: guna Bootstrap jika ada; jika tidak, fallback manual.
+   — Auto “clamp” supaya tidak tenggelam di tepi skrin
+   — Re-clamp bila saiz tetingkap berubah */
 function toast(title, message, variant = 'primary') {
   const container = ensureToastContainer();
   const id = 't' + Date.now() + Math.random().toString(36).slice(2, 7);
@@ -907,35 +916,47 @@ function toast(title, message, variant = 'primary') {
         <div class="toast-body"><strong>${title}:</strong> ${message}</div>
         <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast"></button>
       </div>
-    </div>
-  `;
+    </div>`;
   container.insertAdjacentHTML('beforeend', html);
   const el = document.getElementById(id);
 
-  // Cuba API rasmi Bootstrap (jika sudah dimuat)
+  // clamp sebaik sahaja node wujud
+  clampToastIntoView(el);
+
+  const onResize = () => clampToastIntoView(el);
+  window.addEventListener('resize', onResize, { passive: true });
+
+  const cleanup = () => {
+    window.removeEventListener('resize', onResize);
+    el.remove();
+  };
+
   try {
     const BsToast = window.bootstrap?.Toast;
     if (BsToast) {
       const inst = BsToast.getOrCreateInstance(el, { delay: 3000, autohide: true });
-      el.addEventListener('hidden.bs.toast', () => el.remove());
+      el.addEventListener('shown.bs.toast', () => clampToastIntoView(el));
+      el.addEventListener('hidden.bs.toast', cleanup);
       inst.show();
-      return;
+    } else {
+      // fallback manual
+      el.classList.add('show');
+      setTimeout(() => {
+        el.classList.remove('show');
+        cleanup();
+      }, 3000);
     }
-  } catch (_) {
-    // Teruskan ke fallback
+  } catch {
+    // fallback jika API Bootstrap gagal
+    el.classList.add('show');
+    setTimeout(() => {
+      el.classList.remove('show');
+      cleanup();
+    }, 3000);
   }
-
-  // Fallback manual: paparkan & auto-hilang selepas 3s
-  el.classList.add('show');
-  setTimeout(() => {
-    el.classList.remove('show');
-    el.remove();
-  }, 3000);
 }
 
-/* =======================
-   WHATSAPP HELPERS (TEKS) – dikekalkan
-   ======================= */
+/* WhatsApp (TEKS) */
 function composeNadiWhatsAppText(data){
   const lines = [
     'Assalamualaikum, saya dari Klinik SihatSokmo.',
@@ -956,6 +977,7 @@ function composeNadiWhatsAppText(data){
   ];
   return lines.join('\n');
 }
+
 function openWhatsAppTo(rawMsisdn, text){
   const msisdn = normalizeMsisdnMY(rawMsisdn);
   if (!/^\d{10,15}$/.test(msisdn)){
@@ -970,7 +992,6 @@ function openWhatsAppTo(rawMsisdn, text){
   window.open(url, '_blank');
   toast('WhatsApp', 'Membuka WhatsApp dengan mesej siap-isi…', 'success');
 }
-
 /* =======================
    WHATSAPP IMAGE SEND HELPERS (BARU)
    ======================= */
