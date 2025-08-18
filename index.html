@@ -748,9 +748,6 @@ async function handleCredentialResponse(resp){
     document.getElementById('signinArea').innerHTML = '';
     document.getElementById('signinAreaDesktop').innerHTML = '';
     bootstrapApp(); // muat data
-    
-    // Tampilkan notifikasi selamat datang
-    toast('Selamat Datang', `Anda telah log masuk sebagai ${STAFF_EMAIL}`, 'success');
   } else {
     toast('Akses Ditolak', j.message || 'Sila hubungi admin untuk allowlist.', 'danger');
     ID_TOKEN = ''; STAFF_EMAIL = '';
@@ -906,7 +903,7 @@ function openWhatsAppDeepLink(msisdn, text='') {
 async function sendWhatsAppReportImageFlow(msisdn) {
   const phone = normalizeMsisdnMY(msisdn||'');
   if (!/^\d{10,15}$/.test(phone)) {
-    toast('Ralat', 'Nombor telefon tidak sah', 'danger');
+    toast('Ralat','Nombor telefon tidak sah','danger');
     return;
   }
 
@@ -988,11 +985,6 @@ function bootstrapApp(){
   loadStatistics('3months');
   loadCompletedStatistics('3months');
   loadTCACallData(); // widget dashboard (hari ini)
-  
-  // Uji notifikasi
-  setTimeout(() => {
-    toast('Sistem Sedia', 'Sistem PEKA B40 telah dimuat sepenuhnya', 'success');
-  }, 1000);
 }
 
 /* =======================
@@ -1147,11 +1139,6 @@ async function refreshLogs(opts={}){
         body.appendChild(bubble);
       });
       body.scrollTop = body.scrollHeight;
-      
-      // Tunjukkan notifikasi jika ada log baru
-      if (!opts.silent && arr.length > 0) {
-        toast('Log Calls', `${arr.length} rekod log calls dimuatkan`, 'info');
-      }
     }
   }catch(e){ /* senyap */ }
   finally{ if (!opts.silent) loader.classList.remove('active'); }
@@ -1715,7 +1702,7 @@ function exportNadiCSV() {
     row.tinggi, row.berat, row.bmi, row.layak, row.tcaDate, row.tcaTime, row.staff
   ]);
 
-  const csv = [header, ...csvRows].map(r => r.map(v => `"${String(v||'').replace(/"/g,'""')}"`).join('\r\n');
+  const csv = [header, ...csvRows].map(r => r.map(v => `"${String(v||'').replace(/"/g,'""')}"`).join(',')).join('\r\n');
   const blob = new Blob([csv], { type:'text/csv;charset=utf-8;' });
   const url = URL.createObjectURL(blob);
   const a = document.createElement('a');
@@ -2052,7 +2039,7 @@ async function loadArchivedData(){
     } else {
       tbody.innerHTML = `<tr><td colspan="8" class="text-center text-muted">Tiada rekod arkib</td></tr>`;
     }
-  }catch(e){ /* senyap */ }
+ }catch(e){ /* senyap */ }
 }
 
 /* =======================
