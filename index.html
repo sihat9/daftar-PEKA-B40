@@ -798,28 +798,46 @@ async function postForm(params={}, {silent=false, msg='Menyimpan data…'}={}){
 /* =======================
    UTIL
    ======================= */
+/* =======================
+   UTIL
+   ======================= */
 const normalizeMsisdnMY = (raw) => {
   if (!raw) return '';
-  let s = String(raw).replace(/\D/g,'');
+  let s = String(raw).replace(/\D/g, '');
   if (s.startsWith('00')) s = s.slice(2);
   if (s.startsWith('60')) return s;
   if (s.startsWith('0')) return '60' + s.slice(1);
   return '60' + s;
 };
+
 const telHref = (msisdn) => `tel:+${msisdn}`;
-const waHref  = (msisdn, txt='Assalamualaikum, ini dari Klinik SihatSokmo.') => `https://wa.me/${msisdn}?text=${encodeURIComponent(txt)}`;
+
+const waHref  = (msisdn, txt='Assalamualaikum, ini dari Klinik SihatSokmo.') =>
+  `https://wa.me/${msisdn}?text=${encodeURIComponent(txt)}`;
+
 const parseDDMMYYYY = (s) => {
   if (!s) return null;
-  if (/^\d{4}-\d{2}-\d{2}$/.test(s)) { const [Y,M,D]=s.split('-').map(Number); return new Date(Y,M-1,D); }
+  // Sokong "YYYY-MM-DD"
+  if (/^\d{4}-\d{2}-\d{2}$/.test(s)) {
+    const [Y, M, D] = s.split('-').map(Number);
+    return new Date(Y, M - 1, D);
+  }
+  // Sokong "DD/MM/YYYY"
   const m = /^(\d{1,2})\/(\d{1,2})\/(\d{4})$/.exec(s);
-  if (!m) return null; const D=+m[1], M=+m[2], Y=+m[3]; return new Date(Y,M-1,D);
+  if (!m) return null;
+  const D = +m[1], M = +m[2], Y = +m[3];
+  return new Date(Y, M - 1, D);
 };
-function isSameDay(a,b){ return a.getFullYear()==b.getFullYear() && a.getMonth()==b.getMonth() && a.getDate()==b.getDate(); }
 
-<!-- TAMBAH helper ini DI ATAS fungsi toast() -->
-<script>
+function isSameDay(a, b) {
+  return a.getFullYear() === b.getFullYear()
+      && a.getMonth() === b.getMonth()
+      && a.getDate() === b.getDate();
+}
+
+/* Pastikan bekas notifikasi wujud & boleh diguna walaupun Bootstrap Toast belum siap */
 function ensureToastContainer() {
-  // Pastikan host + container wujud
+  // Host luaran (anda sudah ada #toastHost dalam HTML + CSS), kalau tiada kita buat
   let host = document.getElementById('toastHost');
   if (!host) {
     host = document.createElement('div');
@@ -828,8 +846,12 @@ function ensureToastContainer() {
     host.style.top = '12px';
     host.style.right = '12px';
     host.style.zIndex = 4000;
+    // pointer-events: none pada host; setiap .toast akan boleh diklik semula
+    host.style.pointerEvents = 'none';
     document.body.appendChild(host);
   }
+
+  // Kontena dalaman (biar bootstrap letak positioning biasa pada host)
   let container = document.getElementById('toastContainer');
   if (!container) {
     container = document.createElement('div');
@@ -837,13 +859,17 @@ function ensureToastContainer() {
     container.className = 'toast-container';
     host.appendChild(container);
   }
+
+  // Pastikan toast masih boleh diklik (tutup, dsb.)
+  container.style.pointerEvents = 'auto';
   return container;
 }
 
-// GANTIKAN fungsi toast() asal dengan versi "kebal" ini
-function toast(title, message, variant='primary') {
+/* Versi toast yang "kebal": guna Bootstrap jika ada; kalau belum siap, fallback manual */
+function toast(title, message, variant = 'primary') {
   const container = ensureToastContainer();
-  const id = 't' + Date.now() + Math.random().toString(36).slice(2,7);
+  const id = 't' + Date.now() + Math.random().toString(36).slice(2, 7);
+
   const html = `
     <div class="toast align-items-center text-bg-${variant} border-0 mb-2" id="${id}"
          role="alert" aria-live="assertive" aria-atomic="true" style="min-width:260px">
@@ -851,11 +877,12 @@ function toast(title, message, variant='primary') {
         <div class="toast-body"><strong>${title}:</strong> ${message}</div>
         <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast"></button>
       </div>
-    </div>`;
+    </div>
+  `;
   container.insertAdjacentHTML('beforeend', html);
   const el = document.getElementById(id);
 
-  // Guna Bootstrap jika sudah tersedia
+  // Cuba API rasmi Bootstrap (jika sudah dimuat)
   try {
     const BsToast = window.bootstrap?.Toast;
     if (BsToast) {
@@ -864,11 +891,16 @@ function toast(title, message, variant='primary') {
       inst.show();
       return;
     }
-  } catch (_) { /* teruskan ke fallback */ }
+  } catch (_) {
+    // Teruskan ke fallback
+  }
 
-  // Fallback manual (kalau bootstrap.Toast belum siap)
+  // Fallback manual: paparkan & auto-hilang selepas 3s
   el.classList.add('show');
-  setTimeout(() => { el.classList.remove('show'); el.remove(); }, 3000);
+  setTimeout(() => {
+    el.classList.remove('show');
+    el.remove();
+  }, 3000);
 }
 
 /* =======================
