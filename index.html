@@ -165,6 +165,33 @@
     .whatsapp-report-label { font-weight: 600; width: 120px; color: var(--dark); }
     .whatsapp-report-value { flex: 1; }
     .whatsapp-report-footer { text-align: center; font-size: 12px; color: var(--muted); margin-top: 20px; padding-top: 15px; border-top: 1px solid #eee; }
+    /* === FIX: Elak toast tenggelam di kanan bila Log Drawer dibuka === */
+
+/* Pastikan host & toast boleh diklik serta tidak melebihi skrin */
+#toastHost {
+  position: fixed;
+  top: 12px;
+  right: 12px;
+  z-index: 4000;
+  pointer-events: none;
+}
+#toastHost .toast {
+  pointer-events: auto;
+  max-width: min(92vw, 380px); /* hadkan lebar ikut skrin */
+}
+
+/* Bila #logDrawer dibuka, tolak toast ke KIRI atas */
+#logDrawer.open ~ #toastHost {
+  right: auto !important;
+  left: 12px !important;
+}
+
+/* Sedikit kemasan untuk skrin kecil */
+@media (max-width: 576px) {
+  #toastHost { top: 8px; }
+  #logDrawer.open ~ #toastHost { left: 8px !important; }
+}
+
   </style>
 </head>
 <body>
