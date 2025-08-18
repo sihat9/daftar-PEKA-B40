@@ -24,175 +24,178 @@
   <!-- html2canvas untuk tangkap preview → imej (BARU) -->
   <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
 
-  <style>
-    :root{ --primary:#2c3e50; --secondary:#3498db; --success:#27ae60; --warning:#f39c12; --danger:#e74c3c; --light:#ecf0f1; --dark:#34495e; --muted:#95a5a6; }
-    html{ font-size:15px; }
-    @media (max-width:1200px){ html{ font-size:14px; } }
-    @media (max-width:576px){ html{ font-size:13px; } }
+ <style>
+  :root{ --primary:#2c3e50; --secondary:#3498db; --success:#27ae60; --warning:#f39c12; --danger:#e74c3c; --light:#ecf0f1; --dark:#34495e; --muted:#95a5a6; }
+  html{ font-size:15px; }
+  @media (max-width:1200px){ html{ font-size:14px; } }
+  @media (max-width:576px){ html{ font-size:13px; } }
 
-    html,body{height:100%}
-    body{font-family:'Segoe UI',Tahoma,Geneva,Verdana,sans-serif;background:#f5f7fa;color:#333}
+  html,body{height:100%}
+  body{font-family:'Segoe UI',Tahoma,Geneva,Verdana,sans-serif;background:#f5f7fa;color:#333}
 
-    /* Navbar */
-    .navbar-main{background:#fff;box-shadow:0 2px 10px rgba(0,0,0,.08);padding:10px 0}
-    .navbar-brand{font-weight:700;color:var(--primary);font-size:1.05rem;display:flex;align-items:center;gap:10px}
-    .nav-link{color:var(--dark);font-weight:500;margin:0 4px;padding:7px 10px!important;border-radius:8px;transition:.2s;position:relative}
-    .nav-link:hover,.nav-link.active{background:rgba(52,152,219,.12);color:var(--secondary)}
-    .nav-badge{
-      position:absolute; top:-4px; right:-2px; transform:translate(30%,-30%);
-      background:#dc3545; color:#fff; border-radius:999px; font-size:.65rem; padding:2px 6px; display:none;
+  /* Navbar */
+  .navbar-main{background:#fff;box-shadow:0 2px 10px rgba(0,0,0,.08);padding:10px 0}
+  .navbar-brand{font-weight:700;color:var(--primary);font-size:1.05rem;display:flex;align-items:center;gap:10px}
+  .nav-link{color:var(--dark);font-weight:500;margin:0 4px;padding:7px 10px!important;border-radius:8px;transition:.2s;position:relative}
+  .nav-link:hover,.nav-link.active{background:rgba(52,152,219,.12);color:var(--secondary)}
+  .nav-badge{
+    position:absolute; top:-4px; right:-2px; transform:translate(30%,-30%);
+    background:#dc3545; color:#fff; border-radius:999px; font-size:.65rem; padding:2px 6px; display:none;
+  }
+
+  /* Header */
+  .page-header{background:linear-gradient(135deg,var(--primary),var(--secondary));color:#fff;padding:14px 0;margin-bottom:12px;border-radius:0 0 12px 12px}
+
+  /* Cards */
+  .card{border:none;border-radius:14px;box-shadow:0 8px 24px rgba(0,0,0,.06);margin-bottom:16px}
+  .card-header{background:#fff;border-bottom:1px solid rgba(0,0,0,.06);font-weight:600;padding:12px 16px;border-radius:14px 14px 0 0!important}
+  .stat-card{padding:14px;border-radius:14px;color:#fff;text-align:center;position:relative;overflow:hidden;cursor:pointer}
+  .stat-card .number{font-size:1.45rem;font-weight:800}
+  .table td,.table th{vertical-align:middle}
+  .table{font-size:.95rem}
+  .searchbar{max-width:340px}
+  .mini-actions .btn{margin-right:6px;margin-bottom:6px}
+
+  /* Global App Loader (maks 2s) */
+  #appLoader{
+    position:fixed; inset:0; z-index:2000; display:none;
+    background: radial-gradient(1200px 600px at 10% -10%, rgba(52,152,219,.18), transparent),
+                radial-gradient(1200px 600px at 110% 110%, rgba(46,204,113,.18), transparent),
+                rgba(255,255,255,.35);
+    backdrop-filter: blur(10px);
+  }
+  #appLoader .loader-card{
+    position:absolute; top:50%; left:50%; transform:translate(-50%,-50%);
+    background:rgba(255,255,255,.75); border:1px solid rgba(255,255,255,.6);
+    box-shadow: 0 20px 40px rgba(0,0,0,.12);
+    border-radius:18px; padding:16px 18px; min-width:220px; text-align:center;
+  }
+  .spinner-premium{
+    width:36px;height:36px;border-radius:50%;
+    border:4px solid rgba(52,152,219,.25);
+    border-top-color:#3498db; animation:spin .9s linear infinite; margin:6px auto 8px;
+  }
+  @keyframes spin{to{transform:rotate(360deg)}}
+
+  /* Log Calls Drawer (gaya iPhone) */
+  #logDrawer{
+    position:fixed; top:0; right:-420px; width:400px; max-width:90vw; height:100%;
+    background:#f8f9fb; box-shadow:-12px 0 35px rgba(0,0,0,.18); z-index:3000; /* <— di bawah toast */
+    transition:right .25s ease; border-left:1px solid rgba(0,0,0,.05);
+    display:flex; flex-direction:column;
+  }
+  #logDrawer.open{ right:0; }
+  .log-header{
+    padding:10px 12px; background:#fff; border-bottom:1px solid rgba(0,0,0,.06);
+    display:flex; gap:8px; align-items:center;
+  }
+  .log-header .title{font-weight:700; color:#222; flex:1}
+  .log-search{ padding:8px; background:#fff; border-bottom:1px solid rgba(0,0,0,.06); }
+  .log-body{ padding:10px; overflow:auto; flex:1; display:flex; flex-direction:column; gap:8px; }
+  .bubble{
+    max-width:80%; padding:8px 10px; border-radius:16px; box-shadow:0 4px 12px rgba(0,0,0,.06);
+    position:relative; font-size:.9rem; line-height:1.2rem;
+  }
+  .bubble.me{ margin-left:auto; background:#007aff; color:#fff; border-bottom-right-radius:6px; }
+  .bubble.other{ margin-right:auto; background:#e9ecef; color:#222; border-bottom-left-radius:6px; }
+  .bubble .meta{ font-size:.72rem; opacity:.8; margin-top:5px }
+  .log-loading{ display:none; text-align:center; padding:8px }
+  .log-loading.active{ display:block }
+
+  /* FAB (tombol terapung) untuk Log Calls */
+  #fabLog{
+    position:fixed; right:18px; bottom:18px; z-index:3500;
+    width:56px; height:56px; border-radius:50%;
+    display:flex; align-items:center; justify-content:center;
+    box-shadow:0 10px 24px rgba(0,0,0,.18);
+  }
+
+  /* === TOAST: sentiasa penuh dalam viewport & tak bertembung drawer === */
+  #toastHost{
+    position: fixed;
+    top: 12px;
+    right: 12px;
+    left: auto;
+    z-index: 4000;
+    pointer-events: none;           /* host tak halang klik */
+  }
+  #toastHost .toast{
+    pointer-events: auto;           /* toast boleh diklik */
+    box-sizing: border-box;
+    width: max-content;             /* ikut kandungan… */
+    max-width: calc(100vw - 24px);  /* …tapi jangan lebih skrin */
+  }
+  /* Bila #logDrawer dibuka, tolak ke kiri */
+  #logDrawer.open ~ #toastHost{
+    right: auto !important;
+    left: 12px !important;
+  }
+  /* Skrin kecil */
+  @media (max-width: 576px){
+    #toastHost{ top: 8px; right: 8px; }
+    #logDrawer.open ~ #toastHost{ left: 8px !important; }
+  }
+  /* Sangat sempit → center supaya tak terpotong */
+  @media (max-width: 360px){
+    #toastHost{
+      left: 50% !important;
+      right: auto !important;
+      transform: translateX(-50%);
     }
+  }
 
-    /* Header */
-    .page-header{background:linear-gradient(135deg,var(--primary),var(--secondary));color:#fff;padding:14px 0;margin-bottom:12px;border-radius:0 0 12px 12px}
+  /* NADI TABLE STYLES */
+  .nadi-scroll-container { overflow-x: auto; width: 100%; padding-bottom: 8px; }
+  .nadi-table { width: 100%; min-width: 1300px; border-collapse: separate; border-spacing: 0; }
+  .nadi-table th {
+    background: #f8f9fa; padding: 10px 8px; font-weight: 600; text-align: center;
+    position: sticky; top: 0; z-index: 10; border: 1px solid #dee2e6;
+  }
+  .nadi-table td { padding: 8px; vertical-align: middle; border: 1px solid #dee2e6; }
+  .nadi-input-cell { position: relative; }
+  .nadi-input-cell .view-mode {
+    width: 100%; padding: 6px 8px; cursor: pointer; border: 1px solid transparent;
+    border-radius: 4px; min-height: 36px; display: flex; align-items: center;
+  }
+  .nadi-input-cell .view-mode:hover { background-color: #f8f9fa; border: 1px solid #dee2e6; }
+  .nadi-input-cell input {
+    width: 100%; min-width: 100px; border: 1px solid #ced4da; border-radius: 4px; padding: 6px 8px; transition: width 0.2s ease;
+  }
+  .nadi-input-cell input:focus { width: auto; min-width: 100px; }
+  .nadi-checkbox-cell { text-align: center; }
+  .nadi-actions-cell { min-width: 180px; }
+  .nadi-counter {
+    background: var(--primary); color: white; border-radius: 50%;
+    width: 24px; height: 24px; display: inline-flex; align-items: center; justify-content: center; font-size: 0.75rem;
+  }
 
-    /* Cards */
-    .card{border:none;border-radius:14px;box-shadow:0 8px 24px rgba(0,0,0,.06);margin-bottom:16px}
-    .card-header{background:#fff;border-bottom:1px solid rgba(0,0,0,.06);font-weight:600;padding:12px 16px;border-radius:14px 14px 0 0!important}
-    .stat-card{padding:14px;border-radius:14px;color:#fff;text-align:center;position:relative;overflow:hidden;cursor:pointer}
-    .stat-card .number{font-size:1.45rem;font-weight:800}
-    .table td,.table th{vertical-align:middle}
-    .table{font-size:.95rem}
-    .searchbar{max-width:340px}
-    .mini-actions .btn{margin-right:6px;margin-bottom:6px}
+  /* Responsive */
+  @media (max-width: 992px) { .stat-card .number{font-size:1.3rem} }
 
-    /* Global App Loader (maks 2s) */
-    #appLoader{
-      position:fixed; inset:0; z-index:2000; display:none;
-      background: radial-gradient(1200px 600px at 10% -10%, rgba(52,152,219,.18), transparent),
-                  radial-gradient(1200px 600px at 110% 110%, rgba(46,204,113,.18), transparent),
-                  rgba(255,255,255,.35);
-      backdrop-filter: blur(10px);
-    }
-    #appLoader .loader-card{
-      position:absolute; top:50%; left:50%; transform:translate(-50%,-50%);
-      background:rgba(255,255,255,.75); border:1px solid rgba(255,255,255,.6);
-      box-shadow: 0 20px 40px rgba(0,0,0,.12);
-      border-radius:18px; padding:16px 18px; min-width:220px; text-align:center;
-    }
-    .spinner-premium{
-      width:36px;height:36px;border-radius:50%;
-      border:4px solid rgba(52,152,219,.25);
-      border-top-color:#3498db; animation:spin .9s linear infinite; margin:6px auto 8px;
-    }
-    @keyframes spin{to{transform:rotate(360deg)}}
+  /* Form sections */
+  .form-section { background: white; border-radius: 12px; padding: 16px; margin-bottom: 16px; box-shadow: 0 2px 8px rgba(0,0,0,0.05); }
+  .form-section h5 { color: var(--primary); margin-bottom: 16px; padding-bottom: 8px; border-bottom: 1px solid #eee; }
+  .sticky-form-actions { position: sticky; bottom: 0; background: white; padding: 12px; border-top: 1px solid #eee; margin-top: 16px; }
 
-    /* Log Calls Drawer (gaya iPhone) */
-    #logDrawer{
-      position:fixed; top:0; right:-420px; width:400px; max-width:90vw; height:100%;
-      background:#f8f9fb; box-shadow:-12px 0 35px rgba(0,0,0,.18); z-index:3000; /* <— di bawah toast */
-      transition:right .25s ease; border-left:1px solid rgba(0,0,0,.05);
-      display:flex; flex-direction:column;
-    }
-    #logDrawer.open{ right:0; }
-    .log-header{
-      padding:10px 12px; background:#fff; border-bottom:1px solid rgba(0,0,0,.06);
-      display:flex; gap:8px; align-items:center;
-    }
-    .log-header .title{font-weight:700; color:#222; flex:1}
-    .log-search{ padding:8px; background:#fff; border-bottom:1px solid rgba(0,0,0,.06); }
-    .log-body{ padding:10px; overflow:auto; flex:1; display:flex; flex-direction:column; gap:8px; }
-    .bubble{
-      max-width:80%; padding:8px 10px; border-radius:16px; box-shadow:0 4px 12px rgba(0,0,0,.06);
-      position:relative; font-size:.9rem; line-height:1.2rem;
-    }
-    .bubble.me{ margin-left:auto; background:#007aff; color:#fff; border-bottom-right-radius:6px; }
-    .bubble.other{ margin-right:auto; background:#e9ecef; color:#222; border-bottom-left-radius:6px; }
-    .bubble .meta{ font-size:.72rem; opacity:.8; margin-top:5px }
-    .log-loading{ display:none; text-align:center; padding:8px }
-    .log-loading.active{ display:block }
-
-    /* FAB (tombol terapung) untuk Log Calls */
-    #fabLog{
-      position:fixed; right:18px; bottom:18px; z-index:3500;
-      width:56px; height:56px; border-radius:50%;
-      display:flex; align-items:center; justify-content:center;
-      box-shadow:0 10px 24px rgba(0,0,0,.18);
-    }
-
-    /* NOTIFIKASI (sentiasa nampak di kanan atas) */
-    #toastHost{ position:fixed; top:12px; right:12px; z-index:4000; pointer-events:none; }
-    #toastHost .toast{ pointer-events:auto; }
-
-    /* NADI TABLE STYLES */
-    .nadi-scroll-container { overflow-x: auto; width: 100%; padding-bottom: 8px; }
-    .nadi-table { width: 100%; min-width: 1300px; border-collapse: separate; border-spacing: 0; }
-    .nadi-table th {
-      background: #f8f9fa; padding: 10px 8px; font-weight: 600; text-align: center;
-      position: sticky; top: 0; z-index: 10; border: 1px solid #dee2e6;
-    }
-    .nadi-table td { padding: 8px; vertical-align: middle; border: 1px solid #dee2e6; }
-    .nadi-input-cell { position: relative; }
-    .nadi-input-cell .view-mode {
-      width: 100%; padding: 6px 8px; cursor: pointer; border: 1px solid transparent;
-      border-radius: 4px; min-height: 36px; display: flex; align-items: center;
-    }
-    .nadi-input-cell .view-mode:hover { background-color: #f8f9fa; border: 1px solid #dee2e6; }
-    .nadi-input-cell input {
-      width: 100%; min-width: 100px; border: 1px solid #ced4da; border-radius: 4px; padding: 6px 8px; transition: width 0.2s ease;
-    }
-    .nadi-input-cell input:focus { width: auto; min-width: 100px; }
-    .nadi-checkbox-cell { text-align: center; }
-    .nadi-actions-cell { min-width: 180px; }
-    .nadi-counter {
-      background: var(--primary); color: white; border-radius: 50%;
-      width: 24px; height: 24px; display: inline-flex; align-items: center; justify-content: center; font-size: 0.75rem;
-    }
-
-    /* Responsive */
-    @media (max-width: 992px) { .stat-card .number{font-size:1.3rem} }
-
-    /* Form sections */
-    .form-section { background: white; border-radius: 12px; padding: 16px; margin-bottom: 16px; box-shadow: 0 2px 8px rgba(0,0,0,0.05); }
-    .form-section h5 { color: var(--primary); margin-bottom: 16px; padding-bottom: 8px; border-bottom: 1px solid #eee; }
-    .sticky-form-actions { position: sticky; bottom: 0; background: white; padding: 12px; border-top: 1px solid #eee; margin-top: 16px; }
-
-    /* WhatsApp Report Image */
-    .whatsapp-report {
-      width: 100%; max-width: 500px; background: white; border-radius: 12px; padding: 20px;
-      box-shadow: 0 4px 12px rgba(0,0,0,0.1); margin: 0 auto;
-    }
-    .whatsapp-report-header {
-      display: flex; align-items: center; margin-bottom: 15px; padding-bottom: 15px; border-bottom: 1px solid #eee;
-    }
-    .whatsapp-report-logo {
-      width: 50px; height: 50px; border-radius: 8px; margin-right: 15px; object-fit: cover; border: 1px solid rgba(0,0,0,0.08);
-    }
-    .whatsapp-report-title { font-size: 18px; font-weight: 700; color: var(--primary); }
-    .whatsapp-report-subtitle { font-size: 14px; color: var(--muted); }
-    .whatsapp-report-body { margin-bottom: 15px; }
-    .whatsapp-report-row { display: flex; margin-bottom: 8px; }
-    .whatsapp-report-label { font-weight: 600; width: 120px; color: var(--dark); }
-    .whatsapp-report-value { flex: 1; }
-    .whatsapp-report-footer { text-align: center; font-size: 12px; color: var(--muted); margin-top: 20px; padding-top: 15px; border-top: 1px solid #eee; }
-    /* === FIX: Elak toast tenggelam di kanan bila Log Drawer dibuka === */
-
-/* Pastikan host & toast boleh diklik serta tidak melebihi skrin */
-#toastHost {
-  position: fixed;
-  top: 12px;
-  right: 12px;
-  z-index: 4000;
-  pointer-events: none;
-}
-#toastHost .toast {
-  pointer-events: auto;
-  max-width: min(92vw, 380px); /* hadkan lebar ikut skrin */
-}
-
-/* Bila #logDrawer dibuka, tolak toast ke KIRI atas */
-#logDrawer.open ~ #toastHost {
-  right: auto !important;
-  left: 12px !important;
-}
-
-/* Sedikit kemasan untuk skrin kecil */
-@media (max-width: 576px) {
-  #toastHost { top: 8px; }
-  #logDrawer.open ~ #toastHost { left: 8px !important; }
-}
-
-  </style>
+  /* WhatsApp Report Image */
+  .whatsapp-report {
+    width: 100%; max-width: 500px; background: white; border-radius: 12px; padding: 20px;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.1); margin: 0 auto;
+  }
+  .whatsapp-report-header {
+    display: flex; align-items: center; margin-bottom: 15px; padding-bottom: 15px; border-bottom: 1px solid #eee;
+  }
+  .whatsapp-report-logo {
+    width: 50px; height: 50px; border-radius: 8px; margin-right: 15px; object-fit: cover; border: 1px solid rgba(0,0,0,0.08);
+  }
+  .whatsapp-report-title { font-size: 18px; font-weight: 700; color: var(--primary); }
+  .whatsapp-report-subtitle { font-size: 14px; color: var(--muted); }
+  .whatsapp-report-body { margin-bottom: 15px; }
+  .whatsapp-report-row { display: flex; margin-bottom: 8px; }
+  .whatsapp-report-label { font-weight: 600; width: 120px; color: var(--dark); }
+  .whatsapp-report-value { flex: 1; }
+  .whatsapp-report-footer { text-align: center; font-size: 12px; color: var(--muted); margin-top: 20px; padding-top: 15px; border-top: 1px solid #eee; }
+</style>
 </head>
 <body>
   <!-- Global Loader -->
