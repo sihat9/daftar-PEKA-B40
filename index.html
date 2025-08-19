@@ -816,13 +816,17 @@
 /* =======================
    KONFIG (EDIT INI SAHAJA)
    ======================= */
-    
+/* =======================
+   KELAYAKAN: CSV first, XLSX fallback
+   - Auto detect header row & delimiter
+   - Banyak sinonim lajur (IC/NRIC/KP/MyKad, No. H/P/WhatsApp)
+   ======================= */
 (function () {
   const fileInput = document.getElementById('excelFile');
   const tableBody = document.getElementById('kelayakanTable');
   if (!fileInput || !tableBody) return;
 
-  // ---------- Util asas ----------
+  // ---------- Util ----------
   const norm = (v) => String(v ?? '').trim();
   const escapeHtml = (s) => String(s || '').replace(/[&<>"']/g, m => (
     {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'}[m]
@@ -845,14 +849,13 @@
     return age;
   }
 
-  // ---------- Reader: ArrayBuffer (XLSX) & Text (CSV) ----------
+  // ---------- File readers ----------
   const readAsArrayBuffer = (file) => new Promise((res, rej) => {
     const fr = new FileReader();
     fr.onload = e => res(e.target.result);
     fr.onerror = rej;
     fr.readAsArrayBuffer(file);
   });
-
   const readAsText = (file) => new Promise((res, rej) => {
     const fr = new FileReader();
     fr.onload = e => res(e.target.result);
@@ -860,11 +863,11 @@
     fr.readAsText(file, 'utf-8');
   });
 
-  // ---------- Parser CSV ringkas (auto-detect delimiter , ; tab |) ----------
+  // ---------- CSV helpers ----------
   const stripBOM = (s) => s && s.charCodeAt(0) === 0xFEFF ? s.slice(1) : s;
 
   function detectDelimiter(s) {
-    const sample = (s || '').slice(0, 2000);
+    const sample = (s || '').slice(0, 3000);
     const cand = [',',';','\t','|'];
     const count = { ',':0, ';':0, '\t':0, '|':0 };
     let inQ = false;
@@ -904,11 +907,46 @@
     return rows;
   }
 
+  // Cari baris header terbaik (ada ≥2 kata kunci)
+  const keysets = {
+    nama:    ['nama','nama penuh','name','nama pesakit'],
+    ic:      ['ic','no ic','no. ic','nric','nokp','no kp','no. kp','kp','mykad','no mykad','no k/p','k/p','kad pengenalan','no kad pengenalan'],
+    telefon: ['telefon','no telefon','no. telefon','no tel','no. tel','tel','mobile','hp','no hp','h/p','no h/p','whatsapp','no whatsapp','telefon (whatsapp)'],
+    alamat:  ['alamat','address','addr','alamat rumah','alamat kediaman']
+  };
+  const canon = (s) => String(s||'')
+      .toLowerCase()
+      .replace(/[\s\.\-_/()]+/g,'')   // buang ruang, titik, slash dll
+      .trim();
+
+  function scoreHeaderCell(cell) {
+    const t = canon(cell);
+    const hit = [];
+    for (const [k, list] of Object.entries(keysets)) {
+      if (list.some(p => t.includes(canon(p)))) hit.push(k);
+    }
+    return [...new Set(hit)];
+  }
+
+  function findHeaderRow(rows) {
+    let best = { idx: 0, score: 0 };
+    for (let r=0; r<Math.min(rows.length, 20); r++) {
+      const hits = new Set();
+      for (const c of rows[r]) scoreHeaderCell(c).forEach(k => hits.add(k));
+      const sc = hits.size;
+      if (sc > best.score) best = { idx: r, score: sc };
+    }
+    return (best.score >= 2) ? best.idx : 0; // perlu ≥2 kolum relevan
+  }
+
   function csvTextToObjects(text) {
     const rows = parseCSVToRows(text);
     if (!rows.length) return [];
-    const header = rows.shift().map(h => String(h||'').trim());
-    return rows
+    const headerRow = findHeaderRow(rows);
+    const header = rows[headerRow].map(h => String(h||'').trim());
+    const dataRows = rows.slice(headerRow+1);
+
+    return dataRows
       .filter(r => r.some(v => String(v||'').trim() !== ''))
       .map(r => {
         const o = {};
@@ -917,34 +955,35 @@
       });
   }
 
-  // ---------- Padankan lajur (nama/ic/telefon/alamat) ----------
+  // Padanan objek → {nama, ic, telefon, alamat}
   function mapRow(raw) {
     const entries = Object.entries(raw);
-    const pick = (keys) => {
-      const wants = keys.map(k => k.toLowerCase());
-      for (const [k, v] of entries) {
-        const kn = k.toLowerCase().trim();
-        if (wants.includes(kn)) return norm(v);
+    const pick = (groups) => {
+      // cuba padanan tepat dulu
+      for (const [k,v] of entries) {
+        const t = canon(k);
+        if (groups.some(word => t.includes(canon(word)))) return norm(v);
       }
-      for (const [k, v] of entries) {
-        const kn = k.toLowerCase().trim();
-        if (wants.some(w => kn.includes(w))) return norm(v);
+      // fallback: cuba contains long->short
+      for (const [k,v] of entries) {
+        const t = canon(k);
+        if (groups.some(word => canon(word).includes(t))) return norm(v);
       }
       return '';
     };
     return {
-      nama:    pick(['nama','name','nama penuh']),
-      ic:      pick(['ic','no ic','nric','no kad pengenalan','kad pengenalan']),
-      telefon: pick(['telefon','no telefon','phone','no tel','tel','mobile']),
-      alamat:  pick(['alamat','address','addr'])
+      nama:    pick(keysets.nama),
+      ic:      pick(keysets.ic),
+      telefon: pick(keysets.telefon),
+      alamat:  pick(keysets.alamat)
     };
   }
 
-  // ---------- Render jadual ----------
+  // ---------- Render ----------
   function renderRows(items) {
     if (!items.length) {
       tableBody.innerHTML =
-        '<tr><td colspan="8" class="text-center text-muted">Tiada data ditemui.</td></tr>';
+        '<tr><td colspan="8" class="text-center text-muted">Tiada data ditemui (semak header CSV anda).</td></tr>';
       return;
     }
     tableBody.innerHTML = items.map((it, idx) => {
@@ -989,27 +1028,39 @@
 
       const ext = (file.name.split('.').pop() || '').toLowerCase();
 
-      // 1) CSV: tak perlu SheetJS
+      // 1) CSV → terus baca (tak perlu internet/CDN)
       if (ext === 'csv') {
         const text = await readAsText(file);
         const raw  = csvTextToObjects(text);
         const items = raw.map(mapRow)
           .filter(r => r.nama || r.ic || r.telefon || r.alamat);
 
+        if (!items.length) {
+          // papar sedikit debug kepala lajur untuk bantu semak
+          const rows = parseCSVToRows(text);
+          const headerRow = findHeaderRow(rows);
+          const hdrs = (rows[headerRow] || []).slice(0,8).map(h=>escapeHtml(h)).join(', ');
+          tableBody.innerHTML =
+            `<tr><td colspan="8" class="text-center text-danger">
+              CSV dibaca tetapi tiada lajur sepadan.<br>
+              <small><b>Jumpa header:</b> ${hdrs || '(kosong)'}<br>
+              Pastikan ada lajur seperti <i>Nama, IC/NRIC/KP, Telefon/HP/WhatsApp, Alamat</i>.</small>
+            </td></tr>`;
+          return;
+        }
+
         window.__KELAYAKAN_ITEMS__ = items;
         renderRows(items);
         return;
       }
 
-      // 2) XLSX/XLS: cuba guna SheetJS jika ada / boleh dimuat
+      // 2) XLSX/XLS → cuba SheetJS; jika gagal, minta simpan CSV
       if (typeof window.ensureXLSXReady === 'function') {
-        try { await window.ensureXLSXReady(); } catch(e) { /* akan fallback mesej CSV */ }
+        try { await window.ensureXLSXReady(); } catch(e) { /* ignore */ }
       }
       if (!window.XLSX) {
         tableBody.innerHTML =
-          '<tr><td colspan="8" class="text-center text-danger">' +
-          'SheetJS tidak tersedia. Sila simpan Excel sebagai <b>CSV</b> dan muat naik semula.' +
-          '</td></tr>';
+          '<tr><td colspan="8" class="text-center text-danger">SheetJS tidak tersedia. Sila simpan Excel sebagai <b>CSV</b> dan muat naik semula.</td></tr>';
         return;
       }
 
@@ -1021,19 +1072,28 @@
       const items = raw.map(mapRow)
         .filter(r => r.nama || r.ic || r.telefon || r.alamat);
 
+      if (!items.length) {
+        const hdrs = Object.keys(raw[0] || {}).slice(0,8).join(', ');
+        tableBody.innerHTML =
+          `<tr><td colspan="8" class="text-center text-danger">
+            Excel dibaca tetapi tiada lajur sepadan.<br>
+            <small><b>Jumpa header:</b> ${escapeHtml(hdrs)}<br>
+            Pastikan ada lajur seperti <i>Nama, IC/NRIC/KP, Telefon/HP/WhatsApp, Alamat</i>.</small>
+          </td></tr>`;
+        return;
+      }
+
       window.__KELAYAKAN_ITEMS__ = items;
       renderRows(items);
 
     } catch (err) {
       console.error(err);
       tableBody.innerHTML =
-        '<tr><td colspan="8" class="text-center text-danger">' +
-        'Ralat memproses fail. Pastikan format betul (CSV / XLSX) & sambungan internet (jika XLSX).' +
-        '</td></tr>';
+        '<tr><td colspan="8" class="text-center text-danger">Ralat memproses fail. Pastikan fail CSV/Excel sah.</td></tr>';
     }
   }
 
-  // ---------- Event listeners ----------
+  // ---------- Events ----------
   fileInput.addEventListener('change', e => {
     const f = e.target.files && e.target.files[0];
     if (f) handleFile(f);
