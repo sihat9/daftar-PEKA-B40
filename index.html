@@ -15,16 +15,12 @@
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2"></script>
 
-  <!-- SheetJS (Excel) -->
-  <script src="./vendor/xlsx/xlsx.full.min.js"></script>
-  
+  <!-- SheetJS (Excel) via CDN -->
+<script src="https://cdn.jsdelivr.net/npm/xlsx@0.19.3/dist/xlsx.full.min.js"></script>
 <script>
-  (function(){
-    const ok = !!window.XLSX;
-    console.log('[XLSX preload]', ok ? 'OK (local loaded)' : 'NOT LOADED');
-  })();
+  console.log('[XLSX preload]', !!window.XLSX ? 'OK (CDN loaded)' : 'NOT LOADED');
 </script>
-
+  
 
   <!-- Google Identity Services (Sign-In) -->
   <script src="https://accounts.google.com/gsi/client" async defer></script>
