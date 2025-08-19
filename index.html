@@ -2876,4 +2876,378 @@ async function loadCompletedData(){
         const pdpaHTML = p.pdpaFileId
           ? `<div class="d-flex flex-wrap gap-1">
               <a class="btn btn-sm btn-outline-success" target="_blank" href="https://drive.google.com/file/d/${p.pdpaFileId}/preview"><i class="fa-solid fa-eye"></i> Lihat</a>
-              <a class="btn btn-sm btn-outline-primary" target
+              <a class="btn btn-sm btn-outline-primary" target async function loadArchivedData(){
+  try{
+    const data = await getJSON({ action:'getArchived' }, { msg:'Memuat Arkib…' });
+    const tbody = document.getElementById('archiveTable');
+    tbody.innerHTML = '';
+    if (data.status==='success' && data.data.length>0){
+      data.data.forEach(p=>{
+        const row = `
+        <tr data-ic="${p.noIC}">
+          <td>${p.nama}</td>
+          <td>${p.noIC}</td>
+          <td>${p.noTelefon||'-'}</td>
+          <td>${p.alamat || '-'}</td>
+          <td>${p.tarikhDaftar||'-'}</td>
+          <td>${p.tarikhSelesai||'-'}</td>
+          <td>${p.tarikhDiarkib||'-'}</td>
+          <td class="mini-actions">
+            <button class="btn btn-sm btn-outline-primary" onclick="restoreArchive('${p.noIC}')"><i class="fa-solid fa-box-open"></i> Pulihkan</button>
+          </td>
+        </tr>`;
+        tbody.insertAdjacentHTML('beforeend', row);
+      });
+    } else {
+      tbody.innerHTML = `<tr><td colspan="8" class="text-center text-muted">Tiada rekod arkib</td></tr>`;
+    }
+  }catch(e){ /* senyap */ }
+}
+
+/* =======================
+   ACTION FUNCTIONS
+   ======================= */
+async function daftarPesakit(){
+  const nama = document.getElementById('namaPesakit').value.trim();
+  const ic = document.getElementById('noIC').value.trim();
+  const tel = document.getElementById('noTelefon').value.trim();
+  const alamat = document.getElementById('alamatPesakit').value.trim();
+  const tcaDate = document.getElementById('tarikhTCA').value;
+  const tcaTime = document.getElementById('masaTCA').value;
+  const staff = document.getElementById('namaStaff').value.trim();
+
+  if (!nama || !ic || !tel || !tcaDate || !tcaTime || !staff){
+    toast('Ralat','Sila isi semua maklumat wajib','danger');
+    return;
+  }
+
+  try{
+    const res = await postForm({
+      action:'daftarPesakit',
+      namaPesakit: nama,
+      noIC: ic,
+      noTelefon: tel,
+      alamat: alamat,
+      tarikhTCA: tcaDate,
+      masaTCA: tcaTime,
+      namaStaff: staff
+    }, { msg:'Mendaftar pesakit…' });
+
+    if (res.status==='success'){
+      toast('Berjaya','Pesakit berjaya didaftarkan','success');
+      // Reset form
+      document.getElementById('namaPesakit').value = '';
+      document.getElementById('noIC').value = '';
+      document.getElementById('noTelefon').value = '';
+      document.getElementById('alamatPesakit').value = '';
+      document.getElementById('namaStaff').value = '';
+      loadDashboardData();
+      loadTCACallData();
+    } else {
+      throw new Error(res.message||'Gagal mendaftar pesakit');
+    }
+  }catch(e){
+    toast('Ralat',e.message,'danger');
+  }
+}
+
+function openRetcaModal(ic){
+  document.getElementById('retcaIC').value = ic;
+  // Set default date to today + 7 days
+  const nextWeek = new Date();
+  nextWeek.setDate(nextWeek.getDate() + 7);
+  document.getElementById('retcaDate').value = nextWeek.toISOString().split('T')[0];
+  document.getElementById('retcaTime').value = '09:00';
+  retcaModal.show();
+}
+
+async function submitRetca(){
+  const ic = document.getElementById('retcaIC').value;
+  const date = document.getElementById('retcaDate').value;
+  const time = document.getElementById('retcaTime').value;
+
+  if (!date || !time){
+    toast('Ralat','Sila isi tarikh dan masa','danger');
+    return;
+  }
+
+  try{
+    const res = await postForm({
+      action:'reTCA',
+      noIC: ic,
+      tarikhTCA: date,
+      masaTCA: time,
+      staff: STAFF_EMAIL
+    }, { msg:'Mengemaskini TCA…' });
+
+    if (res.status==='success'){
+      toast('Berjaya','TCA berjaya dikemaskini','success');
+      retcaModal.hide();
+      loadFirstVisitData();
+      loadTCACallData();
+    } else {
+      throw new Error(res.message||'Gagal kemaskini TCA');
+    }
+  }catch(e){
+    toast('Ralat',e.message,'danger');
+  }
+}
+
+async function markFirstVisit(ic){
+  try{
+    const res = await postForm({
+      action:'markFirstVisit',
+      noIC: ic,
+      staff: STAFF_EMAIL
+    }, { msg:'Menandakan First Visit…' });
+
+    if (res.status==='success'){
+      toast('Berjaya','First Visit ditandakan hadir','success');
+      loadFirstVisitData();
+      loadDashboardData();
+    } else {
+      throw new Error(res.message||'Gagal menandakan First Visit');
+    }
+  }catch(e){
+    toast('Ralat',e.message,'danger');
+  }
+}
+
+function openPDPA(ic){
+  document.getElementById('pdpaIC').value = ic;
+  document.getElementById('pdpaFile').value = '';
+  pdpaModal.show();
+}
+
+async function uploadPDPA(){
+  const ic = document.getElementById('pdpaIC').value;
+  const fileInput = document.getElementById('pdpaFile');
+  const file = fileInput.files[0];
+
+  if (!file){
+    toast('Ralat','Sila pilih fail PDPA','danger');
+    return;
+  }
+
+  try{
+    const formData = new FormData();
+    formData.append('action', 'uploadPDPA');
+    formData.append('noIC', ic);
+    formData.append('pdpaFile', file);
+    formData.append('id_token', ID_TOKEN);
+
+    showLoader('Muat naik PDPA…');
+    const r = await fetch(SCRIPT_URL, { method:'POST', body:formData });
+    const res = await r.json();
+
+    if (res.status==='success'){
+      toast('Berjaya','PDPA berjaya dimuat naik','success');
+      pdpaModal.hide();
+      loadFirstVisitData();
+    } else {
+      throw new Error(res.message||'Gagal muat naik PDPA');
+    }
+  }catch(e){
+    toast('Ralat',e.message,'danger');
+  }finally{
+    hideLoader();
+  }
+}
+
+async function deletePDPA(ic){
+  if (!confirm('Adakah anda pasti ingin memadam fail PDPA?')) return;
+
+  try{
+    const res = await postForm({
+      action:'deletePDPA',
+      noIC: ic
+    }, { msg:'Memadam PDPA…' });
+
+    if (res.status==='success'){
+      toast('Berjaya','PDPA berjaya dipadam','success');
+      loadFirstVisitData();
+    } else {
+      throw new Error(res.message||'Gagal memadam PDPA');
+    }
+  }catch(e){
+    toast('Ralat',e.message,'danger');
+  }
+}
+
+function openSecondTca(ic){
+  document.getElementById('secondTcaIC').value = ic;
+  // Set default date to today + 3 days
+  const in3Days = new Date();
+  in3Days.setDate(in3Days.getDate() + 3);
+  document.getElementById('secondTcaDate').value = in3Days.toISOString().split('T')[0];
+  document.getElementById('secondTcaTime').value = '10:00';
+  document.getElementById('secondTcaStaff').value = '';
+  secondTcaModal.show();
+}
+
+async function submitSecondTca(){
+  const ic = document.getElementById('secondTcaIC').value;
+  const date = document.getElementById('secondTcaDate').value;
+  const time = document.getElementById('secondTcaTime').value;
+  const staff = document.getElementById('secondTcaStaff').value.trim();
+
+  if (!date || !time || !staff){
+    toast('Ralat','Sila isi semua maklumat','danger');
+    return;
+  }
+
+  try{
+    const res = await postForm({
+      action:'setSecondTCA',
+      noIC: ic,
+      tarikhTCA: date,
+      masaTCA: time,
+      namaStaff: staff,
+      staff: STAFF_EMAIL
+    }, { msg:'Menetapkan Second Visit TCA…' });
+
+    if (res.status==='success'){
+      toast('Berjaya','Second Visit TCA berjaya ditetapkan','success');
+      secondTcaModal.hide();
+      loadLabFollowUp();
+      loadDashboardData();
+    } else {
+      throw new Error(res.message||'Gagal tetapkan Second Visit TCA');
+    }
+  }catch(e){
+    toast('Ralat',e.message,'danger');
+  }
+}
+
+async function markLabStatus(ic, status){
+  try{
+    const res = await postForm({
+      action:'markLabStatus',
+      noIC: ic,
+      status: status,
+      staff: STAFF_EMAIL
+    }, { msg:'Mengemaskini status lab…' });
+
+    if (res.status==='success'){
+      toast('Berjaya','Status lab dikemaskini','success');
+      loadLabFollowUp();
+      loadDashboardData();
+    } else {
+      throw new Error(res.message||'Gagal kemaskini status lab');
+    }
+  }catch(e){
+    toast('Ralat',e.message,'danger');
+  }
+}
+
+async function markSecondVisitHadir(ic){
+  try{
+    const res = await postForm({
+      action:'markSecondVisit',
+      noIC: ic,
+      staff: STAFF_EMAIL
+    }, { msg:'Menandakan Second Visit…' });
+
+    if (res.status==='success'){
+      toast('Berjaya','Second Visit ditandakan hadir','success');
+      loadSecondVisitData();
+      loadDashboardData();
+    } else {
+      throw new Error(res.message||'Gagal menandakan Second Visit');
+    }
+  }catch(e){
+    toast('Ralat',e.message,'danger');
+  }
+}
+
+async function exportCompletedCSV(){
+  try{
+    const data = await getJSON({ action:'exportCompleted' }, { msg:'Menyediakan CSV…' });
+    if (data.status==='success' && data.csv){
+      const blob = new Blob([data.csv], { type:'text/csv;charset=utf-8;' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `pesakit_selesai_${new Date().toISOString().split('T')[0]}.csv`;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      URL.revokeObjectURL(url);
+      toast('Export','Fail CSV telah dimuat turun','success');
+    } else {
+      throw new Error(data.message||'Gagal menghasilkan CSV');
+    }
+  }catch(e){
+    toast('Ralat',e.message,'danger');
+  }
+}
+
+async function restoreArchive(ic){
+  if (!confirm('Adakah anda pasti ingin memulihkan pesakit ini?')) return;
+
+  try{
+    const res = await postForm({
+      action:'restoreArchive',
+      noIC: ic,
+      staff: STAFF_EMAIL
+    }, { msg:'Memulihkan pesakit…' });
+
+    if (res.status==='success'){
+      toast('Berjaya','Pesakit berjaya dipulihkan','success');
+      loadArchivedData();
+      loadDashboardData();
+    } else {
+      throw new Error(res.message||'Gagal memulihkan pesakit');
+    }
+  }catch(e){
+    toast('Ralat',e.message,'danger');
+  }
+}
+
+/* =======================
+   INITIALIZATION
+   ======================= */
+document.addEventListener('DOMContentLoaded', function(){
+  // Initialize Google Sign-In
+  if (typeof google !== 'undefined') {
+    initGoogleSignIn();
+  } else {
+    // Fallback if Google script fails to load
+    document.getElementById('signinArea').innerHTML = `
+      <button class="btn btn-outline-primary" onclick="location.reload()">
+        <i class="fa-solid fa-refresh me-1"></i> Muat Semula untuk Login
+      </button>`;
+    document.getElementById('signinAreaDesktop').innerHTML = `
+      <button class="btn btn-outline-primary" onclick="location.reload()">
+        <i class="fa-solid fa-refresh me-1"></i> Muat Semula
+      </button>`;
+  }
+
+  // Set current date in program date field
+  const today = new Date().toISOString().split('T')[0];
+  document.getElementById('programDate').value = today;
+
+  // Initialize tooltips
+  const tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'));
+  tooltipTriggerList.map(function (tooltipTriggerEl) {
+    return new bootstrap.Tooltip(tooltipTriggerEl);
+  });
+});
+
+// Global error handler
+window.addEventListener('error', function(e) {
+  console.error('Global error:', e.error);
+  toast('Ralat', 'Aplikasi mengalami ralat. Sila muat semula halaman.', 'danger');
+});
+
+// Handle offline/online status
+window.addEventListener('online', function() {
+  toast('Sambungan', 'Anda kembali dalam talian', 'success');
+});
+
+window.addEventListener('offline', function() {
+  toast('Amaran', 'Anda berada di luar talian', 'warning');
+});
+</script>
+</body>
+</html>
