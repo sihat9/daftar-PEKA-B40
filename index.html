@@ -16,11 +16,53 @@
   <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2"></script>
 
   <!-- SheetJS (Excel) via CDN -->
-<script src="https://cdn.jsdelivr.net/npm/xlsx@0.19.3/dist/xlsx.full.min.js"></script>
+<!-- XLSX robust loader + override (SIAP TAMPAL DI <head>) -->
 <script>
-  console.log('[XLSX preload]', !!window.XLSX ? 'OK (CDN loaded)' : 'NOT LOADED');
+  (function () {
+    // Jika dah ada, tak perlu apa-apa
+    if (window.XLSX) return;
+
+    // Helper umum: muat <script> sekali
+    window.loadScriptOnce = window.loadScriptOnce || (function () {
+      const loaded = new Set();
+      return function loadScriptOnce(url) {
+        return new Promise((resolve, reject) => {
+          if (loaded.has(url)) return resolve();
+          const s = document.createElement('script');
+          s.src = url;
+          s.async = true;
+          s.onload = () => { loaded.add(url); resolve(); };
+          s.onerror = () => reject(new Error('Gagal muat: ' + url));
+          document.head.appendChild(s);
+        });
+      };
+    })();
+
+    // Override/definisi semula: pastikan XLSX wujud, cuba 3 CDN
+    window.ensureXLSXReady = async function ensureXLSXReady() {
+      if (window.XLSX) return;
+      const cdns = [
+        'https://cdn.jsdelivr.net/npm/xlsx@0.19.3/dist/xlsx.full.min.js',
+        'https://unpkg.com/xlsx@0.19.3/dist/xlsx.full.min.js',
+        'https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.19.3/xlsx.full.min.js'
+      ];
+      let lastErr;
+      for (const url of cdns) {
+        try {
+          await window.loadScriptOnce(url);
+          if (window.XLSX) {
+            console.log('[XLSX] Loaded from', url);
+            return;
+          }
+        } catch (e) {
+          lastErr = e;
+        }
+      }
+      console.error('[XLSX] Gagal dimuat dari semua CDN.', lastErr || '');
+      throw new Error('XLSX gagal dimuat.');
+    };
+  })();
 </script>
-  
 
   <!-- Google Identity Services (Sign-In) -->
   <script src="https://accounts.google.com/gsi/client" async defer></script>
@@ -775,63 +817,51 @@
    KONFIG (EDIT INI SAHAJA)
    ======================= */
 (function () {
-  // Pastikan CDN SheetJS telah dimuat di <head>
-  if (!window.XLSX) console.warn('[Kelayakan] XLSX belum dimuat. Sila pastikan CDN dimasukkan di <head>.');
-
-  const fileInput  = document.getElementById('excelFile');
-  const tableBody  = document.getElementById('kelayakanTable');
+  const fileInput = document.getElementById('excelFile');
+  const tableBody = document.getElementById('kelayakanTable');
   if (!fileInput || !tableBody) return;
 
-  // ————— Utiliti —————
-  function readAsArrayBuffer(file) {
-    return new Promise((resolve, reject) => {
-      const fr = new FileReader();
-      fr.onload = e => resolve(e.target.result);
-      fr.onerror = reject;
-      fr.readAsArrayBuffer(file); // boleh baca .xlsx / .xls / .csv
-    });
-  }
-  function norm(v){ return String(v ?? '').trim(); }
-  function escapeHtml(s){
-    return String(s||'').replace(/[&<>"']/g, m => ({
-      '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'
-    }[m]));
-  }
-  // Kira umur dari IC (6 digit pertama YYMMDD, auto-abad)
+  // Utiliti kecil
+  const readAsArrayBuffer = (file) => new Promise((res, rej) => {
+    const fr = new FileReader();
+    fr.onload = e => res(e.target.result);
+    fr.onerror = rej;
+    fr.readAsArrayBuffer(file);
+  });
+  const norm = (v) => String(v ?? '').trim();
+  const escapeHtml = (s) => String(s || '').replace(/[&<>"']/g, m => (
+    {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'}[m]
+  ));
   function umurDariIC(ic) {
-    const s = String(ic||'').replace(/\D/g,'');
+    const s = String(ic || '').replace(/\D/g, '');
     if (s.length < 6) return null;
-    const yy = parseInt(s.slice(0,2),10);
-    const mm = parseInt(s.slice(2,4),10);
-    const dd = parseInt(s.slice(4,6),10);
+    const yy = +s.slice(0,2), mm = +s.slice(2,4), dd = +s.slice(4,6);
     if (!(mm>=1 && mm<=12) || !(dd>=1 && dd<=31)) return null;
-
     const now = new Date();
     const currentYY = now.getFullYear() % 100;
-    const yearFull = (yy <= currentYY ? 2000 : 1900) + yy;
-
-    let age = now.getFullYear() - yearFull;
-    const bdayThisYear = new Date(yearFull, mm-1, dd);
-    const hadBirthday = (now.getMonth() > bdayThisYear.getMonth()) ||
-                        (now.getMonth() === bdayThisYear.getMonth() && now.getDate() >= bdayThisYear.getDate());
-    if (!hadBirthday) age -= 1;
+    const year = (yy <= currentYY ? 2000 : 1900) + yy;
+    let age = now.getFullYear() - year;
+    const bday = new Date(year, mm - 1, dd);
+    if (!(now.getMonth() > bday.getMonth() ||
+          (now.getMonth() === bday.getMonth() && now.getDate() >= bday.getDate()))) {
+      age--;
+    }
     return age;
   }
-  // Pemetaan lajur fleksibel (terima pelbagai nama header)
   function mapRow(raw) {
     const entries = Object.entries(raw);
-    function pick(keys){
-      const wants = keys.map(k=>k.toLowerCase());
-      for (const [k,v] of entries) {
+    const pick = (keys) => {
+      const wants = keys.map(k => k.toLowerCase());
+      for (const [k, v] of entries) {
         const kn = k.toLowerCase().trim();
         if (wants.includes(kn)) return norm(v);
       }
-      for (const [k,v] of entries) {
+      for (const [k, v] of entries) {
         const kn = k.toLowerCase().trim();
         if (wants.some(w => kn.includes(w))) return norm(v);
       }
       return '';
-    }
+    };
     return {
       nama:    pick(['nama','name','nama penuh']),
       ic:      pick(['ic','no ic','nric','no kad pengenalan','kad pengenalan']),
@@ -839,17 +869,16 @@
       alamat:  pick(['alamat','address','addr'])
     };
   }
-
-  // Render jadual
   function renderRows(items) {
     if (!items.length) {
-      tableBody.innerHTML = '<tr><td colspan="8" class="text-center text-muted">Tiada data ditemui.</td></tr>';
+      tableBody.innerHTML =
+        '<tr><td colspan="8" class="text-center text-muted">Tiada data ditemui.</td></tr>';
       return;
     }
-    const html = items.map((it, idx) => {
+    tableBody.innerHTML = items.map((it, idx) => {
       const age = umurDariIC(it.ic);
       const eligible = (age !== null) ? age >= 40 : false;
-      const reason = (age === null) ? 'IC tidak sah' : (eligible ? '-' : `Umur ${age} tahun (< 40)`);
+      const reason = (age === null) ? 'IC tidak sah' : (eligible ? '-' : `Umur ${age} tahun (&lt; 40)`);
 
       return `
         <tr data-idx="${idx}">
@@ -858,8 +887,8 @@
           <td>${escapeHtml(it.telefon) || '-'}</td>
           <td>${escapeHtml(it.alamat) || '-'}</td>
           <td class="text-center">
-            ${eligible ? '<span class="badge text-bg-success">Layak</span>'
-                       : '<span class="badge text-bg-danger">Tidak Layak</span>'}
+            ${eligible ? '<span class="badge text-bg-success">Layak</span>' :
+                         '<span class="badge text-bg-danger">Tidak Layak</span>'}
           </td>
           <td class="text-center">${escapeHtml(reason)}</td>
           <td>
@@ -867,42 +896,52 @@
               <div class="row g-1">
                 <div class="col"><input type="date" class="form-control form-control-sm tca-date"></div>
                 <div class="col"><input type="time" class="form-control form-control-sm tca-time"></div>
-                <div class="col"><input type="text" class="form-control form-control-sm tca-staff" placeholder="Staff"></div>
-              </div>` : '<span class="text-muted">—</span>'}
+                <div class="col"><input type="text"  class="form-control form-control-sm tca-staff" placeholder="Staff"></div>
+              </div>
+            ` : '<span class="text-muted">—</span>'}
           </td>
           <td>
-            ${eligible ? `<button class="btn btn-sm btn-primary daftar-row"><i class="fas fa-save me-1"></i>Daftar</button>`
-                       : '<span class="text-muted">—</span>'}
+            ${eligible
+              ? '<button class="btn btn-sm btn-primary daftar-row"><i class="fas fa-save me-1"></i>Daftar</button>'
+              : '<span class="text-muted">—</span>'}
           </td>
         </tr>`;
     }).join('');
-    tableBody.innerHTML = html;
   }
 
-  // Baca & proses fail
   async function handleFile(file) {
     try {
-      tableBody.innerHTML = '<tr><td colspan="8" class="text-center text-muted">Memproses fail…</td></tr>';
+      tableBody.innerHTML =
+        '<tr><td colspan="8" class="text-center text-muted">Memproses fail…</td></tr>';
+
+      // PENTING: Pastikan XLSX betul-betul wujud (cuba 3 CDN jika belum)
+      if (typeof window.ensureXLSXReady === 'function') {
+        await window.ensureXLSXReady();
+      }
+      if (!window.XLSX) throw new Error('XLSX masih tidak wujud.');
+
       const data = await readAsArrayBuffer(file);
       const wb = XLSX.read(data, { type: 'array' });
       const ws = wb.Sheets[wb.SheetNames[0]];
       const raw = XLSX.utils.sheet_to_json(ws, { defval: '', raw: true });
-      const items = raw.map(mapRow).filter(r => r.nama || r.ic || r.telefon || r.alamat);
-      window.__KELAYAKAN_ITEMS__ = items;   // simpan untuk kegunaan butang “Daftar”
+
+      const items = raw.map(mapRow)
+        .filter(r => r.nama || r.ic || r.telefon || r.alamat);
+
+      window.__KELAYAKAN_ITEMS__ = items;
       renderRows(items);
     } catch (err) {
       console.error(err);
-      tableBody.innerHTML = '<tr><td colspan="8" class="text-center text-danger">Ralat memproses fail. Pastikan format betul (XLSX/CSV).</td></tr>';
+      tableBody.innerHTML =
+        '<tr><td colspan="8" class="text-center text-danger">Ralat memproses fail. Pastikan format betul (XLSX/CSV) & sambungan internet OK.</td></tr>';
     }
   }
 
-  // Event: pilih fail
   fileInput.addEventListener('change', e => {
     const f = e.target.files && e.target.files[0];
     if (f) handleFile(f);
   });
 
-  // Event delegasi: klik “Daftar” → auto-isi borang #daftar-peka
   tableBody.addEventListener('click', e => {
     const btn = e.target.closest('.daftar-row');
     if (!btn) return;
@@ -915,7 +954,6 @@
     const time  = tr.querySelector('.tca-time')?.value || '';
     const staff = tr.querySelector('.tca-staff')?.value || '';
 
-    // Isi borang “Daftar Peka”
     const fNama   = document.getElementById('namaPesakit');
     const fIC     = document.getElementById('noIC');
     const fTel    = document.getElementById('noTelefon');
@@ -924,18 +962,15 @@
     const fMasa   = document.getElementById('masaTCA');
     const fStaff  = document.getElementById('namaStaff');
 
-    if (fNama)   fNama.value   = item.nama || '';
-    if (fIC)     fIC.value     = item.ic || '';
-    if (fTel)    fTel.value    = item.telefon || '';
+    if (fNama)   fNama.value   = item.nama   || '';
+    if (fIC)     fIC.value     = item.ic     || '';
+    if (fTel)    fTel.value    = item.telefon|| '';
     if (fAlamat) fAlamat.value = item.alamat || '';
     if (fTCA && date)  fTCA.value  = date;
     if (fMasa && time) fMasa.value = time;
     if (fStaff && staff) fStaff.value = staff;
 
-    // Lompat ke seksyen borang
     location.hash = '#daftar-peka';
-
-    // Maklum balas visual
     btn.innerHTML = '<i class="fas fa-check me-1"></i>Diisi';
     btn.classList.remove('btn-primary');
     btn.classList.add('btn-success');
