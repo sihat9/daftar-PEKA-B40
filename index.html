@@ -846,42 +846,91 @@ let ID_TOKEN = '';      // diisi selepas login
 let STAFF_EMAIL = '';   // email sebenar (server akan sahkan juga)
 
 function initGoogleSignIn(){
-  google.accounts.id.initialize({
-    client_id: GOOGLE_CLIENT_ID,
-    callback: handleCredentialResponse,
-    auto_select: false,
-    cancel_on_tap_outside: true
-  });
-  google.accounts.id.renderButton(
-    document.getElementById('signinArea'),
-    { theme: 'outline', size: 'medium', text:'signin_with' }
-  );
-  google.accounts.id.renderButton(
-    document.getElementById('signinAreaDesktop'),
-    { theme: 'outline', size: 'medium', text:'signin_with' }
-  );
+  // Pastikan Google API sudah dimuat
+  if (typeof google === 'undefined' || !google.accounts || !google.accounts.id) {
+    console.error('Google Identity Services not loaded');
+    
+    // Cuba lagi selepas 1 saat
+    setTimeout(() => {
+      if (typeof google !== 'undefined' && google.accounts && google.accounts.id) {
+        initGoogleSignIn();
+      } else {
+        console.error('Failed to load Google Identity Services after retry');
+        // Tampilkan fallback UI
+        document.getElementById('signinArea').innerHTML = 
+          '<div class="alert alert-warning p-2 m-0">Google Sign-In tidak tersedia</div>';
+        document.getElementById('signinAreaDesktop').innerHTML = 
+          '<div class="alert alert-warning p-2 m-0">Google Sign-In tidak tersedia</div>';
+      }
+    }, 1000);
+    return;
+  }
+
+  try {
+    google.accounts.id.initialize({
+      client_id: GOOGLE_CLIENT_ID,
+      callback: handleCredentialResponse,
+      auto_select: false,
+      cancel_on_tap_outside: true
+    });
+    
+    // Render button untuk mobile
+    const signinArea = document.getElementById('signinArea');
+    if (signinArea) {
+      google.accounts.id.renderButton(
+        signinArea,
+        { theme: 'outline', size: 'medium', text: 'signin_with' }
+      );
+    }
+    
+    // Render button untuk desktop
+    const signinAreaDesktop = document.getElementById('signinAreaDesktop');
+    if (signinAreaDesktop) {
+      google.accounts.id.renderButton(
+        signinAreaDesktop,
+        { theme: 'outline', size: 'medium', text: 'signin_with' }
+      );
+    }
+    
+    console.log('Google Sign-In initialized successfully');
+    
+  } catch(e) {
+    console.error('Error in initGoogleSignIn:', e);
+    // Fallback UI jika error
+    document.getElementById('signinArea').innerHTML = 
+      '<div class="alert alert-danger p-2 m-0">Error loading Google Sign-In</div>';
+    document.getElementById('signinAreaDesktop').innerHTML = 
+      '<div class="alert alert-danger p-2 m-0">Error loading Google Sign-In</div>';
+  }
 }
 
-async function handleCredentialResponse(resp){
-  ID_TOKEN = resp.credential;
-  // Semak whoami di backend
-  const r = await fetch(SCRIPT_URL, {
-    method:'POST',
-    headers:{ 'Content-Type':'application/x-www-form-urlencoded' },
-    body: new URLSearchParams({ action:'whoami', id_token: ID_TOKEN })
+// Pastikan butang Sign-In Google muncul selepas load
+window.addEventListener('load', function() {
+  console.log('Window loaded, initializing Google Sign-In...');
+  
+  // Tunggu sedikit untuk pastikan Google script sudah dimuat
+  setTimeout(function() {
+    if (typeof google !== 'undefined' && google.accounts && google.accounts.id) {
+      initGoogleSignIn();
+    } else {
+      console.log('Google script not ready yet, retrying in 500ms...');
+      // Cuba lagi
+      setTimeout(function() {
+        initGoogleSignIn();
+      }, 500);
+    }
+  }, 100);
+});
+
+// Juga initialize apabila DOM sudah siap (fallback)
+if (document.readyState === 'loading') {
+  document.addEventListener('DOMContentLoaded', function() {
+    console.log('DOM loaded, initializing Google Sign-In...');
+    setTimeout(initGoogleSignIn, 100);
   });
-  const j = await r.json();
-  if (j.status === 'success'){
-    STAFF_EMAIL = j.email || '';
-    document.getElementById('staffBadge').classList.remove('d-none');
-    document.getElementById('staffEmail').textContent = STAFF_EMAIL;
-    document.getElementById('signinArea').innerHTML = '';
-    document.getElementById('signinAreaDesktop').innerHTML = '';
-    bootstrapApp(); // muat data
-  } else {
-    toast('Akses Ditolak', j.message || 'Sila hubungi admin untuk allowlist.', 'danger');
-    ID_TOKEN = ''; STAFF_EMAIL = '';
-  }
+} else {
+  // DOM sudah siap, initialize sekarang
+  setTimeout(initGoogleSignIn, 100);
 }
 
 /* =======================
