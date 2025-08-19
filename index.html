@@ -816,22 +816,18 @@
 /* =======================
    KONFIG (EDIT INI SAHAJA)
    ======================= */
+    
 (function () {
   const fileInput = document.getElementById('excelFile');
   const tableBody = document.getElementById('kelayakanTable');
   if (!fileInput || !tableBody) return;
 
-  // Utiliti kecil
-  const readAsArrayBuffer = (file) => new Promise((res, rej) => {
-    const fr = new FileReader();
-    fr.onload = e => res(e.target.result);
-    fr.onerror = rej;
-    fr.readAsArrayBuffer(file);
-  });
+  // ---------- Util asas ----------
   const norm = (v) => String(v ?? '').trim();
   const escapeHtml = (s) => String(s || '').replace(/[&<>"']/g, m => (
     {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'}[m]
   ));
+
   function umurDariIC(ic) {
     const s = String(ic || '').replace(/\D/g, '');
     if (s.length < 6) return null;
@@ -848,6 +844,80 @@
     }
     return age;
   }
+
+  // ---------- Reader: ArrayBuffer (XLSX) & Text (CSV) ----------
+  const readAsArrayBuffer = (file) => new Promise((res, rej) => {
+    const fr = new FileReader();
+    fr.onload = e => res(e.target.result);
+    fr.onerror = rej;
+    fr.readAsArrayBuffer(file);
+  });
+
+  const readAsText = (file) => new Promise((res, rej) => {
+    const fr = new FileReader();
+    fr.onload = e => res(e.target.result);
+    fr.onerror = rej;
+    fr.readAsText(file, 'utf-8');
+  });
+
+  // ---------- Parser CSV ringkas (auto-detect delimiter , ; tab |) ----------
+  const stripBOM = (s) => s && s.charCodeAt(0) === 0xFEFF ? s.slice(1) : s;
+
+  function detectDelimiter(s) {
+    const sample = (s || '').slice(0, 2000);
+    const cand = [',',';','\t','|'];
+    const count = { ',':0, ';':0, '\t':0, '|':0 };
+    let inQ = false;
+    for (let i=0;i<sample.length;i++){
+      const c = sample[i];
+      if (c === '"') {
+        if (inQ && sample[i+1] === '"') { i++; }
+        else inQ = !inQ;
+      } else if (!inQ && count.hasOwnProperty(c)) {
+        count[c]++;
+      }
+    }
+    return cand.sort((a,b)=>count[b]-count[a])[0] || ',';
+  }
+
+  function parseCSVToRows(text) {
+    text = stripBOM(String(text||''));
+    const delim = detectDelimiter(text);
+    const rows = [];
+    let row=[], field='', inQ=false;
+    for (let i=0;i<text.length;i++){
+      const c = text[i];
+      if (inQ) {
+        if (c === '"') {
+          if (text[i+1] === '"') { field += '"'; i++; }
+          else inQ = false;
+        } else field += c;
+      } else {
+        if (c === '"') inQ = true;
+        else if (c === delim) { row.push(field); field=''; }
+        else if (c === '\n')  { row.push(field); rows.push(row); row=[]; field=''; }
+        else if (c === '\r')  { /* skip */ }
+        else field += c;
+      }
+    }
+    row.push(field); rows.push(row);
+    return rows;
+  }
+
+  function csvTextToObjects(text) {
+    const rows = parseCSVToRows(text);
+    if (!rows.length) return [];
+    const header = rows.shift().map(h => String(h||'').trim());
+    return rows
+      .filter(r => r.some(v => String(v||'').trim() !== ''))
+      .map(r => {
+        const o = {};
+        for (let i=0;i<header.length;i++) o[header[i]] = r[i] ?? '';
+        return o;
+      });
+  }
+
+  // ---------- Padankan lajur (nama/ic/telefon/alamat) ----------
   function mapRow(raw) {
     const entries = Object.entries(raw);
     const pick = (keys) => {
@@ -869,6 +939,8 @@
       alamat:  pick(['alamat','address','addr'])
     };
   }
+
+  // ---------- Render jadual ----------
   function renderRows(items) {
     if (!items.length) {
       tableBody.innerHTML =
@@ -909,34 +981,59 @@
     }).join('');
   }
 
+  // ---------- Pemproses utama ----------
   async function handleFile(file) {
     try {
       tableBody.innerHTML =
         '<tr><td colspan="8" class="text-center text-muted">Memproses fail…</td></tr>';
 
-      // PENTING: Pastikan XLSX betul-betul wujud (cuba 3 CDN jika belum)
-      if (typeof window.ensureXLSXReady === 'function') {
-        await window.ensureXLSXReady();
+      const ext = (file.name.split('.').pop() || '').toLowerCase();
+
+      // 1) CSV: tak perlu SheetJS
+      if (ext === 'csv') {
+        const text = await readAsText(file);
+        const raw  = csvTextToObjects(text);
+        const items = raw.map(mapRow)
+          .filter(r => r.nama || r.ic || r.telefon || r.alamat);
+
+        window.__KELAYAKAN_ITEMS__ = items;
+        renderRows(items);
+        return;
       }
-      if (!window.XLSX) throw new Error('XLSX masih tidak wujud.');
+
+      // 2) XLSX/XLS: cuba guna SheetJS jika ada / boleh dimuat
+      if (typeof window.ensureXLSXReady === 'function') {
+        try { await window.ensureXLSXReady(); } catch(e) { /* akan fallback mesej CSV */ }
+      }
+      if (!window.XLSX) {
+        tableBody.innerHTML =
+          '<tr><td colspan="8" class="text-center text-danger">' +
+          'SheetJS tidak tersedia. Sila simpan Excel sebagai <b>CSV</b> dan muat naik semula.' +
+          '</td></tr>';
+        return;
+      }
 
       const data = await readAsArrayBuffer(file);
-      const wb = XLSX.read(data, { type: 'array' });
-      const ws = wb.Sheets[wb.SheetNames[0]];
-      const raw = XLSX.utils.sheet_to_json(ws, { defval: '', raw: true });
+      const wb   = XLSX.read(data, { type: 'array' });
+      const ws   = wb.Sheets[wb.SheetNames[0]];
+      const raw  = XLSX.utils.sheet_to_json(ws, { defval: '', raw: true });
 
       const items = raw.map(mapRow)
         .filter(r => r.nama || r.ic || r.telefon || r.alamat);
 
       window.__KELAYAKAN_ITEMS__ = items;
       renderRows(items);
+
     } catch (err) {
       console.error(err);
       tableBody.innerHTML =
-        '<tr><td colspan="8" class="text-center text-danger">Ralat memproses fail. Pastikan format betul (XLSX/CSV) & sambungan internet OK.</td></tr>';
+        '<tr><td colspan="8" class="text-center text-danger">' +
+        'Ralat memproses fail. Pastikan format betul (CSV / XLSX) & sambungan internet (jika XLSX).' +
+        '</td></tr>';
     }
   }
 
+  // ---------- Event listeners ----------
   fileInput.addEventListener('change', e => {
     const f = e.target.files && e.target.files[0];
     if (f) handleFile(f);
@@ -977,7 +1074,6 @@
     btn.disabled = true;
   });
 })();
-
 // 1) Isi URL Web App Apps Script (deployment terkini)
 const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbx6TKE0vDDPO3-36cY7xjacAbGL0HIRKCrORNm-sED9y5NpIeIUk9gyrpiWy-S7vbc/exec';
 // 2) Google OAuth Client ID (Google Cloud Console)
