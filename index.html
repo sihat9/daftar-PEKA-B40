@@ -2458,32 +2458,76 @@ async function daftarPesakit(){
   }catch(e){ toast('Ralat', e.message, 'danger'); }
 }
 
-async function exportCompletedCSV(){
-  try{
-    const data = await getJSON({ action:'getCompleted' }, { msg:'Menjana CSV…' });
-    if (data.status!=='success' || !data.data.length) {
-      toast('Makluman','Tiada data untuk diexport','warning'); return;
-    }
-    const header = ['Nama','NoIC','NoTelefon','Alamat','TarikhDaftar','FirstVisit','LabReportCompleted','SecondVisit','TarikhSelesai'];
-    const rows = data.data.map(x=>[
-      x.nama, x.noIC, normalizeMsisdnMY(x.noTelefon||''), x.alamat || '', x.tarikhDaftar, x.firstVisitDate||'', x.labCompletedAt||'', x.secondVisitDate||'', x.tarikhSelesai
-    ]);
-    const csv = [header, ...rows].map(r=>r.map(v=>`"${String(v||'').replace(/"/g,'""')}"`).join(',')).join('\r\n');
-    const blob = new Blob([csv], { type:'text/csv;charset=utf-8;' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url; a.download = `pesakit_selesai_${new Date().toISOString().slice(0,10)}.csv`;
-    document.body.appendChild(a); a.click(); a.remove(); URL.revokeObjectURL(url);
-    toast('Export','Fail CSV telah dimuat turun','success');
-  }catch(e){ toast('Ralat', e.message, 'danger'); }
-}
+  async function exportCompletedCSV(){
+    try{
+      // Ambil semua rekod selesai
+      const res = await getJSON({ action:'getCompleted', all: 1 }, { msg:'Menjana CSV…' });
+      const arr = (res.status === 'success' && Array.isArray(res.data)) ? res.data : [];
+      if (!arr.length){
+        toast('Makluman', 'Tiada rekod selesai untuk dieksport', 'warning');
+        return;
+      }
 
-/* =======================
-   STARTUP
-   ======================= */
-document.addEventListener('DOMContentLoaded', ()=>{
-  initGoogleSignIn();
-});
+      // Tajuk & data CSV (ringkas dan berguna)
+      const header = [
+        'Nama Pesakit','No IC','No Telefon','Alamat',
+        'Tarikh Daftar','First Visit','Lab Report Completed','Second Visit','Tarikh Selesai'
+      ];
+      const rows = arr.map(p => [
+        p.nama || '',
+        p.noIC || '',
+        normalizeMsisdnMY(p.noTelefon || ''),
+        p.alamat || '',
+        p.tarikhDaftar || '',
+        p.firstVisitDate || '',
+        p.labCompletedAt || '',
+        p.secondVisitDate || '',
+        p.tarikhSelesai || ''
+      ]);
+
+      const csv = [header, ...rows]
+        .map(r => r.map(v => `"${String(v||'').replace(/"/g,'""')}"`).join(','))
+        .join('\r\n');
+
+      const blob = new Blob([csv], { type:'text/csv;charset=utf-8;' });
+      const url  = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `pesakit_selesai_${new Date().toISOString().slice(0,10)}.csv`;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      URL.revokeObjectURL(url);
+
+      toast('Export', 'CSV selesai dimuat turun', 'success');
+    }catch(e){
+      toast('Ralat', 'Gagal eksport CSV: ' + e.message, 'danger');
+    }
+  }
+
+  // ====== UTIL ACTION untuk Follow-up Lab (digunakan pada butang IN_PROCESS/REPEAT) ======
+  async function markLabStatus(noIC, status){
+    try{
+      const res = await postForm(
+        { action:'updateLabStatus', noIC, status, staff: STAFF_EMAIL },
+        { msg:'Mengemas kini status lab…' }
+      );
+      if (res.status === 'success'){
+        toast('Berjaya', 'Status lab dikemas kini', 'success');
+        loadLabFollowUp();   // segar semula jadual lab
+        loadDashboardData(); // kemas kini indikator pada dashboard/badge
+      }else{
+        throw new Error(res.message || 'Gagal kemas kini status lab');
+      }
+    }catch(e){
+      toast('Ralat', e.message, 'danger');
+    }
+  }
+
+  // Pastikan butang Sign-In Google muncul selepas load
+  window.addEventListener('load', () => {
+    try { initGoogleSignIn(); } catch(e) { console.error(e); }
+  });
   </script>
 </body>
 </html>
