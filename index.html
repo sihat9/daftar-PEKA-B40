@@ -16,7 +16,7 @@
   <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2"></script>
 
   <!-- SheetJS (Excel) -->
-  <script src="https://cdn.jsdelivr.net/npm/xlsx@0.19.3/dist/xlsx.full.min.js"></script>
+  <script src="./vendor/xlsx/xlsx.full.min.js"></script>
 
   <!-- Google Identity Services (Sign-In) -->
   <script src="https://accounts.google.com/gsi/client" async defer></script>
@@ -523,7 +523,7 @@
       <div class="card"><div class="card-body">
         <div class="row g-2 align-items-center mb-3">
           <div class="col-md-6">
-            <input type="file" id="excelFile" class="form-control" accept=".xlsx,.xls" />
+            <input type="file" id="excelFile" class="form-control" accept=".xlsx,.xls,.csv" />
             <div class="form-text">Fail perlu ada lajur: <b>Nama</b>, <b>IC</b>, <b>Telefon</b>, <b>Alamat</b>. (Sistem tapis umur ≥40 ikut IC)</div>
           </div>
         </div>
@@ -1307,10 +1307,12 @@ async function refreshLogs(opts={}){
 /* =======================
    EXCEL (Kelayakan)
    ======================= */
+    
     /* ===== SheetJS guard/fallback: pastikan window.XLSX wujud (LETak DI ATAS "EXCEL (Kelayakan)") ===== */
+// ===== SheetJS guard/fallback: pastikan window.XLSX wujud =====
 function loadScriptOnce(src){
   return new Promise((resolve, reject) => {
-    if ([...document.scripts].some(s => s.src === src)) return resolve(); // elak muat dua kali
+    if ([...document.scripts].some(s => s.src === src)) return resolve();
     const s = document.createElement('script');
     s.src = src; s.async = true;
     s.onload = () => resolve();
@@ -1320,21 +1322,44 @@ function loadScriptOnce(src){
 }
 
 async function ensureXLSXReady(){
-  if (window.XLSX) return; // sudah tersedia
+  if (window.XLSX) return; // sudah tersedia melalui <script src="./vendor/...">
   const SOURCES = [
+    // fallback CDN kalau lokal gagal dimuat (path salah / CSP)
     'https://cdn.jsdelivr.net/npm/xlsx@0.19.3/dist/xlsx.full.min.js',
     'https://unpkg.com/xlsx@0.19.3/dist/xlsx.full.min.js',
     'https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.19.3/xlsx.full.min.js'
   ];
+  let lastErr;
   for (const url of SOURCES){
     try{
       await loadScriptOnce(url);
       if (window.XLSX) return;
-    }catch(_){}
+    }catch(e){ lastErr = e; }
   }
-  throw new Error('Tidak dapat memuatkan SheetJS (XLSX).');
+  throw lastErr || new Error('Tidak dapat memuatkan SheetJS (XLSX).');
 }
+// Parser CSV ringkas (sokong petikan & "" escape)
+function parseCSVText(text){
+  const rows = [];
+  let row = [], field = '', inQuotes = false;
 
+  for (let i = 0; i < text.length; i++){
+    const ch = text[i];
+    if (inQuotes){
+      if (ch === '"'){
+        if (text[i+1] === '"'){ field += '"'; i++; }
+        else { inQuotes = false; }
+      } else field += ch;
+    } else {
+      if (ch === '"') inQuotes = true;
+      else if (ch === ','){ row.push(field); field = ''; }
+      else if (ch === '\n'){ rows.push([...row, field]); row=[]; field=''; }
+      else if (ch !== '\r'){ field += ch; }
+    }
+  }
+  rows.push([...row, field]);
+  return rows;
+}
 function setupExcel(){
   const input = document.getElementById('excelFile');
   const tbody = document.getElementById('kelayakanTable');
@@ -1343,81 +1368,158 @@ function setupExcel(){
     const file = e.target.files[0];
     if (!file) return;
 
-    // ➊ Pastikan SheetJS wujud (fallback jika CDN utama gagal)
-    try {
-      await ensureXLSXReady();
-    } catch(err){
-      toast('Ralat','Gagal memuat SheetJS: ' + err.message, 'danger');
-      return;
-    }
+    const name = (file.name || '').toLowerCase();
+    const isCSV = name.endsWith('.csv');
 
-    showLoader('Memproses Excel…');
+    showLoader('Memproses fail…');
     try{
-      const data = await file.arrayBuffer();
-
-      // ➋ Guna global yang pasti ada
-      const wb  = window.XLSX.read(data, { type:'array' });
-      const ws  = wb.Sheets[wb.SheetNames[0]];
-      const json= window.XLSX.utils.sheet_to_json(ws, { defval:'' });
-
-      tbody.innerHTML = '';
-      if (!json.length) {
-        tbody.innerHTML = `<tr><td colspan="8" class="text-center text-muted">Tiada data.</td></tr>`;
-        return;
-      }
-
-      json.forEach((row, idx)=>{
-        const nama   = row.Nama || row.NAMA || row.name || '';
-        const ic     = row.IC || row.Ic || row.ic || '';
-        const telRaw = row.Telefon || row.TELEFON || row.Phone || row.phone || '';
-        const alamat = row.Alamat || row.ALAMAT || row.alamat || row.address || '';
-        const msisdn = normalizeMsisdnMY(telRaw);
-        const id     = 'x'+Date.now()+idx;
-
-        // Kelayakan lalai ikut umur ≥40 dari IC (YYMMDD……)
-        const lahirYY = ic.slice(0,2), lahirMM = ic.slice(2,4), lahirDD = ic.slice(4,6);
-        let ageOk = false;
-        if (/^\d{6}/.test(ic)){
-          const y = Number(lahirYY); const fullY = (y>=0 && y<=29) ? (2000+y) : (1900+y);
-          const dob = new Date(fullY, Number(lahirMM)-1, Number(lahirDD));
-          const now = new Date();
-          let age = now.getFullYear()-dob.getFullYear();
-          const m = now.getMonth()-dob.getMonth();
-          if (m<0 || (m===0 && now.getDate()<dob.getDate())) age--;
-          ageOk = age>=40;
+      if (isCSV){
+        // ===== Fallback CSV (tanpa SheetJS) =====
+        const text = await file.text();
+        const rows = parseCSVText(text);
+        tbody.innerHTML = '';
+        if (!rows.length){
+          tbody.innerHTML = `<tr><td colspan="8" class="text-center text-muted">Tiada data.</td></tr>`;
+          return;
         }
 
-        const tr = `
-          <tr id="${id}">
-            <td>${nama}</td>
-            <td>${ic}</td>
-            <td>${msisdn}</td>
-            <td>${alamat}</td>
-            <td class="text-center"><input type="checkbox" class="form-check-input" ${ageOk?'checked':''} onchange="toggleLayak('${id}', true)"></td>
-            <td class="text-center"><input type="checkbox" class="form-check-input" ${ageOk?'':'checked'} onchange="toggleLayak('${id}', false)"></td>
-            <td>
-              <div class="row g-1 align-items-center">
-                <div class="col"><input type="date" class="form-control form-control-sm tca-date" disabled></div>
-                <div class="col"><input type="time" class="form-control form-control-sm tca-time" disabled></div>
-                <div class="col"><input type="text" class="form-control form-control-sm tca-staff" placeholder="Nama staff" disabled></div>
-              </div>
-            </td>
-            <td>
-              <button class="btn btn-sm btn-primary" onclick="daftarFromExcel('${id}', '${encodeURIComponent(nama)}', '${encodeURIComponent(ic)}', '${msisdn}', '${encodeURIComponent(alamat)}')" disabled>Daftar</button>
-            </td>
-          </tr>`;
-        tbody.insertAdjacentHTML('beforeend', tr);
-      });
+        // Header → indeks (case-insensitive)
+        const header = rows[0].map(h => (h||'').trim().toLowerCase());
+        const idx = {
+          nama:    header.findIndex(h => ['nama','name'].includes(h)),
+          ic:      header.findIndex(h => ['ic','no ic','kad pengenalan','nric'].includes(h)),
+          telefon: header.findIndex(h => ['telefon','phone','no telefon','no tel'].includes(h)),
+          alamat:  header.findIndex(h => ['alamat','address'].includes(h)),
+        };
 
-      toast('Berjaya', `Berjaya memuat naik ${json.length} rekod dari Excel`, 'success');
-    } catch(e) {
-      toast('Ralat', 'Gagal memproses fail Excel: ' + e.message, 'danger');
+        let count = 0;
+        for (let r = 1; r < rows.length; r++){
+          const row = rows[r];
+          if (!row || row.length === 0) continue;
+
+          const nama   = idx.nama    >=0 ? row[idx.nama]    : '';
+          const ic     = idx.ic      >=0 ? row[idx.ic]      : '';
+          const telRaw = idx.telefon >=0 ? row[idx.telefon] : '';
+          const alamat = idx.alamat  >=0 ? row[idx.alamat]  : '';
+
+          if (!nama && !ic && !telRaw && !alamat) continue;
+
+          const msisdn = normalizeMsisdnMY(telRaw);
+          const id = 'x'+Date.now()+r;
+
+          // Umur ≥40 ikut IC (YYMMDD……)
+          const lahirYY = (ic||'').slice(0,2), lahirMM = (ic||'').slice(2,4), lahirDD = (ic||'').slice(4,6);
+          let ageOk = false;
+          if (/^\d{6}/.test(ic)){
+            const y = Number(lahirYY); const fullY = (y<=29 ? 2000+y : 1900+y);
+            const dob = new Date(fullY, Number(lahirMM)-1, Number(lahirDD));
+            const now = new Date();
+            let age = now.getFullYear() - dob.getFullYear();
+            const m  = now.getMonth() - dob.getMonth();
+            if (m<0 || (m===0 && now.getDate()<dob.getDate())) age--;
+            ageOk = age >= 40;
+          }
+
+          const tr = `
+            <tr id="${id}">
+              <td>${nama||''}</td>
+              <td>${ic||''}</td>
+              <td>${msisdn||''}</td>
+              <td>${alamat||''}</td>
+              <td class="text-center"><input type="checkbox" class="form-check-input" ${ageOk?'checked':''} onchange="toggleLayak('${id}', true)"></td>
+              <td class="text-center"><input type="checkbox" class="form-check-input" ${ageOk?'':'checked'} onchange="toggleLayak('${id}', false)"></td>
+              <td>
+                <div class="row g-1 align-items-center">
+                  <div class="col"><input type="date" class="form-control form-control-sm tca-date" disabled></div>
+                  <div class="col"><input type="time" class="form-control form-control-sm tca-time" disabled></div>
+                  <div class="col"><input type="text" class="form-control form-control-sm tca-staff" placeholder="Nama staff" disabled></div>
+                </div>
+              </td>
+              <td>
+                <button class="btn btn-sm btn-primary" onclick="daftarFromExcel('${id}', '${encodeURIComponent(nama||'')}', '${encodeURIComponent(ic||'')}', '${msisdn||''}', '${encodeURIComponent(alamat||'')}')" disabled>Daftar</button>
+              </td>
+            </tr>`;
+          tbody.insertAdjacentHTML('beforeend', tr);
+          count++;
+        }
+
+        if (!count){
+          tbody.innerHTML = `<tr><td colspan="8" class="text-center text-muted">Tiada data sah ditemui dalam CSV.</td></tr>`;
+        } else {
+          toast('Berjaya', `CSV dimuat: ${count} rekod`, 'success');
+        }
+
+      } else {
+        // ===== Excel (XLSX/XLS) – guna SheetJS =====
+        try { await ensureXLSXReady(); }
+        catch(err){
+          toast('Ralat', 'Gagal memuat SheetJS. Pastikan fail lokal ./vendor/xlsx/xlsx.full.min.js wujud atau guna CSV.', 'danger');
+          return;
+        }
+
+        const data = await file.arrayBuffer();
+        const wb = window.XLSX.read(data, { type:'array' });
+        const ws = wb.Sheets[wb.SheetNames[0]];
+        const json = window.XLSX.utils.sheet_to_json(ws, { defval:'' });
+
+        tbody.innerHTML = '';
+        if (!json.length){
+          tbody.innerHTML = `<tr><td colspan="8" class="text-center text-muted">Tiada data.</td></tr>`;
+          return;
+        }
+
+        json.forEach((row, idx)=>{
+          const nama   = row.Nama || row.NAMA || row.name || '';
+          const ic     = row.IC || row.Ic || row.ic || '';
+          const tel    = row.Telefon || row.TELEFON || row.Phone || row.phone || '';
+          const alamat = row.Alamat || row.ALAMAT || row.alamat || row.address || '';
+          const msisdn = normalizeMsisdnMY(tel);
+          const id     = 'x'+Date.now()+idx;
+
+          const lahirYY = ic.slice(0,2), lahirMM = ic.slice(2,4), lahirDD = ic.slice(4,6);
+          let ageOk = false;
+          if (/^\d{6}/.test(ic)){
+            const y = Number(lahirYY); const fullY = (y<=29 ? 2000+y : 1900+y);
+            const dob = new Date(fullY, Number(lahirMM)-1, Number(lahirDD));
+            const now = new Date();
+            let age = now.getFullYear()-dob.getFullYear();
+            const m = now.getMonth()-dob.getMonth();
+            if (m<0 || (m===0 && now.getDate()<dob.getDate())) age--;
+            ageOk = age>=40;
+          }
+
+          const tr = `
+            <tr id="${id}">
+              <td>${nama}</td>
+              <td>${ic}</td>
+              <td>${msisdn}</td>
+              <td>${alamat}</td>
+              <td class="text-center"><input type="checkbox" class="form-check-input" ${ageOk?'checked':''} onchange="toggleLayak('${id}', true)"></td>
+              <td class="text-center"><input type="checkbox" class="form-check-input" ${ageOk?'':'checked'} onchange="toggleLayak('${id}', false)"></td>
+              <td>
+                <div class="row g-1 align-items-center">
+                  <div class="col"><input type="date" class="form-control form-control-sm tca-date" disabled></div>
+                  <div class="col"><input type="time" class="form-control form-control-sm tca-time" disabled></div>
+                  <div class="col"><input type="text" class="form-control form-control-sm tca-staff" placeholder="Nama staff" disabled></div>
+                </div>
+              </td>
+              <td>
+                <button class="btn btn-sm btn-primary" onclick="daftarFromExcel('${id}', '${encodeURIComponent(nama)}', '${encodeURIComponent(ic)}', '${msisdn}', '${encodeURIComponent(alamat)}')" disabled>Daftar</button>
+              </td>
+            </tr>`;
+          tbody.insertAdjacentHTML('beforeend', tr);
+        });
+
+        toast('Berjaya', `Berjaya memuat naik ${json.length} rekod dari Excel`, 'success');
+      }
+
+    } catch(e){
+      toast('Ralat', 'Gagal memproses fail: ' + e.message, 'danger');
     } finally {
       hideLoader();
     }
   });
 }
-
 function toggleLayak(rowId, isLayak){
   const tr = document.getElementById(rowId);
   if (!tr) return;
