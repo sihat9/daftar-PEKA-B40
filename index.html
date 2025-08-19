@@ -3,6 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+
   <title>Sistem Tracker PEKA B40 - Klinik SihatSokmo</title>
 
   <!-- Bootstrap & Icons -->
@@ -14,17 +15,22 @@
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2"></script>
 
-  <!-- SheetJS (Excel) via 3x CDN fallback (robust) -->
+  <!-- SheetJS (Excel) via CDN -->
+  <!-- XLSX robust loader + override (SIAP TAMPAL DI <head>) -->
   <script>
     (function () {
+      // Jika dah ada, tak perlu apa-apa
       if (window.XLSX) return;
+
+      // Helper umum: muat <script> sekali
       window.loadScriptOnce = window.loadScriptOnce || (function () {
         const loaded = new Set();
         return function loadScriptOnce(url) {
           return new Promise((resolve, reject) => {
             if (loaded.has(url)) return resolve();
             const s = document.createElement('script');
-            s.src = url; s.async = true;
+            s.src = url;
+            s.async = true;
             s.onload = () => { loaded.add(url); resolve(); };
             s.onerror = () => reject(new Error('Gagal muat: ' + url));
             document.head.appendChild(s);
@@ -32,6 +38,7 @@
         };
       })();
 
+      // Override/definisi semula: pastikan XLSX wujud, cuba 3 CDN
       window.ensureXLSXReady = async function ensureXLSXReady() {
         if (window.XLSX) return;
         const cdns = [
@@ -43,8 +50,13 @@
         for (const url of cdns) {
           try {
             await window.loadScriptOnce(url);
-            if (window.XLSX) { console.log('[XLSX] Loaded from', url); return; }
-          } catch (e) { lastErr = e; }
+            if (window.XLSX) {
+              console.log('[XLSX] Loaded from', url);
+              return;
+            }
+          } catch (e) {
+            lastErr = e;
+          }
         }
         console.error('[XLSX] Gagal dimuat dari semua CDN.', lastErr || '');
         throw new Error('XLSX gagal dimuat.');
@@ -52,22 +64,35 @@
     })();
   </script>
 
-  <!-- Google Identity Services -->
+  <!-- Google Identity Services (Sign-In) -->
   <script src="https://accounts.google.com/gsi/client" async defer></script>
 
-  <!-- html2canvas (WhatsApp gambar laporan) -->
+  <!-- html2canvas untuk tangkap preview → imej (BARU) -->
   <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
 
   <style>
     :root{ --primary:#2c3e50; --secondary:#3498db; --success:#27ae60; --warning:#f39c12; --danger:#e74c3c; --light:#ecf0f1; --dark:#34495e; --muted:#95a5a6; }
-    html{ font-size:15px; } @media (max-width:1200px){ html{ font-size:14px; } } @media (max-width:576px){ html{ font-size:13px; } }
-    html,body{height:100%} body{font-family:'Segoe UI',Tahoma,Geneva,Verdana,sans-serif;background:#f5f7fa;color:#333}
+    html{ font-size:15px; }
+    @media (max-width:1200px){ html{ font-size:14px; } }
+    @media (max-width:576px){ html{ font-size:13px; } }
+
+    html,body{height:100%}
+    body{font-family:'Segoe UI',Tahoma,Geneva,Verdana,sans-serif;background:#f5f7fa;color:#333}
+
+    /* Navbar */
     .navbar-main{background:#fff;box-shadow:0 2px 10px rgba(0,0,0,.08);padding:10px 0}
     .navbar-brand{font-weight:700;color:var(--primary);font-size:1.05rem;display:flex;align-items:center;gap:10px}
     .nav-link{color:var(--dark);font-weight:500;margin:0 4px;padding:7px 10px!important;border-radius:8px;transition:.2s;position:relative}
     .nav-link:hover,.nav-link.active{background:rgba(52,152,219,.12);color:var(--secondary)}
-    .nav-badge{ position:absolute; top:-4px; right:-2px; transform:translate(30%,-30%); background:#dc3545; color:#fff; border-radius:999px; font-size:.65rem; padding:2px 6px; display:none; }
+    .nav-badge{
+      position:absolute; top:-4px; right:-2px; transform:translate(30%,-30%);
+      background:#dc3545; color:#fff; border-radius:999px; font-size:.65rem; padding:2px 6px; display:none;
+    }
+
+    /* Header */
     .page-header{background:linear-gradient(135deg,var(--primary),var(--secondary));color:#fff;padding:14px 0;margin-bottom:12px;border-radius:0 0 12px 12px}
+
+    /* Cards & tables */
     .card{border:none;border-radius:14px;box-shadow:0 8px 24px rgba(0,0,0,.06);margin-bottom:16px}
     .card-header{background:#fff;border-bottom:1px solid rgba(0,0,0,.06);font-weight:600;padding:12px 16px;border-radius:14px 14px 0 0!important}
     .stat-card{padding:14px;border-radius:14px;color:#fff;text-align:center;position:relative;overflow:hidden;cursor:pointer}
@@ -77,81 +102,174 @@
     .searchbar{max-width:340px}
     .mini-actions .btn{margin-right:6px;margin-bottom:6px}
 
-    /* Loader */
-    #appLoader{ position:fixed; inset:0; z-index:2000; display:none; background: radial-gradient(1200px 600px at 10% -10%, rgba(52,152,219,.18), transparent), radial-gradient(1200px 600px at 110% 110%, rgba(46,204,113,.18), transparent), rgba(255,255,255,.35); backdrop-filter: blur(10px); }
-    #appLoader .loader-card{ position:absolute; top:50%; left:50%; transform:translate(-50%,-50%); background:rgba(255,255,255,.75); border:1px solid rgba(255,255,255,.6); box-shadow: 0 20px 40px rgba(0,0,0,.12); border-radius:18px; padding:16px 18px; min-width:220px; text-align:center; }
-    .spinner-premium{ width:36px;height:36px;border-radius:50%; border:4px solid rgba(52,152,219,.25); border-top-color:#3498db; animation:spin .9s linear infinite; margin:6px auto 8px; }
+    /* Global App Loader (maks 2s) */
+    #appLoader{
+      position:fixed; inset:0; z-index:2000; display:none;
+      background: radial-gradient(1200px 600px at 10% -10%, rgba(52,152,219,.18), transparent),
+                  radial-gradient(1200px 600px at 110% 110%, rgba(46,204,113,.18), transparent),
+                  rgba(255,255,255,.35);
+      backdrop-filter: blur(10px);
+    }
+    #appLoader .loader-card{
+      position:absolute; top:50%; left:50%; transform:translate(-50%,-50%);
+      background:rgba(255,255,255,.75); border:1px solid rgba(255,255,255,.6);
+      box-shadow: 0 20px 40px rgba(0,0,0,.12);
+      border-radius:18px; padding:16px 18px; min-width:220px; text-align:center;
+    }
+    .spinner-premium{
+      width:36px;height:36px;border-radius:50%;
+      border:4px solid rgba(52,152,219,.25);
+      border-top-color:#3498db; animation:spin .9s linear infinite; margin:6px auto 8px;
+    }
     @keyframes spin{to{transform:rotate(360deg)}}
 
-    /* Log Drawer */
-    #logDrawer{ position:fixed; top:0; right:-420px; width:400px; max-width:90vw; height:100%; background:#f8f9fb; box-shadow:-12px 0 35px rgba(0,0,0,.18); z-index:3000; transition:right .25s ease; border-left:1px solid rgba(0,0,0,.05); display:flex; flex-direction:column; }
+    /* Log Calls Drawer (gaya iPhone) */
+    #logDrawer{
+      position:fixed; top:0; right:-420px; width:400px; max-width:90vw; height:100%;
+      background:#f8f9fb; box-shadow:-12px 0 35px rgba(0,0,0,.18); z-index:3000;
+      transition:right .25s ease; border-left:1px solid rgba(0,0,0,.05);
+      display:flex; flex-direction:column;
+    }
     #logDrawer.open{ right:0; }
-    .log-header{ padding:10px 12px; background:#fff; border-bottom:1px solid rgba(0,0,0,.06); display:flex; gap:8px; align-items:center; }
+    .log-header{
+      padding:10px 12px; background:#fff; border-bottom:1px solid rgba(0,0,0,.06);
+      display:flex; gap:8px; align-items:center;
+    }
     .log-header .title{font-weight:700; color:#222; flex:1}
     .log-search{ padding:8px; background:#fff; border-bottom:1px solid rgba(0,0,0,.06); }
     .log-body{ padding:10px; overflow:auto; flex:1; display:flex; flex-direction:column; gap:8px; }
-    .bubble{ max-width:80%; padding:8px 10px; border-radius:16px; box-shadow:0 4px 12px rgba(0,0,0,.06); position:relative; font-size:.9rem; line-height:1.2rem; }
+    .bubble{
+      max-width:80%; padding:8px 10px; border-radius:16px; box-shadow:0 4px 12px rgba(0,0,0,.06);
+      position:relative; font-size:.9rem; line-height:1.2rem;
+    }
     .bubble.me{ margin-left:auto; background:#007aff; color:#fff; border-bottom-right-radius:6px; }
     .bubble.other{ margin-right:auto; background:#e9ecef; color:#222; border-bottom-left-radius:6px; }
     .bubble .meta{ font-size:.72rem; opacity:.8; margin-top:5px }
     .log-loading{ display:none; text-align:center; padding:8px }
     .log-loading.active{ display:block }
-    #fabLog{ position:fixed; right:18px; bottom:18px; z-index:3500; width:56px; height:56px; border-radius:50%; display:flex; align-items:center; justify-content:center; box-shadow:0 10px 24px rgba(0,0,0,.18); }
 
-    /* Toast host */
-    #toastHost{ position: fixed; top: 0; left: 0; right: 0; padding: 12px; z-index: 4000; pointer-events: none; display: flex; justify-content: flex-end; align-items: flex-start; box-sizing: border-box; }
-    #toastContainer{ display: flex; flex-direction: column; gap: 8px; }
-    #toastHost .toast{ pointer-events: auto; box-sizing: border-box; width: max-content; max-width: min(92vw, 420px); word-wrap: break-word; overflow-wrap: anywhere; }
+    /* FAB (tombol terapung) untuk Log Calls */
+    #fabLog{
+      position:fixed; right:18px; bottom:18px; z-index:3500;
+      width:56px; height:56px; border-radius:50%;
+      display:flex; align-items:center; justify-content:center;
+      box-shadow:0 10px 24px rgba(0,0,0,.18);
+    }
+
+    /* ===== Toast: kebal overflow & tidak tenggelam di kanan ===== */
+    #toastHost{
+      position: fixed;
+      top: 0; left: 0; right: 0;
+      padding: 12px;
+      z-index: 4000;
+      pointer-events: none;
+      display: flex;
+      justify-content: flex-end;
+      align-items: flex-start;
+      box-sizing: border-box;
+    }
+    #toastContainer{
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+    #toastHost .toast{
+      pointer-events: auto;
+      box-sizing: border-box;
+      width: max-content;
+      max-width: min(92vw, 420px);
+      word-wrap: break-word;
+      overflow-wrap: anywhere;
+    }
     #logDrawer.open ~ #toastHost{ justify-content: flex-start; }
-    @media (max-width: 576px){ #toastHost{ padding: 8px; } #toastHost .toast{ max-width: 96vw; } }
+    @media (max-width: 576px){
+      #toastHost{ padding: 8px; }
+      #toastHost .toast{ max-width: 96vw; }
+    }
 
-    /* NADI table */
+    /* NADI TABLE STYLES */
     .nadi-scroll-container { overflow-x: auto; width: 100%; padding-bottom: 8px; }
     .nadi-table { width: 100%; min-width: 1300px; border-collapse: separate; border-spacing: 0; }
-    .nadi-table th { background:#f8f9fa; padding:10px 8px; font-weight:600; text-align:center; position:sticky; top:0; z-index:10; border:1px solid #dee2e6; }
-    .nadi-table td { padding:8px; vertical-align:middle; border:1px solid #dee2e6; }
-    .nadi-input-cell{ position:relative; }
-    .nadi-input-cell .view-mode{ width:100%; padding:6px 8px; cursor:pointer; border:1px solid transparent; border-radius:4px; min-height:36px; display:flex; align-items:center; }
-    .nadi-input-cell .view-mode:hover{ background:#f8f9fa; border:1px solid #dee2e6; }
-    .nadi-input-cell input{ width:100%; min-width:100px; border:1px solid #ced4da; border-radius:4px; padding:6px 8px; transition: width .2s ease; }
-    .nadi-input-cell input:focus{ width:auto; min-width:100px; }
-    .nadi-checkbox-cell{text-align:center}
-    .nadi-actions-cell{ min-width:180px; }
-    .nadi-counter{ background:var(--primary); color:#fff; border-radius:50%; width:24px; height:24px; display:inline-flex; align-items:center; justify-content:center; font-size:.75rem; }
+    .nadi-table th {
+      background: #f8f9fa; padding: 10px 8px; font-weight: 600; text-align: center;
+      position: sticky; top: 0; z-index: 10; border: 1px solid #dee2e6;
+    }
+    .nadi-table td { padding: 8px; vertical-align: middle; border: 1px solid #dee2e6; }
+    .nadi-input-cell { position: relative; }
+    .nadi-input-cell .view-mode {
+      width: 100%; padding: 6px 8px; cursor: pointer; border: 1px solid transparent;
+      border-radius: 4px; min-height: 36px; display: flex; align-items: center;
+    }
+    .nadi-input-cell .view-mode:hover { background-color: #f8f9fa; border: 1px solid #dee2e6; }
+    .nadi-input-cell input {
+      width: 100%; min-width: 100px; border: 1px solid #ced4da; border-radius: 4px; padding: 6px 8px; transition: width 0.2s ease;
+    }
+    .nadi-input-cell input:focus { width: auto; min-width: 100px; }
+    .nadi-checkbox-cell { text-align: center; }
+    .nadi-actions-cell { min-width: 180px; }
+    .nadi-counter {
+      background: var(--primary); color: white; border-radius: 50%;
+      width: 24px; height: 24px; display: inline-flex; align-items: center; justify-content: center; font-size: 0.75rem;
+    }
+
+    /* Responsive */
+    @media (max-width: 992px) { .stat-card .number{font-size:1.3rem} }
 
     /* Form sections */
-    .form-section { background:#fff; border-radius:12px; padding:16px; margin-bottom:16px; box-shadow:0 2px 8px rgba(0,0,0,0.05); }
-    .form-section h5 { color:var(--primary); margin-bottom:16px; padding-bottom:8px; border-bottom:1px solid #eee; }
+    .form-section { background: white; border-radius: 12px; padding: 16px; margin-bottom: 16px; box-shadow: 0 2px 8px rgba(0,0,0,0.05); }
+    .form-section h5 { color: var(--primary); margin-bottom: 16px; padding-bottom: 8px; border-bottom: 1px solid #eee; }
     .sticky-form-actions { position: sticky; bottom: 0; background: white; padding: 12px; border-top: 1px solid #eee; margin-top: 16px; }
 
-    /* WhatsApp report preview */
-    .whatsapp-report{ width:100%; max-width:500px; background:#fff; border-radius:12px; padding:20px; box-shadow:0 4px 12px rgba(0,0,0,0.1); margin:0 auto; }
-    .whatsapp-report-header{ display:flex; align-items:center; margin-bottom:15px; padding-bottom:15px; border-bottom:1px solid #eee; }
-    .whatsapp-report-logo{ width:50px; height:50px; border-radius:8px; margin-right:15px; object-fit:cover; border:1px solid rgba(0,0,0,0.08); }
-    .whatsapp-report-title{ font-size:18px; font-weight:700; color:var(--primary); }
-    .whatsapp-report-subtitle{ font-size:14px; color:var(--muted); }
-    .whatsapp-report-body{ margin-bottom:15px; }
-    .whatsapp-report-row{ display:flex; margin-bottom:8px; }
-    .whatsapp-report-label{ font-weight:600; width:120px; color:var(--dark); }
-    .whatsapp-report-value{ flex:1; }
-    .whatsapp-report-footer{ text-align:center; font-size:12px; color:var(--muted); margin-top:20px; padding-top:15px; border-top:1px solid #eee; }
+    /* WhatsApp Report Image */
+    .whatsapp-report {
+      width: 100%; max-width: 500px; background: white; border-radius: 12px; padding: 20px;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.1); margin: 0 auto;
+    }
+    .whatsapp-report-header {
+      display: flex; align-items: center; margin-bottom: 15px; padding-bottom: 15px; border-bottom: 1px solid #eee;
+    }
+    .whatsapp-report-logo {
+      width: 50px; height: 50px; border-radius: 8px; margin-right: 15px; object-fit: cover; border: 1px solid rgba(0,0,0,0.08);
+    }
+    .whatsapp-report-title { font-size: 18px; font-weight: 700; color: var(--primary); }
+    .whatsapp-report-subtitle { font-size: 14px; color: var(--muted); }
+    .whatsapp-report-body { margin-bottom: 15px; }
+    .whatsapp-report-row { display: flex; margin-bottom: 8px; }
+    .whatsapp-report-label { font-weight: 600; width: 120px; color: var(--dark); }
+    .whatsapp-report-value { flex: 1; }
+    .whatsapp-report-footer { text-align: center; font-size: 12px; color: var(--muted); margin-top: 20px; padding-top: 15px; border-top: 1px solid #eee; }
 
-    /* NADI Summary */
-    .nadi-summary-container{ display:flex; gap:12px; margin-bottom:16px; flex-wrap:wrap; }
-    .nadi-summary-card{ flex:1; min-width:200px; background:#fff; border-radius:10px; padding:12px; box-shadow:0 2px 8px rgba(0,0,0,0.08); text-align:center; }
-    .nadi-summary-card .title{ font-size:.9rem; color:var(--muted); margin-bottom:8px; }
-    .nadi-summary-card .count{ font-size:1.5rem; font-weight:700; }
-    .nadi-summary-card.layak{ border-top:4px solid var(--success); }
-    .nadi-summary-card.tak-layak{ border-top:4px solid var(--danger); }
-
-    .program-history-container{ display:none; }
-    .program-history-header{ display:flex; justify-content:space-between; align-items:center; margin-bottom:16px; }
-    .program-history-search{ max-width:300px; }
-    .program-history-chart{ height:300px; margin-top:20px; }
+    /* NADI Summary Cards */
+    .nadi-summary-container {
+      display: flex;
+      gap: 12px;
+      margin-bottom: 16px;
+      flex-wrap: wrap;
+    }
+    .nadi-summary-card {
+      flex: 1;
+      min-width: 200px;
+      background: white;
+      border-radius: 10px;
+      padding: 12px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+      text-align: center;
+    }
+    .nadi-summary-card .title {
+      font-size: 0.9rem;
+      color: var(--muted);
+      margin-bottom: 8px;
+    }
+    .nadi-summary-card .count {
+      font-size: 1.5rem;
+      font-weight: 700;
+    }
+    .nadi-summary-card.layak { border-top: 4px solid var(--success); }
+    .nadi-summary-card.tak-layak { border-top: 4px solid var(--danger); }
   </style>
 </head>
 <body>
-  <!-- Loader -->
+  <!-- Global Loader -->
   <div id="appLoader" aria-hidden="true">
     <div class="loader-card">
       <div class="spinner-premium"></div>
@@ -160,15 +278,20 @@
     </div>
   </div>
 
-  <!-- Log Drawer -->
+  <!-- Log Calls Drawer -->
   <div id="logDrawer" aria-hidden="true">
     <div class="log-header">
       <button class="btn btn-sm btn-outline-secondary" id="btnCloseLog"><i class="bi bi-x-lg"></i></button>
       <div class="title"><i class="bi bi-chat-dots me-1"></i> Log Calls</div>
       <div id="logBadge" class="badge text-bg-primary">0</div>
     </div>
-    <div class="log-search"><input id="logSearch" class="form-control form-control-sm" placeholder="Cari: nama / IC / telefon / staff…"/></div>
-    <div id="logLoading" class="log-loading"><div class="spinner-border spinner-border-sm" role="status"></div><div class="small text-muted mt-1">Memuat Log Calls…</div></div>
+    <div class="log-search">
+      <input id="logSearch" class="form-control form-control-sm" placeholder="Cari: nama / IC / telefon / staff…" />
+    </div>
+    <div id="logLoading" class="log-loading">
+      <div class="spinner-border spinner-border-sm" role="status"></div>
+      <div class="small text-muted mt-1">Memuat Log Calls…</div>
+    </div>
     <div id="logBody" class="log-body"></div>
   </div>
 
@@ -179,24 +302,55 @@
         <img id="brandLogo" alt="Logo" style="width:32px;height:32px;border-radius:8px;object-fit:cover;border:1px solid rgba(0,0,0,.08)">
         <span>Klinik SihatSokmo</span>
       </a>
+
+      <!-- Google Sign-in button placeholder -->
       <div id="signinArea" class="d-lg-none me-2"></div>
-      <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarMain"><span class="navbar-toggler-icon"></span></button>
+
+      <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarMain">
+        <span class="navbar-toggler-icon"></span>
+      </button>
       <div class="collapse navbar-collapse" id="navbarMain">
         <ul class="navbar-nav me-auto mb-2 mb-lg-0">
-          <li class="nav-item position-relative"><a class="nav-link active" href="#dashboard"><i class="fas fa-tachometer-alt"></i> Dashboard</a></li>
-          <li class="nav-item position-relative"><a class="nav-link" href="#nadi"><i class="bi bi-clipboard2-pulse"></i> Program PEKA B40 bersama NADI</a></li>
-          <li class="nav-item position-relative"><a class="nav-link" href="#daftar-peka"><i class="fas fa-user-plus"></i> Daftar Peka</a></li>
-          <li class="nav-item position-relative"><a class="nav-link" href="#kelayakan"><i class="fa-solid fa-file-excel"></i> Kelayakan (Excel)</a></li>
-          <li class="nav-item position-relative"><a class="nav-link" href="#tca-call"><i class="fas fa-phone"></i> TCA Call</a><span id="badgeTCA" class="nav-badge">0</span></li>
-          <li class="nav-item position-relative"><a class="nav-link" href="#first-visit"><i class="fas fa-calendar-check"></i> First Visit</a><span id="badgeFirst" class="nav-badge">0</span></li>
-          <li class="nav-item position-relative"><a class="nav-link" href="#lab-followup"><i class="fa-solid fa-flask-vial"></i> Follow-up Lab Report</a><span id="badgeLab" class="nav-badge">0</span></li>
-          <li class="nav-item position-relative"><a class="nav-link" href="#second-visit"><i class="fas fa-calendar-check"></i> Second Visit</a><span id="badgeSecond" class="nav-badge">0</span></li>
-          <li class="nav-item position-relative"><a class="nav-link" href="#selesai"><i class="fas fa-check-circle"></i> Selesai</a></li>
-          <li class="nav-item position-relative"><a class="nav-link" href="#arkib"><i class="fa-solid fa-box-archive"></i> Arkib</a></li>
+          <li class="nav-item position-relative">
+            <a class="nav-link active" href="#dashboard"><i class="fas fa-tachometer-alt"></i> Dashboard</a>
+          </li>
+          <li class="nav-item position-relative">
+            <a class="nav-link" href="#nadi"><i class="bi bi-clipboard2-pulse"></i> Program PEKA B40 bersama NADI</a>
+          </li>
+          <li class="nav-item position-relative">
+            <a class="nav-link" href="#daftar-peka"><i class="fas fa-user-plus"></i> Daftar Peka</a>
+          </li>
+          <li class="nav-item position-relative">
+            <a class="nav-link" href="#kelayakan"><i class="fa-solid fa-file-excel"></i> Kelayakan (Excel)</a>
+          </li>
+          <li class="nav-item position-relative">
+            <a class="nav-link" href="#tca-call"><i class="fas fa-phone"></i> TCA Call</a>
+            <span id="badgeTCA" class="nav-badge">0</span>
+          </li>
+          <li class="nav-item position-relative">
+            <a class="nav-link" href="#first-visit"><i class="fas fa-calendar-check"></i> First Visit</a>
+            <span id="badgeFirst" class="nav-badge">0</span>
+          </li>
+          <li class="nav-item position-relative">
+            <a class="nav-link" href="#lab-followup"><i class="fa-solid fa-flask-vial"></i> Follow-up Lab Report</a>
+            <span id="badgeLab" class="nav-badge">0</span>
+          </li>
+          <li class="nav-item position-relative">
+            <a class="nav-link" href="#second-visit"><i class="fas fa-calendar-check"></i> Second Visit</a>
+            <span id="badgeSecond" class="nav-badge">0</span>
+          </li>
+          <li class="nav-item position-relative">
+            <a class="nav-link" href="#selesai"><i class="fas fa-check-circle"></i> Selesai</a>
+          </li>
+          <li class="nav-item position-relative">
+            <a class="nav-link" href="#arkib"><i class="fa-solid fa-box-archive"></i> Arkib</a>
+          </li>
         </ul>
+
         <div class="d-none d-lg-flex align-items-center gap-2">
           <div id="signinAreaDesktop"></div>
           <span id="staffBadge" class="badge bg-secondary d-none"><i class="bi bi-person-check me-1"></i><span id="staffEmail"></span></span>
+          <!-- (Butang Log Calls terapung di bawah – tidak dalam navbar) -->
         </div>
       </div>
     </div>
@@ -218,6 +372,7 @@
   </header>
 
   <main class="container">
+
     <!-- Dashboard -->
     <section id="dashboard" class="mb-4">
       <div class="d-flex justify-content-between align-items-center mb-3">
@@ -228,14 +383,39 @@
       </div>
 
       <div class="row g-3 mb-3">
-        <div class="col-6 col-md-2"><div class="stat-card" data-goto="#tca-call" style="background:linear-gradient(135deg,var(--secondary),#2980b9)"><div class="number" id="totalDaftar">0</div><div class="small">Aktif</div></div></div>
-        <div class="col-6 col-md-2"><div class="stat-card" data-goto="#first-visit" style="background:linear-gradient(135deg,var(--warning),#e67e22)"><div class="number" id="totalFirstVisit">0</div><div class="small">First Visit (Pending)</div></div></div>
-        <div class="col-6 col-md-2"><div class="stat-card" data-goto="#second-visit" style="background:linear-gradient(135deg,#9b59b6,#8e44ad)"><div class="number" id="totalSecondVisit">0</div><div class="small">Second Visit (Pending)</div></div></div>
-        <div class="col-6 col-md-2"><div class="stat-card" data-goto="#selesai" style="background:linear-gradient(135deg,var(--success),#16a085)"><div class="number" id="totalSelesai">0</div><div class="small">Selesai</div></div></div>
-        <div class="col-6 col-md-2"><div class="stat-card" data-goto="#lab-followup" style="background:linear-gradient(135deg,#8e44ad,#6c5ce7)"><div class="number" id="labFollowUpDue">0</div><div class="small">Result > 3 Hari</div></div></div>
-        <div class="col-6 col-md-2"><div class="stat-card" data-goto="#lab-followup" style="background:linear-gradient(135deg,#d35400,#c0392b)"><div class="number" id="labFollowUpPending">0</div><div class="small">Perlu Follow-up</div></div></div>
+        <div class="col-6 col-md-2">
+          <div class="stat-card" data-goto="#tca-call" style="background:linear-gradient(135deg,var(--secondary),#2980b9)">
+            <div class="number" id="totalDaftar">0</div><div class="small">Aktif</div>
+          </div>
+        </div>
+        <div class="col-6 col-md-2">
+          <div class="stat-card" data-goto="#first-visit" style="background:linear-gradient(135deg,var(--warning),#e67e22)">
+            <div class="number" id="totalFirstVisit">0</div><div class="small">First Visit (Pending)</div>
+          </div>
+        </div>
+        <div class="col-6 col-md-2">
+          <div class="stat-card" data-goto="#second-visit" style="background:linear-gradient(135deg,#9b59b6,#8e44ad)">
+            <div class="number" id="totalSecondVisit">0</div><div class="small">Second Visit (Pending)</div>
+          </div>
+        </div>
+        <div class="col-6 col-md-2">
+          <div class="stat-card" data-goto="#selesai" style="background:linear-gradient(135deg,var(--success),#16a085)">
+            <div class="number" id="totalSelesai">0</div><div class="small">Selesai</div>
+          </div>
+        </div>
+        <div class="col-6 col-md-2">
+          <div class="stat-card" data-goto="#lab-followup" style="background:linear-gradient(135deg,#8e44ad,#6c5ce7)">
+            <div class="number" id="labFollowUpDue">0</div><div class="small">Result > 3 Hari</div>
+          </div>
+        </div>
+        <div class="col-6 col-md-2">
+          <div class="stat-card" data-goto="#lab-followup" style="background:linear-gradient(135deg,#d35400,#c0392b)">
+            <div class="number" id="labFollowUpPending">0</div><div class="small">Perlu Follow-up</div>
+          </div>
+        </div>
       </div>
 
+      <!-- Pesakit perlu dihubungi (ringkas hari ini mengikut backend lalai) -->
       <div class="card mb-3">
         <div class="card-header d-flex justify-content-between align-items-center">
           <span><i class="fas fa-phone me-2"></i>Pesakit Perlu Dihubungi Hari Ini</span>
@@ -251,6 +431,7 @@
         </div>
       </div>
 
+      <!-- Statistik -->
       <div class="card">
         <div class="card-header d-flex justify-content-between align-items-center">
           <span><i class="fas fa-chart-bar me-2"></i>Statistik Pesakit Selesai</span>
@@ -270,91 +451,113 @@
         <h2 class="h6 m-0"><i class="bi bi-clipboard2-pulse me-2"></i>Program PEKA B40 bersama NADI</h2>
         <div class="d-flex gap-2">
           <button id="btnNadiExportCsv" class="btn btn-sm btn-outline-success"><i class="bi bi-filetype-csv me-1"></i>Export to CSV</button>
-          <button id="btnProgramHistory" class="btn btn-sm btn-outline-primary"><i class="bi bi-clock-history me-1"></i>Sejarah Program</button>
         </div>
       </div>
-      <div class="card mb-3">
-        <div class="card-body">
-          <div class="row">
-            <div class="col-md-6"><label class="form-label">Tajuk Program</label><input type="text" id="programTitle" class="form-control" placeholder="Contoh: Program Saringan Kesihatan B40 - Kampung Baru"></div>
-            <div class="col-md-6"><label class="form-label">Tarikh Program</label><input type="date" id="programDate" class="form-control" value=""></div>
-          </div>
-        </div>
-      </div>
-
+      
+      <!-- Summary Cards -->
       <div class="nadi-summary-container">
-        <div class="nadi-summary-card layak"><div class="title">Layak PEKA B40</div><div class="count" id="nadiLayakCount">0</div></div>
-        <div class="nadi-summary-card tak-layak"><div class="title">Tidak Layak</div><div class="count" id="nadiTakLayakCount">0</div></div>
+        <div class="nadi-summary-card layak">
+          <div class="title">Layak PEKA B40</div>
+          <div class="count" id="nadiLayakCount">0</div>
+        </div>
+        <div class="nadi-summary-card tak-layak">
+          <div class="title">Tidak Layak</div>
+          <div class="count" id="nadiTakLayakCount">0</div>
+        </div>
       </div>
-
-      <div class="card" id="nadiFormContainer">
+      
+      <div class="card">
         <div class="card-body">
           <div class="nadi-scroll-container">
             <table class="nadi-table">
               <thead>
                 <tr>
-                  <th>#</th><th>Nama Pesakit</th><th>No IC</th><th>Umur</th><th>Telefon</th><th>Alamat</th>
-                  <th>BP</th><th>PR</th><th>DXT</th><th>Tinggi</th><th>Berat</th><th>BMI</th>
-                  <th>Layak</th><th>Tidak Layak</th><th>TCA & Staff</th><th>Tindakan</th>
+                  <th style="width: 40px;">#</th>
+                  <th style="min-width: 150px;">Nama Pesakit</th>
+                  <th style="min-width: 120px;">No IC</th>
+                  <th style="min-width: 80px;">Umur</th>
+                  <th style="min-width: 120px;">Telefon</th>
+                  <th style="min-width: 150px;">Alamat</th>
+                  <th style="min-width: 80px;">BP</th>
+                  <th style="min-width: 80px;">PR</th>
+                  <th style="min-width: 120px;">DXT</th>
+                  <th style="min-width: 80px;">Tinggi</th>
+                  <th style="min-width: 80px;">Berat</th>
+                  <th style="min-width: 80px;">BMI</th>
+                  <th style="width: 80px;">Layak</th>
+                  <th style="width: 100px;">Tidak Layak</th>
+                  <th style="min-width: 200px;">TCA & Staff</th>
+                  <th style="min-width: 180px;">Tindakan</th>
                 </tr>
               </thead>
-              <tbody id="nadiContainer"></tbody>
+              <tbody id="nadiContainer">
+                <!-- Rows will be added dynamically -->
+              </tbody>
             </table>
           </div>
           <div class="sticky-form-actions">
             <button class="btn btn-primary" onclick="addNadiRow()"><i class="bi bi-plus-circle me-1"></i>Tambah Pesakit</button>
-            <button class="btn btn-success" onclick="saveNadiProgram()"><i class="bi bi-save me-1"></i>Simpan Program</button>
-            <button class="btn btn-warning" onclick="saveEligibleOnly()"><i class="bi bi-check-circle me-1"></i>Simpan Yang Layak Sahaja</button>
           </div>
-          <div class="text-muted small mt-2">Nota: Baris "Layak" akan <b>Daftar</b> (simpan ke sheet). Baris "Tidak Layak" tidak disimpan tetapi <b>tetap dieksport CSV</b>.</div>
-        </div>
-      </div>
-
-      <!-- Sejarah Program -->
-      <div class="program-history-container" id="programHistoryContainer">
-        <div class="card">
-          <div class="card-body">
-            <div class="program-history-header">
-              <h3 class="h6 m-0"><i class="bi bi-clock-history me-2"></i>Sejarah Program</h3>
-              <input class="form-control form-control-sm program-history-search" id="programHistorySearch" placeholder="Cari IC / Nama / Telefon…"/>
-            </div>
-            <div class="table-responsive">
-              <table class="table table-hover">
-                <thead class="table-light"><tr><th>Tarikh Program</th><th>Tajuk Program</th><th>Bil. Pesakit</th><th>Bil. Layak</th><th>Tindakan</th></tr></thead>
-                <tbody id="programHistoryTable"><tr><td colspan="5" class="text-center text-muted">Memuat data sejarah program...</td></tr></tbody>
-              </table>
-            </div>
-            <div class="program-history-chart"><canvas id="programHistoryChart"></canvas></div>
-            <div class="text-end mt-3"><button class="btn btn-sm btn-outline-secondary" id="btnBackToNadiForm"><i class="bi bi-arrow-left me-1"></i>Kembali ke Borang</button></div>
-          </div>
+          <div class="text-muted small mt-2">Nota: Baris "Layak" boleh terus <b>Daftar</b> (simpan ke sheet). Baris "Tidak Layak" <u>tidak</u> disimpan ke sheet tetapi <b>tetap dieksport CSV</b> bersama-sama.</div>
         </div>
       </div>
     </section>
 
     <!-- Daftar Peka -->
     <section id="daftar-peka" class="mb-4 d-none">
-      <div class="d-flex justify-content-between align-items-center mb-3"><h2 class="h6 m-0"><i class="fas fa-user-plus me-2"></i>Daftar Peka</h2></div>
+      <div class="d-flex justify-content-between align-items-center mb-3">
+        <h2 class="h6 m-0"><i class="fas fa-user-plus me-2"></i>Daftar Peka</h2>
+      </div>
+
       <div class="form-section">
         <h5><i class="fas fa-user-circle me-2"></i>Maklumat Pesakit</h5>
         <div class="row g-3">
-          <div class="col-md-6"><label class="form-label">Nama Penuh Pesakit</label><input id="namaPesakit" class="form-control" required></div>
-          <div class="col-md-6"><label class="form-label">Nombor IC</label><input id="noIC" class="form-control" required></div>
-          <div class="col-md-6"><label class="form-label">Nombor Telefon</label><input id="noTelefon" class="form-control" type="tel" required placeholder="cth: 0123456789 atau 60123456789"></div>
-          <div class="col-md-6"><label class="form-label">Alamat Pesakit</label><textarea id="alamatPesakit" class="form-control" rows="2"></textarea></div>
+          <div class="col-md-6">
+            <label class="form-label">Nama Penuh Pesakit</label>
+            <input id="namaPesakit" class="form-control" required>
+          </div>
+          <div class="col-md-6">
+            <label class="form-label">Nombor IC</label>
+            <input id="noIC" class="form-control" required>
+          </div>
+          <div class="col-md-6">
+            <label class="form-label">Nombor Telefon</label>
+            <input id="noTelefon" class="form-control" type="tel" required placeholder="cth: 0123456789 atau 60123456789">
+          </div>
+          <div class="col-md-6">
+            <label class="form-label">Alamat Pesakit</label>
+            <textarea id="alamatPesakit" class="form-control" rows="2"></textarea>
+          </div>
         </div>
       </div>
+
       <div class="form-section">
         <h5><i class="fas fa-calendar-alt me-2"></i>Tarikh Temujanji</h5>
         <div class="row g-3">
-          <div class="col-md-6"><label class="form-label">Tarikh TCA</label><input id="tarikhTCA" class="form-control" type="date" required></div>
-          <div class="col-md-6"><label class="form-label">Masa TCA</label><input id="masaTCA" class="form-control" type="time" required></div>
+          <div class="col-md-6">
+            <label class="form-label">Tarikh TCA</label>
+            <input id="tarikhTCA" class="form-control" type="date" required>
+          </div>
+          <div class="col-md-6">
+            <label class="form-label">Masa TCA</label>
+            <input id="masaTCA" class="form-control" type="time" required>
+          </div>
         </div>
       </div>
+
       <div class="form-section">
         <h5><i class="fas fa-user-tie me-2"></i>Maklumat Staff</h5>
-        <div class="row g-3"><div class="col-md-6"><label class="form-label">Nama Staff</label><input id="namaStaff" class="form-control" required></div></div>
+        <div class="row g-3">
+          <div class="col-md-6">
+            <label class="form-label">Nama Staff</label>
+            <input id="namaStaff" class="form-control" required>
+          </div>
+        </div>
       </div>
-      <div class="sticky-form-actions"><button class="btn btn-primary" id="btnDaftarPesakit"><i class="fas fa-save me-1"></i>Daftar Pesakit</button></div>
+
+      <div class="sticky-form-actions">
+        <button class="btn btn-primary" id="btnDaftarPesakit"><i class="fas fa-save me-1"></i>Daftar Pesakit</button>
+      </div>
     </section>
 
     <!-- Kelayakan (Excel) -->
@@ -382,7 +585,7 @@
       </div></div>
     </section>
 
-    <!-- TCA Call (page) -->
+    <!-- TCA Call (senarai rekod — tiada tanda selesai manual) -->
     <section id="tca-call" class="mb-4 d-none">
       <div class="d-flex justify-content-between align-items-center mb-2">
         <h2 class="h6 m-0"><i class="fas fa-phone me-2"></i>Senarai Rekod TCA Call</h2>
@@ -399,8 +602,8 @@
       <div class="card"><div class="card-body">
         <div class="table-responsive">
           <table class="table table-hover align-middle">
-            <thead class="table-light"><tr><th>Nama Pesakit</th><th>No IC</th><th>No Telefon</th><th>Alamat</th><th>Tarikh TCA</th><th>Status</th></tr></thead>
-            <tbody id="tcaCallList"><tr><td colspan="6" class="text-center text-muted">Memuat data...</td></tr></tbody>
+            <thead class="table-light"><tr><th>Nama Pesakit</th><th>No IC</th><th>No Telefon</th><th>Alamat</th><th>Tarikh TCA</th><th>Status</th><th>Tindakan</th></tr></thead>
+            <tbody id="tcaCallList"><tr><td colspan="7" class="text-center text-muted">Memuat data...</td></tr></tbody>
           </table>
         </div>
       </div></div>
@@ -431,7 +634,9 @@
       <div class="card"><div class="card-body">
         <div class="table-responsive">
           <table class="table table-hover align-middle">
-            <thead class="table-light"><tr><th>Nama</th><th>IC</th><th>Telefon</th><th>Alamat</th><th>Tarikh First Visit</th><th>Hari Ke-</th><th>Status</th><th>Tindakan</th></tr></thead>
+            <thead class="table-light">
+              <tr><th>Nama</th><th>IC</th><th>Telefon</th><th>Alamat</th><th>Tarikh First Visit</th><th>Hari Ke-</th><th>Status</th><th>Tindakan</th></tr>
+            </thead>
             <tbody id="labFollowupTable"><tr><td colspan="8" class="text-center text-muted">Memuat data...</td></tr></tbody>
           </table>
         </div>
@@ -507,21 +712,30 @@
   <!-- Modal Re-TCA -->
   <div class="modal fade" id="retcaModal" tabindex="-1" aria-hidden="true">
     <div class="modal-dialog modal-dialog-centered"><div class="modal-content">
-      <div class="modal-header"><h5 class="modal-title"><i class="fa-solid fa-calendar-plus me-2"></i>Daftar TCA Semula</h5><button class="btn-close" data-bs-dismiss="modal"></button></div>
+      <div class="modal-header">
+        <h5 class="modal-title"><i class="fa-solid fa-calendar-plus me-2"></i>Daftar TCA Semula</h5>
+        <button class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
       <div class="modal-body">
         <input type="hidden" id="retcaIC">
         <div class="mb-3"><label class="form-label">Tarikh TCA Baharu</label><input type="date" id="retcaDate" class="form-control" required></div>
         <div class="mb-2"><label class="form-label">Masa TCA Baharu</label><input type="time" id="retcaTime" class="form-control" required></div>
         <small class="text-muted">Status pesakit akan ditukar kepada <b>TCA CALL</b>.</small>
       </div>
-      <div class="modal-footer"><button class="btn btn-secondary" data-bs-dismiss="modal">Batal</button><button class="btn btn-primary" id="btnSubmitRetca"><i class="fa-solid fa-floppy-disk me-1"></i>Simpan</button></div>
+      <div class="modal-footer">
+        <button class="btn btn-secondary" data-bs-dismiss="modal">Batal</button>
+        <button class="btn btn-primary" id="btnSubmitRetca"><i class="fa-solid fa-floppy-disk me-1"></i>Simpan</button>
+      </div>
     </div></div>
   </div>
 
-  <!-- Modal Set Second Visit TCA -->
+  <!-- Modal Set Second Visit TCA (Lab Complete & Call) -->
   <div class="modal fade" id="secondTcaModal" tabindex="-1" aria-hidden="true">
     <div class="modal-dialog modal-dialog-centered"><div class="modal-content">
-      <div class="modal-header"><h5 class="modal-title"><i class="fa-solid fa-calendar-check me-2"></i>Tetapkan TCA Second Visit</h5><button class="btn-close" data-bs-dismiss="modal"></button></div>
+      <div class="modal-header">
+        <h5 class="modal-title"><i class="fa-solid fa-calendar-check me-2"></i>Tetapkan TCA Second Visit</h5>
+        <button class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
       <div class="modal-body">
         <input type="hidden" id="secondTcaIC">
         <div class="mb-2"><label class="form-label">Tarikh TCA Second Visit</label><input type="date" id="secondTcaDate" class="form-control" required></div>
@@ -529,87 +743,431 @@
         <div class="mb-2"><label class="form-label">Nama Staff (wajib isi)</label><input type="text" id="secondTcaStaff" class="form-control" required placeholder="cth: Dayah"></div>
         <small class="text-muted">Maklumat ini akan direkod ke Log Calls & ruangan "Lab Report Completed".</small>
       </div>
-      <div class="modal-footer"><button class="btn btn-secondary" data-bs-dismiss="modal">Batal</button><button class="btn btn-primary" id="btnSubmitSecondTca"><i class="fa-solid fa-floppy-disk me-1"></i>Simpan</button></div>
+      <div class="modal-footer">
+        <button class="btn btn-secondary" data-bs-dismiss="modal">Batal</button>
+        <button class="btn btn-primary" id="btnSubmitSecondTca"><i class="fa-solid fa-floppy-disk me-1"></i>Simpan</button>
+      </div>
     </div></div>
   </div>
 
   <!-- Modal Upload PDPA -->
   <div class="modal fade" id="pdpaModal" tabindex="-1" aria-hidden="true">
     <div class="modal-dialog modal-dialog-centered"><div class="modal-content">
-      <div class="modal-header"><h5 class="modal-title"><i class="fa-solid fa-file-arrow-up me-2"></i>Muat Naik Borang PDPA</h5><button class="btn-close" data-bs-dismiss="modal"></button></div>
+      <div class="modal-header">
+        <h5 class="modal-title"><i class="fa-solid fa-file-arrow-up me-2"></i>Muat Naik Borang PDPA</h5>
+        <button class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
       <div class="modal-body">
         <input type="hidden" id="pdpaIC">
         <input type="file" id="pdpaFile" class="form-control" accept="application/pdf,image/*" />
         <div class="form-text">Muat naik PDF / imej borang PDPA pesakit.</div>
       </div>
-      <div class="modal-footer"><button class="btn btn-secondary" data-bs-dismiss="modal">Tutup</button><button class="btn btn-primary" id="btnUploadPDPA"><i class="fa-solid fa-cloud-arrow-up me-1"></i>Upload</button></div>
+      <div class="modal-footer">
+        <button class="btn btn-secondary" data-bs-dismiss="modal">Tutup</button>
+        <button class="btn btn-primary" id="btnUploadPDPA"><i class="fa-solid fa-cloud-arrow-up me-1"></i>Upload</button>
+      </div>
     </div></div>
   </div>
 
   <!-- Modal WhatsApp Report Preview -->
   <div class="modal fade" id="whatsappReportModal" tabindex="-1" aria-hidden="true">
     <div class="modal-dialog modal-lg modal-dialog-centered"><div class="modal-content">
-      <div class="modal-header"><h5 class="modal-title"><i class="fa-brands fa-whatsapp me-2"></i>Pratonton Laporan WhatsApp</h5><button class="btn-close" data-bs-dismiss="modal"></button></div>
-      <div class="modal-body"><div id="whatsappReportPreview"></div></div>
+      <div class="modal-header">
+        <h5 class="modal-title"><i class="fa-brands fa-whatsapp me-2"></i>Pratonton Laporan WhatsApp</h5>
+        <button class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body">
+        <div id="whatsappReportPreview"></div>
+      </div>
       <div class="modal-footer">
         <button class="btn btn-secondary" data-bs-dismiss="modal">Tutup</button>
-        <button class="btn btn-outline-success" id="btnSendWhatsApp"><i class="fa-brands fa-whatsapp me-1"></i> Hantar WhatsApp (Teks)</button>
-        <button class="btn btn-success" id="btnSendWhatsAppImage"><i class="fa-brands fa-whatsapp me-1"></i> Hantar Gambar ke WhatsApp</button>
+        <!-- Kekalkan butang lama (teks) -->
+        <button class="btn btn-outline-success" id="btnSendWhatsApp">
+          <i class="fa-brands fa-whatsapp me-1"></i> Hantar WhatsApp (Teks)
+        </button>
+        <!-- Butang baharu: hantar Gambar ke WhatsApp + auto-buka chat -->
+        <button class="btn btn-success" id="btnSendWhatsAppImage">
+          <i class="fa-brands fa-whatsapp me-1"></i> Hantar Gambar ke WhatsApp
+        </button>
       </div>
     </div></div>
   </div>
 
-  <!-- Modal Butiran Program -->
-  <div class="modal fade" id="programDetailsModal" tabindex="-1" aria-hidden="true">
-    <div class="modal-dialog modal-xl modal-dialog-centered">
-      <div class="modal-content">
-        <div class="modal-header"><h5 class="modal-title" id="programDetailsTitle"></h5><button class="btn-close" data-bs-dismiss="modal"></button></div>
-        <div class="modal-body">
-          <div class="table-responsive">
-            <table class="table table-hover align-middle">
-              <thead class="table-light"><tr><th>#</th><th>Nama Pesakit</th><th>No IC</th><th>Telefon</th><th>BP</th><th>PR</th><th>Tinggi</th><th>Berat</th><th>BMI</th><th>DXT Type</th><th>DXT</th><th>Status</th></tr></thead>
-              <tbody id="programDetailsTable"><tr><td colspan="12" class="text-center text-muted">Memuat data...</td></tr></tbody>
-            </table>
-          </div>
-        </div>
-        <div class="modal-footer"><button class="btn btn-secondary" data-bs-dismiss="modal">Tutup</button><button class="btn btn-primary" id="btnExportProgramDetails"><i class="bi bi-file-earmark-excel me-1"></i>Export ke Excel</button></div>
-      </div>
-    </div>
-  </div>
-
-  <!-- Toast host -->
+  <!-- Toast Host (kanan atas) -->
   <div id="toastHost"><div id="toastContainer" class="toast-container"></div></div>
 
   <!-- FAB Log Calls -->
-  <button id="fabLog" class="btn btn-primary"><i class="bi bi-chat-dots fs-5"></i></button>
+  <button id="fabLog" class="btn btn-primary">
+    <i class="bi bi-chat-dots fs-5"></i>
+  </button>
 
   <footer class="footer mt-4 py-3 bg-light">
-    <div class="container"><div class="d-flex justify-content-between"><div>&copy; 2025 Klinik SihatSokmo. Untuk kegunaan Klinik sahaja.</div><div>Versi 3.1 (Secure)</div></div></div>
+    <div class="container"><div class="d-flex justify-content-between">
+      <div>&copy; 2025 Klinik SihatSokmo. Untuk kegunaan Klinik sahaja.</div>
+      <div>Versi 3.1 (Secure)</div>
+    </div></div>
   </footer>
 
   <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
   <script>
-/* ========= KONFIG ========= */
-const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbx6TKE0vDDPO3-36cY7xjacAbGL0HIRKCrORNm-sED9y5NpIeIUk9gyrpiWy-S7vbc/exec';
-const GOOGLE_CLIENT_ID = '863564124015-838ksbuk27f0kkomm16hnc3bu608pbrr.apps.googleusercontent.com';
-const LOGO_URL = 'saya masukkan nanti';
+/* =======================
+   KONFIG (EDIT INI SAHAJA)
+   ======================= */
 
-/* ========= AUTH ========= */
-let ID_TOKEN = '';
-let STAFF_EMAIL = '';
+/* =======================
+   KELAYAKAN: CSV first, XLSX fallback
+   - Auto detect header row & delimiter
+   - Banyak sinonim lajur (IC/NRIC/KP/MyKad, No. H/P/WhatsApp)
+   ======================= */
+(function () {
+  const fileInput = document.getElementById('excelFile');
+  const tableBody = document.getElementById('kelayakanTable');
+  if (!fileInput || !tableBody) return;
+
+  // ---------- Util ----------
+  const norm = (v) => String(v ?? '').trim();
+  const escapeHtml = (s) => String(s || '').replace(/[&<>"']/g, m => (
+    {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'}[m]
+  ));
+
+  function umurDariIC(ic) {
+    const s = String(ic || '').replace(/\D/g, '');
+    if (s.length < 6) return null;
+    const yy = +s.slice(0,2), mm = +s.slice(2,4), dd = +s.slice(4,6);
+    if (!(mm>=1 && mm<=12) || !(dd>=1 && dd<=31)) return null;
+    const now = new Date();
+    const currentYY = now.getFullYear() % 100;
+    const year = (yy <= currentYY ? 2000 : 1900) + yy;
+    let age = now.getFullYear() - year;
+    const bday = new Date(year, mm - 1, dd);
+    if (!(now.getMonth() > bday.getMonth() ||
+          (now.getMonth() === bday.getMonth() && now.getDate() >= bday.getDate()))) {
+      age--;
+    }
+    return age;
+  }
+
+  // ---------- File readers ----------
+  const readAsArrayBuffer = (file) => new Promise((res, rej) => {
+    const fr = new FileReader();
+    fr.onload = e => res(e.target.result);
+    fr.onerror = rej;
+    fr.readAsArrayBuffer(file);
+  });
+  const readAsText = (file) => new Promise((res, rej) => {
+    const fr = new FileReader();
+    fr.onload = e => res(e.target.result);
+    fr.onerror = rej;
+    fr.readAsText(file, 'utf-8');
+  });
+
+  // ---------- CSV helpers ----------
+  const stripBOM = (s) => s && s.charCodeAt(0) === 0xFEFF ? s.slice(1) : s;
+
+  function detectDelimiter(s) {
+    const sample = (s || '').slice(0, 3000);
+    const cand = [',',';','\t','|'];
+    const count = { ',':0, ';':0, '\t':0, '|':0 };
+    let inQ = false;
+    for (let i=0;i<sample.length;i++){
+      const c = sample[i];
+      if (c === '"') {
+        if (inQ && sample[i+1] === '"') { i++; }
+        else inQ = !inQ;
+      } else if (!inQ && count.hasOwnProperty(c)) {
+        count[c]++;
+      }
+    }
+    return cand.sort((a,b)=>count[b]-count[a])[0] || ',';
+  }
+
+  function parseCSVToRows(text) {
+    text = stripBOM(String(text||''));
+    const delim = detectDelimiter(text);
+    const rows = [];
+    let row=[], field='', inQ=false;
+    for (let i=0;i<text.length;i++){
+      const c = text[i];
+      if (inQ) {
+        if (c === '"') {
+          if (text[i+1] === '"') { field += '"'; i++; }
+          else inQ = false;
+        } else field += c;
+      } else {
+        if (c === '"') inQ = true;
+        else if (c === delim) { row.push(field); field=''; }
+        else if (c === '\n')  { row.push(field); rows.push(row); row=[]; field=''; }
+        else if (c === '\r')  { /* skip */ }
+        else field += c;
+      }
+    }
+    row.push(field); rows.push(row);
+    return rows;
+  }
+
+  // Cari baris header terbaik (ada ≥2 kata kunci)
+  const keysets = {
+    nama:    ['nama','nama penuh','name','nama pesakit'],
+    ic:      ['ic','no ic','no. ic','nric','nokp','no kp','no. kp','kp','mykad','no mykad','no k/p','k/p','kad pengenalan','no kad pengenalan'],
+    telefon: ['telefon','no telefon','no. telefon','no tel','no. tel','tel','mobile','hp','no hp','h/p','no h/p','whatsapp','no whatsapp','telefon (whatsapp)'],
+    alamat:  ['alamat','address','addr','alamat rumah','alamat kediaman']
+  };
+  const canon = (s) => String(s||'')
+      .toLowerCase()
+      .replace(/[\s\.\-_/()]+/g,'')
+      .trim();
+
+  function scoreHeaderCell(cell) {
+    const t = canon(cell);
+    const hit = [];
+    for (const [k, list] of Object.entries(keysets)) {
+      if (list.some(p => t.includes(canon(p)))) hit.push(k);
+    }
+    return [...new Set(hit)];
+  }
+
+  function findHeaderRow(rows) {
+    let best = { idx: 0, score: 0 };
+    for (let r=0; r<Math.min(rows.length, 20); r++) {
+      const hits = new Set();
+      for (const c of rows[r]) scoreHeaderCell(c).forEach(k => hits.add(k));
+      const sc = hits.size;
+      if (sc > best.score) best = { idx: r, score: sc };
+    }
+    return (best.score >= 2) ? best.idx : 0;
+  }
+
+  function csvTextToObjects(text) {
+    const rows = parseCSVToRows(text);
+    if (!rows.length) return [];
+    const headerRow = findHeaderRow(rows);
+    const header = rows[headerRow].map(h => String(h||'').trim());
+    const dataRows = rows.slice(headerRow+1);
+
+    return dataRows
+      .filter(r => r.some(v => String(v||'').trim() !== ''))
+      .map(r => {
+        const o = {};
+        for (let i=0;i<header.length;i++) o[header[i]] = r[i] ?? '';
+        return o;
+      });
+  }
+
+  // Padanan objek → {nama, ic, telefon, alamat}
+  function mapRow(raw) {
+    const entries = Object.entries(raw);
+    const pick = (groups) => {
+      for (const [k,v] of entries) {
+        const t = canon(k);
+        if (groups.some(word => t.includes(canon(word)))) return norm(v);
+      }
+      for (const [k,v] of entries) {
+        const t = canon(k);
+        if (groups.some(word => canon(word).includes(t))) return norm(v);
+      }
+      return '';
+    };
+    return {
+      nama:    pick(keysets.nama),
+      ic:      pick(keysets.ic),
+      telefon: pick(keysets.telefon),
+      alamat:  pick(keysets.alamat)
+    };
+  }
+
+  // ---------- Render ----------
+  function renderRows(items) {
+    if (!items.length) {
+      tableBody.innerHTML =
+        '<tr><td colspan="8" class="text-center text-muted">Tiada data ditemui (semak header CSV anda).</td></tr>';
+      return;
+    }
+    tableBody.innerHTML = items.map((it, idx) => {
+      const age = umurDariIC(it.ic);
+      const eligible = (age !== null) ? age >= 40 : false;
+      const reason = (age === null) ? 'IC tidak sah' : (eligible ? '-' : `Umur ${age} tahun (&lt; 40)`);
+
+      return `
+        <tr data-idx="${idx}">
+          <td>${escapeHtml(it.nama) || '-'}</td>
+          <td>${escapeHtml(it.ic) || '-'}</td>
+          <td>${escapeHtml(it.telefon) || '-'}</td>
+          <td>${escapeHtml(it.alamat) || '-'}</td>
+          <td class="text-center">
+            ${eligible ? '<span class="badge text-bg-success">Layak</span>' :
+                         '<span class="badge text-bg-danger">Tidak Layak</span>'}
+          </td>
+          <td class="text-center">${escapeHtml(reason)}</td>
+          <td>
+            ${eligible ? `
+              <div class="row g-1">
+                <div class="col"><input type="date" class="form-control form-control-sm tca-date"></div>
+                <div class="col"><input type="time" class="form-control form-control-sm tca-time"></div>
+                <div class="col"><input type="text"  class="form-control form-control-sm tca-staff" placeholder="Staff"></div>
+              </div>
+            ` : '<span class="text-muted">—</span>'}
+          </td>
+          <td>
+            ${eligible
+              ? '<button class="btn btn-sm btn-primary daftar-row"><i class="fas fa-save me-1"></i>Daftar</button>'
+              : '<span class="text-muted">—</span>'}
+          </td>
+        </tr>`;
+    }).join('');
+  }
+
+  // ---------- Pemproses utama ----------
+  async function handleFile(file) {
+    try {
+      tableBody.innerHTML =
+        '<tr><td colspan="8" class="text-center text-muted">Memproses fail…</td></tr>';
+
+      const ext = (file.name.split('.').pop() || '').toLowerCase();
+
+      // 1) CSV → terus baca (tak perlu internet/CDN)
+      if (ext === 'csv') {
+        const text = await readAsText(file);
+        const raw  = csvTextToObjects(text);
+        const items = raw.map(mapRow)
+          .filter(r => r.nama || r.ic || r.telefon || r.alamat);
+
+        if (!items.length) {
+          const rows = parseCSVToRows(text);
+          const headerRow = findHeaderRow(rows);
+          const hdrs = (rows[headerRow] || []).slice(0,8).map(h=>escapeHtml(h)).join(', ');
+          tableBody.innerHTML =
+            `<tr><td colspan="8" class="text-center text-danger">
+              CSV dibaca tetapi tiada lajur sepadan.<br>
+              <small><b>Jumpa header:</b> ${hdrs || '(kosong)'}<br>
+              Pastikan ada lajur seperti <i>Nama, IC/NRIC/KP, Telefon/HP/WhatsApp, Alamat</i>.</small>
+            </td></tr>`;
+          return;
+        }
+
+        window.__KELAYAKAN_ITEMS__ = items;
+        renderRows(items);
+        return;
+      }
+
+      // 2) XLSX/XLS → cuba SheetJS; jika gagal, minta simpan CSV
+      if (typeof window.ensureXLSXReady === 'function') {
+        try { await window.ensureXLSXReady(); } catch(e) { /* ignore */ }
+      }
+      if (!window.XLSX) {
+        tableBody.innerHTML =
+          '<tr><td colspan="8" class="text-center text-danger">SheetJS tidak tersedia. Sila simpan Excel sebagai <b>CSV</b> dan muat naik semula.</td></tr>';
+        return;
+      }
+
+      const data = await readAsArrayBuffer(file);
+      const wb   = XLSX.read(data, { type: 'array' });
+      const ws   = wb.Sheets[wb.SheetNames[0]];
+      const raw  = XLSX.utils.sheet_to_json(ws, { defval: '', raw: true });
+
+      const items = raw.map(mapRow)
+        .filter(r => r.nama || r.ic || r.telefon || r.alamat);
+
+      if (!items.length) {
+        const hdrs = Object.keys(raw[0] || {}).slice(0,8).join(', ');
+        tableBody.innerHTML =
+          `<tr><td colspan="8" class="text-center text-danger">
+            Excel dibaca tetapi tiada lajur sepadan.<br>
+            <small><b>Jumpa header:</b> ${escapeHtml(hdrs)}<br>
+            Pastikan ada lajur seperti <i>Nama, IC/NRIC/KP, Telefon/HP/WhatsApp, Alamat</i>.</small>
+          </td></tr>`;
+        return;
+      }
+
+      window.__KELAYAKAN_ITEMS__ = items;
+      renderRows(items);
+
+    } catch (err) {
+      console.error(err);
+      tableBody.innerHTML =
+        '<tr><td colspan="8" class="text-center text-danger">Ralat memproses fail. Pastikan fail CSV/Excel sah.</td></tr>';
+    }
+  }
+
+  // ---------- Events ----------
+  fileInput.addEventListener('change', e => {
+    const f = e.target.files && e.target.files[0];
+    if (f) handleFile(f);
+  });
+
+  tableBody.addEventListener('click', e => {
+    const btn = e.target.closest('.daftar-row');
+    if (!btn) return;
+    const tr  = btn.closest('tr');
+    const idx = Number(tr.dataset.idx);
+    const item = (window.__KELAYAKAN_ITEMS__ || [])[idx];
+    if (!item) return;
+
+    const date  = tr.querySelector('.tca-date')?.value || '';
+    const time  = tr.querySelector('.tca-time')?.value || '';
+    const staff = tr.querySelector('.tca-staff')?.value || '';
+
+    const fNama   = document.getElementById('namaPesakit');
+    const fIC     = document.getElementById('noIC');
+    const fTel    = document.getElementById('noTelefon');
+    const fAlamat = document.getElementById('alamatPesakit');
+    const fTCA    = document.getElementById('tarikhTCA');
+    const fMasa   = document.getElementById('masaTCA');
+    const fStaff  = document.getElementById('namaStaff');
+
+    if (fNama)   fNama.value   = item.nama   || '';
+    if (fIC)     fIC.value     = item.ic     || '';
+    if (fTel)    fTel.value    = item.telefon|| '';
+    if (fAlamat) fAlamat.value = item.alamat || '';
+    if (fTCA && date)  fTCA.value  = date;
+    if (fMasa && time) fMasa.value = time;
+    if (fStaff && staff) fStaff.value = staff;
+
+    location.hash = '#daftar-peka';
+    btn.innerHTML = '<i class="fas fa-check me-1"></i>Diisi';
+    btn.classList.remove('btn-primary');
+    btn.classList.add('btn-success');
+    btn.disabled = true;
+  });
+})();
+
+// 1) Isi URL Web App Apps Script (deployment terkini)
+const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbx6TKE0vDDPO3-36cY7xjacAbGL0HIRKCrORNm-sED9y5NpIeIUk9gyrpiWy-S7vbc/exec';
+// 2) Google OAuth Client ID (Google Cloud Console)
+const GOOGLE_CLIENT_ID = '863564124015-838ksbuk27f0kkomm16hnc3bu608pbrr.apps.googleusercontent.com';
+// 3) Logo (optional) - Ganti dengan URL logo klinik anda
+const LOGO_URL = 'saya masukkan nanti';
+    
+/* =======================
+   AUTH (Google Identity)
+   ======================= */
+let ID_TOKEN = '';      // diisi selepas login
+let STAFF_EMAIL = '';   // email sebenar (server akan sahkan juga)
 
 function initGoogleSignIn(){
+  if (!window.google || !google.accounts || !google.accounts.id) {
+    // cuba lagi sekejap jika skrip belum siap
+    setTimeout(initGoogleSignIn, 300);
+    return;
+  }
   google.accounts.id.initialize({
     client_id: GOOGLE_CLIENT_ID,
     callback: handleCredentialResponse,
     auto_select: false,
     cancel_on_tap_outside: true
   });
-  google.accounts.id.renderButton(document.getElementById('signinArea'), { theme:'outline', size:'medium', text:'signin_with' });
-  google.accounts.id.renderButton(document.getElementById('signinAreaDesktop'), { theme:'outline', size:'medium', text:'signin_with' });
+  google.accounts.id.renderButton(
+    document.getElementById('signinArea'),
+    { theme: 'outline', size: 'medium', text:'signin_with' }
+  );
+  google.accounts.id.renderButton(
+    document.getElementById('signinAreaDesktop'),
+    { theme: 'outline', size: 'medium', text:'signin_with' }
+  );
 }
+
 async function handleCredentialResponse(resp){
   ID_TOKEN = resp.credential;
+  // Semak whoami di backend
   const r = await fetch(SCRIPT_URL, {
     method:'POST',
     headers:{ 'Content-Type':'application/x-www-form-urlencoded' },
@@ -622,14 +1180,16 @@ async function handleCredentialResponse(resp){
     document.getElementById('staffEmail').textContent = STAFF_EMAIL;
     document.getElementById('signinArea').innerHTML = '';
     document.getElementById('signinAreaDesktop').innerHTML = '';
-    bootstrapApp();
+    bootstrapApp(); // muat data
   } else {
     toast('Akses Ditolak', j.message || 'Sila hubungi admin untuk allowlist.', 'danger');
     ID_TOKEN = ''; STAFF_EMAIL = '';
   }
 }
 
-/* ========= LOADER ========= */
+/* =======================
+   LOADER (maks 2s)
+   ======================= */
 let loaderTimer=null;
 function showLoader(msg='Memproses…'){
   document.getElementById('loaderMsg').textContent = msg;
@@ -639,7 +1199,9 @@ function showLoader(msg='Memproses…'){
 }
 function hideLoader(){ document.getElementById('appLoader').style.display = 'none'; }
 
-/* ========= NETWORK HELPERS ========= */
+/* =======================
+   NETWORK HELPERS
+   ======================= */
 async function getJSON(params={}, {silent=false, msg='Memuat data…'}={}){
   if (!ID_TOKEN) throw new Error('Belum login');
   const qs = new URLSearchParams({ ...params, id_token: ID_TOKEN }).toString();
@@ -653,6 +1215,7 @@ async function getJSON(params={}, {silent=false, msg='Memuat data…'}={}){
     return await r.json();
   } finally { if (!silent) hideLoader(); }
 }
+
 async function postForm(params={}, {silent=false, msg='Menyimpan data…'}={}){
   if (!ID_TOKEN) throw new Error('Belum login');
   if (!silent) showLoader(msg);
@@ -669,7 +1232,9 @@ async function postForm(params={}, {silent=false, msg='Menyimpan data…'}={}){
   } finally { if (!silent) hideLoader(); }
 }
 
-/* ========= UTIL ========= */
+/* =======================
+   UTIL
+   ======================= */
 const normalizeMsisdnMY = (raw) => {
   if (!raw) return '';
   let s = String(raw).replace(/\D/g, '');
@@ -678,727 +1243,221 @@ const normalizeMsisdnMY = (raw) => {
   if (s.startsWith('0')) return '60' + s.slice(1);
   return '60' + s;
 };
-const telHref = (msisdn) => `tel:+${msisdn}`;
-const waHref  = (msisdn, txt='Assalamualaikum, saya dari Klinik SihatSokmo.') => `https://wa.me/${msisdn}?text=${encodeURIComponent(txt)}`;
-function parseDDMMYYYY(s){
-  if (!s) return null;
-  if (/^\d{4}-\d{2}-\d{2}$/.test(s)) { const [Y,M,D]=s.split('-').map(Number); return new Date(Y,M-1,D); }
-  const m = /^(\d{1,2})\/(\d{1,2})\/(\d{4})$/.exec(s); if (!m) return null;
-  const D=+m[1], M=+m[2], Y=+m[3]; return new Date(Y, M-1, D);
-}
-function isSameDay(a,b){ return a.getFullYear()===b.getFullYear() && a.getMonth()===b.getMonth() && a.getDate()===b.getDate(); }
 
-/* ========= TOAST ========= */
-function ensureToastContainer() {
-  let host = document.getElementById('toastHost'); if (!host){ host=document.createElement('div'); host.id='toastHost'; document.body.appendChild(host); }
-  let container = document.getElementById('toastContainer'); if (!container){ container=document.createElement('div'); container.id='toastContainer'; container.className='toast-container'; host.appendChild(container); }
-  container.style.pointerEvents='auto'; return container;
+const telHref = (msisdn) => `tel:+${msisdn}`;
+
+const waHref  = (msisdn, txt='Assalamualaikum, saya dari Klinik SihatSokmo.') =>
+  `https://wa.me/${msisdn}?text=${encodeURIComponent(txt)}`;
+
+const parseDDMMYYYY = (s) => {
+  if (!s) return null;
+  if (/^\d{4}-\d{2}-\d{2}$/.test(s)) { // "YYYY-MM-DD"
+    const [Y, M, D] = s.split('-').map(Number);
+    return new Date(Y, M - 1, D);
+  }
+  const m = /^(\d{1,2})\/(\d{1,2})\/(\d{4})$/.exec(s); // "DD/MM/YYYY"
+  if (!m) return null;
+  const D = +m[1], M = +m[2], Y = +m[3];
+  return new Date(Y, M - 1, D);
+};
+
+function isSameDay(a, b) {
+  return a.getFullYear() === b.getFullYear()
+      && a.getMonth() === b.getMonth()
+      && a.getDate() === b.getDate();
 }
+
+/* Pastikan bekas notifikasi (#toastHost/#toastContainer) wujud. */
+function ensureToastContainer() {
+  let host = document.getElementById('toastHost');
+  if (!host) {
+    host = document.createElement('div');
+    host.id = 'toastHost';
+    document.body.appendChild(host);
+  }
+  let container = document.getElementById('toastContainer');
+  if (!container) {
+    container = document.createElement('div');
+    container.id = 'toastContainer';
+    container.className = 'toast-container';
+    host.appendChild(container);
+  }
+  container.style.pointerEvents = 'auto';
+  return container;
+}
+
+/* Kekalkan toast sentiasa kelihatan */
 function clampToastIntoView(el){
   requestAnimationFrame(() => {
-    const PAD=12; el.style.maxWidth=Math.min(window.innerWidth - PAD*2, 420) + 'px';
-    const r=el.getBoundingClientRect(); let tx=0, ty=0;
+    const PAD = 12;
+    el.style.maxWidth = Math.min(window.innerWidth - PAD*2, 420) + 'px';
+    const r = el.getBoundingClientRect();
+    let tx = 0, ty = 0;
     if (r.right > window.innerWidth - PAD) tx -= (r.right - (window.innerWidth - PAD));
     if (r.left  < PAD)                     tx += (PAD - r.left);
     if (r.top   < PAD)                     ty += (PAD - r.top);
-    if (tx || ty){ el.style.transform=`translate(${tx}px, ${ty}px)`; el.style.willChange='transform'; }
+    if (tx || ty){
+      el.style.transform  = `translate(${tx}px, ${ty}px)`;
+      el.style.willChange = 'transform';
+    }
   });
 }
-function toast(title, message, variant='primary'){
-  const container=ensureToastContainer(); const id='t'+Date.now()+Math.random().toString(36).slice(2,7);
-  container.insertAdjacentHTML('beforeend', `
-    <div class="toast align-items-center text-bg-${variant} border-0 mb-2" id="${id}" role="alert" aria-live="assertive" aria-atomic="true" style="min-width:260px">
-      <div class="d-flex"><div class="toast-body"><strong>${title}:</strong> ${message}</div>
-      <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast"></button></div>
-    </div>`);
-  const el=document.getElementById(id); clampToastIntoView(el);
-  const onResize=()=>clampToastIntoView(el); window.addEventListener('resize', onResize, {passive:true});
-  const cleanup=()=>{ window.removeEventListener('resize', onResize); el.remove(); };
-  try{ const BsToast=window.bootstrap?.Toast;
-    if (BsToast){ const inst=BsToast.getOrCreateInstance(el, {delay:3000, autohide:true});
-      el.addEventListener('shown.bs.toast', ()=>clampToastIntoView(el));
-      el.addEventListener('hidden.bs.toast', cleanup); inst.show();
-    }else{ el.classList.add('show'); setTimeout(()=>{ el.classList.remove('show'); cleanup(); },3000); }
-  }catch{ el.classList.add('show'); setTimeout(()=>{ el.classList.remove('show'); cleanup(); },3000); }
+
+function toast(title, message, variant = 'primary') {
+  const container = ensureToastContainer();
+  const id = 't' + Date.now() + Math.random().toString(36).slice(2, 7);
+  const html = `
+    <div class="toast align-items-center text-bg-${variant} border-0 mb-2" id="${id}"
+         role="alert" aria-live="assertive" aria-atomic="true" style="min-width:260px">
+      <div class="d-flex">
+        <div class="toast-body"><strong>${title}:</strong> ${message}</div>
+        <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast"></button>
+      </div>
+    </div>`;
+  container.insertAdjacentHTML('beforeend', html);
+  const el = document.getElementById(id);
+  clampToastIntoView(el);
+  const onResize = () => clampToastIntoView(el);
+  window.addEventListener('resize', onResize, { passive: true });
+  const cleanup = () => { window.removeEventListener('resize', onResize); el.remove(); };
+
+  try {
+    const BsToast = window.bootstrap?.Toast;
+    if (BsToast) {
+      const inst = BsToast.getOrCreateInstance(el, { delay: 3000, autohide: true });
+      el.addEventListener('shown.bs.toast', () => clampToastIntoView(el));
+      el.addEventListener('hidden.bs.toast', cleanup);
+      inst.show();
+    } else {
+      el.classList.add('show');
+      setTimeout(() => { el.classList.remove('show'); cleanup(); }, 3000);
+    }
+  } catch {
+    el.classList.add('show');
+    setTimeout(() => { el.classList.remove('show'); cleanup(); }, 3000);
+  }
 }
 
-/* ========= WhatsApp (image/text) ========= */
-let CURRENT_WA_MSISDN='';
+/* WhatsApp (TEKS) */
 function composeNadiWhatsAppText(data){
   const lines = [
-    'Assalamualaikum, saya dari Klinik SihatSokmo.','',
+    'Assalamualaikum, saya dari Klinik SihatSokmo.',
+    '',
     'Laporan Saringan Kesihatan:',
-    `• Nama: ${data.nama||'-'}`,`• IC: ${data.ic||'-'}`,`• Alamat: ${data.alamat||'-'}`,
-    `• BP: ${data.bp||'-'} mmHg`,`• PR: ${data.pr||'-'} bpm`,`• DXT (${data.dxtType||'Fasting'}): ${data.dxt||'-'} mmol/L`,
-    `• Tinggi: ${data.tinggi||'-'} cm`,`• Berat: ${data.berat||'-'} kg`,`• BMI: ${data.bmi||'-'}`,
-    `• Status: ${data.layak?'Layak PEKA B40':'Tidak Layak PEKA B40'}`,'','Jika ada soalan, balas mesej ini ya. Terima kasih.'
+    `• Nama: ${data.nama || '-'}`,
+    `• IC: ${data.ic || '-'}`,
+    `• Alamat: ${data.alamat || '-'}`,
+    `• BP: ${data.bp || '-'} mmHg`,
+    `• PR: ${data.pr || '-'} bpm`,
+    `• DXT (${data.dxtType || 'Fasting'}): ${data.dxt || '-'} mmol/L`,
+    `• Tinggi: ${data.tinggi || '-'} cm`,
+    `• Berat: ${data.berat || '-'} kg`,
+    `• BMI: ${data.bmi || '-'}`,
+    `• Status: ${data.layak ? 'Layak PEKA B40' : 'Tidak Layak PEKA B40'}`,
+    '',
+    'Jika ada soalan, balas mesej ini ya. Terima kasih.'
   ];
   return lines.join('\n');
 }
-function openWhatsAppDeepLink(msisdn, text=''){
-  const encoded=encodeURIComponent(text||''); const scheme=`whatsapp://send?phone=${msisdn}&text=${encoded}`; const web=`https://wa.me/${msisdn}?text=${encoded}`;
-  window.open(scheme,'_blank'); setTimeout(()=>window.open(web,'_blank'),600);
-}
-async function captureReportAsBlob(){
-  const card=document.querySelector('#whatsappReportPreview .whatsapp-report'); if(!card) throw new Error('Gagal capai preview');
-  const canvas=await html2canvas(card,{backgroundColor:'#ffffff', scale:Math.min(window.devicePixelRatio||1.5, 2.5)}); 
-  return await new Promise((resolve)=> canvas.toBlob(resolve,'image/png',0.95));
-}
-async function sendWhatsAppReportImageFlow(msisdn){
-  const phone=normalizeMsisdnMY(msisdn||''); if(!/^\d{10,15}$/.test(phone)){ toast('Ralat','Nombor telefon tidak sah','danger'); return; }
-  openWhatsAppDeepLink(phone,''); showLoader('Menjana imej laporan…');
-  let blob; try{ blob=await captureReportAsBlob(); }catch(e){ hideLoader(); toast('Ralat','Gagal jana imej laporan','danger'); return; } hideLoader();
-  const file=new File([blob],`laporan_nadi_${Date.now()}.png`,{type:'image/png'});
-  if (navigator.canShare && navigator.canShare({files:[file]})){ try{ await navigator.share({files:[file], title:'Laporan Saringan NADI', text:''}); toast('Berjaya','Imej dikongsi melalui aplikasi pilihan anda','success'); return; }catch(e){} }
-  if (navigator.clipboard && window.ClipboardItem){ try{ await navigator.clipboard.write([ new ClipboardItem({ 'image/png': blob }) ]); toast('Siap','Imej disalin ke clipboard. Tampal dalam chat WhatsApp.','success'); return; }catch(e){} }
-  const url=URL.createObjectURL(blob); const a=document.createElement('a'); a.href=url; a.download=`laporan_nadi_${Date.now()}.png`; document.body.appendChild(a); a.click(); a.remove(); URL.revokeObjectURL(url);
-  toast('Makluman','Imej dimuat turun. Lampirkan imej itu dalam chat WhatsApp.','warning');
-}
-function generateWhatsAppReport(data){
-  const c=document.getElementById('whatsappReportPreview'); c.innerHTML='';
-  c.innerHTML=`
-    <div class="whatsapp-report">
-      <div class="whatsapp-report-header">
-        <img src="${LOGO_URL}" alt="Logo" class="whatsapp-report-logo" onerror="this.src='https://via.placeholder.com/50x50.png?text=KS'">
-        <div><div class="whatsapp-report-title">Laporan Saringan Kesihatan Bersama NADI</div><div class="whatsapp-report-subtitle">Klinik SihatSokmo - Program PEKA B40</div></div>
-      </div>
-      <div class="whatsapp-report-body">
-        <div class="whatsapp-report-row"><div class="whatsapp-report-label">Nama Pesakit:</div><div class="whatsapp-report-value">${data.nama||'-'}</div></div>
-        <div class="whatsapp-report-row"><div class="whatsapp-report-label">No. IC:</div><div class="whatsapp-report-value">${data.ic||'-'}</div></div>
-        <div class="whatsapp-report-row"><div class="whatsapp-report-label">Alamat:</div><div class="whatsapp-report-value">${data.alamat||'-'}</div></div>
-        <div class="whatsapp-report-row"><div class="whatsapp-report-label">BP:</div><div class="whatsapp-report-value">${data.bp||'-'} mmHg</div></div>
-        <div class="whatsapp-report-row"><div class="whatsapp-report-label">PR:</div><div class="whatsapp-report-value">${data.pr||'-'} bpm</div></div>
-        <div class="whatsapp-report-row"><div class="whatsapp-report-label">DXT (${data.dxtType||'Fasting'}):</div><div class="whatsapp-report-value">${data.dxt||'-'} mmol/L</div></div>
-        <div class="whatsapp-report-row"><div class="whatsapp-report-label">Tinggi:</div><div class="whatsapp-report-value">${data.tinggi||'-'} cm</div></div>
-        <div class="whatsapp-report-row"><div class="whatsapp-report-label">Berat:</div><div class="whatsapp-report-value">${data.berat||'-'} kg</div></div>
-        <div class="whatsapp-report-row"><div class="whatsapp-report-label">BMI:</div><div class="whatsapp-report-value">${data.bmi||'-'}</div></div>
-        <div class="whatsapp-report-row"><div class="whatsapp-report-label">Status:</div><div class="whatsapp-report-value">${data.layak?'Layak PEKA B40':'Tidak Layak PEKA B40'}</div></div>
-      </div>
-      <div class="whatsapp-report-footer">Sila hubungi klinik untuk maklumat lanjut. Terima kasih.</div>
-    </div>`;
-  CURRENT_WA_MSISDN = data.tel || '';
-  whatsappReportModal.show();
-}
-function sendWhatsAppReport(){
-  if(!currentWhatsAppData) return;
-  const m = composeNadiWhatsAppText(currentWhatsAppData);
-  if (currentWhatsAppData.tel) { window.open(waHref(currentWhatsAppData.tel, m), '_blank'); whatsappReportModal.hide(); toast('Berjaya','Laporan (teks) dihantar melalui WhatsApp','success'); }
-  else { toast('Ralat','Nombor telefon tidak sah','danger'); }
-}
 
-/* ========= GLOBALS ========= */
-let stats3dChart, completed3dChart, programHistoryChart;
-let retcaModal, secondTcaModal, pdpaModal, whatsappReportModal, programDetailsModal;
-let currentWhatsAppData=null, currentProgramId=null;
-
-/* ========= BOOTSTRAP APP ========= */
-function bootstrapApp(){
-  const logoEl=document.getElementById('brandLogo');
-  logoEl.src = LOGO_URL; logoEl.onerror = () => (logoEl.src='https://via.placeholder.com/64x64.png?text=KS');
-  document.getElementById('current-date').textContent = new Date().toLocaleDateString('ms-MY', { weekday:'long', year:'numeric', month:'long', day:'numeric' });
-
-  const today = new Date().toISOString().split('T')[0];
-  document.getElementById('programDate').value = today;
-
-  setupNavigation(); setupModals(); setupSearchBars(); setupExports(); setupExcel(); setupNADI(); setupLogDrawer(); setupFab();
-
-  loadDashboardData(); loadStatistics('3months'); loadCompletedStatistics('3months'); loadTCACallData();
-}
-
-/* ========= NAV & UI ========= */
-function setupNavigation(){
-  document.querySelectorAll('.nav-link').forEach(a=>{
-    a.addEventListener('click',(e)=>{
-      e.preventDefault();
-      document.querySelectorAll('main section').forEach(s=>s.classList.add('d-none'));
-      const target=a.getAttribute('href'); document.querySelector(target).classList.remove('d-none');
-      document.querySelectorAll('.nav-link').forEach(n=>n.classList.remove('active')); a.classList.add('active');
-
-      if (target==='#dashboard'){ loadDashboardData(); loadStatistics(document.getElementById('statPeriod').value); }
-      else if (target==='#tca-call'){ loadTCACallPage(); }
-      else if (target==='#first-visit'){ loadFirstVisitData(); }
-      else if (target==='#lab-followup'){ loadLabFollowUp(); }
-      else if (target==='#second-visit'){ loadSecondVisitData(); }
-      else if (target==='#selesai'){ loadCompletedData(); loadCompletedStatistics(document.getElementById('statPeriodCompleted').value); }
-      else if (target==='#arkib'){ loadArchivedData(); }
-    });
-  });
-  // Stat cards → navigate
-  document.querySelectorAll('.stat-card[data-goto]').forEach(card=>{
-    card.addEventListener('click', ()=>{ const href=card.getAttribute('data-goto'); const link=document.querySelector(`.nav-link[href="${href}"]`); if (link){ link.click(); }});
-  });
-  document.getElementById('btnDaftarPesakit').addEventListener('click', async (e)=>{ e.preventDefault(); await daftarPesakit(); });
-  document.getElementById('statPeriod').addEventListener('change', function(){ loadStatistics(this.value); });
-  document.getElementById('statPeriodCompleted').addEventListener('change', function(){ loadCompletedStatistics(this.value); });
-}
-function setupModals(){
-  retcaModal = new bootstrap.Modal(document.getElementById('retcaModal')); document.getElementById('btnSubmitRetca').addEventListener('click', submitRetca);
-  secondTcaModal = new bootstrap.Modal(document.getElementById('secondTcaModal')); document.getElementById('btnSubmitSecondTca').addEventListener('click', submitSecondTca);
-  pdpaModal = new bootstrap.Modal(document.getElementById('pdpaModal')); document.getElementById('btnUploadPDPA').addEventListener('click', uploadPDPA);
-  whatsappReportModal = new bootstrap.Modal(document.getElementById('whatsappReportModal'));
-  document.getElementById('btnSendWhatsApp').addEventListener('click', sendWhatsAppReport);
-  document.getElementById('btnSendWhatsAppImage').addEventListener('click', async ()=>{
-    if(!CURRENT_WA_MSISDN){ toast('Ralat','Nombor telefon tidak ditemui pada baris NADI','danger'); return; }
-    await sendWhatsAppReportImageFlow(CURRENT_WA_MSISDN);
-  });
-  programDetailsModal = new bootstrap.Modal(document.getElementById('programDetailsModal'));
-  document.getElementById('btnExportProgramDetails').addEventListener('click', ()=>toast('Makluman','Fungsi export program akan diproses di server','info'));
-}
-function setupFab(){
-  const btn=document.getElementById('fabLog'); const drawer=document.getElementById('logDrawer'); const btnClose=document.getElementById('btnCloseLog');
-  btn.addEventListener('click', ()=>{ drawer.classList.add('open'); refreshLogs(); autoRefreshLogs(); });
-  btnClose.addEventListener('click', ()=>{ drawer.classList.remove('open'); stopAutoRefreshLogs(); });
-}
-function setupSearchBars(){
-  const pairs=[ ['searchTCA','tcaCallTable'], ['searchTCAPage','tcaCallList'], ['searchFirst','firstVisitList'], ['searchSecond','secondVisitList'], ['searchCompleted','completedTable'], ['searchLab','labFollowupTable'], ['searchArchive','archiveTable'], ['programHistorySearch','programHistoryTable'] ];
-  pairs.forEach(([inpId,tbodyId])=>{
-    const inp=document.getElementById(inpId); const tb=document.getElementById(tbodyId); if(!inp||!tb) return;
-    inp.addEventListener('input', ()=>{ Array.from(tb.querySelectorAll('tr')).forEach(tr=>{ const text=tr.innerText||''; tr.style.display = (text.toLowerCase().includes((inp.value||'').trim().toLowerCase())) ? '' : 'none'; }); });
-  });
-}
-function setupExports(){ document.getElementById('btnExportCSV').addEventListener('click', exportCompletedCSV); }
-
-/* ========= CHARTS ========= */
-function buildBarChart(elId, dataArr, titleText){
-  const ctx=document.getElementById(elId).getContext('2d');
-  const labels=dataArr.map(i=>i.label), counts=dataArr.map(i=>i.count);
-  const backgroundColors=counts.map((_,i)=>`hsla(${(i*30)%360},70%,50%,0.7)`);
-  return new Chart(ctx, {
-    type:'bar',
-    data:{ labels, datasets:[{ label:'Jumlah Pesakit Selesai', data:counts, backgroundColor:backgroundColors, borderColor:'rgba(0,0,0,.1)', borderWidth:1 }] },
-    options:{ responsive:true, maintainAspectRatio:false, plugins:{ title:{ display:true, text:titleText, font:{ size:14 } }, legend:{ display:false }, datalabels:{ display:false } }, scales:{ y:{ beginAtZero:true, title:{ display:true, text:'Jumlah Pesakit'} }, x:{ title:{ display:true, text:'Bulan/Tahun'} } }, animation:{ duration:500 } }
-  });
-}
-
-/* ========= LOG DRAWER ========= */
-let logDrawerTimer=null, lastLogCount=0;
-function setupLogDrawer(){ document.getElementById('logSearch').addEventListener('input', ()=> refreshLogs()); }
-function autoRefreshLogs(){ stopAutoRefreshLogs(); logDrawerTimer=setInterval(()=> refreshLogs({silent:true}), 10000); }
-function stopAutoRefreshLogs(){ if(logDrawerTimer){ clearInterval(logDrawerTimer); logDrawerTimer=null; } }
-async function refreshLogs(opts={}){
-  const q=(document.getElementById('logSearch').value||'').trim(); const loader=document.getElementById('logLoading'); const body=document.getElementById('logBody');
-  if(!opts.silent) loader.classList.add('active');
-  try{
-    const res=await getJSON({ action:'getCallLogs', q }, { silent:true });
-    if(res.status==='success'){
-      const arr=res.data||[]; lastLogCount=arr.length; document.getElementById('logBadge').textContent=arr.length; body.innerHTML='';
-      arr.forEach(item=>{
-        const me=(item.staff||'').toLowerCase()===(STAFF_EMAIL||'').toLowerCase(); const who=item.staff||'STAFF'; const text=`${item.event||'CALL'} • ${item.nama||'-'} (${item.noIC||'-'}) • ${item.noTelefon||'-'}`; const when=item.time||'';
-        const bubble=document.createElement('div'); bubble.className='bubble '+(me?'me':'other'); bubble.innerHTML=`<div><i class="fa-solid fa-phone-volume me-1"></i>${text}</div><div class="meta">${who} • ${when}</div>`; body.appendChild(bubble);
-      }); body.scrollTop=body.scrollHeight;
-    }
-  }catch(e){/* senyap */}
-  finally{ if(!opts.silent) loader.classList.remove('active'); }
-}
-
-/* ========= EXCEL / CSV ========= */
-function parseCSVText(text){
-  const rows=[]; let row=[], field='', inQuotes=false;
-  for (let i=0;i<text.length;i++){
-    const ch=text[i];
-    if (inQuotes){
-      if (ch === '"'){ if (text[i+1] === '"'){ field+='"'; i++; } else { inQuotes=false; } }
-      else field += ch;
-    } else {
-      if (ch === '"') inQuotes=true;
-      else if (ch === ','){ row.push(field); field=''; }
-      else if (ch === '\n'){ rows.push([...row, field]); row=[]; field=''; }
-      else if (ch !== '\r'){ field += ch; }
-    }
+function openWhatsAppTo(rawMsisdn, text){
+  const msisdn = normalizeMsisdnMY(rawMsisdn);
+  if (!/^\d{10,15}$/.test(msisdn)){
+    toast('Ralat','Nombor telefon tidak sah','danger');
+    return;
   }
-  rows.push([...row, field]); return rows;
+  const encoded = encodeURIComponent(text || '');
+  const scheme = `whatsapp://send?phone=${msisdn}&text=${encoded}`;
+  const web    = `https://wa.me/${msisdn}?text=${encoded}`;
+  const isMobile = /Android|iPhone|iPad|iPod|Windows Phone/i.test(navigator.userAgent);
+  const url = isMobile ? scheme : web;
+  window.open(url, '_blank');
+  toast('WhatsApp','Membuka WhatsApp dengan mesej siap-isi…','success');
 }
-function setupExcel(){
-  const input=document.getElementById('excelFile'); const tbody=document.getElementById('kelayakanTable');
-  input.addEventListener('change', async (e)=>{
-    const file=e.target.files[0]; if(!file) return;
-    const name=(file.name||'').toLowerCase(); const isCSV=name.endsWith('.csv');
-    showLoader('Memproses fail…');
-    try{
-      if (isCSV){
-        const text=await file.text(); const rows=parseCSVText(text); tbody.innerHTML='';
-        if (!rows.length){ tbody.innerHTML = `<tr><td colspan="8" class="text-center text-muted">Tiada data.</td></tr>`; return; }
-        const header=rows[0].map(h=>(h||'').trim().toLowerCase());
-        const idx={ nama:header.findIndex(h=>['nama','name'].includes(h)), ic:header.findIndex(h=>['ic','no ic','kad pengenalan','nric'].includes(h)), telefon:header.findIndex(h=>['telefon','phone','no telefon','no tel'].includes(h)), alamat:header.findIndex(h=>['alamat','address'].includes(h)) };
-        let count=0;
-        for(let r=1;r<rows.length;r++){
-          const row=rows[r]; if(!row||row.length===0) continue;
-          const nama=idx.nama>=0?row[idx.nama]:'', ic=idx.ic>=0?row[idx.ic]:'', telRaw=idx.telefon>=0?row[idx.telefon]:'', alamat=idx.alamat>=0?row[idx.alamat]:'';
-          if (!nama && !ic && !telRaw && !alamat) continue;
-          const msisdn=normalizeMsisdnMY(telRaw); const id='x'+Date.now()+r;
-          const lahirYY=(ic||'').slice(0,2), lahirMM=(ic||'').slice(2,4), lahirDD=(ic||'').slice(4,6);
-          let ageOk=false; if (/^\d{6}/.test(ic)){ const y=Number(lahirYY); const fullY=(y<=29?2000+y:1900+y); const dob=new Date(fullY, Number(lahirMM)-1, Number(lahirDD)); const now=new Date();
-            let age=now.getFullYear()-dob.getFullYear(); const m=now.getMonth()-dob.getMonth(); if (m<0 || (m===0 && now.getDate()<dob.getDate())) age--; ageOk = age>=40; }
-          const tr = `
-            <tr id="${id}">
-              <td>${nama||''}</td>
-              <td>${ic||''}</td>
-              <td>${msisdn||''}</td>
-              <td>${alamat||''}</td>
-              <td class="text-center"><input type="checkbox" class="form-check-input" ${ageOk?'checked':''} onchange="toggleLayak('${id}', true)"></td>
-              <td class="text-center"><input type="checkbox" class="form-check-input" ${ageOk?'':'checked'} onchange="toggleLayak('${id}', false)"></td>
-              <td>
-                <div class="row g-1 align-items-center">
-                  <div class="col"><input type="date" class="form-control form-control-sm tca-date" disabled></div>
-                  <div class="col"><input type="time" class="form-control form-control-sm tca-time" disabled></div>
-                  <div class="col"><input type="text" class="form-control form-control-sm tca-staff" placeholder="Nama staff" disabled></div>
-                </div>
-              </td>
-              <td><button class="btn btn-sm btn-primary" onclick="daftarFromExcel('${id}', '${encodeURIComponent(nama||'')}', '${encodeURIComponent(ic||'')}', '${msisdn||''}', '${encodeURIComponent(alamat||'')}')" disabled>Daftar</button></td>
-            </tr>`;
-          tbody.insertAdjacentHTML('beforeend', tr); count++;
-        }
-        if(!count){ tbody.innerHTML=`<tr><td colspan="8" class="text-center text-muted">Tiada data sah ditemui dalam CSV.</td></tr>`; } else { toast('Berjaya', `CSV dimuat: ${count} rekod`, 'success'); }
-      } else {
-        try { await ensureXLSXReady(); } catch(err){ toast('Ralat','Gagal memuat SheetJS. Pastikan CDN boleh dicapai atau guna CSV.','danger'); return; }
-        const data=await file.arrayBuffer(); const wb=window.XLSX.read(data,{type:'array'}); const ws=wb.Sheets[wb.SheetNames[0]]; const json=window.XLSX.utils.sheet_to_json(ws,{defval:''});
-        tbody.innerHTML=''; if (!json.length){ tbody.innerHTML=`<tr><td colspan="8" class="text-center text-muted">Tiada data.</td></tr>`; return; }
-        json.forEach((row, idx)=>{
-          const nama=row.Nama||row.NAMA||row.name||''; const ic=row.IC||row.Ic||row.ic||''; const tel=row.Telefon||row.TELEFON||row.Phone||row.phone||''; const alamat=row.Alamat||row.ALAMAT||row.alamat||row.address||''; const msisdn=normalizeMsisdnMY(tel); const id='x'+Date.now()+idx;
-          const lahirYY=ic.slice(0,2), lahirMM=ic.slice(2,4), lahirDD=ic.slice(4,6); let ageOk=false;
-          if(/^\d{6}/.test(ic)){ const y=Number(lahirYY); const fullY=(y<=29?2000+y:1900+y); const dob=new Date(fullY, Number(lahirMM)-1, Number(lahirDD)); const now=new Date(); let age=now.getFullYear()-dob.getFullYear(); const m=now.getMonth()-dob.getMonth(); if (m<0 || (m===0 && now.getDate()<dob.getDate())) age--; ageOk=age>=40; }
-          const tr=`
-            <tr id="${id}">
-              <td>${nama}</td><td>${ic}</td><td>${msisdn}</td><td>${alamat}</td>
-              <td class="text-center"><input type="checkbox" class="form-check-input" ${ageOk?'checked':''} onchange="toggleLayak('${id}', true)"></td>
-              <td class="text-center"><input type="checkbox" class="form-check-input" ${ageOk?'':'checked'} onchange="toggleLayak('${id}', false)"></td>
-              <td>
-                <div class="row g-1 align-items-center">
-                  <div class="col"><input type="date" class="form-control form-control-sm tca-date" disabled></div>
-                  <div class="col"><input type="time" class="form-control form-control-sm tca-time" disabled></div>
-                  <div class="col"><input type="text" class="form-control form-control-sm tca-staff" placeholder="Nama staff" disabled></div>
-                </div>
-              </td>
-              <td><button class="btn btn-sm btn-primary" onclick="daftarFromExcel('${id}', '${encodeURIComponent(nama)}', '${encodeURIComponent(ic)}', '${msisdn}', '${encodeURIComponent(alamat)}')" disabled>Daftar</button></td>
-            </tr>`;
-          tbody.insertAdjacentHTML('beforeend', tr);
-        });
-        toast('Berjaya', `Berjaya memuat naik ${json.length} rekod dari Excel`, 'success');
-      }
-    }catch(e){ toast('Ralat','Gagal memproses fail: '+e.message,'danger'); }
-    finally{ hideLoader(); }
+
+/* =======================
+   WHATSAPP IMAGE SEND HELPERS (BARU)
+   ======================= */
+let CURRENT_WA_MSISDN = ''; // diset ketika preview dibuka
+
+async function captureReportAsBlob() {
+  const card = document.querySelector('#whatsappReportPreview .whatsapp-report');
+  if (!card) throw new Error('Gagal capai preview');
+  const canvas = await html2canvas(card, {
+    backgroundColor: '#ffffff',
+    scale: Math.min(window.devicePixelRatio || 1.5, 2.5)
   });
-}
-function toggleLayak(rowId, isLayak){
-  const tr=document.getElementById(rowId); if(!tr) return; const checks=tr.querySelectorAll('input[type=checkbox]');
-  if (isLayak){ checks[1].checked=false; } else { checks[0].checked=false; }
-  const date=tr.querySelector('.tca-date'), time=tr.querySelector('.tca-time'), staff=tr.querySelector('.tca-staff'), btn=tr.querySelector('button');
-  if (isLayak && checks[0].checked){ date.disabled=false; time.disabled=false; staff.disabled=false; btn.disabled=false; }
-  else { date.disabled=true; time.disabled=true; staff.disabled=true; btn.disabled=true; }
-}
-async function daftarFromExcel(rowId, encNama, encIC, msisdn, encAlamat){
-  const tr=document.getElementById(rowId); const nama=decodeURIComponent(encNama), ic=decodeURIComponent(encIC), alamat=decodeURIComponent(encAlamat);
-  const date=tr.querySelector('.tca-date').value, time=tr.querySelector('.tca-time').value, staff=tr.querySelector('.tca-staff').value.trim();
-  if (!date || !time || !staff){ toast('Ralat','Sila isi tarikh, masa & nama staff','danger'); return; }
-  try{
-    const res=await postForm({ action:'daftarPesakit', namaPesakit:nama, noIC:ic, noTelefon:msisdn, alamat:alamat, namaStaff:staff, tarikhTCA:date, masaTCA:time }, { msg:'Mendaftar pesakit…' });
-    if (res.status==='success'){ toast('Berjaya',`Pesakit ${nama} didaftarkan ke TCA`, 'success'); tr.remove(); loadDashboardData(); loadTCACallData(); }
-    else throw new Error(res.message||'Gagal daftar');
-  }catch(e){ toast('Ralat',e.message,'danger'); }
+  return await new Promise((resolve)=> canvas.toBlob(resolve, 'image/png', 0.95));
 }
 
-/* ========= NADI (form grid) ========= */
-let nadiRowCounter=0, nadiRows=[];
-function calculateAgeFromIC(ic){
-  if(!ic||ic.length<6) return '';
-  const birthYY=+ic.substring(0,2), birthMM=+ic.substring(2,4)-1, birthDD=+ic.substring(4,6);
-  const currentYear=new Date().getFullYear(), currentShort=currentYear%100, fullYear=birthYY<=currentShort?2000+birthYY:1900+birthYY;
-  const dob=new Date(fullYear,birthMM,birthDD), today=new Date();
-  let age=today.getFullYear()-dob.getFullYear(); const m=today.getMonth()-dob.getMonth(); if (m<0 || (m===0 && today.getDate()<dob.getDate())) age--;
-  let months=today.getMonth()-dob.getMonth(), days=today.getDate()-dob.getDate();
-  if (days<0){ const daysInLastMonth=new Date(today.getFullYear(), today.getMonth(), 0).getDate(); days = daysInLastMonth - dob.getDate() + today.getDate(); months--; }
-  if (months<0) months+=12;
-  return `${age}t ${months}b ${days}h`;
-}
-function updateNadiSummary(){
-  let layakCount=0, takLayakCount=0;
-  document.querySelectorAll('.nadi-row').forEach(row=>{
-    if (row.querySelector('.nadi-layak').checked) layakCount++;
-    else if (row.querySelector('.nadi-taklayak').checked) takLayakCount++;
-  });
-  document.getElementById('nadiLayakCount').textContent=layakCount;
-  document.getElementById('nadiTakLayakCount').textContent=takLayakCount;
-}
-function addNadiRow(){
-  const container=document.getElementById('nadiContainer'); const id='n'+Date.now()+Math.random().toString(36).slice(2,6); const row=document.createElement('tr'); row.className='nadi-row'; row.id=id; nadiRowCounter++;
-  row.innerHTML = `
-    <td class="text-center"><div class="nadi-counter">${nadiRowCounter}</div></td>
-    <td class="nadi-input-cell"><div class="view-mode" onclick="editNadiCell(this)"></div><input class="form-control form-control-sm nadi-nama" placeholder="Nama pesakit" style="display:none" onblur="saveNadiCell(this)" /></td>
-    <td class="nadi-input-cell"><div class="view-mode" onclick="editNadiCell(this)"></div><input class="form-control form-control-sm nadi-ic" placeholder="IC" style="display:none" onblur="saveNadiCell(this)" /></td>
-    <td class="nadi-input-cell"><div class="view-mode nadi-umur-view"></div></td>
-    <td class="nadi-input-cell"><div class="view-mode" onclick="editNadiCell(this)"></div><input class="form-control form-control-sm nadi-tel" placeholder="Telefon" style="display:none" onblur="saveNadiCell(this)" /></td>
-    <td class="nadi-input-cell"><div class="view-mode" onclick="editNadiCell(this)"></div><input class="form-control form-control-sm nadi-alamat" placeholder="Alamat" style="display:none" onblur="saveNadiCell(this)" /></td>
-    <td class="nadi-input-cell"><div class="view-mode" onclick="editNadiCell(this)"></div><input class="form-control form-control-sm nadi-bp" placeholder="BP" style="display:none" onblur="saveNadiCell(this)" /></td>
-    <td class="nadi-input-cell"><div class="view-mode" onclick="editNadiCell(this)"></div><input class="form-control form-control-sm nadi-pr" placeholder="PR" style="display:none" onblur="saveNadiCell(this)" /></td>
-    <td>
-      <div class="input-group input-group-sm">
-        <button class="btn btn-outline-secondary dropdown-toggle nadi-dxt-type-btn" data-bs-toggle="dropdown" type="button">Fasting</button>
-        <ul class="dropdown-menu">
-          <li><a class="dropdown-item" href="#" data-value="Fasting">Fasting</a></li>
-          <li><a class="dropdown-item" href="#" data-value="Random">Random</a></li>
-        </ul>
-        <input class="form-control nadi-dxt" placeholder="DXT" />
-        <input type="hidden" class="nadi-dxt-type" value="Fasting" />
-      </div>
-    </td>
-    <td class="nadi-input-cell"><div class="view-mode" onclick="editNadiCell(this)"></div><input class="form-control form-control-sm nadi-tinggi" placeholder="Tinggi" style="display:none" onblur="saveNadiCell(this)" /></td>
-    <td class="nadi-input-cell"><div class="view-mode" onclick="editNadiCell(this)"></div><input class="form-control form-control-sm nadi-berat" placeholder="Berat" style="display:none" onblur="saveNadiCell(this)" /></td>
-    <td class="nadi-input-cell"><div class="view-mode"></div><input class="form-control form-control-sm nadi-bmi" placeholder="BMI" disabled style="display:none" onblur="saveNadiCell(this)" /></td>
-    <td class="text-center"><input class="form-check-input nadi-layak" type="checkbox"></td>
-    <td class="text-center"><input class="form-check-input nadi-taklayak" type="checkbox"></td>
-    <td><div class="d-flex gap-1"><input type="date" class="form-control form-control-sm nadi-tca-date" disabled style="min-width:100px"><input type="time" class="form-control form-control-sm nadi-tca-time" disabled style="min-width:80px"><input type="text" class="form-control form-control-sm nadi-staff" placeholder="Staff" disabled style="min-width:100px"></div></td>
-    <td><div class="d-flex gap-1"><button class="btn btn-sm btn-outline-primary nadi-daftar" disabled>Daftar</button><button class="btn btn-sm btn-outline-success nadi-wa">WA Report</button><button class="btn btn-sm btn-outline-danger nadi-buang">Buang</button></div></td>
-  `;
-  container.appendChild(row);
-
-  // DXT dropdown
-  const dxtTypeBtn=row.querySelector('.nadi-dxt-type-btn'); const dxtTypeMenu=row.querySelector('.dropdown-menu'); const dxtTypeInput=row.querySelector('.nadi-dxt-type');
-  dxtTypeMenu.querySelectorAll('.dropdown-item').forEach(item=> item.addEventListener('click', function(e){ e.preventDefault(); dxtTypeBtn.textContent=this.textContent; dxtTypeInput.value=this.getAttribute('data-value'); }));
-
-  // BMI auto
-  const tinggi=row.querySelector('.nadi-tinggi'), berat=row.querySelector('.nadi-berat'), bmi=row.querySelector('.nadi-bmi');
-  const calc=()=>{ const h=parseFloat(tinggi.value)/100, w=parseFloat(berat.value); if(h&&w){ const v=(w/(h*h)).toFixed(1); bmi.value=v; bmi.previousElementSibling.textContent=v; } else { bmi.value=''; bmi.previousElementSibling.textContent=''; } };
-  tinggi.addEventListener('input', calc); berat.addEventListener('input', calc);
-
-  // Umur dari IC
-  const icInput=row.querySelector('.nadi-ic'); icInput.addEventListener('input', function(){ row.querySelector('.nadi-umur-view').textContent = calculateAgeFromIC(this.value); });
-
-  // Layak/tak layak toggle
-  const layak=row.querySelector('.nadi-layak'), takLayak=row.querySelector('.nadi-taklayak'); const tcaDate=row.querySelector('.nadi-tca-date'), tcaTime=row.querySelector('.nadi-tca-time'), staff=row.querySelector('.nadi-staff'), btnDaftar=row.querySelector('.nadi-daftar');
-  layak.addEventListener('change', ()=>{ if(layak.checked){ takLayak.checked=false; tcaDate.disabled=false; tcaTime.disabled=false; staff.disabled=false; btnDaftar.disabled=false; } else { tcaDate.disabled=true; tcaTime.disabled=true; staff.disabled=true; btnDaftar.disabled=true; } updateNadiSummary(); });
-  takLayak.addEventListener('change', ()=>{ if(takLayak.checked){ layak.checked=false; tcaDate.disabled=true; tcaTime.disabled=true; staff.disabled=true; btnDaftar.disabled=true; } updateNadiSummary(); });
-
-  // Daftar (baris NADI)
-  btnDaftar.addEventListener('click', async ()=>{
-    const nama=row.querySelector('.nadi-nama').value.trim(), ic=row.querySelector('.nadi-ic').value.trim(), tel=row.querySelector('.nadi-tel').value.trim(), alamat=row.querySelector('.nadi-alamat').value.trim(), date=tcaDate.value, time=tcaTime.value, staffName=staff.value.trim();
-    if(!nama||!ic||!tel||!date||!time||!staffName){ toast('Ralat','Sila isi semua maklumat','danger'); return; }
-    try{
-      const res=await postForm({ action:'daftarPesakit', namaPesakit:nama, noIC:ic, noTelefon:tel, alamat:alamat, tarikhTCA:date, masaTCA:time, namaStaff:staffName }, { msg:'Mendaftar pesakit...' });
-      if (res.status==='success'){ toast('Berjaya','Pesakit berjaya didaftarkan','success'); updateNadiRowData(row); }
-      else throw new Error(res.message||'Gagal mendaftar pesakit');
-    }catch(e){ toast('Ralat', e.message, 'danger'); }
-  });
-
-  // WhatsApp preview
-  row.querySelector('.nadi-wa').addEventListener('click', ()=>{
-    const data={ nama:row.querySelector('.nadi-nama').value.trim(), ic:row.querySelector('.nadi-ic').value.trim(), tel:normalizeMsisdnMY(row.querySelector('.nadi-tel').value.trim()), alamat:row.querySelector('.nadi-alamat').value.trim(), bp:row.querySelector('.nadi-bp').value.trim(), pr:row.querySelector('.nadi-pr').value.trim(), dxtType:row.querySelector('.nadi-dxt-type').value, dxt:row.querySelector('.nadi-dxt').value.trim(), tinggi:row.querySelector('.nadi-tinggi').value.trim(), berat:row.querySelector('.nadi-berat').value.trim(), bmi:row.querySelector('.nadi-bmi').value.trim(), layak:row.querySelector('.nadi-layak').checked };
-    currentWhatsAppData=data; generateWhatsAppReport(data);
-  });
-
-  // Buang row
-  row.querySelector('.nadi-buang').addEventListener('click', ()=>{ if(confirm('Buang baris ini?')){ row.remove(); updateNadiRowNumbers(); updateNadiSummary(); }});
-
-  nadiRows.push({ id, rowElement:row });
-}
-function updateNadiRowData(row){
-  const d={ nama:row.querySelector('.nadi-nama').value.trim(), ic:row.querySelector('.nadi-ic').value.trim(), tel:row.querySelector('.nadi-tel').value.trim(), alamat:row.querySelector('.nadi-alamat').value.trim(), bp:row.querySelector('.nadi-bp').value.trim(), pr:row.querySelector('.nadi-pr').value.trim(), dxtType:row.querySelector('.nadi-dxt-type').value, dxt:row.querySelector('.nadi-dxt').value.trim(), tinggi:row.querySelector('.nadi-tinggi').value.trim(), berat:row.querySelector('.nadi-berat').value.trim(), bmi:row.querySelector('.nadi-bmi').value.trim(), layak:row.querySelector('.nadi-layak').checked, takLayak:row.querySelector('.nadi-taklayak').checked, tcaDate:row.querySelector('.nadi-tca-date').value.trim(), tcaTime:row.querySelector('.nadi-tca-time').value.trim(), staff:row.querySelector('.nadi-staff').value.trim() };
-  const rowId=row.id, i=nadiRows.findIndex(r=>r.id===rowId); if(i!==-1) nadiRows[i].data=d;
-}
-function editNadiCell(view){ const input=view.nextElementSibling; view.style.display='none'; input.style.display='block'; input.value=view.textContent||''; input.focus(); }
-function saveNadiCell(input){ const view=input.previousElementSibling; view.textContent=input.value||''; view.style.display='block'; input.style.display='none'; if(input.classList.contains('nadi-ic')){ const row=input.closest('tr'); row.querySelector('.nadi-umur-view').textContent=calculateAgeFromIC(input.value); }
-  if(input.classList.contains('nadi-tinggi')||input.classList.contains('nadi-berat')){ const row=input.closest('tr'); const tinggi=row.querySelector('.nadi-tinggi').value, berat=row.querySelector('.nadi-berat').value, bmi=row.querySelector('.nadi-bmi'); if(tinggi&&berat){ const h=parseFloat(tinggi)/100, w=parseFloat(berat); const v=(w/(h*h)).toFixed(1); bmi.value=v; bmi.previousElementSibling.textContent=v; } else { bmi.value=''; bmi.previousElementSibling.textContent=''; } } }
-function updateNadiRowNumbers(){ const rows=document.querySelectorAll('#nadiContainer tr'); let counter=0; rows.forEach(row=>{ counter++; const el=row.querySelector('.nadi-counter'); if(el) el.textContent=counter; }); nadiRowCounter=counter; }
-
-function setupNADI(){ document.getElementById('nadiContainer').innerHTML=''; addNadiRow(); document.getElementById('btnNadiExportCsv').addEventListener('click', exportNadiCSV); document.getElementById('btnProgramHistory').addEventListener('click', showProgramHistory); document.getElementById('btnBackToNadiForm').addEventListener('click', showNadiForm); }
-function exportNadiCSV(){
-  const rows=Array.from(document.querySelectorAll('#nadiContainer .nadi-row')); if(!rows.length){ toast('Makluman','Tiada data untuk diexport','warning'); return; }
-  const programTitle=document.getElementById('programTitle').value.trim()||'Program NADI'; const programDate=document.getElementById('programDate').value||new Date().toISOString().split('T')[0];
-  const header=['Tajuk Program','TARIKH','NAMA','NO IC','NO TEL','ALAMAT','WT','HT','BP','HR','UMUR','BMI','DXT TYPE','DXT','KELAYAKAN'];
-  const data=rows.map(row=>{
-    const nama=row.querySelector('.nadi-nama').value.trim(), ic=row.querySelector('.nadi-ic').value.trim(), tel=row.querySelector('.nadi-tel').value.trim(), alamat=row.querySelector('.nadi-alamat').value.trim(), bp=row.querySelector('.nadi-bp').value.trim(), pr=row.querySelector('.nadi-pr').value.trim(), tinggi=row.querySelector('.nadi-tinggi').value.trim(), berat=row.querySelector('.nadi-berat').value.trim(), bmi=row.querySelector('.nadi-bmi').value.trim(), dxtType=row.querySelector('.nadi-dxt-type').value, dxt=row.querySelector('.nadi-dxt').value.trim(), layak=row.querySelector('.nadi-layak').checked ? 'Layak' : (row.querySelector('.nadi-taklayak').checked ? 'Tidak Layak' : ''), umur=row.querySelector('.nadi-umur-view').textContent.trim();
-    return [programTitle, programDate, nama, ic, tel, alamat, berat, tinggi, bp, pr, umur, bmi, dxtType, dxt, layak];
-  });
-  const titleRow=[programTitle, ...Array(header.length-1).fill('')];
-  const csv=[header, titleRow, ...data].map(r=>r.map(v=>`"${String(v||'').replace(/"/g,'""')}"`).join(',')).join('\r\n');
-  const blob=new Blob([csv],{type:'text/csv;charset=utf-8;'}); const url=URL.createObjectURL(blob); const a=document.createElement('a'); a.href=url; a.download=`program_nadi_${programDate}.csv`; document.body.appendChild(a); a.click(); a.remove(); URL.revokeObjectURL(url); toast('Export','Fail CSV telah dimuat turun','success');
-}
-async function saveNadiProgram(){
-  const programTitle=document.getElementById('programTitle').value.trim(); const programDate=document.getElementById('programDate').value;
-  if(!programTitle){ toast('Ralat','Sila isi tajuk program','danger'); return; }
-  if(!programDate){ toast('Ralat','Sila pilih tarikh program','danger'); return; }
-  const programData=[]; document.querySelectorAll('.nadi-row').forEach(row=>{
-    const d={ nama:row.querySelector('.nadi-nama').value.trim(), ic:row.querySelector('.nadi-ic').value.trim(), tel:row.querySelector('.nadi-tel').value.trim(), alamat:row.querySelector('.nadi-alamat').value.trim(), bp:row.querySelector('.nadi-bp').value.trim(), pr:row.querySelector('.nadi-pr').value.trim(), dxtType:row.querySelector('.nadi-dxt-type').value, dxt:row.querySelector('.nadi-dxt').value.trim(), tinggi:row.querySelector('.nadi-tinggi').value.trim(), berat:row.querySelector('.nadi-berat').value.trim(), bmi:row.querySelector('.nadi-bmi').value.trim(), layak:row.querySelector('.nadi-layak').checked, takLayak:row.querySelector('.nadi-taklayak').checked, tcaDate:row.querySelector('.nadi-tca-date').value.trim(), tcaTime:row.querySelector('.nadi-tca-time').value.trim(), staff:row.querySelector('.nadi-staff').value.trim() };
-    if (d.nama || d.ic || d.tel) programData.push(d);
-  });
-  if(!programData.length){ toast('Ralat','Tiada data pesakit untuk disimpan','danger'); return; }
-  try{
-    const res=await postForm({ action:'saveNadiProgram', programTitle, programDate, programData:JSON.stringify(programData), staff:STAFF_EMAIL }, { msg:'Menyimpan program...' });
-    if(res.status==='success'){ toast('Berjaya','Program berjaya disimpan','success'); document.getElementById('programTitle').value=''; document.getElementById('nadiContainer').innerHTML=''; addNadiRow(); updateNadiSummary(); }
-    else throw new Error(res.message||'Gagal menyimpan program');
-  }catch(e){ toast('Ralat', e.message, 'danger'); }
-}
-async function saveEligibleOnly(){
-  const programTitle=document.getElementById('programTitle').value.trim(), programDate=document.getElementById('programDate').value;
-  if(!programTitle){ toast('Ralat','Sila isi tajuk program','danger'); return; }
-  if(!programDate){ toast('Ralat','Sila pilih tarikh program','danger'); return; }
-  const eligibleData=[]; document.querySelectorAll('.nadi-row').forEach(row=>{
-    if (row.querySelector('.nadi-layak').checked){
-      const d={ nama:row.querySelector('.nadi-nama').value.trim(), ic:row.querySelector('.nadi-ic').value.trim(), tel:row.querySelector('.nadi-tel').value.trim(), alamat:row.querySelector('.nadi-alamat').value.trim(), bp:row.querySelector('.nadi-bp').value.trim(), pr:row.querySelector('.nadi-pr').value.trim(), dxtType:row.querySelector('.nadi-dxt-type').value, dxt:row.querySelector('.nadi-dxt').value.trim(), tinggi:row.querySelector('.nadi-tinggi').value.trim(), berat:row.querySelector('.nadi-berat').value.trim(), bmi:row.querySelector('.nadi-bmi').value.trim(), tcaDate:row.querySelector('.nadi-tca-date').value.trim(), tcaTime:row.querySelector('.nadi-tca-time').value.trim(), staff:row.querySelector('.nadi-staff').value.trim() };
-      if (d.nama || d.ic || d.tel) eligibleData.push(d);
-    }
-  });
-  if(!eligibleData.length){ toast('Ralat','Tiada pesakit layak untuk disimpan','danger'); return; }
-  try{
-    const res=await postForm({ action:'saveEligibleOnly', programTitle, programDate, eligibleData:JSON.stringify(eligibleData), staff:STAFF_EMAIL }, { msg:'Menyimpan pesakit layak...' });
-    if(res.status==='success'){ toast('Berjaya','Pesakit layak berjaya disimpan','success'); }
-    else throw new Error(res.message||'Gagal menyimpan pesakit layak');
-  }catch(e){ toast('Ralat', e.message, 'danger'); }
-}
-async function showProgramHistory(){
-  document.getElementById('nadiFormContainer').style.display='none'; document.getElementById('programHistoryContainer').style.display='block';
-  try{
-    const res=await getJSON({ action:'getProgramHistory' }, { msg:'Memuat sejarah program...' });
-    if(res.status==='success'){
-      const programs=res.data||[]; const tb=document.getElementById('programHistoryTable'); tb.innerHTML='';
-      if(!programs.length){ tb.innerHTML='<tr><td colspan="5" class="text-center text-muted">Tiada sejarah program</td></tr>'; return; }
-      programs.forEach(p=>{
-        tb.insertAdjacentHTML('beforeend', `<tr><td>${p.date||'-'}</td><td>${p.title||'-'}</td><td>${p.totalPatients||0}</td><td>${p.eligiblePatients||0}</td><td><button class="btn btn-sm btn-outline-primary" onclick="viewProgramDetails('${p.id}')"><i class="bi bi-eye me-1"></i>Lihat</button></td></tr>`);
-      }); updateProgramHistoryChart(programs);
-    } else throw new Error(res.message||'Gagal memuat sejarah program');
-  }catch(e){ toast('Ralat',e.message,'danger'); }
-}
-function showNadiForm(){ document.getElementById('programHistoryContainer').style.display='none'; document.getElementById('nadiFormContainer').style.display='block'; }
-function updateProgramHistoryChart(programs){
-  const ctx=document.getElementById('programHistoryChart').getContext('2d'); if(programHistoryChart) programHistoryChart.destroy();
-  const labels=programs.map(p=>p.date), total=programs.map(p=>p.totalPatients||0), eligible=programs.map(p=>p.eligiblePatients||0);
-  programHistoryChart=new Chart(ctx,{ type:'bar', data:{ labels, datasets:[ {label:'Jumlah Pesakit', data:total, backgroundColor:'rgba(54, 162, 235, 0.5)', borderColor:'rgba(54, 162, 235, 1)', borderWidth:1}, {label:'Pesakit Layak', data:eligible, backgroundColor:'rgba(75, 192, 192, 0.5)', borderColor:'rgba(75, 192, 192, 1)', borderWidth:1} ]}, options:{ responsive:true, maintainAspectRatio:false, scales:{ y:{ beginAtZero:true, title:{display:true,text:'Jumlah Pesakit'} }, x:{ title:{display:true,text:'Tarikh Program'} } } } });
-}
-async function viewProgramDetails(programId){
-  try{
-    const res=await getJSON({ action:'getProgramDetails', programId }, { msg:'Memuat butiran program...' });
-    if(res.status==='success'){
-      const program=res.data; currentProgramId=programId; document.getElementById('programDetailsTitle').textContent=`${program.title} - ${program.date}`;
-      const tb=document.getElementById('programDetailsTable'); tb.innerHTML='';
-      if(program.patients && program.patients.length){ program.patients.forEach((p,i)=> tb.insertAdjacentHTML('beforeend', `<tr><td>${i+1}</td><td>${p.nama||'-'}</td><td>${p.ic||'-'}</td><td>${p.tel||'-'}</td><td>${p.bp||'-'}</td><td>${p.pr||'-'}</td><td>${p.tinggi||'-'}</td><td>${p.berat||'-'}</td><td>${p.bmi||'-'}</td><td>${p.dxtType||'-'}</td><td>${p.dxt||'-'}</td><td>${p.layak?'Layak':'Tidak Layak'}</td></tr>`)); }
-      else tb.innerHTML='<tr><td colspan="12" class="text-center text-muted">Tiada data pesakit</td></tr>';
-      programDetailsModal.show();
-    } else throw new Error(res.message||'Gagal memuat butiran program');
-  }catch(e){ toast('Ralat', e.message, 'danger'); }
+function openWhatsAppDeepLink(msisdn, text='') {
+  const encoded = encodeURIComponent(text || '');
+  const scheme = `whatsapp://send?phone=${msisdn}&text=${encoded}`;
+  const web    = `https://wa.me/${msisdn}?text=${encoded}`;
+  window.open(scheme, '_blank');
+  setTimeout(()=>window.open(web,'_blank'), 600);
 }
 
-/* ========= DASHBOARD / PAGES DATA ========= */
-async function loadDashboardData(){
-  try{
-    const data=await getJSON({ action:'getDashboardData' }, { msg:'Memuat Dashboard…' });
-    if(data.status==='success'){
-      const d=data.data||{}; totalDaftar.textContent=d.totalDaftar||0; totalFirstVisit.textContent=d.totalFirstVisit||0; totalSecondVisit.textContent=d.totalSecondVisit||0; totalSelesai.textContent=d.totalSelesai||0; labFollowUpDue.textContent=d.labFollowUpDue||0; labFollowUpPending.textContent=d.labFollowUpPending||0;
-      setBadge('badgeTCA', d.totalDaftar); setBadge('badgeFirst', d.totalFirstVisit); setBadge('badgeSecond', d.totalSecondVisit); setBadge('badgeLab', (d.labFollowUpDue||0) + (d.labFollowUpPending||0));
-    }
-  }catch(e){ toast('Ralat','Gagal memuat data dashboard','danger'); }
-}
-function setBadge(id,val){ const el=document.getElementById(id); if(!el) return; if(val>0){ el.textContent=val; el.style.display='inline-block'; } else { el.style.display='none'; } }
-async function loadStatistics(period){
-  try{ const data=await getJSON({ action:'getStatistics', period }, { msg:'Memuat statistik…' });
-    if(data.status==='success'){ if(stats3dChart) stats3dChart.destroy(); stats3dChart=buildBarChart('stats3dChart', data.data, `Statistik Pesakit Selesai (${getPeriodLabel(period)})`); }
-  }catch(e){}
-}
-async function loadCompletedStatistics(period){
-  try{ const data=await getJSON({ action:'getStatistics', period }, { msg:'Memuat statistik…' });
-    if(data.status==='success'){ if(completed3dChart) completed3dChart.destroy(); completed3dChart=buildBarChart('completed3dChart', data.data, `Statistik Pesakit Selesai (${getPeriodLabel(period)})`); }
-  }catch(e){}
-}
-function getPeriodLabel(p){ if(p==='3months')return'3 Bulan Terakhir'; if(p==='6months')return'6 Bulan Terakhir'; if(p==='12months')return'12 Bulan Terakhir'; return p; }
-
-/* --- TCA hari ini (widget di Dashboard) — versi lengkap yang membetulkan kod terpotong --- */
-async function loadTCACallData(){
-  try{
-    const data = await getJSON({ action:'getTCACall' }, { msg:'Memuat TCA Hari Ini…' });
-    const tb1 = document.getElementById('tcaCallTable'); if (!tb1) return; tb1.innerHTML = '';
-    const renderRow = (p) => {
-      const msisdn = normalizeMsisdnMY(p.noTelefon || '');
-      return `
-        <tr data-ic="${p.noIC || ''}">
-          <td>${p.nama || '-'}</td>
-          <td>${p.noIC || '-'}</td>
-          <td class="mini-actions">
-            <a class="btn btn-sm btn-outline-secondary" href="${telHref(msisdn)}" title="Call"><i class="bi bi-telephone"></i></a>
-            <a class="btn btn-sm btn-outline-success" target="_blank" href="${waHref(msisdn)}" title="WhatsApp"><i class="bi bi-whatsapp"></i></a>
-            <span class="ms-2">${msisdn || ''}</span>
-          </td>
-          <td>${p.alamat || '-'}</td>
-          <td>${p.tarikhTCA || '-'}</td>
-          <td>${p.status || '-'}</td>
-        </tr>`;
-    };
-    const arr = (data && data.data) || [];
-    if (!arr.length){ tb1.innerHTML = `<tr><td colspan="6" class="text-center text-muted">Tiada rekod untuk hari ini</td></tr>`; return; }
-    arr.forEach(p => tb1.insertAdjacentHTML('beforeend', renderRow(p)));
+async function sendWhatsAppReportImageFlow(msisdn) {
+  const phone = normalizeMsisdnMY(msisdn||'');
+  if (!/^\d{10,15}$/.test(phone)) {
+    toast('Ralat','Nombor telefon tidak sah','danger');
+    return;
+  }
+  openWhatsAppDeepLink(phone, '');
+  showLoader('Menjana imej laporan…');
+  let blob;
+  try {
+    blob = await captureReportAsBlob();
   } catch(e){
-    const tb1 = document.getElementById('tcaCallTable');
-    if (tb1) tb1.innerHTML = `<tr><td colspan="6" class="text-center text-danger">Gagal memuat data</td></tr>`;
+    hideLoader();
+    toast('Ralat','Gagal jana imej laporan','danger');
+    return;
   }
+  hideLoader();
+
+  const file = new File([blob], `laporan_nadi_${Date.now()}.png`, { type: 'image/png' });
+
+  if (navigator.canShare && navigator.canShare({ files: [file] })) {
+    try {
+      await navigator.share({ files: [file], title: 'Laporan Saringan NADI', text: '' });
+      toast('Berjaya', 'Imej dikongsi melalui aplikasi pilihan anda', 'success');
+      return;
+    } catch(e){
+      // pengguna batal → teruskan fallback
+    }
+  }
+
+  if (navigator.clipboard && window.ClipboardItem) {
+    try {
+      await navigator.clipboard.write([ new ClipboardItem({ 'image/png': blob }) ]);
+      toast('Siap', 'Imej disalin ke clipboard. Tampal (Ctrl/Cmd+V) dalam chat WhatsApp.', 'success');
+      return;
+    } catch(e){
+      // fallback terakhir
+    }
+  }
+
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url; a.download = `laporan_nadi_${Date.now()}.png`;
+  document.body.appendChild(a); a.click(); a.remove(); URL.revokeObjectURL(url);
+  toast('Makluman', 'Imej dimuat turun. Lampirkan imej itu dalam chat WhatsApp dan hantar.', 'warning');
 }
 
-/* --- TCA (page penuh dengan penapis) --- */
-let currentTcaFilter='today';
-function wireTcaFilterButtons(){
-  document.querySelectorAll('#tcaFilter .btn').forEach(btn=>{
-    btn.addEventListener('click', ()=>{
-      document.querySelectorAll('#tcaFilter .btn').forEach(b=>b.classList.remove('active'));
-      btn.classList.add('active'); currentTcaFilter=btn.dataset.filter||'today'; loadTCACallPage();
-    });
-  });
-}
-async function loadTCACallPage(){
-  wireTcaFilterButtons();
-  try{
-    const data=await getJSON({ action:'getTCACall', filter: currentTcaFilter }, { msg:'Memuat senarai TCA…' });
-    const tb=document.getElementById('tcaCallList'); tb.innerHTML='';
-    const arr=(data&&data.data)||[]; if(!arr.length){ tb.innerHTML=`<tr><td colspan="6" class="text-center text-muted">Tiada rekod</td></tr>`; return; }
-    arr.forEach(p=>{
-      const msisdn=normalizeMsisdnMY(p.noTelefon||'');
-      tb.insertAdjacentHTML('beforeend', `
-        <tr data-ic="${p.noIC||''}">
-          <td>${p.nama||'-'}</td><td>${p.noIC||'-'}</td>
-          <td class="mini-actions">
-            <a class="btn btn-sm btn-outline-secondary" href="${telHref(msisdn)}" title="Call"><i class="bi bi-telephone"></i></a>
-            <a class="btn btn-sm btn-outline-success" target="_blank" href="${waHref(msisdn)}" title="WhatsApp"><i class="bi bi-whatsapp"></i></a>
-            <span class="ms-2">${msisdn||''}</span>
-          </td>
-          <td>${p.alamat||'-'}</td><td>${p.tarikhTCA||'-'}</td><td>${p.status||'-'}</td>
-        </tr>`);
-    });
-  }catch(e){ const tb=document.getElementById('tcaCallList'); if(tb) tb.innerHTML=`<tr><td colspan="6" class="text-center text-danger">Gagal memuat data</td></tr>`; }
-}
+/* =======================
+   GLOBALS
+   ======================= */
+let stats3dChart, completed3dChart;
+let retcaModal, secondTcaModal, pdpaModal, whatsappReportModal;
+let currentWhatsAppData = null;
 
-/* --- Pages lain (ringkas) --- */
-async function loadFirstVisitData(){
-  try{
-    const data=await getJSON({ action:'getFirstVisit' }, { msg:'Memuat First Visit…' });
-    const tb=document.getElementById('firstVisitList'); tb.innerHTML='';
-    const arr=(data&&data.data)||[]; if(!arr.length){ tb.innerHTML=`<tr><td colspan="7" class="text-center text-muted">Tiada rekod</td></tr>`; return; }
-    arr.forEach(p=>{
-      tb.insertAdjacentHTML('beforeend', `<tr>
-        <td>${p.nama||'-'}</td><td>${p.noIC||'-'}</td><td>${p.alamat||'-'}</td><td>${p.tarikhTCA||'-'}</td>
-        <td>${p.pdpa?'Ada':'—'}</td><td>${p.status||'-'}</td>
-        <td><button class="btn btn-sm btn-outline-primary" onclick="openPdpa('${p.noIC||''}')"><i class="fa-solid fa-file-arrow-up me-1"></i>PDPA</button></td>
-      </tr>`);
-    });
-  }catch(e){ document.getElementById('firstVisitList').innerHTML=`<tr><td colspan="7" class="text-center text-danger">Gagal memuat</td></tr>`; }
-}
-async function loadLabFollowUp(){
-  try{
-    const data=await getJSON({ action:'getLabFollowUp' }, { msg:'Memuat Lab Follow-up…' });
-    const tb=document.getElementById('labFollowupTable'); tb.innerHTML='';
-    const arr=(data&&data.data)||[]; if(!arr.length){ tb.innerHTML=`<tr><td colspan="8" class="text-center text-muted">Tiada rekod</td></tr>`; return; }
-    arr.forEach(p=>{
-      tb.insertAdjacentHTML('beforeend', `<tr>
-        <td>${p.nama||'-'}</td><td>${p.noIC||'-'}</td><td>${p.noTelefon||'-'}</td><td>${p.alamat||'-'}</td>
-        <td>${p.firstVisitDate||'-'}</td><td>${p.hariKe||'-'}</td><td>${p.status||'-'}</td>
-        <td><button class="btn btn-sm btn-outline-primary" onclick="openSecondTca('${p.noIC||''}')"><i class="fa-solid fa-calendar-plus me-1"></i>Set Second TCA</button></td>
-      </tr>`);
-    });
-  }catch(e){ document.getElementById('labFollowupTable').innerHTML=`<tr><td colspan="8" class="text-center text-danger">Gagal memuat</td></tr>`; }
-}
-async function loadSecondVisitData(){
-  try{
-    const data=await getJSON({ action:'getSecondVisit' }, { msg:'Memuat Second Visit…' });
-    const tb=document.getElementById('secondVisitList'); tb.innerHTML='';
-    const arr=(data&&data.data)||[]; if(!arr.length){ tb.innerHTML=`<tr><td colspan="7" class="text-center text-muted">Tiada rekod</td></tr>`; return; }
-    arr.forEach(p=>{
-      tb.insertAdjacentHTML('beforeend', `<tr>
-        <td>${p.nama||'-'}</td><td>${p.noIC||'-'}</td><td>${p.alamat||'-'}</td><td>${p.tarikhTCA||'-'}</td>
-        <td>${p.pdpa?'Ada':'—'}</td><td>${p.status||'-'}</td>
-        <td><button class="btn btn-sm btn-outline-secondary" onclick="openRetca('${p.noIC||''}')"><i class="fa-solid fa-calendar-plus me-1"></i>Re-TCA</button></td>
-      </tr>`);
-    });
-  }catch(e){ document.getElementById('secondVisitList').innerHTML=`<tr><td colspan="7" class="text-center text-danger">Gagal memuat</td></tr>`; }
-}
-async function loadCompletedData(){
-  try{
-    const data=await getJSON({ action:'getCompleted' }, { msg:'Memuat Selesai…' });
-    const tb=document.getElementById('completedTable'); tb.innerHTML='';
-    const arr=(data&&data.data)||[]; if(!arr.length){ tb.innerHTML=`<tr><td colspan="11" class="text-center text-muted">Tiada rekod</td></tr>`; return; }
-    arr.forEach(p=>{
-      tb.insertAdjacentHTML('beforeend', `<tr>
-        <td>${p.nama||'-'}</td><td>${p.noIC||'-'}</td><td>${p.noTelefon||'-'}</td><td>${p.alamat||'-'}</td><td>${p.pdpa?'Ada':'—'}</td>
-        <td>${p.tarikhDaftar||'-'}</td><td>${p.firstVisit||'-'}</td><td>${p.labCompleted||'-'}</td><td>${p.secondVisit||'-'}</td><td>${p.tarikhSelesai||'-'}</td>
-        <td><button class="btn btn-sm btn-outline-danger" onclick="arsipkan('${p.noIC||''}')"><i class="fa-solid fa-box-archive me-1"></i>Arkib</button></td>
-      </tr>`);
-    });
-  }catch(e){ document.getElementById('completedTable').innerHTML=`<tr><td colspan="11" class="text-center text-danger">Gagal memuat</td></tr>`; }
-}
-async function loadArchivedData(){
-  try{
-    const data=await getJSON({ action:'getArchived' }, { msg:'Memuat Arkib…' });
-    const tb=document.getElementById('archiveTable'); tb.innerHTML='';
-    const arr=(data&&data.data)||[]; if(!arr.length){ tb.innerHTML=`<tr><td colspan="8" class="text-center text-muted">Tiada rekod arkib</td></tr>`; return; }
-    arr.forEach(p=>{
-      tb.insertAdjacentHTML('beforeend', `<tr>
-        <td>${p.nama||'-'}</td><td>${p.noIC||'-'}</td><td>${p.noTelefon||'-'}</td><td>${p.alamat||'-'}</td><td>${p.tarikhDaftar||'-'}</td><td>${p.tarikhSelesai||'-'}</td><td>${p.diarkib||'-'}</td>
-        <td><button class="btn btn-sm btn-outline-secondary" onclick="unarchive('${p.noIC||''}')"><i class="fa-solid fa-rotate-left me-1"></i>Un-Archive</button></td>
-      </tr>`);
-    });
-  }catch(e){ document.getElementById('archiveTable').innerHTML=`<tr><td colspan="8" class="text-center text-danger">Gagal memuat</td></tr>`; }
-}
+/* =======================
+   BOOTSTRAP APP
+   ======================= */
+function bootstrapApp(){
+  const logoEl = document.getElementById('brandLogo');
+  logoEl.src = LOGO_URL;
+  logoEl.onerror = () => (logoEl.src='https://via.placeholder.com/64x64.png?text=KS');
 
-/* ========= FORM & MODAL HANDLERS ========= */
-async function daftarPesakit(){
-  const nama=document.getElementById('namaPesakit').value.trim(), ic=document.getElementById('noIC').value.trim(), tel=document.getElementById('noTelefon').value.trim(), alamat=document.getElementById('alamatPesakit').value.trim(), date=document.getElementById('tarikhTCA').value, time=document.getElementById('masaTCA').value, staff=document.getElementById('namaStaff').value.trim();
-  if(!nama||!ic||!tel||!date||!time||!staff){ toast('Ralat','Sila isi semua medan wajib','danger'); return; }
-  try{
-    const res=await postForm({ action:'daftarPesakit', namaPesakit:nama, noIC:ic, noTelefon:normalizeMsisdnMY(tel), alamat:alamat, tarikhTCA:date, masaTCA:time, namaStaff:staff }, { msg:'Mendaftar pesakit…' });
-    if(res.status==='success'){ toast('Berjaya','Pesakit didaftarkan','success'); loadDashboardData(); loadTCACallData(); }
-    else throw new Error(res.message||'Gagal daftar');
-  }catch(e){ toast('Ralat', e.message, 'danger'); }
-}
-function openPdpa(ic){ document.getElementById('pdpaIC').value=ic; pdpaModal.show(); }
-async function uploadPDPA(){
-  const ic=document.getElementById('pdpaIC').value; const fileEl=document.getElementById('pdpaFile'); const file=fileEl.files[0];
-  if(!ic || !file){ toast('Ralat','Sila pilih fail PDPA','danger'); return; }
-  try{
-    showLoader('Muat naik PDPA…');
-    const fd=new FormData(); fd.append('action','uploadPDPA'); fd.append('id_token', ID_TOKEN); fd.append('noIC', ic); fd.append('file', file);
-    const r=await fetch(SCRIPT_URL, { method:'POST', body:fd }); const j=await r.json(); hideLoader();
-    if(j.status==='success'){ toast('Berjaya','PDPA dimuat naik','success'); pdpaModal.hide(); loadFirstVisitData(); }
-    else throw new Error(j.message||'Gagal upload');
-  }catch(e){ hideLoader(); toast('Ralat', e.message, 'danger'); }
-}
-function openRetca(ic){ document.getElementById('retcaIC').value=ic; retcaModal.show(); }
-async function submitRetca(){
-  const ic=document.getElementById('retcaIC').value, date=document.getElementById('retcaDate').value, time=document.getElementById('retcaTime').value;
-  if(!ic||!date||!time){ toast('Ralat','Sila isi tarikh & masa','danger'); return; }
-  try{
-    const res=await postForm({ action:'retca', noIC:ic, tarikhTCA:date, masaTCA:time }, { msg:'Menyimpan re-TCA…' });
-    if(res.status==='success'){ toast('Berjaya','Re-TCA disimpan','success'); retcaModal.hide(); loadSecondVisitData(); loadTCACallPage(); }
-    else throw new Error(res.message||'Gagal simpan re-TCA');
-  }catch(e){ toast('Ralat', e.message, 'danger'); }
-}
-function openSecondTca(ic){ document.getElementById('secondTcaIC').value=ic; secondTcaModal.show(); }
-async function submitSecondTca(){
-  const ic=document.getElementById('secondTcaIC').value, date=document.getElementById('secondTcaDate').value, time=document.getElementById('secondTcaTime').value, staff=document.getElementById('secondTcaStaff').value.trim();
-  if(!ic||!date||!time||!staff){ toast('Ralat','Lengkapkan semua medan','danger'); return; }
-  try{
-    const res=await postForm({ action:'setSecondTca', noIC:ic, tarikhTCA:date, masaTCA:time, namaStaff:staff }, { msg:'Menyimpan Second TCA…' });
-    if(res.status==='success'){ toast('Berjaya','Second TCA disimpan','success'); secondTcaModal.hide(); loadLabFollowUp(); loadSecondVisitData(); }
-    else throw new Error(res.message||'Gagal simpan Second TCA');
-  }catch(e){ toast('Ralat', e.message, 'danger'); }
-}
-async function arsipkan(ic){ try{ const res=await postForm({ action:'archive', noIC:ic }, { msg:'Mengarkib…' }); if(res.status==='success'){ toast('Berjaya','Rekod diarkib','success'); loadCompletedData(); } else throw new Error(res.message||'Gagal arkib'); }catch(e){ toast('Ralat', e.message, 'danger'); } }
-async function unarchive(ic){ try{ const res=await postForm({ action:'unarchive', noIC:ic }, { msg:'Membuka arkib…' }); if(res.status==='success'){ toast('Berjaya','Rekod dipulihkan','success'); loadArchivedData(); } else throw new Error(res.message||'Gagal un-archive'); }catch(e){ toast('Ralat', e.message, 'danger'); } }
-
-/* ========= EXPORTS ========= */
-async function exportCompletedCSV(){
-  try{
-    const data=await getJSON({ action:'getCompleted' }, { msg:'Menjana CSV…' }); const arr=(data&&data.data)||[];
-    if(!arr.length){ toast('Makluman','Tiada data selesai','warning'); return; }
-    const header=['Nama','IC','Telefon','Alamat','PDPA','Tarikh Daftar','First Visit','Lab Completed','Second Visit','Tarikh Selesai'];
-    const rows=arr.map(p=>[p.nama||'', p.noIC||'', p.noTelefon||'', p.alamat||'', (p.pdpa?'Ada':'—'), p.tarikhDaftar||'', p.firstVisit||'', p.labCompleted||'', p.secondVisit||'', p.tarikhSelesai||'']);
-    const csv=[header, ...rows].map(r=>r.map(v=>`"${String(v||'').replace(/"/g,'""')}"`).join(',')).join('\r\n');
-    const blob=new Blob([csv],{type:'text/csv;charset=utf-8;'}); const url=URL.createObjectURL(blob); const a=document.createElement('a'); a.href=url; a.download=`pesakit_selesai_${new Date().toISOString().slice(0,10)}.csv`; document.body.appendChild(a); a.click(); a.remove(); URL.revokeObjectURL(url);
-  }catch(e){ toast('Ralat','Gagal eksport CSV','danger'); }
-}
-
-/* ========= INIT ========= */
-document.addEventListener('DOMContentLoaded', ()=>{
-  try{ initGoogleSignIn(); }catch(e){}
-  // Fallback jika pengguna belum login, masih boleh lihat UI (tanpa data)
-  const today = new Date().toISOString().split('T')[0];
-  document.getElementById('programDate').value = today;
-});
-
-/* ========= GLOBAL MODAL REFS ========= */
-let whatsappReportModal, programDetailsModal;
-  </script>
-</body>
-</html>
+  document.getElementById('current
