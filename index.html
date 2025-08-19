@@ -777,7 +777,6 @@ const GOOGLE_CLIENT_ID = '863564124015-838ksbuk27f0kkomm16hnc3bu608pbrr.apps.goo
 // 3) Logo (optional) - Ganti dengan URL logo klinik anda
 const LOGO_URL = '';
     
-/* =======================
    AUTH (Google Identity)
    ======================= */
 let ID_TOKEN = '';      // diisi selepas login
@@ -1023,7 +1022,7 @@ function composeNadiWhatsAppText(data){
 function openWhatsAppTo(rawMsisdn, text){
   const msisdn = normalizeMsisdnMY(rawMsisdn);
   if (!/^\d{10,15}$/.test(msisdn)){
-    toast('Ralat','Nombor telefon tidak sah','danger');
+    toast('Ralat', 'Nombor telefon tidak sah', 'danger');
     return;
   }
   const encoded = encodeURIComponent(text || '');
@@ -1032,7 +1031,7 @@ function openWhatsAppTo(rawMsisdn, text){
   const isMobile = /Android|iPhone|iPad|iPod|Windows Phone/i.test(navigator.userAgent);
   const url = isMobile ? scheme : web;
   window.open(url, '_blank');
-  toast('WhatsApp','Membuka WhatsApp dengan mesej siap-isi…','success');
+  toast('WhatsApp', 'Membuka WhatsApp dengan mesej siap-isi…', 'success');
 }
 /* =======================
    WHATSAPP IMAGE SEND HELPERS (BARU)
@@ -1939,7 +1938,7 @@ function exportNadiCSV() {
     row.tinggi, row.berat, row.bmi, row.layak, row.tcaDate, row.tcaTime, row.staff
   ]);
 
-  const csv = [header, ...csvRows].map(r => r.map(v => `"${String(v||'').replace(/"/g,'""')}"`).join('\r\n');
+  const csv = [header, ...csvRows].map(r => r.map(v => `"${String(v||'').replace(/"/g,'""')}"`).join(',')).join('\r\n');
   const blob = new Blob([csv], { type:'text/csv;charset=utf-8;' });
   const url = URL.createObjectURL(blob);
   const a = document.createElement('a');
@@ -2485,4 +2484,4 @@ document.addEventListener('DOMContentLoaded', ()=>{
 });
   </script>
 </body>
-</html>
+</html> "berdasarkan rumus ini saya mahu TAHU APA PUNCA EXCELL SAYA GAGAL DI UPLOAD?
