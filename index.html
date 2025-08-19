@@ -777,6 +777,7 @@ const GOOGLE_CLIENT_ID = '863564124015-838ksbuk27f0kkomm16hnc3bu608pbrr.apps.goo
 // 3) Logo (optional) - Ganti dengan URL logo klinik anda
 const LOGO_URL = '';
     
+/* =======================
    AUTH (Google Identity)
    ======================= */
 let ID_TOKEN = '';      // diisi selepas login
@@ -867,7 +868,7 @@ async function postForm(params={}, {silent=false, msg='Menyimpan data…'}={}){
 }
 
 /* =======================
-   UTIL  (GANTI KESELURUHAN BLOK INI)
+   UTIL
    ======================= */
 const normalizeMsisdnMY = (raw) => {
   if (!raw) return '';
@@ -1022,7 +1023,7 @@ function composeNadiWhatsAppText(data){
 function openWhatsAppTo(rawMsisdn, text){
   const msisdn = normalizeMsisdnMY(rawMsisdn);
   if (!/^\d{10,15}$/.test(msisdn)){
-    toast('Ralat', 'Nombor telefon tidak sah', 'danger');
+    toast('Ralat','Nombor telefon tidak sah','danger');
     return;
   }
   const encoded = encodeURIComponent(text || '');
@@ -1031,8 +1032,9 @@ function openWhatsAppTo(rawMsisdn, text){
   const isMobile = /Android|iPhone|iPad|iPod|Windows Phone/i.test(navigator.userAgent);
   const url = isMobile ? scheme : web;
   window.open(url, '_blank');
-  toast('WhatsApp', 'Membuka WhatsApp dengan mesej siap-isi…', 'success');
+  toast('WhatsApp','Membuka WhatsApp dengan mesej siap-isi…','success');
 }
+
 /* =======================
    WHATSAPP IMAGE SEND HELPERS (BARU)
    ======================= */
