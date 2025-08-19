@@ -1307,32 +1307,74 @@ async function refreshLogs(opts={}){
 /* =======================
    EXCEL (Kelayakan)
    ======================= */
+    /* ===== SheetJS guard/fallback: pastikan window.XLSX wujud (LETak DI ATAS "EXCEL (Kelayakan)") ===== */
+function loadScriptOnce(src){
+  return new Promise((resolve, reject) => {
+    if ([...document.scripts].some(s => s.src === src)) return resolve(); // elak muat dua kali
+    const s = document.createElement('script');
+    s.src = src; s.async = true;
+    s.onload = () => resolve();
+    s.onerror = () => reject(new Error('Gagal muat: ' + src));
+    document.head.appendChild(s);
+  });
+}
+
+async function ensureXLSXReady(){
+  if (window.XLSX) return; // sudah tersedia
+  const SOURCES = [
+    'https://cdn.jsdelivr.net/npm/xlsx@0.19.3/dist/xlsx.full.min.js',
+    'https://unpkg.com/xlsx@0.19.3/dist/xlsx.full.min.js',
+    'https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.19.3/xlsx.full.min.js'
+  ];
+  for (const url of SOURCES){
+    try{
+      await loadScriptOnce(url);
+      if (window.XLSX) return;
+    }catch(_){}
+  }
+  throw new Error('Tidak dapat memuatkan SheetJS (XLSX).');
+}
+
 function setupExcel(){
   const input = document.getElementById('excelFile');
   const tbody = document.getElementById('kelayakanTable');
+
   input.addEventListener('change', async (e)=>{
     const file = e.target.files[0];
     if (!file) return;
+
+    // ➊ Pastikan SheetJS wujud (fallback jika CDN utama gagal)
+    try {
+      await ensureXLSXReady();
+    } catch(err){
+      toast('Ralat','Gagal memuat SheetJS: ' + err.message, 'danger');
+      return;
+    }
+
     showLoader('Memproses Excel…');
     try{
       const data = await file.arrayBuffer();
-      const wb = XLSX.read(data, { type:'array' });
-      const ws = wb.Sheets[wb.SheetNames[0]];
-      const json = XLSX.utils.sheet_to_json(ws, { defval:'' });
+
+      // ➋ Guna global yang pasti ada
+      const wb  = window.XLSX.read(data, { type:'array' });
+      const ws  = wb.Sheets[wb.SheetNames[0]];
+      const json= window.XLSX.utils.sheet_to_json(ws, { defval:'' });
+
       tbody.innerHTML = '';
       if (!json.length) {
         tbody.innerHTML = `<tr><td colspan="8" class="text-center text-muted">Tiada data.</td></tr>`;
         return;
       }
-      json.forEach((row, idx)=>{
-        const nama = row.Nama || row.NAMA || row.name || '';
-        const ic = row.IC || row.Ic || row.ic || '';
-        const tel = row.Telefon || row.TELEFON || row.Phone || row.phone || '';
-        const alamat = row.Alamat || row.ALAMAT || row.alamat || row.address || '';
-        const msisdn = normalizeMsisdnMY(tel);
-        const id = 'x'+Date.now()+idx;
 
-        // Kelayakan lalai ikut umur >=40 dari IC (format: YYMMDD-..)
+      json.forEach((row, idx)=>{
+        const nama   = row.Nama || row.NAMA || row.name || '';
+        const ic     = row.IC || row.Ic || row.ic || '';
+        const telRaw = row.Telefon || row.TELEFON || row.Phone || row.phone || '';
+        const alamat = row.Alamat || row.ALAMAT || row.alamat || row.address || '';
+        const msisdn = normalizeMsisdnMY(telRaw);
+        const id     = 'x'+Date.now()+idx;
+
+        // Kelayakan lalai ikut umur ≥40 dari IC (YYMMDD……)
         const lahirYY = ic.slice(0,2), lahirMM = ic.slice(2,4), lahirDD = ic.slice(4,6);
         let ageOk = false;
         if (/^\d{6}/.test(ic)){
@@ -1366,14 +1408,16 @@ function setupExcel(){
           </tr>`;
         tbody.insertAdjacentHTML('beforeend', tr);
       });
+
       toast('Berjaya', `Berjaya memuat naik ${json.length} rekod dari Excel`, 'success');
     } catch(e) {
       toast('Ralat', 'Gagal memproses fail Excel: ' + e.message, 'danger');
-    } finally { 
-      hideLoader(); 
+    } finally {
+      hideLoader();
     }
   });
 }
+
 function toggleLayak(rowId, isLayak){
   const tr = document.getElementById(rowId);
   if (!tr) return;
