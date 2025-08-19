@@ -17,6 +17,15 @@
 
   <!-- SheetJS (Excel) -->
   <script src="./vendor/xlsx/xlsx.full.min.js"></script>
+  <script src="./vendor/xlsx/xlsx.full.min.js"></script>
+  
+<script>
+  (function(){
+    const ok = !!window.XLSX;
+    console.log('[XLSX preload]', ok ? 'OK (local loaded)' : 'NOT LOADED');
+  })();
+</script>
+
 
   <!-- Google Identity Services (Sign-In) -->
   <script src="https://accounts.google.com/gsi/client" async defer></script>
@@ -1321,22 +1330,36 @@ function loadScriptOnce(src){
   });
 }
 
+// Cuba path LOKAL dulu, kemudian CDN; laporkan semua cubaan jika gagal
 async function ensureXLSXReady(){
-  if (window.XLSX) return; // sudah tersedia melalui <script src="./vendor/...">
-  const SOURCES = [
-    // fallback CDN kalau lokal gagal dimuat (path salah / CSP)
+  if (window.XLSX) return;
+
+  // Anda boleh tambah/ubah path lokal di sini mengikut struktur projek anda
+  const LOCAL_PATHS = (window.__XLSX_LOCAL_PATHS__ && Array.isArray(window.__XLSX_LOCAL_PATHS__))
+    ? window.__XLSX_LOCAL_PATHS__
+    : [
+        './vendor/xlsx/xlsx.full.min.js',
+        'vendor/xlsx/xlsx.full.min.js',
+        '/vendor/xlsx/xlsx.full.min.js'
+      ];
+
+  const CDN_PATHS = [
     'https://cdn.jsdelivr.net/npm/xlsx@0.19.3/dist/xlsx.full.min.js',
     'https://unpkg.com/xlsx@0.19.3/dist/xlsx.full.min.js',
     'https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.19.3/xlsx.full.min.js'
   ];
+
+  const SOURCES = [...LOCAL_PATHS, ...CDN_PATHS];
+  const tried = [];
   let lastErr;
   for (const url of SOURCES){
     try{
+      tried.push(url);
       await loadScriptOnce(url);
       if (window.XLSX) return;
     }catch(e){ lastErr = e; }
   }
-  throw lastErr || new Error('Tidak dapat memuatkan SheetJS (XLSX).');
+  throw new Error('Tidak dapat memuatkan SheetJS (XLSX).\nPercubaan:\n - ' + tried.join('\n - '));
 }
 // Parser CSV ringkas (sokong petikan & "" escape)
 function parseCSVText(text){
