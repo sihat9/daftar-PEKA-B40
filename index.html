@@ -16,53 +16,52 @@
   <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2"></script>
 
   <!-- SheetJS (Excel) via CDN -->
-<!-- XLSX robust loader + override (SIAP TAMPAL DI <head>) -->
-<script>
-  (function () {
-    // Jika dah ada, tak perlu apa-apa
-    if (window.XLSX) return;
+  <script>
+    (function () {
+      // Jika dah ada, tak perlu apa-apa
+      if (window.XLSX) return;
 
-    // Helper umum: muat <script> sekali
-    window.loadScriptOnce = window.loadScriptOnce || (function () {
-      const loaded = new Set();
-      return function loadScriptOnce(url) {
-        return new Promise((resolve, reject) => {
-          if (loaded.has(url)) return resolve();
-          const s = document.createElement('script');
-          s.src = url;
-          s.async = true;
-          s.onload = () => { loaded.add(url); resolve(); };
-          s.onerror = () => reject(new Error('Gagal muat: ' + url));
-          document.head.appendChild(s);
-        });
+      // Helper umum: muat <script> sekali
+      window.loadScriptOnce = window.loadScriptOnce || (function () {
+        const loaded = new Set();
+        return function loadScriptOnce(url) {
+          return new Promise((resolve, reject) => {
+            if (loaded.has(url)) return resolve();
+            const s = document.createElement('script');
+            s.src = url;
+            s.async = true;
+            s.onload = () => { loaded.add(url); resolve(); };
+            s.onerror = () => reject(new Error('Gagal muat: ' + url));
+            document.head.appendChild(s);
+          });
+        };
+      })();
+
+      // Override/definisi semula: pastikan XLSX wujud, cuba 3 CDN
+      window.ensureXLSXReady = async function ensureXLSXReady() {
+        if (window.XLSX) return;
+        const cdns = [
+          'https://cdn.jsdelivr.net/npm/xlsx@0.19.3/dist/xlsx.full.min.js',
+          'https://unpkg.com/xlsx@0.19.3/dist/xlsx.full.min.js',
+          'https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.19.3/xlsx.full.min.js'
+        ];
+        let lastErr;
+        for (const url of cdns) {
+          try {
+            await window.loadScriptOnce(url);
+            if (window.XLSX) {
+              console.log('[XLSX] Loaded from', url);
+              return;
+            }
+          } catch (e) {
+            lastErr = e;
+          }
+        }
+        console.error('[XLSX] Gagal dimuat dari semua CDN.', lastErr || '');
+        throw new Error('XLSX gagal dimuat.');
       };
     })();
-
-    // Override/definisi semula: pastikan XLSX wujud, cuba 3 CDN
-    window.ensureXLSXReady = async function ensureXLSXReady() {
-      if (window.XLSX) return;
-      const cdns = [
-        'https://cdn.jsdelivr.net/npm/xlsx@0.19.3/dist/xlsx.full.min.js',
-        'https://unpkg.com/xlsx@0.19.3/dist/xlsx.full.min.js',
-        'https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.19.3/xlsx.full.min.js'
-      ];
-      let lastErr;
-      for (const url of cdns) {
-        try {
-          await window.loadScriptOnce(url);
-          if (window.XLSX) {
-            console.log('[XLSX] Loaded from', url);
-            return;
-          }
-        } catch (e) {
-          lastErr = e;
-        }
-      }
-      console.error('[XLSX] Gagal dimuat dari semua CDN.', lastErr || '');
-      throw new Error('XLSX gagal dimuat.');
-    };
-  })();
-</script>
+  </script>
 
   <!-- Google Identity Services (Sign-In) -->
   <script src="https://accounts.google.com/gsi/client" async defer></script>
@@ -70,227 +69,206 @@
   <!-- html2canvas untuk tangkap preview → imej (BARU) -->
   <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
 
-<style>
-  :root{ --primary:#2c3e50; --secondary:#3498db; --success:#27ae60; --warning:#f39c12; --danger:#e74c3c; --light:#ecf0f1; --dark:#34495e; --muted:#95a5a6; }
-  html{ font-size:15px; }
-  @media (max-width:1200px){ html{ font-size:14px; } }
-  @media (max-width:576px){ html{ font-size:13px; } }
+  <style>
+    :root{ --primary:#2c3e50; --secondary:#3498db; --success:#27ae60; --warning:#f39c12; --danger:#e74c3c; --light:#ecf0f1; --dark:#34495e; --muted:#95a5a6; }
+    html{ font-size:15px; }
+    @media (max-width:1200px){ html{ font-size:14px; } }
+    @media (max-width:576px){ html{ font-size:13px; } }
 
-  html,body{height:100%}
-  body{font-family:'Segoe UI',Tahoma,Geneva,Verdana,sans-serif;background:#f5f7fa;color:#333}
+    html,body{height:100%}
+    body{font-family:'Segoe UI',Tahoma,Geneva,Verdana,sans-serif;background:#f5f7fa;color:#333}
 
-  /* Navbar */
-  .navbar-main{background:#fff;box-shadow:0 2px 10px rgba(0,0,0,.08);padding:10px 0}
-  .navbar-brand{font-weight:700;color:var(--primary);font-size:1.05rem;display:flex;align-items:center;gap:10px}
-  .nav-link{color:var(--dark);font-weight:500;margin:0 4px;padding:7px 10px!important;border-radius:8px;transition:.2s;position:relative}
-  .nav-link:hover,.nav-link.active{background:rgba(52,152,219,.12);color:var(--secondary)}
-  .nav-badge{
-    position:absolute; top:-4px; right:-2px; transform:translate(30%,-30%);
-    background:#dc3545; color:#fff; border-radius:999px; font-size:.65rem; padding:2px 6px; display:none;
-  }
+    /* Navbar */
+    .navbar-main{background:#fff;box-shadow:0 2px 10px rgba(0,0,0,.08);padding:10px 0}
+    .navbar-brand{font-weight:700;color:var(--primary);font-size:1.05rem;display:flex;align-items:center;gap:10px}
+    .nav-link{color:var(--dark);font-weight:500;margin:0 4px;padding:7px 10px!important;border-radius:8px;transition:.2s;position:relative}
+    .nav-link:hover,.nav-link.active{background:rgba(52,152,219,.12);color:var(--secondary)}
+    .nav-badge{
+      position:absolute; top:-4px; right:-2px; transform:translate(30%,-30%);
+      background:#dc3545; color:#fff; border-radius:999px; font-size:.65rem; padding:2px 6px; display:none;
+    }
 
-  /* Header */
-  .page-header{background:linear-gradient(135deg,var(--primary),var(--secondary));color:#fff;padding:14px 0;margin-bottom:12px;border-radius:0 0 12px 12px}
+    /* Header */
+    .page-header{background:linear-gradient(135deg,var(--primary),var(--secondary));color:#fff;padding:14px 0;margin-bottom:12px;border-radius:0 0 12px 12px}
 
-  /* Cards & tables */
-  .card{border:none;border-radius:14px;box-shadow:0 8px 24px rgba(0,0,0,.06);margin-bottom:16px}
-  .card-header{background:#fff;border-bottom:1px solid rgba(0,0,0,.06);font-weight:600;padding:12px 16px;border-radius:14px 14px 0 0!important}
-  .stat-card{padding:14px;border-radius:14px;color:#fff;text-align:center;position:relative;overflow:hidden;cursor:pointer}
-  .stat-card .number{font-size:1.45rem;font-weight:800}
-  .table td,.table th{vertical-align:middle}
-  .table{font-size:.95rem}
-  .searchbar{max-width:340px}
-  .mini-actions .btn{margin-right:6px;margin-bottom:6px}
+    /* Cards & tables */
+    .card{border:none;border-radius:14px;box-shadow:0 8px 24px rgba(0,0,0,.06);margin-bottom:16px}
+    .card-header{background:#fff;border-bottom:1px solid rgba(0,0,0,.06);font-weight:600;padding:12px 16px;border-radius:14px 14px 0 0!important}
+    .stat-card{padding:14px;border-radius:14px;color:#fff;text-align:center;position:relative;overflow:hidden;cursor:pointer}
+    .stat-card .number{font-size:1.45rem;font-weight:800}
+    .table td,.table th{vertical-align:middle}
+    .table{font-size:.95rem}
+    .searchbar{max-width:340px}
+    .mini-actions .btn{margin-right:6px;margin-bottom:6px}
 
-  /* Global App Loader (maks 2s) */
-  #appLoader{
-    position:fixed; inset:0; z-index:2000; display:none;
-    background: radial-gradient(1200px 600px at 10% -10%, rgba(52,152,219,.18), transparent),
-                radial-gradient(1200px 600px at 110% 110%, rgba(46,204,113,.18), transparent),
-                rgba(255,255,255,.35);
-    backdrop-filter: blur(10px);
-  }
-  #appLoader .loader-card{
-    position:absolute; top:50%; left:50%; transform:translate(-50%,-50%);
-    background:rgba(255,255,255,.75); border:1px solid rgba(255,255,255,.6);
-    box-shadow: 0 20px 40px rgba(0,0,0,.12);
-    border-radius:18px; padding:16px 18px; min-width:220px; text-align:center;
-  }
-  .spinner-premium{
-    width:36px;height:36px;border-radius:50%;
-    border:4px solid rgba(52,152,219,.25);
-    border-top-color:#3498db; animation:spin .9s linear infinite; margin:6px auto 8px;
-  }
-  @keyframes spin{to{transform:rotate(360deg)}}
+    /* Global App Loader (maks 2s) */
+    #appLoader{
+      position:fixed; inset:0; z-index:2000; display:none;
+      background: radial-gradient(1200px 600px at 10% -10%, rgba(52,152,219,.18), transparent),
+                  radial-gradient(1200px 600px at 110% 110%, rgba(46,204,113,.18), transparent),
+                  rgba(255,255,255,.35);
+      backdrop-filter: blur(10px);
+    }
+    #appLoader .loader-card{
+      position:absolute; top:50%; left:50%; transform:translate(-50%,-50%);
+      background:rgba(255,255,255,.75); border:1px solid rgba(255,255,255,.6);
+      box-shadow: 0 20px 40px rgba(0,0,0,.12);
+      border-radius:18px; padding:16px 18px; min-width:220px; text-align:center;
+    }
+    .spinner-premium{
+      width:36px;height:36px;border-radius:50%;
+      border:4px solid rgba(52,152,219,.25);
+      border-top-color:#3498db; animation:spin .9s linear infinite; margin:6px auto 8px;
+    }
+    @keyframes spin{to{transform:rotate(360deg)}}
 
-  /* Log Calls Drawer (gaya iPhone) */
-  #logDrawer{
-    position:fixed; top:0; right:-420px; width:400px; max-width:90vw; height:100%;
-    background:#f8f9fb; box-shadow:-12px 0 35px rgba(0,0,0,.18); z-index:3000;
-    transition:right .25s ease; border-left:1px solid rgba(0,0,0,.05);
-    display:flex; flex-direction:column;
-  }
-  #logDrawer.open{ right:0; }
-  .log-header{
-    padding:10px 12px; background:#fff; border-bottom:1px solid rgba(0,0,0,.06);
-    display:flex; gap:8px; align-items:center;
-  }
-  .log-header .title{font-weight:700; color:#222; flex:1}
-  .log-search{ padding:8px; background:#fff; border-bottom:1px solid rgba(0,0,0,.06); }
-  .log-body{ padding:10px; overflow:auto; flex:1; display:flex; flex-direction:column; gap:8px; }
-  .bubble{
-    max-width:80%; padding:8px 10px; border-radius:16px; box-shadow:0 4px 12px rgba(0,0,0,.06);
-    position:relative; font-size:.9rem; line-height:1.2rem;
-  }
-  .bubble.me{ margin-left:auto; background:#007aff; color:#fff; border-bottom-right-radius:6px; }
-  .bubble.other{ margin-right:auto; background:#e9ecef; color:#222; border-bottom-left-radius:6px; }
-  .bubble .meta{ font-size:.72rem; opacity:.8; margin-top:5px }
-  .log-loading{ display:none; text-align:center; padding:8px }
-  .log-loading.active{ display:block }
+    /* Log Calls Drawer (gaya iPhone) */
+    #logDrawer{
+      position:fixed; top:0; right:-420px; width:400px; max-width:90vw; height:100%;
+      background:#f8f9fb; box-shadow:-12px 0 35px rgba(0,0,0,.18); z-index:3000;
+      transition:right .25s ease; border-left:1px solid rgba(0,0,0,.05);
+      display:flex; flex-direction:column;
+    }
+    #logDrawer.open{ right:0; }
+    .log-header{
+      padding:10px 12px; background:#fff; border-bottom:1px solid rgba(0,0,0,.06);
+      display:flex; gap:8px; align-items:center;
+    }
+    .log-header .title{font-weight:700; color:#222; flex:1}
+    .log-search{ padding:8px; background:#fff; border-bottom:1px solid rgba(0,0,0,.06); }
+    .log-body{ padding:10px; overflow:auto; flex:1; display:flex; flex-direction:column; gap:8px; }
+    .bubble{
+      max-width:80%; padding:8px 10px; border-radius:16px; box-shadow:0 4px 12px rgba(0,0,0,.06);
+      position:relative; font-size:.9rem; line-height:1.2rem;
+    }
+    .bubble.me{ margin-left:auto; background:#007aff; color:#fff; border-bottom-right-radius:6px; }
+    .bubble.other{ margin-right:auto; background:#e9ecef; color:#222; border-bottom-left-radius:6px; }
+    .bubble .meta{ font-size:.72rem; opacity:.8; margin-top:5px }
+    .log-loading{ display:none; text-align:center; padding:8px }
+    .log-loading.active{ display:block }
 
-  /* FAB (tombol terapung) untuk Log Calls */
-  #fabLog{
-    position:fixed; right:18px; bottom:18px; z-index:3500;
-    width:56px; height:56px; border-radius:50%;
-    display:flex; align-items:center; justify-content:center;
-    box-shadow:0 10px 24px rgba(0,0,0,.18);
-  }
+    /* FAB (tombol terapung) untuk Log Calls */
+    #fabLog{
+      position:fixed; right:18px; bottom:18px; z-index:3500;
+      width:56px; height:56px; border-radius:50%;
+      display:flex; align-items:center; justify-content:center;
+      box-shadow:0 10px 24px rgba(0,0,0,.18);
+    }
 
-  /* ===== Toast: kebal overflow & tidak tenggelam di kanan ===== */
-  #toastHost{
-    position: fixed;
-    top: 0; left: 0; right: 0;             /* bentang penuh lebar skrin */
-    padding: 12px;
-    z-index: 4000;
-    pointer-events: none;                   /* host tak halang klik elemen lain */
-    display: flex;
-    justify-content: flex-end;              /* toasts rapat ke kanan */
-    align-items: flex-start;
-    box-sizing: border-box;
-  }
-  #toastContainer{
-    display: flex;
-    flex-direction: column;
-    gap: 8px;                               /* jarak antara toast */
-  }
-  #toastHost .toast{
-    pointer-events: auto;                   /* toast masih boleh diklik */
-    box-sizing: border-box;
-    width: max-content;
-    max-width: min(92vw, 420px);            /* jangan lebih viewport */
-    word-wrap: break-word;
-    overflow-wrap: anywhere;
-  }
-  /* Bila Log Drawer dibuka, tolak ke kiri supaya tak bertembung */
-  #logDrawer.open ~ #toastHost{
-    justify-content: flex-start;
-  }
-  @media (max-width: 576px){
-    #toastHost{ padding: 8px; }
-    #toastHost .toast{ max-width: 96vw; }
-  }
+    /* ===== Toast: kebal overflow & tidak tenggelam di kanan ===== */
+    #toastHost{
+      position: fixed;
+      top: 0; left: 0; right: 0;             /* bentang penuh lebar skrin */
+      padding: 12px;
+      z-index: 4000;
+      pointer-events: none;                   /* host tak halang klik elemen lain */
+      display: flex;
+      justify-content: flex-end;              /* toasts rapat ke kanan */
+      align-items: flex-start;
+      box-sizing: border-box;
+    }
+    #toastContainer{
+      display: flex;
+      flex-direction: column;
+      gap: 8px;                               /* jarak antara toast */
+    }
+    #toastHost .toast{
+      pointer-events: auto;                   /* toast masih boleh diklik */
+      box-sizing: border-box;
+      width: max-content;
+      max-width: min(92vw, 420px);            /* jangan lebih viewport */
+      word-wrap: break-word;
+      overflow-wrap: anywhere;
+    }
+    /* Bila Log Drawer dibuka, tolak ke kiri supaya tak bertembung */
+    #logDrawer.open ~ #toastHost{
+      justify-content: flex-start;
+    }
+    @media (max-width: 576px){
+      #toastHost{ padding: 8px; }
+      #toastHost .toast{ max-width: 96vw; }
+    }
 
-  /* NADI TABLE STYLES */
-  .nadi-scroll-container { overflow-x: auto; width: 100%; padding-bottom: 8px; }
-  .nadi-table { width: 100%; min-width: 1300px; border-collapse: separate; border-spacing: 0; }
-  .nadi-table th {
-    background: #f8f9fa; padding: 10px 8px; font-weight: 600; text-align: center;
-    position: sticky; top: 0; z-index: 10; border: 1px solid #dee2e6;
-  }
-  .nadi-table td { padding: 8px; vertical-align: middle; border: 1px solid #dee2e6; }
-  .nadi-input-cell { position: relative; }
-  .nadi-input-cell .view-mode {
-    width: 100%; padding: 6px 8px; cursor: pointer; border: 1px solid transparent;
-    border-radius: 4px; min-height: 36px; display: flex; align-items: center;
-  }
-  .nadi-input-cell .view-mode:hover { background-color: #f8f9fa; border: 1px solid #dee2e6; }
-  .nadi-input-cell input {
-    width: 100%; min-width: 100px; border: 1px solid #ced4da; border-radius: 4px; padding: 6px 8px; transition: width 0.2s ease;
-  }
-  .nadi-input-cell input:focus { width: auto; min-width: 100px; }
-  .nadi-checkbox-cell { text-align: center; }
-  .nadi-actions-cell { min-width: 180px; }
-  .nadi-counter {
-    background: var(--primary); color: white; border-radius: 50%;
-    width: 24px; height: 24px; display: inline-flex; align-items: center; justify-content: center; font-size: 0.75rem;
-  }
+    /* NADI TABLE STYLES */
+    .nadi-scroll-container { overflow-x: auto; width: 100%; padding-bottom: 8px; }
+    .nadi-table { width: 100%; min-width: 1300px; border-collapse: separate; border-spacing: 0; }
+    .nadi-table th {
+      background: #f8f9fa; padding: 10px 8px; font-weight: 600; text-align: center;
+      position: sticky; top: 0; z-index: 10; border: 1px solid #dee2e6;
+    }
+    .nadi-table td { padding: 8px; vertical-align: middle; border: 1px solid #dee2e6; }
+    .nadi-input-cell { position: relative; }
+    .nadi-input-cell .view-mode {
+      width: 100%; padding: 6px 8px; cursor: pointer; border: 1px solid transparent;
+      border-radius: 4px; min-height: 36px; display: flex; align-items: center;
+    }
+    .nadi-input-cell .view-mode:hover { background-color: #f8f9fa; border: 1px solid #dee2e6; }
+    .nadi-input-cell input {
+      width: 100%; min-width: 100px; border: 1px solid #ced4da; border-radius: 4px; padding: 6px 8px; transition: width 0.2s ease;
+    }
+    .nadi-input-cell input:focus { width: auto; min-width: 100px; }
+    .nadi-checkbox-cell { text-align: center; }
+    .nadi-actions-cell { min-width: 180px; }
+    .nadi-counter {
+      background: var(--primary); color: white; border-radius: 50%;
+      width: 24px; height: 24px; display: inline-flex; align-items: center; justify-content: center; font-size: 0.75rem;
+    }
 
-  /* Responsive */
-  @media (max-width: 992px) { .stat-card .number{font-size:1.3rem} }
+    /* Responsive */
+    @media (max-width: 992px) { .stat-card .number{font-size:1.3rem} }
 
-  /* Form sections */
-  .form-section { background: white; border-radius: 12px; padding: 16px; margin-bottom: 16px; box-shadow: 0 2px 8px rgba(0,0,0,0.05); }
-  .form-section h5 { color: var(--primary); margin-bottom: 16px; padding-bottom: 8px; border-bottom: 1px solid #eee; }
-  .sticky-form-actions { position: sticky; bottom: 0; background: white; padding: 12px; border-top: 1px solid #eee; margin-top: 16px; }
+    /* Form sections */
+    .form-section { background: white; border-radius: 12px; padding: 16px; margin-bottom: 16px; box-shadow: 0 2px 8px rgba(0,0,0,0.05); }
+    .form-section h5 { color: var(--primary); margin-bottom: 16px; padding-bottom: 8px; border-bottom: 1px solid #eee; }
+    .sticky-form-actions { position: sticky; bottom: 0; background: white; padding: 12px; border-top: 1px solid #eee; margin-top: 16px; }
 
-  /* WhatsApp Report Image */
-  .whatsapp-report {
-    width: 100%; max-width: 500px; background: white; border-radius: 12px; padding: 20px;
-    box-shadow: 0 4px 12px rgba(0,0,0,0.1); margin: 0 auto;
-  }
-  .whatsapp-report-header {
-    display: flex; align-items: center; margin-bottom: 15px; padding-bottom: 15px; border-bottom: 1px solid #eee;
-  }
-  .whatsapp-report-logo {
-    width: 50px; height: 50px; border-radius: 8px; margin-right: 15px; object-fit: cover; border: 1px solid rgba(0,0,0,0.08);
-  }
-  .whatsapp-report-title { font-size: 18px; font-weight: 700; color: var(--primary); }
-  .whatsapp-report-subtitle { font-size: 14px; color: var(--muted); }
-  .whatsapp-report-body { margin-bottom: 15px; }
-  .whatsapp-report-row { display: flex; margin-bottom: 8px; }
-  .whatsapp-report-label { font-weight: 600; width: 120px; color: var(--dark); }
-  .whatsapp-report-value { flex: 1; }
-  .whatsapp-report-footer { text-align: center; font-size: 12px; color: var(--muted); margin-top: 20px; padding-top: 15px; border-top: 1px solid #eee; }
+    /* WhatsApp Report Image */
+    .whatsapp-report {
+      width: 100%; max-width: 500px; background: white; border-radius: 12px; padding: 20px;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.1); margin: 0 auto;
+    }
+    .whatsapp-report-header {
+      display: flex; align-items: center; margin-bottom: 15px; padding-bottom: 15px; border-bottom: 1px solid #eee;
+    }
+    .whatsapp-report-logo {
+      width: 50px; height: 50px; border-radius: 8px; margin-right: 15px; object-fit: cover; border: 1px solid rgba(0,0,0,0.08);
+    }
+    .whatsapp-report-title { font-size: 18px; font-weight: 700; color: var(--primary); }
+    .whatsapp-report-subtitle { font-size: 14px; color: var(--muted); }
+    .whatsapp-report-body { margin-bottom: 15px; }
+    .whatsapp-report-row { display: flex; margin-bottom: 8px; }
+    .whatsapp-report-label { font-weight: 600; width: 120px; color: var(--dark); }
+    .whatsapp-report-value { flex: 1; }
+    .whatsapp-report-footer { text-align: center; font-size: 12px; color: var(--muted); margin-top: 20px; padding-top: 15px; border-top: 1px solid #eee; }
 
-  /* NADI Summary Cards */
-  .nadi-summary-container {
-    display: flex;
-    gap: 12px;
-    margin-bottom: 16px;
-    flex-wrap: wrap;
-  }
-  .nadi-summary-card {
-    flex: 1;
-    min-width: 200px;
-    background: white;
-    border-radius: 10px;
-    padding: 12px;
-    box-shadow: 0 2px 8px rgba(0,0,0,0.08);
-    text-align: center;
-  }
-  .nadi-summary-card .title {
-    font-size: 0.9rem;
-    color: var(--muted);
-    margin-bottom: 8px;
-  }
-  .nadi-summary-card .count {
-    font-size: 1.5rem;
-    font-weight: 700;
-  }
-  .nadi-summary-card.layak { border-top: 4px solid var(--success); }
-  .nadi-summary-card.tak-layak { border-top: 4px solid var(--danger); }
-
-  /* Program History Styles */
-  .program-history-container {
-    display: none;
-  }
-  .program-history-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    margin-bottom: 16px;
-  }
-  .program-history-search {
-    max-width: 300px;
-  }
-  .program-history-table {
-    width: 100%;
-  }
-  .program-history-chart {
-    height: 300px;
-    margin-top: 20px;
-  }
-</style>
+    /* NADI Summary Cards */
+    .nadi-summary-container {
+      display: flex;
+      gap: 12px;
+      margin-bottom: 16px;
+      flex-wrap: wrap;
+    }
+    .nadi-summary-card {
+      flex: 1;
+      min-width: 200px;
+      background: white;
+      border-radius: 10px;
+      padding: 12px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+      text-align: center;
+    }
+    .nadi-summary-card .title {
+      font-size: 0.9rem;
+      color: var(--muted);
+      margin-bottom: 8px;
+    }
+    .nadi-summary-card .count {
+      font-size: 1.5rem;
+      font-weight: 700;
+    }
+    .nadi-summary-card.layak { border-top: 4px solid var(--success); }
+    .nadi-summary-card.tak-layak { border-top: 4px solid var(--danger); }
+  </style>
 </head>
 <body>
   <!-- Global Loader -->
@@ -475,21 +453,21 @@
         <h2 class="h6 m-0"><i class="bi bi-clipboard2-pulse me-2"></i>Program PEKA B40 bersama NADI</h2>
         <div class="d-flex gap-2">
           <button id="btnNadiExportCsv" class="btn btn-sm btn-outline-success"><i class="bi bi-filetype-csv me-1"></i>Export to CSV</button>
-          <button id="btnProgramHistory" class="btn btn-sm btn-outline-primary"><i class="bi bi-clock-history me-1"></i>Sejarah Program</button>
+          <button id="btnNadiSaveAll" class="btn btn-sm btn-outline-primary"><i class="bi bi-save me-1"></i>Simpan Semua</button>
         </div>
       </div>
       
-      <!-- Program Title Input -->
+      <!-- Tajuk Program -->
       <div class="card mb-3">
         <div class="card-body">
-          <div class="row">
-            <div class="col-md-6">
+          <div class="row g-3">
+            <div class="col-md-8">
               <label class="form-label">Tajuk Program</label>
-              <input type="text" id="programTitle" class="form-control" placeholder="Contoh: Program Saringan Kesihatan B40 - Kampung Baru">
+              <input id="nadiProgramTitle" class="form-control" placeholder="Contoh: Program Saringan Kesihatan B40 Kampung Baru">
             </div>
-            <div class="col-md-6">
+            <div class="col-md-4">
               <label class="form-label">Tarikh Program</label>
-              <input type="date" id="programDate" class="form-control" value="">
+              <input id="nadiProgramDate" class="form-control" type="date">
             </div>
           </div>
         </div>
@@ -507,7 +485,7 @@
         </div>
       </div>
       
-      <div class="card" id="nadiFormContainer">
+      <div class="card">
         <div class="card-body">
           <div class="nadi-scroll-container">
             <table class="nadi-table">
@@ -538,44 +516,8 @@
           </div>
           <div class="sticky-form-actions">
             <button class="btn btn-primary" onclick="addNadiRow()"><i class="bi bi-plus-circle me-1"></i>Tambah Pesakit</button>
-            <button class="btn btn-success" onclick="saveNadiProgram()"><i class="bi bi-save me-1"></i>Simpan Program</button>
-            <button class="btn btn-warning" onclick="saveEligibleOnly()"><i class="bi bi-check-circle me-1"></i>Simpan Yang Layak Sahaja</button>
           </div>
           <div class="text-muted small mt-2">Nota: Baris "Layak" boleh terus <b>Daftar</b> (simpan ke sheet). Baris "Tidak Layak" <u>tidak</u> disimpan ke sheet tetapi <b>tetap dieksport CSV</b> bersama-sama.</div>
-        </div>
-      </div>
-
-      <!-- Program History Section -->
-      <div class="program-history-container" id="programHistoryContainer">
-        <div class="card">
-          <div class="card-body">
-            <div class="program-history-header">
-              <h3 class="h6 m-0"><i class="bi bi-clock-history me-2"></i>Sejarah Program</h3>
-              <input class="form-control form-control-sm program-history-search" id="programHistorySearch" placeholder="Cari IC / Nama / Telefon…"/>
-            </div>
-            <div class="table-responsive">
-              <table class="table table-hover program-history-table">
-                <thead class="table-light">
-                  <tr>
-                    <th>Tarikh Program</th>
-                    <th>Tajuk Program</th>
-                    <th>Bil. Pesakit</th>
-                    <th>Bil. Layak</th>
-                    <th>Tindakan</th>
-                  </tr>
-                </thead>
-                <tbody id="programHistoryTable">
-                  <tr><td colspan="5" class="text-center text-muted">Memuat data sejarah program...</td></tr>
-                </tbody>
-              </table>
-            </div>
-            <div class="program-history-chart">
-              <canvas id="programHistoryChart"></canvas>
-            </div>
-            <div class="text-end mt-3">
-              <button class="btn btn-sm btn-outline-secondary" id="btnBackToNadiForm"><i class="bi bi-arrow-left me-1"></i>Kembali ke Borang</button>
-            </div>
-          </div>
         </div>
       </div>
     </section>
@@ -868,47 +810,6 @@
         </button>
       </div>
     </div></div>
-  </div>
-
-  <!-- Modal View Program Details -->
-  <div class="modal fade" id="programDetailsModal" tabindex="-1" aria-hidden="true">
-    <div class="modal-dialog modal-xl modal-dialog-centered">
-      <div class="modal-content">
-        <div class="modal-header">
-          <h5 class="modal-title" id="programDetailsTitle"></h5>
-          <button class="btn-close" data-bs-dismiss="modal"></button>
-        </div>
-        <div class="modal-body">
-          <div class="table-responsive">
-            <table class="table table-hover align-middle">
-              <thead class="table-light">
-                <tr>
-                  <th>#</th>
-                  <th>Nama Pesakit</th>
-                  <th>No IC</th>
-                  <th>Telefon</th>
-                  <th>BP</th>
-                  <th>PR</th>
-                  <th>Tinggi</th>
-                  <th>Berat</th>
-                  <th>BMI</th>
-                  <th>DXT Type</th>
-                  <th>DXT</th>
-                  <th>Status</th>
-                </tr>
-              </thead>
-              <tbody id="programDetailsTable">
-                <tr><td colspan="12" class="text-center text-muted">Memuat data...</td></tr>
-              </tbody>
-            </table>
-          </div>
-        </div>
-        <div class="modal-footer">
-          <button class="btn btn-secondary" data-bs-dismiss="modal">Tutup</button>
-          <button class="btn btn-primary" id="btnExportProgramDetails"><i class="bi bi-file-earmark-excel me-1"></i>Export ke Excel</button>
-        </div>
-      </div>
-    </div>
   </div>
 
   <!-- Toast Host (kanan atas) -->
@@ -1278,10 +1179,9 @@ async function sendWhatsAppReportImageFlow(msisdn) {
 /* =======================
    GLOBALS
    ======================= */
-let stats3dChart, completed3dChart, programHistoryChart;
-let retcaModal, secondTcaModal, pdpaModal, whatsappReportModal, programDetailsModal;
+let stats3dChart, completed3dChart;
+let retcaModal, secondTcaModal, pdpaModal, whatsappReportModal;
 let currentWhatsAppData = null;
-let currentProgramId = null;
 
 /* =======================
    BOOTSTRAP APP
@@ -1293,10 +1193,6 @@ function bootstrapApp(){
 
   document.getElementById('current-date').textContent =
     new Date().toLocaleDateString('ms-MY', { weekday:'long', year:'numeric', month:'long', day:'numeric' });
-
-  // Set today's date as default for program date
-  const today = new Date().toISOString().split('T')[0];
-  document.getElementById('programDate').value = today;
 
   setupNavigation();
   setupModals();
@@ -1378,9 +1274,6 @@ function setupModals(){
     await sendWhatsAppReportImageFlow(CURRENT_WA_MSISDN);
     // whatsappReportModal.hide(); // pilihan: biar terbuka untuk pantau status
   });
-
-  programDetailsModal = new bootstrap.Modal(document.getElementById('programDetailsModal'));
-  document.getElementById('btnExportProgramDetails').addEventListener('click', exportProgramDetails);
 }
 
 function setupFab(){
@@ -1396,7 +1289,7 @@ function setupSearchBars(){
     ['searchTCA','tcaCallTable'], ['searchTCAPage','tcaCallList'],
     ['searchFirst','firstVisitList'], ['searchSecond','secondVisitList'],
     ['searchCompleted','completedTable'], ['searchLab','labFollowupTable'],
-    ['searchArchive','archiveTable'], ['programHistorySearch','programHistoryTable']
+    ['searchArchive','archiveTable']
   ];
   pairs.forEach(([inpId,tbodyId])=>{
     const inp = document.getElementById(inpId);
@@ -1467,6 +1360,7 @@ async function refreshLogs(opts={}){
         bubble.innerHTML = `<div><i class="fa-solid fa-phone-volume me-1"></i>${text}</div><div class="meta">${who} • ${when}</div>`;
         body.appendChild(bubble);
       });
+      body.scrollTop = body.scrollHeight;
       body.scrollTop = body.scrollHeight;
     }
   }catch(e){ /* senyap */ }
@@ -1751,8 +1645,7 @@ function setupNADI(){
   container.innerHTML = '';
   addNadiRow(); // Start with 1 row
   document.getElementById('btnNadiExportCsv').addEventListener('click', exportNadiCSV);
-  document.getElementById('btnProgramHistory').addEventListener('click', showProgramHistory);
-  document.getElementById('btnBackToNadiForm').addEventListener('click', showNadiForm);
+  document.getElementById('btnNadiSaveAll').addEventListener('click', saveAllNadiData);
 }
 
 function calculateAgeFromIC(ic) {
@@ -2238,26 +2131,28 @@ Sila hubungi klinik untuk maklumat lanjut. Terima kasih.`;
   }
 }
 
-async function saveNadiProgram() {
-  const programTitle = document.getElementById('programTitle').value.trim();
-  const programDate = document.getElementById('programDate').value;
+async function saveAllNadiData() {
+  const programTitle = document.getElementById('nadiProgramTitle').value.trim();
+  const programDate = document.getElementById('nadiProgramDate').value;
   
   if (!programTitle) {
     toast('Ralat', 'Sila isi tajuk program', 'danger');
     return;
   }
   
-  if (!programDate) {
-    toast('Ralat', 'Sila pilih tarikh program', 'danger');
+  const rows = document.querySelectorAll('#nadiContainer tr.nadi-row');
+  if (!rows.length) {
+    toast('Makluman', 'Tiada data untuk disimpan', 'warning');
     return;
   }
   
-  // Collect all data from rows
-  const programData = [];
-  document.querySelectorAll('.nadi-row').forEach(row => {
-    const data = {
+  const data = [];
+  
+  rows.forEach(row => {
+    const rowData = {
       nama: row.querySelector('.nadi-nama').value.trim(),
       ic: row.querySelector('.nadi-ic').value.trim(),
+      umur: row.querySelector('.nadi-umur-view').textContent.trim(),
       tel: row.querySelector('.nadi-tel').value.trim(),
       alamat: row.querySelector('.nadi-alamat').value.trim(),
       bp: row.querySelector('.nadi-bp').value.trim(),
@@ -2267,323 +2162,106 @@ async function saveNadiProgram() {
       tinggi: row.querySelector('.nadi-tinggi').value.trim(),
       berat: row.querySelector('.nadi-berat').value.trim(),
       bmi: row.querySelector('.nadi-bmi').value.trim(),
-      layak: row.querySelector('.nadi-layak').checked,
-      takLayak: row.querySelector('.nadi-taklayak').checked,
+      layak: row.querySelector('.nadi-layak').checked ? 'Ya' : 'Tidak',
       tcaDate: row.querySelector('.nadi-tca-date').value.trim(),
       tcaTime: row.querySelector('.nadi-tca-time').value.trim(),
       staff: row.querySelector('.nadi-staff').value.trim()
     };
     
-    if (data.nama || data.ic || data.tel) {
-      programData.push(data);
-    }
+    data.push(rowData);
   });
-  
-  if (programData.length === 0) {
-    toast('Ralat', 'Tiada data pesakit untuk disimpan', 'danger');
-    return;
-  }
   
   try {
     const res = await postForm({
       action: 'saveNadiProgram',
       programTitle: programTitle,
       programDate: programDate,
-      programData: JSON.stringify(programData),
+      data: JSON.stringify(data),
       staff: STAFF_EMAIL
-    }, { msg: 'Menyimpan program...' });
+    }, { msg: 'Menyimpan data program...' });
     
     if (res.status === 'success') {
-      toast('Berjaya', 'Program berjaya disimpan', 'success');
-      // Clear form after successful save
-      document.getElementById('programTitle').value = '';
-      document.getElementById('nadiContainer').innerHTML = '';
-      addNadiRow();
-      updateNadiSummary();
+      toast('Berjaya', 'Semua data program berjaya disimpan', 'success');
     } else {
-      throw new Error(res.message || 'Gagal menyimpan program');
+      throw new Error(res.message || 'Gagal menyimpan data program');
     }
   } catch (e) {
     toast('Ralat', e.message, 'danger');
   }
-}
-
-async function saveEligibleOnly() {
-  const programTitle = document.getElementById('programTitle').value.trim();
-  const programDate = document.getElementById('programDate').value;
-  
-  if (!programTitle) {
-    toast('Ralat', 'Sila isi tajuk program', 'danger');
-    return;
-  }
-  
-  if (!programDate) {
-    toast('Ralat', 'Sila pilih tarikh program', 'danger');
-    return;
-  }
-  
-  // Collect only eligible data from rows
-  const eligibleData = [];
-  document.querySelectorAll('.nadi-row').forEach(row => {
-    if (row.querySelector('.nadi-layak').checked) {
-      const data = {
-        nama: row.querySelector('.nadi-nama').value.trim(),
-        ic: row.querySelector('.nadi-ic').value.trim(),
-        tel: row.querySelector('.nadi-tel').value.trim(),
-        alamat: row.querySelector('.nadi-alamat').value.trim(),
-        bp: row.querySelector('.nadi-bp').value.trim(),
-        pr: row.querySelector('.nadi-pr').value.trim(),
-        dxtType: row.querySelector('.nadi-dxt-type').value,
-        dxt: row.querySelector('.nadi-dxt').value.trim(),
-        tinggi: row.querySelector('.nadi-tinggi').value.trim(),
-        berat: row.querySelector('.nadi-berat').value.trim(),
-        bmi: row.querySelector('.nadi-bmi').value.trim(),
-        tcaDate: row.querySelector('.nadi-tca-date').value.trim(),
-        tcaTime: row.querySelector('.nadi-tca-time').value.trim(),
-        staff: row.querySelector('.nadi-staff').value.trim()
-      };
-      
-      if (data.nama || data.ic || data.tel) {
-        eligibleData.push(data);
-      }
-    }
-  });
-  
-  if (eligibleData.length === 0) {
-    toast('Ralat', 'Tiada pesakit layak untuk disimpan', 'danger');
-    return;
-  }
-  
-  try {
-    const res = await postForm({
-      action: 'saveEligibleOnly',
-      programTitle: programTitle,
-      programDate: programDate,
-      eligibleData: JSON.stringify(eligibleData),
-      staff: STAFF_EMAIL
-    }, { msg: 'Menyimpan pesakit layak...' });
-    
-    if (res.status === 'success') {
-      toast('Berjaya', 'Pesakit layak berjaya disimpan', 'success');
-    } else {
-      throw new Error(res.message || 'Gagal menyimpan pesakit layak');
-    }
-  } catch (e) {
-    toast('Ralat', e.message, 'danger');
-  }
-}
-
-async function showProgramHistory() {
-  document.getElementById('nadiFormContainer').style.display = 'none';
-  document.getElementById('programHistoryContainer').style.display = 'block';
-  
-  try {
-    const res = await getJSON({ action: 'getProgramHistory' }, { msg: 'Memuat sejarah program...' });
-    
-    if (res.status === 'success') {
-      const programs = res.data || [];
-      const tableBody = document.getElementById('programHistoryTable');
-      tableBody.innerHTML = '';
-      
-      if (programs.length === 0) {
-        tableBody.innerHTML = '<tr><td colspan="5" class="text-center text-muted">Tiada sejarah program</td></tr>';
-        return;
-      }
-      
-      programs.forEach(program => {
-        const row = `
-          <tr>
-            <td>${program.date || '-'}</td>
-            <td>${program.title || '-'}</td>
-            <td>${program.totalPatients || 0}</td>
-            <td>${program.eligiblePatients || 0}</td>
-            <td>
-              <button class="btn btn-sm btn-outline-primary" onclick="viewProgramDetails('${program.id}')">
-                <i class="bi bi-eye me-1"></i>Lihat
-              </button>
-            </td>
-          </tr>
-        `;
-        tableBody.insertAdjacentHTML('beforeend', row);
-      });
-      
-      // Update chart
-      updateProgramHistoryChart(programs);
-    } else {
-      throw new Error(res.message || 'Gagal memuat sejarah program');
-    }
-  } catch (e) {
-    toast('Ralat', e.message, 'danger');
-  }
-}
-
-function showNadiForm() {
-  document.getElementById('programHistoryContainer').style.display = 'none';
-  document.getElementById('nadiFormContainer').style.display = 'block';
-}
-
-function updateProgramHistoryChart(programs) {
-  const ctx = document.getElementById('programHistoryChart').getContext('2d');
-  
-  if (programHistoryChart) {
-    programHistoryChart.destroy();
-  }
-  
-  const labels = programs.map(p => p.date);
-  const totalData = programs.map(p => p.totalPatients || 0);
-  const eligibleData = programs.map(p => p.eligiblePatients || 0);
-  
-  programHistoryChart = new Chart(ctx, {
-    type: 'bar',
-    data: {
-      labels: labels,
-      datasets: [
-        {
-          label: 'Jumlah Pesakit',
-          data: totalData,
-          backgroundColor: 'rgba(54, 162, 235, 0.5)',
-          borderColor: 'rgba(54, 162, 235, 1)',
-          borderWidth: 1
-        },
-        {
-          label: 'Pesakit Layak',
-          data: eligibleData,
-          backgroundColor: 'rgba(75, 192, 192, 0.5)',
-          borderColor: 'rgba(75, 192, 192, 1)',
-          borderWidth: 1
-        }
-      ]
-    },
-    options: {
-      responsive: true,
-      maintainAspectRatio: false,
-      scales: {
-        y: {
-          beginAtZero: true,
-          title: {
-            display: true,
-            text: 'Jumlah Pesakit'
-          }
-        },
-        x: {
-          title: {
-            display: true,
-            text: 'Tarikh Program'
-          }
-        }
-      }
-    }
-  });
-}
-
-async function viewProgramDetails(programId) {
-  try {
-    const res = await getJSON({ action: 'getProgramDetails', programId }, { msg: 'Memuat butiran program...' });
-    
-    if (res.status === 'success') {
-      const program = res.data;
-      currentProgramId = programId;
-      
-      document.getElementById('programDetailsTitle').textContent = `${program.title} - ${program.date}`;
-      const tableBody = document.getElementById('programDetailsTable');
-      tableBody.innerHTML = '';
-      
-      if (program.patients && program.patients.length > 0) {
-        program.patients.forEach((patient, index) => {
-          const row = `
-            <tr>
-              <td>${index + 1}</td>
-              <td>${patient.nama || '-'}</td>
-              <td>${patient.ic || '-'}</td>
-              <td>${patient.tel || '-'}</td>
-              <td>${patient.bp || '-'}</td>
-              <td>${patient.pr || '-'}</td>
-              <td>${patient.tinggi || '-'}</td>
-              <td>${patient.berat || '-'}</td>
-              <td>${patient.bmi || '-'}</td>
-              <td>${patient.dxtType || '-'}</td>
-              <td>${patient.dxt || '-'}</td>
-              <td>${patient.layak ? 'Layak' : 'Tidak Layak'}</td>
-            </tr>
-          `;
-          tableBody.insertAdjacentHTML('beforeend', row);
-        });
-      } else {
-        tableBody.innerHTML = '<tr><td colspan="12" class="text-center text-muted">Tiada data pesakit</td></tr>';
-      }
-      
-      programDetailsModal.show();
-    } else {
-      throw new Error(res.message || 'Gagal memuat butiran program');
-    }
-  } catch (e) {
-    toast('Ralat', e.message, 'danger');
-  }
-}
-
-function exportProgramDetails() {
-  if (!currentProgramId) return;
-  
-  // This would typically be handled by the server
-  toast('Makluman', 'Fungsi export akan dihantar ke server untuk diproses', 'info');
 }
 
 function exportNadiCSV() {
+  const programTitle = document.getElementById('nadiProgramTitle').value.trim();
   const container = document.getElementById('nadiContainer');
   const rows = Array.from(container.querySelectorAll('.nadi-row'));
   if (!rows.length){ toast('Makluman','Tiada data untuk diexport','warning'); return; }
 
-  const programTitle = document.getElementById('programTitle').value.trim() || 'Program NADI';
-  const programDate = document.getElementById('programDate').value || new Date().toISOString().split('T')[0];
-  
-  const header = ['Tajuk Program', 'TARIKH', 'NAMA', 'NO IC', 'NO TEL', 'ALAMAT', 'WT', 'HT', 'BP', 'HR', 'UMUR', 'BMI', 'DXT TYPE', 'DXT', 'KELAYAKAN'];
+  const header = ['TARIKH','NAMA','NO IC','NO TEL','ALAMAT','WT','HT','BP','HR','UMUR','BMI','DXT TYPE','DXT','KELAYAKAN'];
 
   const data = rows.map(row => {
-    const nama = row.querySelector('.nadi-nama').value.trim();
-    const ic = row.querySelector('.nadi-ic').value.trim();
-    const tel = row.querySelector('.nadi-tel').value.trim();
-    const alamat = row.querySelector('.nadi-alamat').value.trim();
-    const bp = row.querySelector('.nadi-bp').value.trim();
-    const pr = row.querySelector('.nadi-pr').value.trim();
-    const tinggi = row.querySelector('.nadi-tinggi').value.trim();
-    const berat = row.querySelector('.nadi-berat').value.trim();
-    const bmi = row.querySelector('.nadi-bmi').value.trim();
-    const dxtType = row.querySelector('.nadi-dxt-type').value;
-    const dxt = row.querySelector('.nadi-dxt').value.trim();
-    const layak = row.querySelector('.nadi-layak').checked ? 'Layak' : (row.querySelector('.nadi-taklayak').checked ? 'Tidak Layak' : '');
-    const umur = row.querySelector('.nadi-umur-view').textContent.trim();
-
-    return [
-      programTitle,
-      programDate,
-      nama,
-      ic,
-      tel,
-      alamat,
-      berat,
-      tinggi,
-      bp,
-      pr,
-      umur,
-      bmi,
-      dxtType,
-      dxt,
-      layak
-    ];
+    return {
+      tarikh: document.getElementById('nadiProgramDate').value || new Date().toISOString().slice(0,10),
+      nama: row.querySelector('.nadi-nama').value.trim(),
+      ic: row.querySelector('.nadi-ic').value.trim(),
+      tel: row.querySelector('.nadi-tel').value.trim(),
+      alamat: row.querySelector('.nadi-alamat').value.trim(),
+      wt: row.querySelector('.nadi-berat').value.trim(),
+      ht: row.querySelector('.nadi-tinggi').value.trim(),
+      bp: row.querySelector('.nadi-bp').value.trim(),
+      hr: row.querySelector('.nadi-pr').value.trim(),
+      umur: row.querySelector('.nadi-umur-view').textContent.trim(),
+      bmi: row.querySelector('.nadi-bmi').value.trim(),
+      dxtType: row.querySelector('.nadi-dxt-type').value,
+      dxt: row.querySelector('.nadi-dxt').value.trim(),
+      kelayakan: row.querySelector('.nadi-layak').checked ? 'Layak' : (row.querySelector('.nadi-taklayak').checked ? 'Tidak Layak' : '')
+    };
   });
 
-  // Add program title as first row
-  const titleRow = [programTitle];
-  for (let i = 1; i < header.length; i++) {
-    titleRow.push('');
+  // Create CSV content with program title centered
+  let csv = '';
+  
+  // Add empty rows before title
+  for (let i = 0; i < 2; i++) {
+    csv += Array(header.length).fill('').join(',') + '\r\n';
   }
+  
+  // Add program title centered
+  const titleRow = Array(header.length).fill('');
+  titleRow[Math.floor(header.length / 2)] = programTitle || 'Program NADI';
+  csv += titleRow.join(',') + '\r\n';
+  
+  // Add empty row after title
+  csv += Array(header.length).fill('').join(',') + '\r\n';
+  
+  // Add header
+  csv += header.join(',') + '\r\n';
+  
+  // Add data rows
+  data.forEach(row => {
+    const csvRow = [
+      row.tarikh,
+      row.nama,
+      row.ic,
+      row.tel,
+      row.alamat,
+      row.wt,
+      row.ht,
+      row.bp,
+      row.hr,
+      row.umur,
+      row.bmi,
+      row.dxtType,
+      row.dxt,
+      row.kelayakan
+    ];
+    csv += csvRow.map(v => `"${String(v||'').replace(/"/g,'""')}"`).join(',') + '\r\n';
+  });
 
-  const csv = [header, titleRow, ...data].map(r => r.map(v => `"${String(v||'').replace(/"/g,'""')}"`).join(',')).join('\r\n');
   const blob = new Blob([csv], { type:'text/csv;charset=utf-8;' });
   const url = URL.createObjectURL(blob);
   const a = document.createElement('a');
   a.href = url;
-  a.download = `program_nadi_${programDate}.csv`;
+  a.download = `program_nadi_${new Date().toISOString().slice(0,10)}.csv`;
   document.body.appendChild(a);
   a.click();
   a.remove();
@@ -2800,7 +2478,7 @@ async function loadLabFollowUp(){
         const row = `
         <tr data-ic="${p.noIC}">
           <td>${p.nama}</td>
-          <td>${p.noIC</td>
+          <td>${p.noIC}</td>
           <td class="mini-actions">
             <a class="btn btn-sm btn-outline-secondary" href="${telHref(msisdn)}"><i class="fa-solid fa-phone"></i> Call</a>
             <a class="btn btn-sm btn-outline-success" target="_blank" href="${waHref(msisdn,'Keputusan makmal anda telah siap.')}"><i class="fa-brands fa-whatsapp"></i> WhatsApp</a>
@@ -2837,417 +2515,4 @@ async function loadSecondVisitData(){
 
         let pdpaHTML = p.pdpaFileId
           ? `<div class="d-flex flex-wrap gap-1">
-              <a class="btn btn-sm btn-outline-success" target="_blank" href="https://drive.google.com/file/d/${p.pdpaFileId}/preview"><i class="fa-solid fa-eye"></i> Lihat</a>
-              <a class="btn btn-sm btn-outline-primary" target="_blank" href="https://drive.google.com/uc?export=download&id=${p.pdpaFileId}"><i class="fa-solid fa-download"></i> Muat Turun</a>
-            </div>`
-          : `<span class="text-danger">PDPA tiada</span>`;
-
-        const row = `
-        <tr data-ic="${p.noIC}">
-          <td>${p.nama}</td>
-          <td>${p.noIC}</td>
-          <td>${p.alamat || '-'}</td>
-          <td>${p.tarikhTCA||'-'}</td>
-          <td>${pdpaHTML}</td>
-          <td><span class="badge ${hadir?'bg-success':'bg-warning'}">${hadir?'Hadir':'Belum Hadir'}</span></td>
-          <td class="mini-actions">
-            ${within && !hadir ? `<button class="btn btn-sm btn-success" onclick="markSecondVisitHadir('${p.noIC}')"><i class="fa-solid fa-circle-check"></i> Hadir</button>` : ''}
-            ${msisdn ? `
-              <a class="btn btn-sm btn-outline-secondary" href="${telHref(msisdn)}"><i class="fa-solid fa-phone"></i></a>
-              <a class="btn btn-sm btn-outline-success" target="_blank" href="${waHref(msisdn)}"><i class="fa-brands fa-whatsapp"></i></a>` : ''}
-          </td>
-        </tr>`;
-        tbody.insertAdjacentHTML('beforeend', row);
-      });
-    } else {
-      tbody.innerHTML = `<tr><td colspan="7" class="text-center text-muted">Tiada data Second Visit</td></tr>`;
-    }
-  }catch(e){ /* senyap */ }
-}
-
-async function loadCompletedData(){
-  try{
-    const data = await getJSON({ action:'getCompleted' }, { msg:'Memuat Selesai…' });
-    const tbody = document.getElementById('completedTable');
-    tbody.innerHTML = '';
-    if (data.status==='success' && data.data.length>0){
-      data.data.forEach(p=>{
-        const msisdn = normalizeMsisdnMY(p.noTelefon||'');
-        const pdpaHTML = p.pdpaFileId
-          ? `<div class="d-flex flex-wrap gap-1">
-              <a class="btn btn-sm btn-outline-success" target="_blank" href="https://drive.google.com/file/d/${p.pdpaFileId}/preview"><i class="fa-solid fa-eye"></i> Lihat</a>
-              <a class="btn btn-sm btn-outline-primary" target async function loadArchivedData(){
-  try{
-    const data = await getJSON({ action:'getArchived' }, { msg:'Memuat Arkib…' });
-    const tbody = document.getElementById('archiveTable');
-    tbody.innerHTML = '';
-    if (data.status==='success' && data.data.length>0){
-      data.data.forEach(p=>{
-        const row = `
-        <tr data-ic="${p.noIC}">
-          <td>${p.nama}</td>
-          <td>${p.noIC}</td>
-          <td>${p.noTelefon||'-'}</td>
-          <td>${p.alamat || '-'}</td>
-          <td>${p.tarikhDaftar||'-'}</td>
-          <td>${p.tarikhSelesai||'-'}</td>
-          <td>${p.tarikhDiarkib||'-'}</td>
-          <td class="mini-actions">
-            <button class="btn btn-sm btn-outline-primary" onclick="restoreArchive('${p.noIC}')"><i class="fa-solid fa-box-open"></i> Pulihkan</button>
-          </td>
-        </tr>`;
-        tbody.insertAdjacentHTML('beforeend', row);
-      });
-    } else {
-      tbody.innerHTML = `<tr><td colspan="8" class="text-center text-muted">Tiada rekod arkib</td></tr>`;
-    }
-  }catch(e){ /* senyap */ }
-}
-
-/* =======================
-   ACTION FUNCTIONS
-   ======================= */
-async function daftarPesakit(){
-  const nama = document.getElementById('namaPesakit').value.trim();
-  const ic = document.getElementById('noIC').value.trim();
-  const tel = document.getElementById('noTelefon').value.trim();
-  const alamat = document.getElementById('alamatPesakit').value.trim();
-  const tcaDate = document.getElementById('tarikhTCA').value;
-  const tcaTime = document.getElementById('masaTCA').value;
-  const staff = document.getElementById('namaStaff').value.trim();
-
-  if (!nama || !ic || !tel || !tcaDate || !tcaTime || !staff){
-    toast('Ralat','Sila isi semua maklumat wajib','danger');
-    return;
-  }
-
-  try{
-    const res = await postForm({
-      action:'daftarPesakit',
-      namaPesakit: nama,
-      noIC: ic,
-      noTelefon: tel,
-      alamat: alamat,
-      tarikhTCA: tcaDate,
-      masaTCA: tcaTime,
-      namaStaff: staff
-    }, { msg:'Mendaftar pesakit…' });
-
-    if (res.status==='success'){
-      toast('Berjaya','Pesakit berjaya didaftarkan','success');
-      // Reset form
-      document.getElementById('namaPesakit').value = '';
-      document.getElementById('noIC').value = '';
-      document.getElementById('noTelefon').value = '';
-      document.getElementById('alamatPesakit').value = '';
-      document.getElementById('namaStaff').value = '';
-      loadDashboardData();
-      loadTCACallData();
-    } else {
-      throw new Error(res.message||'Gagal mendaftar pesakit');
-    }
-  }catch(e){
-    toast('Ralat',e.message,'danger');
-  }
-}
-
-function openRetcaModal(ic){
-  document.getElementById('retcaIC').value = ic;
-  // Set default date to today + 7 days
-  const nextWeek = new Date();
-  nextWeek.setDate(nextWeek.getDate() + 7);
-  document.getElementById('retcaDate').value = nextWeek.toISOString().split('T')[0];
-  document.getElementById('retcaTime').value = '09:00';
-  retcaModal.show();
-}
-
-async function submitRetca(){
-  const ic = document.getElementById('retcaIC').value;
-  const date = document.getElementById('retcaDate').value;
-  const time = document.getElementById('retcaTime').value;
-
-  if (!date || !time){
-    toast('Ralat','Sila isi tarikh dan masa','danger');
-    return;
-  }
-
-  try{
-    const res = await postForm({
-      action:'reTCA',
-      noIC: ic,
-      tarikhTCA: date,
-      masaTCA: time,
-      staff: STAFF_EMAIL
-    }, { msg:'Mengemaskini TCA…' });
-
-    if (res.status==='success'){
-      toast('Berjaya','TCA berjaya dikemaskini','success');
-      retcaModal.hide();
-      loadFirstVisitData();
-      loadTCACallData();
-    } else {
-      throw new Error(res.message||'Gagal kemaskini TCA');
-    }
-  }catch(e){
-    toast('Ralat',e.message,'danger');
-  }
-}
-
-async function markFirstVisit(ic){
-  try{
-    const res = await postForm({
-      action:'markFirstVisit',
-      noIC: ic,
-      staff: STAFF_EMAIL
-    }, { msg:'Menandakan First Visit…' });
-
-    if (res.status==='success'){
-      toast('Berjaya','First Visit ditandakan hadir','success');
-      loadFirstVisitData();
-      loadDashboardData();
-    } else {
-      throw new Error(res.message||'Gagal menandakan First Visit');
-    }
-  }catch(e){
-    toast('Ralat',e.message,'danger');
-  }
-}
-
-function openPDPA(ic){
-  document.getElementById('pdpaIC').value = ic;
-  document.getElementById('pdpaFile').value = '';
-  pdpaModal.show();
-}
-
-async function uploadPDPA(){
-  const ic = document.getElementById('pdpaIC').value;
-  const fileInput = document.getElementById('pdpaFile');
-  const file = fileInput.files[0];
-
-  if (!file){
-    toast('Ralat','Sila pilih fail PDPA','danger');
-    return;
-  }
-
-  try{
-    const formData = new FormData();
-    formData.append('action', 'uploadPDPA');
-    formData.append('noIC', ic);
-    formData.append('pdpaFile', file);
-    formData.append('id_token', ID_TOKEN);
-
-    showLoader('Muat naik PDPA…');
-    const r = await fetch(SCRIPT_URL, { method:'POST', body:formData });
-    const res = await r.json();
-
-    if (res.status==='success'){
-      toast('Berjaya','PDPA berjaya dimuat naik','success');
-      pdpaModal.hide();
-      loadFirstVisitData();
-    } else {
-      throw new Error(res.message||'Gagal muat naik PDPA');
-    }
-  }catch(e){
-    toast('Ralat',e.message,'danger');
-  }finally{
-    hideLoader();
-  }
-}
-
-async function deletePDPA(ic){
-  if (!confirm('Adakah anda pasti ingin memadam fail PDPA?')) return;
-
-  try{
-    const res = await postForm({
-      action:'deletePDPA',
-      noIC: ic
-    }, { msg:'Memadam PDPA…' });
-
-    if (res.status==='success'){
-      toast('Berjaya','PDPA berjaya dipadam','success');
-      loadFirstVisitData();
-    } else {
-      throw new Error(res.message||'Gagal memadam PDPA');
-    }
-  }catch(e){
-    toast('Ralat',e.message,'danger');
-  }
-}
-
-function openSecondTca(ic){
-  document.getElementById('secondTcaIC').value = ic;
-  // Set default date to today + 3 days
-  const in3Days = new Date();
-  in3Days.setDate(in3Days.getDate() + 3);
-  document.getElementById('secondTcaDate').value = in3Days.toISOString().split('T')[0];
-  document.getElementById('secondTcaTime').value = '10:00';
-  document.getElementById('secondTcaStaff').value = '';
-  secondTcaModal.show();
-}
-
-async function submitSecondTca(){
-  const ic = document.getElementById('secondTcaIC').value;
-  const date = document.getElementById('secondTcaDate').value;
-  const time = document.getElementById('secondTcaTime').value;
-  const staff = document.getElementById('secondTcaStaff').value.trim();
-
-  if (!date || !time || !staff){
-    toast('Ralat','Sila isi semua maklumat','danger');
-    return;
-  }
-
-  try{
-    const res = await postForm({
-      action:'setSecondTCA',
-      noIC: ic,
-      tarikhTCA: date,
-      masaTCA: time,
-      namaStaff: staff,
-      staff: STAFF_EMAIL
-    }, { msg:'Menetapkan Second Visit TCA…' });
-
-    if (res.status==='success'){
-      toast('Berjaya','Second Visit TCA berjaya ditetapkan','success');
-      secondTcaModal.hide();
-      loadLabFollowUp();
-      loadDashboardData();
-    } else {
-      throw new Error(res.message||'Gagal tetapkan Second Visit TCA');
-    }
-  }catch(e){
-    toast('Ralat',e.message,'danger');
-  }
-}
-
-async function markLabStatus(ic, status){
-  try{
-    const res = await postForm({
-      action:'markLabStatus',
-      noIC: ic,
-      status: status,
-      staff: STAFF_EMAIL
-    }, { msg:'Mengemaskini status lab…' });
-
-    if (res.status==='success'){
-      toast('Berjaya','Status lab dikemaskini','success');
-      loadLabFollowUp();
-      loadDashboardData();
-    } else {
-      throw new Error(res.message||'Gagal kemaskini status lab');
-    }
-  }catch(e){
-    toast('Ralat',e.message,'danger');
-  }
-}
-
-async function markSecondVisitHadir(ic){
-  try{
-    const res = await postForm({
-      action:'markSecondVisit',
-      noIC: ic,
-      staff: STAFF_EMAIL
-    }, { msg:'Menandakan Second Visit…' });
-
-    if (res.status==='success'){
-      toast('Berjaya','Second Visit ditandakan hadir','success');
-      loadSecondVisitData();
-      loadDashboardData();
-    } else {
-      throw new Error(res.message||'Gagal menandakan Second Visit');
-    }
-  }catch(e){
-    toast('Ralat',e.message,'danger');
-  }
-}
-
-async function exportCompletedCSV(){
-  try{
-    const data = await getJSON({ action:'exportCompleted' }, { msg:'Menyediakan CSV…' });
-    if (data.status==='success' && data.csv){
-      const blob = new Blob([data.csv], { type:'text/csv;charset=utf-8;' });
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = `pesakit_selesai_${new Date().toISOString().split('T')[0]}.csv`;
-      document.body.appendChild(a);
-      a.click();
-      a.remove();
-      URL.revokeObjectURL(url);
-      toast('Export','Fail CSV telah dimuat turun','success');
-    } else {
-      throw new Error(data.message||'Gagal menghasilkan CSV');
-    }
-  }catch(e){
-    toast('Ralat',e.message,'danger');
-  }
-}
-
-async function restoreArchive(ic){
-  if (!confirm('Adakah anda pasti ingin memulihkan pesakit ini?')) return;
-
-  try{
-    const res = await postForm({
-      action:'restoreArchive',
-      noIC: ic,
-      staff: STAFF_EMAIL
-    }, { msg:'Memulihkan pesakit…' });
-
-    if (res.status==='success'){
-      toast('Berjaya','Pesakit berjaya dipulihkan','success');
-      loadArchivedData();
-      loadDashboardData();
-    } else {
-      throw new Error(res.message||'Gagal memulihkan pesakit');
-    }
-  }catch(e){
-    toast('Ralat',e.message,'danger');
-  }
-}
-
-/* =======================
-   INITIALIZATION
-   ======================= */
-document.addEventListener('DOMContentLoaded', function(){
-  // Initialize Google Sign-In
-  if (typeof google !== 'undefined') {
-    initGoogleSignIn();
-  } else {
-    // Fallback if Google script fails to load
-    document.getElementById('signinArea').innerHTML = `
-      <button class="btn btn-outline-primary" onclick="location.reload()">
-        <i class="fa-solid fa-refresh me-1"></i> Muat Semula untuk Login
-      </button>`;
-    document.getElementById('signinAreaDesktop').innerHTML = `
-      <button class="btn btn-outline-primary" onclick="location.reload()">
-        <i class="fa-solid fa-refresh me-1"></i> Muat Semula
-      </button>`;
-  }
-
-  // Set current date in program date field
-  const today = new Date().toISOString().split('T')[0];
-  document.getElementById('programDate').value = today;
-
-  // Initialize tooltips
-  const tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'));
-  tooltipTriggerList.map(function (tooltipTriggerEl) {
-    return new bootstrap.Tooltip(tooltipTriggerEl);
-  });
-});
-
-// Global error handler
-window.addEventListener('error', function(e) {
-  console.error('Global error:', e.error);
-  toast('Ralat', 'Aplikasi mengalami ralat. Sila muat semula halaman.', 'danger');
-});
-
-// Handle offline/online status
-window.addEventListener('online', function() {
-  toast('Sambungan', 'Anda kembali dalam talian', 'success');
-});
-
-window.addEventListener('offline', function() {
-  toast('Amaran', 'Anda berada di luar talian', 'warning');
-});
-</script>
-</body>
-</html>
+              <a class="btn btn-sm btn-outline-success" target="_blank" href="https://drive.google.com/file/d/${p.pdpaFileId}/preview"><i class
