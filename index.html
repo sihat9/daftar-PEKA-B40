@@ -2462,53 +2462,53 @@ Sila hubungi klinik untuk maklumat lanjut. Terima kasih.`;
 async function exportNadiCSV() {
   const rows = Array.from(document.querySelectorAll('#nadiContainer .nadi-row'));
   if (!rows.length) {
-    toast('Makluman','Tiada data untuk diexport','warning');
+    toast('Makluman', 'Tiada data untuk diexport', 'warning');
     return;
   }
 
-  // Ambil tajuk & tarikh program (guna input jika ada; jika tiada, guna default)
+  // Tajuk & tarikh program
   const programTitle = (document.getElementById('nadiProgramTitle')?.value || 'Tajuk Program').trim();
-  const programDate  = (document.getElementById('nadiProgramDate')?.value || new Date().toISOString().slice(0,10)).trim();
+  const programDate  = (document.getElementById('nadiProgramDate')?.value || new Date().toISOString().slice(0, 10)).trim();
 
-  // Header mengikut susunan yang diminta
-  const HEADER = ['TARIKH','NAMA','NO IC','NO TEL','ALAMAT','WT','HT','BP','HR','UMUR','BMI','DXT TYPE','DXT','KELAYAKAN PEKA B40'];
+  // Header yang diminta
+  const HEADER = ['TARIKH','NAMA','NO IC','NO TEL','ALAMAT','WT','HT','BP','HR','UMUR','BMI','DXT TYPE','DXT','KELAYAKAN'];
 
-  // Row tajuk: letak tajuk pada kolum TENGAH (supaya nampak benar² di tengah jadual dalam .xlsx dan .csv)
-  const midCol = Math.floor(HEADER.length / 2);     // 14 -> 7 (0-based) -> lajur ke-8 (H)
+  // Baris tajuk: letak di kolum tengah agar “tampak” di tengah
+  const midCol   = Math.floor(HEADER.length / 2);
   const titleRow = Array(HEADER.length).fill('');
   titleRow[midCol] = programTitle;
 
-  // Kumpul data baris mengikut header
-  const dataRows = rows.map(r => {
-    const nama    = r.querySelector('.nadi-nama')?.value.trim() || '';
-    const ic      = r.querySelector('.nadi-ic')?.value.trim() || '';
-    const tel     = r.querySelector('.nadi-tel')?.value.trim() || '';
-    const alamat  = r.querySelector('.nadi-alamat')?.value.trim() || '';
-    const wt      = r.querySelector('.nadi-berat')?.value.trim() || '';     // kg
-    const ht      = r.querySelector('.nadi-tinggi')?.value.trim() || '';    // cm
-    const bp      = r.querySelector('.nadi-bp')?.value.trim() || '';
-    const hr      = r.querySelector('.nadi-pr')?.value.trim() || '';
-    const umurTxt = r.querySelector('.nadi-umur-view')?.textContent.trim() || ''; // cth "52t 3b 2h"
-    const umur    = (umurTxt.match(/^(\d+)/)?.[1]) || umurTxt || '';        // ambil tahun sahaja jika ada
-    const bmi     = r.querySelector('.nadi-bmi')?.value.trim() || '';
-    const dxtType = r.querySelector('.nadi-dxt-type')?.value || '';
-    const dxt     = r.querySelector('.nadi-dxt')?.value.trim() || '';
-    const kelayak = r.querySelector('.nadi-layak')?.checked ? 'Layak' : 'Tidak Layak';
+  // Kumpul data mengikut susunan HEADER
+  const dataRows = rows.map(function (r) {
+    const nama    = (r.querySelector('.nadi-nama')?.value || '').trim();
+    const ic      = (r.querySelector('.nadi-ic')?.value || '').trim();
+    const tel     = (r.querySelector('.nadi-tel')?.value || '').trim();
+    const alamat  = (r.querySelector('.nadi-alamat')?.value || '').trim();
+    const wt      = (r.querySelector('.nadi-berat')?.value || '').trim();    // kg
+    const ht      = (r.querySelector('.nadi-tinggi')?.value || '').trim();   // cm
+    const bp      = (r.querySelector('.nadi-bp')?.value || '').trim();
+    const hr      = (r.querySelector('.nadi-pr')?.value || '').trim();
+    const umurTxt = (r.querySelector('.nadi-umur-view')?.textContent || '').trim(); // cth "52t 3b 2h"
+    const umur    = (umurTxt.match(/^(\d+)/)?.[1]) || umurTxt || '';         // ambil angka tahun jika ada
+    const bmi     = (r.querySelector('.nadi-bmi')?.value || '').trim();
+    const dxtType = (r.querySelector('.nadi-dxt-type')?.value || '').trim();
+    const dxt     = (r.querySelector('.nadi-dxt')?.value || '').trim();
+    const kelayak = (r.querySelector('.nadi-layak')?.checked ? 'Layak' : 'Tidak Layak');
 
     return [programDate, nama, ic, tel, alamat, wt, ht, bp, hr, umur, bmi, dxtType, dxt, kelayak];
   });
 
-  // Cuba hasilkan Excel (.xlsx) dahulu
+  // Cuba hasilkan Excel (.xlsx) dahulu (jika SheetJS ada)
   try {
     if (typeof ensureXLSXReady === 'function') {
-      await ensureXLSXReady(); // dari kod anda: akan load xlsx.full.min.js jika belum ada
+      await ensureXLSXReady();
     }
     if (window.XLSX) {
       const wb  = XLSX.utils.book_new();
       const aoa = [titleRow, HEADER, ...dataRows];
       const ws  = XLSX.utils.aoa_to_sheet(aoa);
 
-      // Lebar kolum asas yang kemas
+      // Lebar kolum supaya kemas
       ws['!cols'] = [
         { wch: 12 }, // TARIKH
         { wch: 22 }, // NAMA
@@ -2526,40 +2526,46 @@ async function exportNadiCSV() {
         { wch: 12 }  // KELAYAKAN
       ];
 
-      // Nota: SheetJS komuniti tidak menulis gaya (bold/center) ke fail.
-      // Trik "tajuk di kolum tengah" memastikan ia sentiasa nampak centred merentasi jadual.
-
       XLSX.utils.book_append_sheet(wb, ws, 'Aktiviti Program');
 
-      // Nama fail kemas (slug tajuk)
+      // Nama fail kemas
       const safeTitle = programTitle
-        .replace(/[^\p{L}\p{N}\-_. ]/gu,'') // buang aksara pelik
-        .trim().replace(/\s+/g,'_').slice(0,60);
-      const fname = `aktiviti_program_${programDate}${safeTitle ? '_' + safeTitle : ''}.xlsx`;
+        .replace(/[^A-Za-z0-9\-_. ]/g, '')
+        .trim()
+        .replace(/\s+/g, '_')
+        .slice(0, 60);
+      const fname = 'aktiviti_program_' + programDate + (safeTitle ? '_' + safeTitle : '') + '.xlsx';
 
       XLSX.writeFile(wb, fname);
-      toast('Export','Fail Excel dimuat turun','success');
+      toast('Export', 'Fail Excel dimuat turun', 'success');
       return;
     }
   } catch (e) {
-    // Teruskan ke CSV fallback
+    // Jika gagal / tiada SheetJS → teruskan ke CSV fallback
   }
 
-  // Fallback: CSV (tajuk berada di kolum tengah juga)
-  const BOM = '\uFEFF'; // elak isu aksara di Excel
-  const toCsvRow = arr => arr.map(v => `"${String(v ?? '').replace(/"/g,'""')}"`).join(',');
+  // Fallback: CSV (sertakan baris tajuk di kolum tengah)
+  const BOM = '\uFEFF';
+  const toCsvRow = function (arr) {
+    return arr.map(function (v) {
+      const s = String(v == null ? '' : v).replace(/"/g, '""');
+      return '"' + s + '"';
+    }).join(',');
+  };
   const csv = [titleRow, HEADER, ...dataRows].map(toCsvRow).join('\r\n');
 
-  const blob = new Blob([BOM + csv], { type:'text/csv;charset=utf-8;' });
+  const blob = new Blob([BOM + csv], { type: 'text/csv;charset=utf-8;' });
   const url  = URL.createObjectURL(blob);
-  const a    = Object.assign(document.createElement('a'), {
-    href: url,
-    download: `aktiviti_program_${programDate}.csv`
-  });
-  document.body.appendChild(a); a.click(); a.remove(); URL.revokeObjectURL(url);
-  toast('Export','Fail CSV dimuat turun','success');
-}
+  const a    = document.createElement('a');
+  a.href = url;
+  a.download = 'aktiviti_program_' + programDate + '.csv';
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  URL.revokeObjectURL(url);
 
+  toast('Export', 'Fail CSV dimuat turun', 'success');
+}
 
   // Fallback: CSV (tajuk baris 1, header baris 2)
   const BOM = '\uFEFF';
