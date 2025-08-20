@@ -1,1 +1,3234 @@
+<!DOCTYPE html>
+<html lang="ms">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
 
+  <title>Sistem Tracker PEKA B40 - Klinik SihatSokmo</title>
+
+  <!-- Bootstrap & Icons -->
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css">
+
+  <!-- Chart.js + Datalabels -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2"></script>
+
+  <!-- SheetJS (Excel) via CDN -->
+<!-- XLSX robust loader + override (SIAP TAMPAL DI <head>) -->
+<script>
+  (function () {
+    // Jika dah ada, tak perlu apa-apa
+    if (window.XLSX) return;
+
+    // Helper umum: muat <script> sekali
+    window.loadScriptOnce = window.loadScriptOnce || (function () {
+      const loaded = new Set();
+      return function loadScriptOnce(url) {
+        return new Promise((resolve, reject) => {
+          if (loaded.has(url)) return resolve();
+          const s = document.createElement('script');
+          s.src = url;
+          s.async = true;
+          s.onload = () => { loaded.add(url); resolve(); };
+          s.onerror = () => reject(new Error('Gagal muat: ' + url));
+          document.head.appendChild(s);
+        });
+      };
+    })();
+
+    // Override/definisi semula: pastikan XLSX wujud, cuba 3 CDN
+    window.ensureXLSXReady = async function ensureXLSXReady() {
+      if (window.XLSX) return;
+      const cdns = [
+        'https://cdn.jsdelivr.net/npm/xlsx@0.19.3/dist/xlsx.full.min.js',
+        'https://unpkg.com/xlsx@0.19.3/dist/xlsx.full.min.js',
+        'https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.19.3/xlsx.full.min.js'
+      ];
+      let lastErr;
+      for (const url of cdns) {
+        try {
+          await window.loadScriptOnce(url);
+          if (window.XLSX) {
+            console.log('[XLSX] Loaded from', url);
+            return;
+          }
+        } catch (e) {
+          lastErr = e;
+        }
+      }
+      console.error('[XLSX] Gagal dimuat dari semua CDN.', lastErr || '');
+      throw new Error('XLSX gagal dimuat.');
+    };
+  })();
+</script>
+
+  <!-- Google Identity Services (Sign-In) -->
+  <script src="https://accounts.google.com/gsi/client" async defer></script>
+
+  <!-- html2canvas untuk tangkap preview → imej (BARU) -->
+  <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
+
+<style>
+  :root{ --primary:#2c3e50; --secondary:#3498db; --success:#27ae60; --warning:#f39c12; --danger:#e74c3c; --light:#ecf0f1; --dark:#34495e; --muted:#95a5a6; }
+  html{ font-size:15px; }
+  @media (max-width:1200px){ html{ font-size:14px; } }
+  @media (max-width:576px){ html{ font-size:13px; } }
+
+  html,body{height:100%}
+  body{font-family:'Segoe UI',Tahoma,Geneva,Verdana,sans-serif;background:#f5f7fa;color:#333}
+
+  /* Navbar */
+  .navbar-main{background:#fff;box-shadow:0 2px 10px rgba(0,0,0,.08);padding:10px 0}
+  .navbar-brand{font-weight:700;color:var(--primary);font-size:1.05rem;display:flex;align-items:center;gap:10px}
+  .nav-link{color:var(--dark);font-weight:500;margin:0 4px;padding:7px 10px!important;border-radius:8px;transition:.2s;position:relative}
+  .nav-link:hover,.nav-link.active{background:rgba(52,152,219,.12);color:var(--secondary)}
+  .nav-badge{
+    position:absolute; top:-4px; right:-2px; transform:translate(30%,-30%);
+    background:#dc3545; color:#fff; border-radius:999px; font-size:.65rem; padding:2px 6px; display:none;
+  }
+
+  /* Header */
+  .page-header{background:linear-gradient(135deg,var(--primary),var(--secondary));color:#fff;padding:14px 0;margin-bottom:12px;border-radius:0 0 12px 12px}
+
+  /* Cards & tables */
+  .card{border:none;border-radius:14px;box-shadow:0 8px 24px rgba(0,0,0,.06);margin-bottom:16px}
+  .card-header{background:#fff;border-bottom:1px solid rgba(0,0,0,.06);font-weight:600;padding:12px 16px;border-radius:14px 14px 0 0!important}
+  .stat-card{padding:14px;border-radius:14px;color:#fff;text-align:center;position:relative;overflow:hidden;cursor:pointer}
+  .stat-card .number{font-size:1.45rem;font-weight:800}
+  .table td,.table th{vertical-align:middle}
+  .table{font-size:.95rem}
+  .searchbar{max-width:340px}
+  .mini-actions .btn{margin-right:6px;margin-bottom:6px}
+
+  /* Global App Loader (maks 2s) */
+  #appLoader{
+    position:fixed; inset:0; z-index:2000; display:none;
+    background: radial-gradient(1200px 600px at 10% -10%, rgba(52,152,219,.18), transparent),
+                radial-gradient(1200px 600px at 110% 110%, rgba(46,204,113,.18), transparent),
+                rgba(255,255,255,.35);
+    backdrop-filter: blur(10px);
+  }
+  #appLoader .loader-card{
+    position:absolute; top:50%; left:50%; transform:translate(-50%,-50%);
+    background:rgba(255,255,255,.75); border:1px solid rgba(255,255,255,.6);
+    box-shadow: 0 20px 40px rgba(0,0,0,.12);
+    border-radius:18px; padding:16px 18px; min-width:220px; text-align:center;
+  }
+  .spinner-premium{
+    width:36px;height:36px;border-radius:50%;
+    border:4px solid rgba(52,152,219,.25);
+    border-top-color:#3498db; animation:spin .9s linear infinite; margin:6px auto 8px;
+  }
+  @keyframes spin{to{transform:rotate(360deg)}}
+
+  /* Log Calls Drawer (gaya iPhone) */
+  #logDrawer{
+    position:fixed; top:0; right:-420px; width:400px; max-width:90vw; height:100%;
+    background:#f8f9fb; box-shadow:-12px 0 35px rgba(0,0,0,.18); z-index:3000;
+    transition:right .25s ease; border-left:1px solid rgba(0,0,0,.05);
+    display:flex; flex-direction:column;
+  }
+  #logDrawer.open{ right:0; }
+  .log-header{
+    padding:10px 12px; background:#fff; border-bottom:1px solid rgba(0,0,0,.06);
+    display:flex; gap:8px; align-items:center;
+  }
+  .log-header .title{font-weight:700; color:#222; flex:1}
+  .log-search{ padding:8px; background:#fff; border-bottom:1px solid rgba(0,0,0,.06); }
+  .log-body{ padding:10px; overflow:auto; flex:1; display:flex; flex-direction:column; gap:8px; }
+  .bubble{
+    max-width:80%; padding:8px 10px; border-radius:16px; box-shadow:0 4px 12px rgba(0,0,0,.06);
+    position:relative; font-size:.9rem; line-height:1.2rem;
+  }
+  .bubble.me{ margin-left:auto; background:#007aff; color:#fff; border-bottom-right-radius:6px; }
+  .bubble.other{ margin-right:auto; background:#e9ecef; color:#222; border-bottom-left-radius:6px; }
+  .bubble .meta{ font-size:.72rem; opacity:.8; margin-top:5px }
+  .log-loading{ display:none; text-align:center; padding:8px }
+  .log-loading.active{ display:block }
+
+  /* FAB (tombol terapung) untuk Log Calls */
+  #fabLog{
+    position:fixed; right:18px; bottom:18px; z-index:3500;
+    width:56px; height:56px; border-radius:50%;
+    display:flex; align-items:center; justify-content:center;
+    box-shadow:0 10px 24px rgba(0,0,0,.18);
+  }
+
+  /* ===== Toast: kebal overflow & tidak tenggelam di kanan ===== */
+  #toastHost{
+    position: fixed;
+    top: 0; left: 0; right: 0;             /* bentang penuh lebar skrin */
+    padding: 12px;
+    z-index: 4000;
+    pointer-events: none;                   /* host tak halang klik elemen lain */
+    display: flex;
+    justify-content: flex-end;              /* toasts rapat ke kanan */
+    align-items: flex-start;
+    box-sizing: border-box;
+  }
+  #toastContainer{
+    display: flex;
+    flex-direction: column;
+    gap: 8px;                               /* jarak antara toast */
+  }
+  #toastHost .toast{
+    pointer-events: auto;                   /* toast masih boleh diklik */
+    box-sizing: border-box;
+    width: max-content;
+    max-width: min(92vw, 420px);            /* jangan lebih viewport */
+    word-wrap: break-word;
+    overflow-wrap: anywhere;
+  }
+  /* Bila Log Drawer dibuka, tolak ke kiri supaya tak bertembung */
+  #logDrawer.open ~ #toastHost{
+    justify-content: flex-start;
+  }
+  @media (max-width: 576px){
+    #toastHost{ padding: 8px; }
+    #toastHost .toast{ max-width: 96vw; }
+  }
+
+  /* NADI TABLE STYLES */
+  .nadi-scroll-container { overflow-x: auto; width: 100%; padding-bottom: 8px; }
+  .nadi-table { width: 100%; min-width: 1300px; border-collapse: separate; border-spacing: 0; }
+  .nadi-table th {
+    background: #f8f9fa; padding: 10px 8px; font-weight: 600; text-align: center;
+    position: sticky; top: 0; z-index: 10; border: 1px solid #dee2e6;
+  }
+  .nadi-table td { padding: 8px; vertical-align: middle; border: 1px solid #dee2e6; }
+  .nadi-input-cell { position: relative; }
+  .nadi-input-cell .view-mode {
+    width: 100%; padding: 6px 8px; cursor: pointer; border: 1px solid transparent;
+    border-radius: 4px; min-height: 36px; display: flex; align-items: center;
+  }
+  .nadi-input-cell .view-mode:hover { background-color: #f8f9fa; border: 1px solid #dee2e6; }
+  .nadi-input-cell input {
+    width: 100%; min-width: 100px; border: 1px solid #ced4da; border-radius: 4px; padding: 6px 8px; transition: width 0.2s ease;
+  }
+  .nadi-input-cell input:focus { width: auto; min-width: 100px; }
+  .nadi-checkbox-cell { text-align: center; }
+  .nadi-actions-cell { min-width: 180px; }
+  .nadi-counter {
+    background: var(--primary); color: white; border-radius: 50%;
+    width: 24px; height: 24px; display: inline-flex; align-items: center; justify-content: center; font-size: 0.75rem;
+  }
+
+  /* Responsive */
+  @media (max-width: 992px) { .stat-card .number{font-size:1.3rem} }
+
+  /* Form sections */
+  .form-section { background: white; border-radius: 12px; padding: 16px; margin-bottom: 16px; box-shadow: 0 2px 8px rgba(0,0,0,0.05); }
+  .form-section h5 { color: var(--primary); margin-bottom: 16px; padding-bottom: 8px; border-bottom: 1px solid #eee; }
+  .sticky-form-actions { position: sticky; bottom: 0; background: white; padding: 12px; border-top: 1px solid #eee; margin-top: 16px; }
+
+  /* WhatsApp Report Image */
+  .whatsapp-report {
+    width: 100%; max-width: 500px; background: white; border-radius: 12px; padding: 20px;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.1); margin: 0 auto;
+  }
+  .whatsapp-report-header {
+    display: flex; align-items: center; margin-bottom: 15px; padding-bottom: 15px; border-bottom: 1px solid #eee;
+  }
+  .whatsapp-report-logo {
+    width: 50px; height: 50px; border-radius: 8px; margin-right: 15px; object-fit: cover; border: 1px solid rgba(0,0,0,0.08);
+  }
+  .whatsapp-report-title { font-size: 18px; font-weight: 700; color: var(--primary); }
+  .whatsapp-report-subtitle { font-size: 14px; color: var(--muted); }
+  .whatsapp-report-body { margin-bottom: 15px; }
+  .whatsapp-report-row { display: flex; margin-bottom: 8px; }
+  .whatsapp-report-label { font-weight: 600; width: 120px; color: var(--dark); }
+  .whatsapp-report-value { flex: 1; }
+  .whatsapp-report-footer { text-align: center; font-size: 12px; color: var(--muted); margin-top: 20px; padding-top: 15px; border-top: 1px solid #eee; }
+
+  /* NADI Summary Cards */
+  .nadi-summary-container {
+    display: flex;
+    gap: 12px;
+    margin-bottom: 16px;
+    flex-wrap: wrap;
+  }
+  .nadi-summary-card {
+    flex: 1;
+    min-width: 200px;
+    background: white;
+    border-radius: 10px;
+    padding: 12px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+    text-align: center;
+  }
+  .nadi-summary-card .title {
+    font-size: 0.9rem;
+    color: var(--muted);
+    margin-bottom: 8px;
+  }
+  .nadi-summary-card .count {
+    font-size: 1.5rem;
+    font-weight: 700;
+  }
+  .nadi-summary-card.layak { border-top: 4px solid var(--success); }
+  .nadi-summary-card.tak-layak { border-top: 4px solid var(--danger); }
+</style>
+</head>
+<body>
+  <!-- Global Loader -->
+  <div id="appLoader" aria-hidden="true">
+    <div class="loader-card">
+      <div class="spinner-premium"></div>
+      <div class="fw-bold">Sila tunggu…</div>
+      <div class="text-muted small" id="loaderMsg">Memproses permintaan anda</div>
+    </div>
+  </div>
+
+  <!-- Log Calls Drawer -->
+  <div id="logDrawer" aria-hidden="true">
+    <div class="log-header">
+      <button class="btn btn-sm btn-outline-secondary" id="btnCloseLog"><i class="bi bi-x-lg"></i></button>
+      <div class="title"><i class="bi bi-chat-dots me-1"></i> Log Calls</div>
+      <div id="logBadge" class="badge text-bg-primary">0</div>
+    </div>
+    <div class="log-search">
+      <input id="logSearch" class="form-control form-control-sm" placeholder="Cari: nama / IC / telefon / staff…" />
+    </div>
+    <div id="logLoading" class="log-loading">
+      <div class="spinner-border spinner-border-sm" role="status"></div>
+      <div class="small text-muted mt-1">Memuat Log Calls…</div>
+    </div>
+    <div id="logBody" class="log-body"></div>
+  </div>
+
+  <!-- Navbar -->
+  <nav class="navbar navbar-expand-lg navbar-main sticky-top">
+    <div class="container">
+      <a class="navbar-brand" href="#dashboard">
+        <img id="brandLogo" alt="Logo" style="width:32px;height:32px;border-radius:8px;object-fit:cover;border:1px solid rgba(0,0,0,.08)">
+        <span>Klinik SihatSokmo</span>
+      </a>
+
+      <!-- Google Sign-in button placeholder -->
+      <div id="signinArea" class="d-lg-none me-2"></div>
+
+      <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarMain">
+        <span class="navbar-toggler-icon"></span>
+      </button>
+      <div class="collapse navbar-collapse" id="navbarMain">
+        <ul class="navbar-nav me-auto mb-2 mb-lg-0">
+          <li class="nav-item position-relative">
+            <a class="nav-link active" href="#dashboard"><i class="fas fa-tachometer-alt"></i> Dashboard</a>
+          </li>
+          <li class="nav-item position-relative">
+            <a class="nav-link" href="#nadi"><i class="bi bi-clipboard2-pulse"></i> Program PEKA B40 bersama NADI</a>
+          </li>
+          <li class="nav-item position-relative">
+            <a class="nav-link" href="#daftar-peka"><i class="fas fa-user-plus"></i> Daftar Peka</a>
+          </li>
+          <li class="nav-item position-relative">
+            <a class="nav-link" href="#kelayakan"><i class="fa-solid fa-file-excel"></i> Kelayakan (Excel)</a>
+          </li>
+          <li class="nav-item position-relative">
+            <a class="nav-link" href="#tca-call"><i class="fas fa-phone"></i> TCA Call</a>
+            <span id="badgeTCA" class="nav-badge">0</span>
+          </li>
+          <li class="nav-item position-relative">
+            <a class="nav-link" href="#first-visit"><i class="fas fa-calendar-check"></i> First Visit</a>
+            <span id="badgeFirst" class="nav-badge">0</span>
+          </li>
+          <li class="nav-item position-relative">
+            <a class="nav-link" href="#lab-followup"><i class="fa-solid fa-flask-vial"></i> Follow-up Lab Report</a>
+            <span id="badgeLab" class="nav-badge">0</span>
+          </li>
+          <li class="nav-item position-relative">
+            <a class="nav-link" href="#second-visit"><i class="fas fa-calendar-check"></i> Second Visit</a>
+            <span id="badgeSecond" class="nav-badge">0</span>
+          </li>
+          <li class="nav-item position-relative">
+            <a class="nav-link" href="#selesai"><i class="fas fa-check-circle"></i> Selesai</a>
+          </li>
+          <li class="nav-item position-relative">
+            <a class="nav-link" href="#arkib"><i class="fa-solid fa-box-archive"></i> Arkib</a>
+          </li>
+        </ul>
+
+        <div class="d-none d-lg-flex align-items-center gap-2">
+          <div id="signinAreaDesktop"></div>
+          <span id="staffBadge" class="badge bg-secondary d-none"><i class="bi bi-person-check me-1"></i><span id="staffEmail"></span></span>
+          <!-- (Butang Log Calls terapung di bawah – tidak dalam navbar) -->
+        </div>
+      </div>
+    </div>
+  </nav>
+
+  <!-- Header -->
+  <header class="page-header">
+    <div class="container">
+      <div class="row align-items-center g-2">
+        <div class="col-md-6">
+          <h1 class="h5 m-0"><i class="fas fa-heartbeat me-2"></i> Sistem TRacKer PEKA B40</h1>
+          <div class="small opacity-75">Sistem pengurusan pesakit untuk program saringan kesihatan PEKA B40</div>
+        </div>
+        <div class="col-md-6 text-md-end">
+          <span class="badge bg-light text-dark fs-6 p-2"><i class="fas fa-calendar-day me-1"></i> <span id="current-date"></span></span>
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <main class="container">
+
+    <!-- Dashboard -->
+    <section id="dashboard" class="mb-4">
+      <div class="d-flex justify-content-between align-items-center mb-3">
+        <h2 class="h6 m-0"><i class="fas fa-tachometer-alt me-2"></i>Dashboard</h2>
+        <div class="d-flex gap-2">
+          <button class="btn btn-sm btn-outline-success" id="btnExportCSV"><i class="fa-solid fa-file-csv me-1"></i>Export (CSV)</button>
+        </div>
+      </div>
+
+      <div class="row g-3 mb-3">
+        <div class="col-6 col-md-2">
+          <div class="stat-card" data-goto="#tca-call" style="background:linear-gradient(135deg,var(--secondary),#2980b9)">
+            <div class="number" id="totalDaftar">0</div><div class="small">Aktif</div>
+          </div>
+        </div>
+        <div class="col-6 col-md-2">
+          <div class="stat-card" data-goto="#first-visit" style="background:linear-gradient(135deg,var(--warning),#e67e22)">
+            <div class="number" id="totalFirstVisit">0</div><div class="small">First Visit (Pending)</div>
+          </div>
+        </div>
+        <div class="col-6 col-md-2">
+          <div class="stat-card" data-goto="#second-visit" style="background:linear-gradient(135deg,#9b59b6,#8e44ad)">
+            <div class="number" id="totalSecondVisit">0</div><div class="small">Second Visit (Pending)</div>
+          </div>
+        </div>
+        <div class="col-6 col-md-2">
+          <div class="stat-card" data-goto="#selesai" style="background:linear-gradient(135deg,var(--success),#16a085)">
+            <div class="number" id="totalSelesai">0</div><div class="small">Selesai</div>
+          </div>
+        </div>
+        <div class="col-6 col-md-2">
+          <div class="stat-card" data-goto="#lab-followup" style="background:linear-gradient(135deg,#8e44ad,#6c5ce7)">
+            <div class="number" id="labFollowUpDue">0</div><div class="small">Result > 3 Hari</div>
+          </div>
+        </div>
+        <div class="col-6 col-md-2">
+          <div class="stat-card" data-goto="#lab-followup" style="background:linear-gradient(135deg,#d35400,#c0392b)">
+            <div class="number" id="labFollowUpPending">0</div><div class="small">Perlu Follow-up</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Pesakit perlu dihubungi (ringkas hari ini mengikut backend lalai) -->
+      <div class="card mb-3">
+        <div class="card-header d-flex justify-content-between align-items-center">
+          <span><i class="fas fa-phone me-2"></i>Pesakit Perlu Dihubungi Hari Ini</span>
+          <input class="form-control form-control-sm searchbar" id="searchTCA" placeholder="Cari nama/IC/telefon…" />
+        </div>
+        <div class="card-body">
+          <div class="table-responsive">
+            <table class="table table-hover align-middle">
+              <thead class="table-light"><tr><th>Nama Pesakit</th><th>No IC</th><th>No Telefon</th><th>Alamat</th><th>Tarikh TCA</th><th>Status</th></tr></thead>
+              <tbody id="tcaCallTable"><tr><td colspan="6" class="text-center text-muted">Memuat data...</td></tr></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      <!-- Statistik -->
+      <div class="card">
+        <div class="card-header d-flex justify-content-between align-items-center">
+          <span><i class="fas fa-chart-bar me-2"></i>Statistik Pesakit Selesai</span>
+          <select id="statPeriod" class="form-select form-select-sm" style="max-width:200px">
+            <option value="3months">3 Bulan Terakhir</option>
+            <option value="6months">6 Bulan Terakhir</option>
+            <option value="12months">12 Bulan Terakhir</option>
+          </select>
+        </div>
+        <div class="card-body"><div style="height:320px;"><canvas id="stats3dChart"></canvas></div></div>
+      </div>
+    </section>
+
+    <!-- Program NADI -->
+    <section id="nadi" class="mb-4 d-none">
+      <div class="d-flex justify-content-between align-items-center mb-2">
+        <h2 class="h6 m-0"><i class="bi bi-clipboard2-pulse me-2"></i>Program PEKA B40 bersama NADI</h2>
+        <div class="d-flex gap-2">
+          <button id="btnNadiExportCsv" class="btn btn-sm btn-outline-success"><i class="bi bi-filetype-csv me-1"></i>Export to CSV</button>
+        </div>
+      </div>
+      
+      <!-- Summary Cards -->
+      <div class="nadi-summary-container">
+        <div class="nadi-summary-card layak">
+          <div class="title">Layak PEKA B40</div>
+          <div class="count" id="nadiLayakCount">0</div>
+        </div>
+        <div class="nadi-summary-card tak-layak">
+          <div class="title">Tidak Layak</div>
+          <div class="count" id="nadiTakLayakCount">0</div>
+        </div>
+      </div>
+      <!-- BAR PROGRAM (tajuk + tarikh + aksi) -->
+<div id="nadiProgramBar" class="d-flex flex-wrap gap-2 align-items-end mb-2">
+  <div class="flex-grow-1">
+    <label class="form-label mb-1">Tajuk Program</label>
+    <input id="nadiProgramTitle" class="form-control form-control-sm" placeholder="cth: Saringan Komuniti Tmn Mawar">
+  </div>
+  <div>
+    <label class="form-label mb-1">Tarikh Program</label>
+    <input id="nadiProgramDate" type="date" class="form-control form-control-sm">
+  </div>
+  <div class="ms-auto d-flex gap-2">
+    <button id="btnNadiSaveActivity" class="btn btn-sm btn-primary">
+      <i class="bi bi-cloud-upload me-1"></i>Simpan Aktiviti (Semua)
+    </button>
+  </div>
+</div>
+      <div class="card">
+        <div class="card-body">
+          <div class="nadi-scroll-container">
+            <table class="nadi-table">
+              <thead>
+                <tr>
+                  <th style="width: 40px;">#</th>
+                  <th style="min-width: 150px;">Nama Pesakit</th>
+                  <th style="min-width: 120px;">No IC</th>
+                  <th style="min-width: 80px;">Umur</th>
+                  <th style="min-width: 120px;">Telefon</th>
+                  <th style="min-width: 150px;">Alamat</th>
+                  <th style="min-width: 80px;">BP</th>
+                  <th style="min-width: 80px;">PR</th>
+                  <th style="min-width: 120px;">DXT</th>
+                  <th style="min-width: 80px;">Tinggi</th>
+                  <th style="min-width: 80px;">Berat</th>
+                  <th style="min-width: 80px;">BMI</th>
+                  <th style="width: 80px;">Layak</th>
+                  <th style="width: 100px;">Tidak Layak</th>
+                  <th style="min-width: 200px;">TCA & Staff</th>
+                  <th style="min-width: 180px;">Tindakan</th>
+                </tr>
+              </thead>
+              <tbody id="nadiContainer">
+                <!-- Rows will be added dynamically -->
+              </tbody>
+            </table>
+          </div>
+          <div class="sticky-form-actions">
+            <button class="btn btn-primary" onclick="addNadiRow()"><i class="bi bi-plus-circle me-1"></i>Tambah Pesakit</button>
+          </div>
+          <div class="text-muted small mt-2">Nota: Baris "Layak" boleh terus <b>Daftar</b> (simpan ke sheet). Baris "Tidak Layak" <u>tidak</u> disimpan ke sheet tetapi <b>tetap dieksport CSV</b> bersama-sama.</div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Daftar Peka -->
+    <section id="daftar-peka" class="mb-4 d-none">
+      <div class="d-flex justify-content-between align-items-center mb-3">
+        <h2 class="h6 m-0"><i class="fas fa-user-plus me-2"></i>Daftar Peka</h2>
+      </div>
+
+      <div class="form-section">
+        <h5><i class="fas fa-user-circle me-2"></i>Maklumat Pesakit</h5>
+        <div class="row g-3">
+          <div class="col-md-6">
+            <label class="form-label">Nama Penuh Pesakit</label>
+            <input id="namaPesakit" class="form-control" required>
+          </div>
+          <div class="col-md-6">
+            <label class="form-label">Nombor IC</label>
+            <input id="noIC" class="form-control" required>
+          </div>
+          <div class="col-md-6">
+            <label class="form-label">Nombor Telefon</label>
+            <input id="noTelefon" class="form-control" type="tel" required placeholder="cth: 0123456789 atau 60123456789">
+          </div>
+          <div class="col-md-6">
+            <label class="form-label">Alamat Pesakit</label>
+            <textarea id="alamatPesakit" class="form-control" rows="2"></textarea>
+          </div>
+        </div>
+      </div>
+
+      <div class="form-section">
+        <h5><i class="fas fa-calendar-alt me-2"></i>Tarikh Temujanji</h5>
+        <div class="row g-3">
+          <div class="col-md-6">
+            <label class="form-label">Tarikh TCA</label>
+            <input id="tarikhTCA" class="form-control" type="date" required>
+          </div>
+          <div class="col-md-6">
+            <label class="form-label">Masa TCA</label>
+            <input id="masaTCA" class="form-control" type="time" required>
+          </div>
+        </div>
+      </div>
+
+      <div class="form-section">
+        <h5><i class="fas fa-user-tie me-2"></i>Maklumat Staff</h5>
+        <div class="row g-3">
+          <div class="col-md-6">
+            <label class="form-label">Nama Staff</label>
+            <input id="namaStaff" class="form-control" required>
+          </div>
+        </div>
+      </div>
+
+      <div class="sticky-form-actions">
+        <button class="btn btn-primary" id="btnDaftarPesakit"><i class="fas fa-save me-1"></i>Daftar Pesakit</button>
+      </div>
+    </section>
+
+    <!-- Kelayakan (Excel) -->
+    <section id="kelayakan" class="mb-4 d-none">
+      <h2 class="h6 mb-3"><i class="fa-solid fa-file-excel me-2"></i>Semak Kelayakan (Import Excel)</h2>
+      <div class="card"><div class="card-body">
+        <div class="row g-2 align-items-center mb-3">
+          <div class="col-md-6">
+            <input type="file" id="excelFile" class="form-control" accept=".xlsx,.xls,.csv" />
+            <div class="form-text">Fail perlu ada lajur: <b>Nama</b>, <b>IC</b>, <b>Telefon</b>, <b>Alamat</b>. (Sistem tapis umur ≥40 ikut IC)</div>
+          </div>
+        </div>
+        <div class="table-responsive">
+          <table class="table table-hover align-middle">
+            <thead class="table-light">
+              <tr>
+                <th>Nama</th><th>IC</th><th>Telefon</th><th>Alamat</th>
+                <th class="text-center">Layak</th><th class="text-center">Tidak Layak</th>
+                <th style="width:360px">Jika Layak → TCA & Masa & Staff</th><th>Tindakan</th>
+              </tr>
+            </thead>
+            <tbody id="kelayakanTable"><tr><td colspan="8" class="text-center text-muted">Muat naik Excel untuk mula.</td></tr></tbody>
+          </table>
+        </div>
+      </div></div>
+    </section>
+
+    <!-- TCA Call (senarai rekod — tiada tanda selesai manual) -->
+    <section id="tca-call" class="mb-4 d-none">
+      <div class="d-flex justify-content-between align-items-center mb-2">
+        <h2 class="h6 m-0"><i class="fas fa-phone me-2"></i>Senarai Rekod TCA Call</h2>
+        <div class="d-flex align-items-center gap-2">
+          <div class="btn-group btn-group-sm" role="group" id="tcaFilter">
+            <button class="btn btn-outline-primary active" data-filter="today">Hari ini</button>
+            <button class="btn btn-outline-primary" data-filter="upcoming">Akan datang</button>
+            <button class="btn btn-outline-primary" data-filter="past">Lepas</button>
+            <button class="btn btn-outline-secondary" data-filter="all">Semua</button>
+          </div>
+          <input class="form-control form-control-sm searchbar" id="searchTCAPage" placeholder="Cari nama/IC/telefon…"/>
+        </div>
+      </div>
+      <div class="card"><div class="card-body">
+        <div class="table-responsive">
+          <table class="table table-hover align-middle">
+            <thead class="table-light"><tr><th>Nama Pesakit</th><th>No IC</th><th>No Telefon</th><th>Alamat</th><th>Tarikh TCA</th><th>Status</th></tr></thead>
+            <tbody id="tcaCallList"><tr><td colspan="6" class="text-center text-muted">Memuat data...</td></tr></tbody>
+          </table>
+        </div>
+      </div></div>
+    </section>
+
+    <!-- First Visit -->
+    <section id="first-visit" class="mb-4 d-none">
+      <div class="d-flex justify-content-between align-items-center mb-2">
+        <h2 class="h6 m-0"><i class="fas fa-calendar-check me-2"></i>First Visit</h2>
+        <input class="form-control form-control-sm searchbar" id="searchFirst" placeholder="Cari nama/IC/telefon…"/>
+      </div>
+      <div class="card"><div class="card-body">
+        <div class="table-responsive">
+          <table class="table table-hover align-middle">
+            <thead class="table-light"><tr><th>Nama Pesakit</th><th>No IC</th><th>Alamat</th><th>Tarikh TCA</th><th>PDPA</th><th>Status</th><th>Tindakan</th></tr></thead>
+            <tbody id="firstVisitList"><tr><td colspan="7" class="text-center text-muted">Memuat data...</td></tr></tbody>
+          </table>
+        </div>
+      </div></div>
+    </section>
+
+    <!-- Follow-up Lab Report -->
+    <section id="lab-followup" class="mb-4 d-none">
+      <div class="d-flex justify-content-between align-items-center mb-2">
+        <h2 class="h6 m-0"><i class="fa-solid fa-flask-vial me-2"></i>Follow-up Lab Report</h2>
+        <input class="form-control form-control-sm searchbar" id="searchLab" placeholder="Cari nama/IC/telefon…"/>
+      </div>
+      <div class="card"><div class="card-body">
+        <div class="table-responsive">
+          <table class="table table-hover align-middle">
+            <thead class="table-light">
+              <tr><th>Nama</th><th>IC</th><th>Telefon</th><th>Alamat</th><th>Tarikh First Visit</th><th>Hari Ke-</th><th>Status</th><th>Tindakan</th></tr>
+            </thead>
+            <tbody id="labFollowupTable"><tr><td colspan="8" class="text-center text-muted">Memuat data...</td></tr></tbody>
+          </table>
+        </div>
+      </div></div>
+    </section>
+
+    <!-- Second Visit -->
+    <section id="second-visit" class="mb-4 d-none">
+      <div class="d-flex justify-content-between align-items-center mb-2">
+        <h2 class="h6 m-0"><i class="fas fa-calendar-check me-2"></i>Second Visit</h2>
+        <input class="form-control form-control-sm searchbar" id="searchSecond" placeholder="Cari nama/IC/telefon…"/>
+      </div>
+      <div class="card"><div class="card-body">
+        <div class="table-responsive">
+          <table class="table table-hover align-middle">
+            <thead class="table-light"><tr><th>Nama Pesakit</th><th>No IC</th><th>Alamat</th><th>Tarikh TCA</th><th>PDPA</th><th>Status</th><th>Tindakan</th></tr></thead>
+            <tbody id="secondVisitList"><tr><td colspan="7" class="text-center text-muted">Memuat data...</td></tr></tbody>
+          </table>
+        </div>
+      </div></div>
+    </section>
+
+    <!-- Selesai -->
+    <section id="selesai" class="mb-4 d-none">
+      <div class="d-flex justify-content-between align-items-center mb-2">
+        <h2 class="h6 m-0"><i class="fas fa-check-circle me-2"></i>Pesakit Selesai</h2>
+        <input class="form-control form-control-sm searchbar" id="searchCompleted" placeholder="Cari nama/IC/telefon…"/>
+      </div>
+      <div class="card mb-3"><div class="card-body">
+        <div class="table-responsive">
+          <table class="table table-hover align-middle">
+            <thead class="table-light">
+              <tr>
+                <th>Nama Pesakit</th><th>No IC</th><th>No Telefon</th><th>Alamat</th><th>PDPA</th>
+                <th>Tarikh Daftar</th><th>First Visit</th><th>Lab Report Completed</th><th>Second Visit</th><th>Tarikh Selesai</th><th>Tindakan</th>
+              </tr>
+            </thead>
+            <tbody id="completedTable"><tr><td colspan="11" class="text-center text-muted">Memuat data...</td></tr></tbody>
+          </table>
+        </div>
+      </div></div>
+
+      <div class="card">
+        <div class="card-header d-flex justify-content-between align-items-center">
+          <span><i class="fas fa-chart-bar me-2"></i>Statistik Pesakit Selesai</span>
+          <select id="statPeriodCompleted" class="form-select form-select-sm" style="max-width:200px">
+            <option value="3months">3 Bulan Terakhir</option>
+            <option value="6months">6 Bulan Terakhir</option>
+            <option value="12months">12 Bulan Terakhir</option>
+          </select>
+        </div>
+        <div class="card-body"><div style="height:300px;"><canvas id="completed3dChart"></canvas></div></div>
+      </div>
+    </section>
+
+    <!-- Arkib -->
+    <section id="arkib" class="mb-4 d-none">
+      <div class="d-flex justify-content-between align-items-center mb-2">
+        <h2 class="h6 m-0"><i class="fa-solid fa-box-archive me-2"></i>Arkib</h2>
+        <input class="form-control form-control-sm searchbar" id="searchArchive" placeholder="Cari nama/IC/telefon…"/>
+      </div>
+      <div class="card"><div class="card-body">
+        <div class="table-responsive">
+          <table class="table table-hover align-middle">
+            <thead class="table-light"><tr><th>Nama Pesakit</th><th>No IC</th><th>No Telefon</th><th>Alamat</th><th>Tarikh Daftar</th><th>Tarikh Selesai</th><th>Diarkib</th><th>Tindakan</th></tr></thead>
+            <tbody id="archiveTable"><tr><td colspan="8" class="text-center text-muted">Tiada rekod arkib</td></tr></tbody>
+          </table>
+        </div>
+      </div></div>
+    </section>
+  </main>
+
+  <!-- Modal Re-TCA -->
+  <div class="modal fade" id="retcaModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered"><div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title"><i class="fa-solid fa-calendar-plus me-2"></i>Daftar TCA Semula</h5>
+        <button class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body">
+        <input type="hidden" id="retcaIC">
+        <div class="mb-3"><label class="form-label">Tarikh TCA Baharu</label><input type="date" id="retcaDate" class="form-control" required></div>
+        <div class="mb-2"><label class="form-label">Masa TCA Baharu</label><input type="time" id="retcaTime" class="form-control" required></div>
+        <small class="text-muted">Status pesakit akan ditukar kepada <b>TCA CALL</b>.</small>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-secondary" data-bs-dismiss="modal">Batal</button>
+        <button class="btn btn-primary" id="btnSubmitRetca"><i class="fa-solid fa-floppy-disk me-1"></i>Simpan</button>
+      </div>
+    </div></div>
+  </div>
+
+  <!-- Modal Set Second Visit TCA (Lab Complete & Call) -->
+  <div class="modal fade" id="secondTcaModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered"><div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title"><i class="fa-solid fa-calendar-check me-2"></i>Tetapkan TCA Second Visit</h5>
+        <button class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body">
+        <input type="hidden" id="secondTcaIC">
+        <div class="mb-2"><label class="form-label">Tarikh TCA Second Visit</label><input type="date" id="secondTcaDate" class="form-control" required></div>
+        <div class="mb-2"><label class="form-label">Masa TCA</label><input type="time" id="secondTcaTime" class="form-control" required></div>
+        <div class="mb-2"><label class="form-label">Nama Staff (wajib isi)</label><input type="text" id="secondTcaStaff" class="form-control" required placeholder="cth: Dayah"></div>
+        <small class="text-muted">Maklumat ini akan direkod ke Log Calls & ruangan "Lab Report Completed".</small>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-secondary" data-bs-dismiss="modal">Batal</button>
+        <button class="btn btn-primary" id="btnSubmitSecondTca"><i class="fa-solid fa-floppy-disk me-1"></i>Simpan</button>
+      </div>
+    </div></div>
+  </div>
+
+  <!-- Modal Upload PDPA -->
+  <div class="modal fade" id="pdpaModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered"><div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title"><i class="fa-solid fa-file-arrow-up me-2"></i>Muat Naik Borang PDPA</h5>
+        <button class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body">
+        <input type="hidden" id="pdpaIC">
+        <input type="file" id="pdpaFile" class="form-control" accept="application/pdf,image/*" />
+        <div class="form-text">Muat naik PDF / imej borang PDPA pesakit.</div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-secondary" data-bs-dismiss="modal">Tutup</button>
+        <button class="btn btn-primary" id="btnUploadPDPA"><i class="fa-solid fa-cloud-arrow-up me-1"></i>Upload</button>
+      </div>
+    </div></div>
+  </div>
+
+  <!-- Modal WhatsApp Report Preview -->
+  <div class="modal fade" id="whatsappReportModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-lg modal-dialog-centered"><div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title"><i class="fa-brands fa-whatsapp me-2"></i>Pratonton Laporan WhatsApp</h5>
+        <button class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body">
+        <div id="whatsappReportPreview"></div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-secondary" data-bs-dismiss="modal">Tutup</button>
+        <!-- Kekalkan butang lama (teks) -->
+        <button class="btn btn-outline-success" id="btnSendWhatsApp">
+          <i class="fa-brands fa-whatsapp me-1"></i> Hantar WhatsApp (Teks)
+        </button>
+        <!-- Butang baharu: hantar Gambar ke WhatsApp + auto-buka chat -->
+        <button class="btn btn-success" id="btnSendWhatsAppImage">
+          <i class="fa-brands fa-whatsapp me-1"></i> Hantar Gambar ke WhatsApp
+        </button>
+      </div>
+    </div></div>
+  </div>
+
+  <!-- Toast Host (kanan atas) -->
+  <div id="toastHost"><div id="toastContainer" class="toast-container"></div></div>
+
+  <!-- FAB Log Calls -->
+  <button id="fabLog" class="btn btn-primary">
+    <i class="bi bi-chat-dots fs-5"></i>
+  </button>
+
+  <footer class="footer mt-4 py-3 bg-light">
+    <div class="container"><div class="d-flex justify-content-between">
+      <div>&copy; 2025 Klinik SihatSokmo. Untuk kegunaan Klinik sahaja.</div>
+      <div>Versi 3.1 (Secure)</div>
+    </div></div>
+  </footer>
+
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+  <script>
+/* =======================
+   KONFIG (EDIT INI SAHAJA)
+   ======================= */
+/* =======================
+   KELAYAKAN: CSV first, XLSX fallback
+   - Auto detect header row & delimiter
+   - Banyak sinonim lajur (IC/NRIC/KP/MyKad, No. H/P/WhatsApp)
+   ======================= */
+(function () {
+  const fileInput = document.getElementById('excelFile');
+  const tableBody = document.getElementById('kelayakanTable');
+  if (!fileInput || !tableBody) return;
+
+  // ---------- Util ----------
+  const norm = (v) => String(v ?? '').trim();
+  const escapeHtml = (s) => String(s || '').replace(/[&<>"']/g, m => (
+    {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'}[m]
+  ));
+
+  function umurDariIC(ic) {
+    const s = String(ic || '').replace(/\D/g, '');
+    if (s.length < 6) return null;
+    const yy = +s.slice(0,2), mm = +s.slice(2,4), dd = +s.slice(4,6);
+    if (!(mm>=1 && mm<=12) || !(dd>=1 && dd<=31)) return null;
+    const now = new Date();
+    const currentYY = now.getFullYear() % 100;
+    const year = (yy <= currentYY ? 2000 : 1900) + yy;
+    let age = now.getFullYear() - year;
+    const bday = new Date(year, mm - 1, dd);
+    if (!(now.getMonth() > bday.getMonth() ||
+          (now.getMonth() === bday.getMonth() && now.getDate() >= bday.getDate()))) {
+      age--;
+    }
+    return age;
+  }
+
+  // ---------- File readers ----------
+  const readAsArrayBuffer = (file) => new Promise((res, rej) => {
+    const fr = new FileReader();
+    fr.onload = e => res(e.target.result);
+    fr.onerror = rej;
+    fr.readAsArrayBuffer(file);
+  });
+  const readAsText = (file) => new Promise((res, rej) => {
+    const fr = new FileReader();
+    fr.onload = e => res(e.target.result);
+    fr.onerror = rej;
+    fr.readAsText(file, 'utf-8');
+  });
+
+  // ---------- CSV helpers ----------
+  const stripBOM = (s) => s && s.charCodeAt(0) === 0xFEFF ? s.slice(1) : s;
+
+  function detectDelimiter(s) {
+    const sample = (s || '').slice(0, 3000);
+    const cand = [',',';','\t','|'];
+    const count = { ',':0, ';':0, '\t':0, '|':0 };
+    let inQ = false;
+    for (let i=0;i<sample.length;i++){
+      const c = sample[i];
+      if (c === '"') {
+        if (inQ && sample[i+1] === '"') { i++; }
+        else inQ = !inQ;
+      } else if (!inQ && count.hasOwnProperty(c)) {
+        count[c]++;
+      }
+    }
+    return cand.sort((a,b)=>count[b]-count[a])[0] || ',';
+  }
+
+  function parseCSVToRows(text) {
+    text = stripBOM(String(text||''));
+    const delim = detectDelimiter(text);
+    const rows = [];
+    let row=[], field='', inQ=false;
+    for (let i=0;i<text.length;i++){
+      const c = text[i];
+      if (inQ) {
+        if (c === '"') {
+          if (text[i+1] === '"') { field += '"'; i++; }
+          else inQ = false;
+        } else field += c;
+      } else {
+        if (c === '"') inQ = true;
+        else if (c === delim) { row.push(field); field=''; }
+        else if (c === '\n')  { row.push(field); rows.push(row); row=[]; field=''; }
+        else if (c === '\r')  { /* skip */ }
+        else field += c;
+      }
+    }
+    row.push(field); rows.push(row);
+    return rows;
+  }
+
+  // Cari baris header terbaik (ada ≥2 kata kunci)
+  const keysets = {
+    nama:    ['nama','nama penuh','name','nama pesakit'],
+    ic:      ['ic','no ic','no. ic','nric','nokp','no kp','no. kp','kp','mykad','no mykad','no k/p','k/p','kad pengenalan','no kad pengenalan'],
+    telefon: ['telefon','no telefon','no. telefon','no tel','no. tel','tel','mobile','hp','no hp','h/p','no h/p','whatsapp','no whatsapp','telefon (whatsapp)'],
+    alamat:  ['alamat','address','addr','alamat rumah','alamat kediaman']
+  };
+  const canon = (s) => String(s||'')
+      .toLowerCase()
+      .replace(/[\s\.\-_/()]+/g,'')   // buang ruang, titik, slash dll
+      .trim();
+
+  function scoreHeaderCell(cell) {
+    const t = canon(cell);
+    const hit = [];
+    for (const [k, list] of Object.entries(keysets)) {
+      if (list.some(p => t.includes(canon(p)))) hit.push(k);
+    }
+    return [...new Set(hit)];
+  }
+
+  function findHeaderRow(rows) {
+    let best = { idx: 0, score: 0 };
+    for (let r=0; r<Math.min(rows.length, 20); r++) {
+      const hits = new Set();
+      for (const c of rows[r]) scoreHeaderCell(c).forEach(k => hits.add(k));
+      const sc = hits.size;
+      if (sc > best.score) best = { idx: r, score: sc };
+    }
+    return (best.score >= 2) ? best.idx : 0; // perlu ≥2 kolum relevan
+  }
+
+  function csvTextToObjects(text) {
+    const rows = parseCSVToRows(text);
+    if (!rows.length) return [];
+    const headerRow = findHeaderRow(rows);
+    const header = rows[headerRow].map(h => String(h||'').trim());
+    const dataRows = rows.slice(headerRow+1);
+
+    return dataRows
+      .filter(r => r.some(v => String(v||'').trim() !== ''))
+      .map(r => {
+        const o = {};
+        for (let i=0;i<header.length;i++) o[header[i]] = r[i] ?? '';
+        return o;
+      });
+  }
+
+  // Padanan objek → {nama, ic, telefon, alamat}
+  function mapRow(raw) {
+    const entries = Object.entries(raw);
+    const pick = (groups) => {
+      // cuba padanan tepat dulu
+      for (const [k,v] of entries) {
+        const t = canon(k);
+        if (groups.some(word => t.includes(canon(word)))) return norm(v);
+      }
+      // fallback: cuba contains long->short
+      for (const [k,v] of entries) {
+        const t = canon(k);
+        if (groups.some(word => canon(word).includes(t))) return norm(v);
+      }
+      return '';
+    };
+    return {
+      nama:    pick(keysets.nama),
+      ic:      pick(keysets.ic),
+      telefon: pick(keysets.telefon),
+      alamat:  pick(keysets.alamat)
+    };
+  }
+
+  // ---------- Render ----------
+  function renderRows(items) {
+    if (!items.length) {
+      tableBody.innerHTML =
+        '<tr><td colspan="8" class="text-center text-muted">Tiada data ditemui (semak header CSV anda).</td></tr>';
+      return;
+    }
+    tableBody.innerHTML = items.map((it, idx) => {
+      const age = umurDariIC(it.ic);
+      const eligible = (age !== null) ? age >= 40 : false;
+      const reason = (age === null) ? 'IC tidak sah' : (eligible ? '-' : `Umur ${age} tahun (&lt; 40)`);
+
+      return `
+        <tr data-idx="${idx}">
+          <td>${escapeHtml(it.nama) || '-'}</td>
+          <td>${escapeHtml(it.ic) || '-'}</td>
+          <td>${escapeHtml(it.telefon) || '-'}</td>
+          <td>${escapeHtml(it.alamat) || '-'}</td>
+          <td class="text-center">
+            ${eligible ? '<span class="badge text-bg-success">Layak</span>' :
+                         '<span class="badge text-bg-danger">Tidak Layak</span>'}
+          </td>
+          <td class="text-center">${escapeHtml(reason)}</td>
+          <td>
+            ${eligible ? `
+              <div class="row g-1">
+                <div class="col"><input type="date" class="form-control form-control-sm tca-date"></div>
+                <div class="col"><input type="time" class="form-control form-control-sm tca-time"></div>
+                <div class="col"><input type="text"  class="form-control form-control-sm tca-staff" placeholder="Staff"></div>
+              </div>
+            ` : '<span class="text-muted">—</span>'}
+          </td>
+          <td>
+            ${eligible
+              ? '<button class="btn btn-sm btn-primary daftar-row"><i class="fas fa-save me-1"></i>Daftar</button>'
+              : '<span class="text-muted">—</span>'}
+          </td>
+        </tr>`;
+    }).join('');
+  }
+
+  // ---------- Pemproses utama ----------
+  async function handleFile(file) {
+    try {
+      tableBody.innerHTML =
+        '<tr><td colspan="8" class="text-center text-muted">Memproses fail…</td></tr>';
+
+      const ext = (file.name.split('.').pop() || '').toLowerCase();
+
+      // 1) CSV → terus baca (tak perlu internet/CDN)
+      if (ext === 'csv') {
+        const text = await readAsText(file);
+        const raw  = csvTextToObjects(text);
+        const items = raw.map(mapRow)
+          .filter(r => r.nama || r.ic || r.telefon || r.alamat);
+
+        if (!items.length) {
+          // papar sedikit debug kepala lajur untuk bantu semak
+          const rows = parseCSVToRows(text);
+          const headerRow = findHeaderRow(rows);
+          const hdrs = (rows[headerRow] || []).slice(0,8).map(h=>escapeHtml(h)).join(', ');
+          tableBody.innerHTML =
+            `<tr><td colspan="8" class="text-center text-danger">
+              CSV dibaca tetapi tiada lajur sepadan.<br>
+              <small><b>Jumpa header:</b> ${hdrs || '(kosong)'}<br>
+              Pastikan ada lajur seperti <i>Nama, IC/NRIC/KP, Telefon/HP/WhatsApp, Alamat</i>.</small>
+            </td></tr>`;
+          return;
+        }
+
+        window.__KELAYAKAN_ITEMS__ = items;
+        renderRows(items);
+        return;
+      }
+
+      // 2) XLSX/XLS → cuba SheetJS; jika gagal, minta simpan CSV
+      if (typeof window.ensureXLSXReady === 'function') {
+        try { await window.ensureXLSXReady(); } catch(e) { /* ignore */ }
+      }
+      if (!window.XLSX) {
+        tableBody.innerHTML =
+          '<tr><td colspan="8" class="text-center text-danger">SheetJS tidak tersedia. Sila simpan Excel sebagai <b>CSV</b> dan muat naik semula.</td></tr>';
+        return;
+      }
+
+      const data = await readAsArrayBuffer(file);
+      const wb   = XLSX.read(data, { type: 'array' });
+      const ws   = wb.Sheets[wb.SheetNames[0]];
+      const raw  = XLSX.utils.sheet_to_json(ws, { defval: '', raw: true });
+
+      const items = raw.map(mapRow)
+        .filter(r => r.nama || r.ic || r.telefon || r.alamat);
+
+      if (!items.length) {
+        const hdrs = Object.keys(raw[0] || {}).slice(0,8).join(', ');
+        tableBody.innerHTML =
+          `<tr><td colspan="8" class="text-center text-danger">
+            Excel dibaca tetapi tiada lajur sepadan.<br>
+            <small><b>Jumpa header:</b> ${escapeHtml(hdrs)}<br>
+            Pastikan ada lajur seperti <i>Nama, IC/NRIC/KP, Telefon/HP/WhatsApp, Alamat</i>.</small>
+          </td></tr>`;
+        return;
+      }
+
+      window.__KELAYAKAN_ITEMS__ = items;
+      renderRows(items);
+
+    } catch (err) {
+      console.error(err);
+      tableBody.innerHTML =
+        '<tr><td colspan="8" class="text-center text-danger">Ralat memproses fail. Pastikan fail CSV/Excel sah.</td></tr>';
+    }
+  }
+
+  // ---------- Events ----------
+  fileInput.addEventListener('change', e => {
+    const f = e.target.files && e.target.files[0];
+    if (f) handleFile(f);
+  });
+
+  tableBody.addEventListener('click', e => {
+    const btn = e.target.closest('.daftar-row');
+    if (!btn) return;
+    const tr  = btn.closest('tr');
+    const idx = Number(tr.dataset.idx);
+    const item = (window.__KELAYAKAN_ITEMS__ || [])[idx];
+    if (!item) return;
+
+    const date  = tr.querySelector('.tca-date')?.value || '';
+    const time  = tr.querySelector('.tca-time')?.value || '';
+    const staff = tr.querySelector('.tca-staff')?.value || '';
+
+    const fNama   = document.getElementById('namaPesakit');
+    const fIC     = document.getElementById('noIC');
+    const fTel    = document.getElementById('noTelefon');
+    const fAlamat = document.getElementById('alamatPesakit');
+    const fTCA    = document.getElementById('tarikhTCA');
+    const fMasa   = document.getElementById('masaTCA');
+    const fStaff  = document.getElementById('namaStaff');
+
+    if (fNama)   fNama.value   = item.nama   || '';
+    if (fIC)     fIC.value     = item.ic     || '';
+    if (fTel)    fTel.value    = item.telefon|| '';
+    if (fAlamat) fAlamat.value = item.alamat || '';
+    if (fTCA && date)  fTCA.value  = date;
+    if (fMasa && time) fMasa.value = time;
+    if (fStaff && staff) fStaff.value = staff;
+
+    location.hash = '#daftar-peka';
+    btn.innerHTML = '<i class="fas fa-check me-1"></i>Diisi';
+    btn.classList.remove('btn-primary');
+    btn.classList.add('btn-success');
+    btn.disabled = true;
+  });
+})();
+// 1) Isi URL Web App Apps Script (deployment terkini)
+const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbx6TKE0vDDPO3-36cY7xjacAbGL0HIRKCrORNm-sED9y5NpIeIUk9gyrpiWy-S7vbc/exec';
+// 2) Google OAuth Client ID (Google Cloud Console)
+const GOOGLE_CLIENT_ID = '863564124015-838ksbuk27f0kkomm16hnc3bu608pbrr.apps.googleusercontent.com';
+// 3) Logo (optional) - Ganti dengan URL logo klinik anda
+const LOGO_URL = 'data:image/jpeg;base64,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mBjGNHoAOgC7kRdAumREREREREREREREREREVFebza9PWuqvd7roaKhoozNPPK7laxg7kn/L1Qm2pVHODQXONgFWqguNNZL7S1FjukVHXQVDDHPSzcrw9p7hzSozSal3X4qL3WW/QV1qdH7fUMroJblyubUVrh0IHKQSf4A4NAI5iTgKvuPA9pxlB4mnNxNRUl3Zh8dTUGN7OcdjhjWPHX1D8hRBUOl1iZcdb2v5Llhj1VXNdJhtIZYhcBxcGB/XKDe48TYHldUertkdxdj7tPr7h8rZqu3E89dp6bM3NGO4a0nMrQM4H9oPQuys+2j3q2y3tg/ddwstvodRxtPxNqroWPLyB5nROcPpGjrkfWb1yPU67273o3E2d1vBtLv7M6ppKgtjt97kdzcoJ5WuMh/tYienMfOwnzeobsTeLhr07uHUHVmlagac1dC4TxV9N5GVEjerTLy9Q708RvmGevMAAsEWt3Qct2nr4dPotJh2ezqjBQcrTaSmfplO/c/KTuB7jhtayzyr2n2uryTWbc6ZmJ9X2qAn9eVWp/D/ALLSVMNZ/VrY2SwSNlYY6cMAc05GQ3AI6diMLA9ld1N1YtX/ANT27ukax93p6d88N4gaDFLAzp4kp+qQThoe05LiAWg5K34pbBFKLgfJdTQNw3Foe3ZABY2IcwBwI3BBG4+HQr526BfURZ1vEREREREREREREREREREREREREREREREREREREREREREREREREVj1fojSuvbULLq6zQ3GjbK2ZrJCQWvb2LXNIcPUHB6gkdir4ioQHCxVr2NlaWPFwdwVjlRt1oeo0pU6H/ovborHVxeFLRQwNjjI9CA0DDgQCHdwQDnKj/pu+3vhQ1WzQur56mu27ussktrubgXuonk5LSAPn52jvnnaOrgpRqOXGLqc19nsezlkpIqy+aqroXMjLA50MbX4Y4Z+qXyYbzfdbIolWBGztW6OG3j4eq5niSOOgpf6nBZs0Qs2w965FoyOYcbC3LcKn4f6Sp3d3T1LxAXmF/wcErrVYIpG/wBkxo5S4fhHjt05pX9jlSVWObeaLt23mi7To61gGG207Y3SYwZZT1kkPzc8ud+ayNZqeMxxgO3Op81scEoH4fRtZNrI67nnq92rvnoPABEXRW1tJbqOe4V9RHBTU0bpppZHYbGxoy5xPoAASoI69303Wver6reT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+ttdFGxepr/6lBQQSCKOUO7waHOzN1LddBdut7HYqhvO8PFlpGkdqnVG0dmbY6cGSpZA/nlij9SSyZzm4Hc8hx7ei2zpvUekeInaqrLYHsorvBLb66lkIMlJPjq3P3mkte0/3TgdllOtdRac0vpi4XjVdVBDbYoHiYSkYlBBHhgH6zndg31ytB8C9ou1LofUF5qo5I7dcrk0ULXZw4RtIe8e/VwbzDuWH2VoD45hEXZgQbgrAwTUGKR4bJM6eOZry4Pykty217rR3XXtY81QcJmsqvRd41Xshraqjpaix1M9XSvmdyRhrXATgF2PL1ZKCe4e9yzXW3FnoOy1zLDoWirNa3qV/hx09raXRF2eoEgB5z/ca4H3C1bxq7cQW/Udl3Uho5JKCreyhu7ISGu5mAuY4EggF8YczJzjkb0JKkftZovbXTWmqK5bcWOjpqK500dSyqY3mmqI3tDml8jsvd0PYnoscHbNJpgbBvPnY7abaLW4P/VoZJcBikawQnR7hmcWO1blboNNWkkkDTRZhSz/ABVLDVCKWLxo2yckrS17cjOHA9iPULtVk1XrbSehrcbrq7UFFaqYdnVEoaXn2a36zj8gCVeIZYqiJk8EjZI5Gh7HtOQ5pGQQfZbG4vZd82RhcYw4Fwtcc9dtPHkrRrSzXXUWlLrYrJepLRXV9K+CCuj5uenc4Y528paQR6EEEFaGg4TtXailih3S3wv9+tsTub4JjpMPPuXSPcB+Tc/NSTRY5II5Td4utfX4LRYo9r6tpdl5ZnAeoBAPqCrNpPR+m9DWWHT2lbTDb6GDqI4x1c71c5x6ucfUkkq8oiyABosNlsmMbG0MYLAbAIiIqq5ERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERFwl8Xwn+AWiTlPJzdubHTPyXNERQ109a93uGnXV915qrb8aupL4XGsu1umc98TXSGSRww3LA4kEh7APK0B3vv7briL2p3LMVLZtRMo7lJ0FvuGIJyfZuTyvPya4n3wtmLWmveHXafcKV1bddNR0Vwc4PdXW4inmec5PPyjlfntlwJwehCiNgkg/0jcdD+v+VyVNg1fgYy4XIHxXJLJBrqbnK8a7/mDvNbLUU9mj/WRxX62189olpLA2alpZM5AORTx46diyOZ35jt6yYv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ksRw+M9OvcIhVUi+DOBnuvqIrBdaGSgrBd6Jvc/SNHv/AORXGeZrrpR3NjcBw5HfgfT+ayBzWvaWuAIIwQfVWiotEofywdY+bIGfqqxwI2WMtt7qvCpa23UlezkqYg4+jh3H5qpaCGgHuAvqvWQi+6orfaaO2A/DsPM4Yc5xySFWoioBbQKgAAsEREVVVERERERERERERERERERERERERERERF1fDU/jCo8FniAYD+Xqu1ERFb7vNUMiZDTPLHSuxzD0CuC6qiATsA+03qCqEXCoRcWCtTdPysHiMuUzZe+cnC5tGoKfyExTj0ce/wDkrjHJKMMlYfbIXcqBoGytDANla6K21BrP3lXuBlAw0DsF8uN5fA8QUMImkzg+oH6eqrqoyuZ4UXQu7n2C40tBDTjPKC89ST1Sx2Cra2gXG317K6LmLeSQfWYe4VWqGrovOKmlHLI09ceqrI3OdG1zxhxHUfNVF+aqL81yREVVVERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERf/Z';
+    
+/* =======================
+   AUTH (Google Identity)
+   ======================= */
+let ID_TOKEN = '';      // diisi selepas login
+let STAFF_EMAIL = '';   // email sebenar (server akan sahkan juga)
+
+function initGoogleSignIn(){
+  google.accounts.id.initialize({
+    client_id: GOOGLE_CLIENT_ID,
+    callback: handleCredentialResponse,
+    auto_select: false,
+    cancel_on_tap_outside: true
+  });
+  google.accounts.id.renderButton(
+    document.getElementById('signinArea'),
+    { theme: 'outline', size: 'medium', text:'signin_with' }
+  );
+  google.accounts.id.renderButton(
+    document.getElementById('signinAreaDesktop'),
+    { theme: 'outline', size: 'medium', text:'signin_with' }
+  );
+}
+
+async function handleCredentialResponse(resp){
+  ID_TOKEN = resp.credential;
+  // Semak whoami di backend
+  const r = await fetch(SCRIPT_URL, {
+    method:'POST',
+    headers:{ 'Content-Type':'application/x-www-form-urlencoded' },
+    body: new URLSearchParams({ action:'whoami', id_token: ID_TOKEN })
+  });
+  const j = await r.json();
+  if (j.status === 'success'){
+    STAFF_EMAIL = j.email || '';
+    document.getElementById('staffBadge').classList.remove('d-none');
+    document.getElementById('staffEmail').textContent = STAFF_EMAIL;
+    document.getElementById('signinArea').innerHTML = '';
+    document.getElementById('signinAreaDesktop').innerHTML = '';
+    bootstrapApp(); // muat data
+  } else {
+    toast('Akses Ditolak', j.message || 'Sila hubungi admin untuk allowlist.', 'danger');
+    ID_TOKEN = ''; STAFF_EMAIL = '';
+  }
+}
+
+/* =======================
+   LOADER (maks 2s)
+   ======================= */
+let loaderTimer=null;
+function showLoader(msg='Memproses…'){
+  document.getElementById('loaderMsg').textContent = msg;
+  document.getElementById('appLoader').style.display = 'block';
+  clearTimeout(loaderTimer);
+  loaderTimer = setTimeout(hideLoader, 2000);
+}
+function hideLoader(){ document.getElementById('appLoader').style.display = 'none'; }
+
+/* =======================
+   NETWORK HELPERS
+   ======================= */
+async function getJSON(params={}, {silent=false, msg='Memuat data…'}={}){
+  if (!ID_TOKEN) throw new Error('Belum login');
+  const qs = new URLSearchParams({ ...params, id_token: ID_TOKEN }).toString();
+  const url = `${SCRIPT_URL}?${qs}`;
+  if (!silent) showLoader(msg);
+  try{
+    const r = await Promise.race([
+      fetch(url, { method:'GET' }),
+      new Promise((_,rej)=> setTimeout(()=>rej(new Error('Timeout')), 12000))
+    ]);
+    return await r.json();
+  } finally { if (!silent) hideLoader(); }
+}
+
+async function postForm(params={}, {silent=false, msg='Menyimpan data…'}={}){
+  if (!ID_TOKEN) throw new Error('Belum login');
+  if (!silent) showLoader(msg);
+  try{
+    const r = await Promise.race([
+      fetch(SCRIPT_URL, {
+        method:'POST',
+        headers:{ 'Content-Type':'application/x-www-form-urlencoded' },
+        body: new URLSearchParams({ ...params, id_token: ID_TOKEN })
+      }),
+      new Promise((_,rej)=> setTimeout(()=>rej(new Error('Timeout')), 12000))
+    ]);
+    return await r.json();
+  } finally { if (!silent) hideLoader(); }
+}
+
+/* =======================
+   UTIL
+   ======================= */
+const normalizeMsisdnMY = (raw) => {
+  if (!raw) return '';
+  let s = String(raw).replace(/\D/g, '');
+  if (s.startsWith('00')) s = s.slice(2);
+  if (s.startsWith('60')) return s;
+  if (s.startsWith('0')) return '60' + s.slice(1);
+  return '60' + s;
+};
+
+const telHref = (msisdn) => `tel:+${msisdn}`;
+
+const waHref  = (msisdn, txt='Assalamualaikum, saya dari Klinik SihatSokmo.') =>
+  `https://wa.me/${msisdn}?text=${encodeURIComponent(txt)}`;
+
+const parseDDMMYYYY = (s) => {
+  if (!s) return null;
+  if (/^\d{4}-\d{2}-\d{2}$/.test(s)) { // "YYYY-MM-DD"
+    const [Y, M, D] = s.split('-').map(Number);
+    return new Date(Y, M - 1, D);
+  }
+  const m = /^(\d{1,2})\/(\d{1,2})\/(\d{4})$/.exec(s); // "DD/MM/YYYY"
+  if (!m) return null;
+  const D = +m[1], M = +m[2], Y = +m[3];
+  return new Date(Y, M - 1, D);
+};
+
+function isSameDay(a, b) {
+  return a.getFullYear() === b.getFullYear()
+      && a.getMonth() === b.getMonth()
+      && a.getDate() === b.getDate();
+}
+
+/* Pastikan bekas notifikasi (#toastHost/#toastContainer) wujud.
+   — Tidak set inline style supaya ikut CSS di <style>. */
+function ensureToastContainer() {
+  let host = document.getElementById('toastHost');
+  if (!host) {
+    host = document.createElement('div');
+    host.id = 'toastHost';
+    document.body.appendChild(host);
+  }
+  let container = document.getElementById('toastContainer');
+  if (!container) {
+    container = document.createElement('div');
+    container.id = 'toastContainer';
+    container.className = 'toast-container';
+    host.appendChild(container);
+  }
+  // Biar toast boleh diklik (tutup dsb.)
+  container.style.pointerEvents = 'auto';
+  return container;
+}
+
+/* Pastikan toast sentiasa kekal dalam viewport */
+function clampToastIntoView(el){
+  requestAnimationFrame(() => {
+    const PAD = 12;
+    // hadkan lebar ikut viewport
+    el.style.maxWidth = Math.min(window.innerWidth - PAD*2, 420) + 'px';
+
+    const r = el.getBoundingClientRect();
+    let tx = 0, ty = 0;
+
+    if (r.right > window.innerWidth - PAD) tx -= (r.right - (window.innerWidth - PAD));
+    if (r.left  < PAD)                     tx += (PAD - r.left);
+    if (r.top   < PAD)                     ty += (PAD - r.top);
+
+    if (tx || ty){
+      el.style.transform  = `translate(${tx}px, ${ty}px)`;
+      el.style.willChange = 'transform';
+    }
+  });
+}
+
+/* Toast "kebal": guna Bootstrap jika ada; jika tidak, fallback manual.
+   — Auto "clamp" supaya tidak tenggelam di tepi skrin
+   — Re-clamp bila saiz tetingkap berubah */
+function toast(title, message, variant = 'primary') {
+  const container = ensureToastContainer();
+  const id = 't' + Date.now() + Math.random().toString(36).slice(2, 7);
+
+  const html = `
+    <div class="toast align-items-center text-bg-${variant} border-0 mb-2" id="${id}"
+         role="alert" aria-live="assertive" aria-atomic="true" style="min-width:260px">
+      <div class="d-flex">
+        <div class="toast-body"><strong>${title}:</strong> ${message}</div>
+        <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast"></button>
+      </div>
+    </div>`;
+  container.insertAdjacentHTML('beforeend', html);
+  const el = document.getElementById(id);
+
+  // clamp sebaik sahaja node wujud
+  clampToastIntoView(el);
+
+  const onResize = () => clampToastIntoView(el);
+  window.addEventListener('resize', onResize, { passive: true });
+
+  const cleanup = () => {
+    window.removeEventListener('resize', onResize);
+    el.remove();
+  };
+
+  try {
+    const BsToast = window.bootstrap?.Toast;
+    if (BsToast) {
+      const inst = BsToast.getOrCreateInstance(el, { delay: 3000, autohide: true });
+      el.addEventListener('shown.bs.toast', () => clampToastIntoView(el));
+      el.addEventListener('hidden.bs.toast', cleanup);
+      inst.show();
+    } else {
+      // fallback manual
+      el.classList.add('show');
+      setTimeout(() => {
+        el.classList.remove('show');
+        cleanup();
+      }, 3000);
+    }
+  } catch {
+    // fallback jika API Bootstrap gagal
+    el.classList.add('show');
+    setTimeout(() => {
+      el.classList.remove('show');
+      cleanup();
+    }, 3000);
+  }
+}
+
+/* WhatsApp (TEKS) */
+function composeNadiWhatsAppText(data){
+  const lines = [
+    'Assalamualaikum, saya dari Klinik SihatSokmo.',
+    '',
+    'Laporan Saringan Kesihatan:',
+    `• Nama: ${data.nama || '-'}`,
+    `• IC: ${data.ic || '-'}`,
+    `• Alamat: ${data.alamat || '-'}`,
+    `• BP: ${data.bp || '-'} mmHg`,
+    `• PR: ${data.pr || '-'} bpm`,
+    `• DXT (${data.dxtType || 'Fasting'}): ${data.dxt || '-'} mmol/L`,
+    `• Tinggi: ${data.tinggi || '-'} cm`,
+    `• Berat: ${data.berat || '-'} kg`,
+    `• BMI: ${data.bmi || '-'}`,
+    `• Status: ${data.layak ? 'Layak PEKA B40' : 'Tidak Layak PEKA B40'}`,
+    '',
+    'Jika ada soalan, balas mesej ini ya. Terima kasih.'
+  ];
+  return lines.join('\n');
+}
+
+function openWhatsAppTo(rawMsisdn, text){
+  const msisdn = normalizeMsisdnMY(rawMsisdn);
+  if (!/^\d{10,15}$/.test(msisdn)){
+    toast('Ralat','Nombor telefon tidak sah','danger');
+    return;
+  }
+  const encoded = encodeURIComponent(text || '');
+  const scheme = `whatsapp://send?phone=${msisdn}&text=${encoded}`;
+  const web    = `https://wa.me/${msisdn}?text=${encoded}`;
+  const isMobile = /Android|iPhone|iPad|iPod|Windows Phone/i.test(navigator.userAgent);
+  const url = isMobile ? scheme : web;
+  window.open(url, '_blank');
+  toast('WhatsApp','Membuka WhatsApp dengan mesej siap-isi…','success');
+}
+
+/* =======================
+   WHATSAPP IMAGE SEND HELPERS (BARU)
+   ======================= */
+let CURRENT_WA_MSISDN = ''; // diset ketika preview dibuka
+
+async function captureReportAsBlob() {
+  const card = document.querySelector('#whatsappReportPreview .whatsapp-report');
+  if (!card) throw new Error('Gagal capai preview');
+  const canvas = await html2canvas(card, {
+    backgroundColor: '#ffffff',
+    scale: Math.min(window.devicePixelRatio || 1.5, 2.5)
+  });
+  return await new Promise((resolve)=> canvas.toBlob(resolve, 'image/png', 0.95));
+}
+
+function openWhatsAppDeepLink(msisdn, text='') {
+  const encoded = encodeURIComponent(text || '');
+  const scheme = `whatsapp://send?phone=${msisdn}&text=${encoded}`;
+  const web    = `https://wa.me/${msisdn}?text=${encoded}`;
+  // cuba app dahulu, kemudian fallback
+  window.open(scheme, '_blank');
+  setTimeout(()=>window.open(web,'_blank'), 600);
+}
+
+// Versi yang memenuhi kehendak: terus buka chat → siapkan imej (clipboard/share/fallback)
+async function sendWhatsAppReportImageFlow(msisdn) {
+  const phone = normalizeMsisdnMY(msisdn||'');
+  if (!/^\d{10,15}$/.test(phone)) {
+    toast('Ralat','Nombor telefon tidak sah','danger');
+    return;
+  }
+
+  // 1) TERUS buka chat ke nombor pesakit
+  openWhatsAppDeepLink(phone, '');
+
+  // 2) Jana imej daripada kad preview
+  showLoader('Menjana imej laporan…');
+  let blob;
+  try {
+    blob = await captureReportAsBlob();
+  } catch(e){
+    hideLoader();
+    toast('Ralat','Gagal jana imej laporan','danger');
+    return;
+  }
+  hideLoader();
+
+  const file = new File([blob], `laporan_nadi_${Date.now()}.png`, { type: 'image/png' });
+
+  // 3) MOBILE: cuba Web Share API (anda pilih WhatsApp kemudian chat; had OS)
+  if (navigator.canShare && navigator.canShare({ files: [file] })) {
+    try {
+      await navigator.share({ files: [file], title: 'Laporan Saringan NADI', text: '' });
+      toast('Berjaya', 'Imej dikongsi melalui aplikasi pilihan anda', 'success');
+      return;
+    } catch(e){
+      // pengguna batal → teruskan fallback
+    }
+  }
+
+  // 4) DESKTOP: salin imej ke clipboard, tampal di chat yang sudah dibuka
+  if (navigator.clipboard && window.ClipboardItem) {
+    try {
+      await navigator.clipboard.write([ new ClipboardItem({ 'image/png': blob }) ]);
+      toast('Siap', 'Imej disalin ke clipboard. Tampal (Ctrl/Cmd+V) dalam chat WhatsApp.', 'success');
+      return;
+    } catch(e){
+      // fallback terakhir
+    }
+  }
+
+  // 5) Fallback: muat turun imej untuk dilampirkan manual
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url; a.download = `laporan_nadi_${Date.now()}.png`;
+  document.body.appendChild(a); a.click(); a.remove(); URL.revokeObjectURL(url);
+  toast('Makluman', 'Imej dimuat turun. Lampirkan imej itu dalam chat WhatsApp dan hantar.', 'warning');
+}
+
+/* =======================
+   GLOBALS
+   ======================= */
+let stats3dChart, completed3dChart;
+let retcaModal, secondTcaModal, pdpaModal, whatsappReportModal;
+let currentWhatsAppData = null;
+
+/* =======================
+   BOOTSTRAP APP
+   ======================= */
+function bootstrapApp(){
+  const logoEl = document.getElementById('brandLogo');
+  logoEl.src = LOGO_URL;
+  logoEl.onerror = () => (logoEl.src='https://via.placeholder.com/64x64.png?text=KS');
+
+  document.getElementById('current-date').textContent =
+    new Date().toLocaleDateString('ms-MY', { weekday:'long', year:'numeric', month:'long', day:'numeric' });
+
+  setupNavigation();
+  setupModals();
+  setupSearchBars();
+  setupExports();
+  setupExcel();
+  setupNADI();
+  setupLogDrawer();
+  setupFab();
+
+  loadDashboardData();
+  loadStatistics('3months');
+  loadCompletedStatistics('3months');
+  loadTCACallData(); // widget dashboard (hari ini)
+}
+
+/* =======================
+   NAV & UI
+   ======================= */
+function setupNavigation(){
+  document.querySelectorAll('.nav-link').forEach(a=>{
+    a.addEventListener('click',(e)=>{
+      e.preventDefault();
+      document.querySelectorAll('main section').forEach(s=>s.classList.add('d-none'));
+      const target = a.getAttribute('href');
+      document.querySelector(target).classList.remove('d-none');
+      document.querySelectorAll('.nav-link').forEach(n=>n.classList.remove('active'));
+      a.classList.add('active');
+
+      if (target==='#dashboard'){ loadDashboardData(); loadStatistics(document.getElementById('statPeriod').value); }
+      else if (target==='#nadi'){ /* no-op */ }
+      else if (target==='#daftar-peka'){ /* no-op */ }
+      else if (target==='#kelayakan'){ /* no-op */ }
+      else if (target==='#tca-call'){ loadTCACallPage(); }
+      else if (target==='#first-visit'){ loadFirstVisitData(); }
+      else if (target==='#lab-followup'){ loadLabFollowUp(); }
+      else if (target==='#second-visit'){ loadSecondVisitData(); }
+      else if (target==='#selesai'){ loadCompletedData(); loadCompletedStatistics(document.getElementById('statPeriodCompleted').value); }
+      else if (target==='#arkib'){ loadArchivedData(); }
+    });
+  });
+
+  // Stat cards → navigate
+  document.querySelectorAll('.stat-card[data-goto]').forEach(card=>{
+    card.addEventListener('click', ()=>{
+      const href = card.getAttribute('data-goto');
+      const link = document.querySelector(`.nav-link[href="${href}"]`);
+      if (link){ link.click(); }
+    });
+  });
+
+  document.getElementById('btnDaftarPesakit').addEventListener('click', async (e)=>{
+    e.preventDefault();
+    await daftarPesakit();
+  });
+
+  document.getElementById('statPeriod').addEventListener('change', function(){ loadStatistics(this.value); });
+  document.getElementById('statPeriodCompleted').addEventListener('change', function(){ loadCompletedStatistics(this.value); });
+}
+
+function setupModals(){
+  retcaModal = new bootstrap.Modal(document.getElementById('retcaModal'));
+  document.getElementById('btnSubmitRetca').addEventListener('click', submitRetca);
+
+  secondTcaModal = new bootstrap.Modal(document.getElementById('secondTcaModal'));
+  document.getElementById('btnSubmitSecondTca').addEventListener('click', submitSecondTca);
+
+  pdpaModal = new bootstrap.Modal(document.getElementById('pdpaModal'));
+  document.getElementById('btnUploadPDPA').addEventListener('click', uploadPDPA);
+
+  whatsappReportModal = new bootstrap.Modal(document.getElementById('whatsappReportModal'));
+  // Kekalkan fungsi lama (hantar teks)
+  document.getElementById('btnSendWhatsApp').addEventListener('click', sendWhatsAppReport);
+  // Butang baharu: hantar gambar + auto buka chat
+  document.getElementById('btnSendWhatsAppImage').addEventListener('click', async ()=>{
+    if (!CURRENT_WA_MSISDN){
+      toast('Ralat','Nombor telefon tidak ditemui pada baris NADI','danger'); return;
+    }
+    await sendWhatsAppReportImageFlow(CURRENT_WA_MSISDN);
+    // whatsappReportModal.hide(); // pilihan: biar terbuka untuk pantau status
+  });
+}
+
+function setupFab(){
+  const btn = document.getElementById('fabLog');
+  const drawer  = document.getElementById('logDrawer');
+  const btnClose= document.getElementById('btnCloseLog');
+  btn.addEventListener('click', ()=>{ drawer.classList.add('open'); refreshLogs(); autoRefreshLogs(); });
+  btnClose.addEventListener('click', ()=>{ drawer.classList.remove('open'); stopAutoRefreshLogs(); });
+}
+
+function setupSearchBars(){
+  const pairs = [
+    ['searchTCA','tcaCallTable'], ['searchTCAPage','tcaCallList'],
+    ['searchFirst','firstVisitList'], ['searchSecond','secondVisitList'],
+    ['searchCompleted','completedTable'], ['searchLab','labFollowupTable'],
+    ['searchArchive','archiveTable']
+  ];
+  pairs.forEach(([inpId,tbodyId])=>{
+    const inp = document.getElementById(inpId);
+    const tb = document.getElementById(tbodyId);
+    if (!inp || !tb) return;
+    inp.addEventListener('input', ()=>{
+      Array.from(tb.querySelectorAll('tr')).forEach(tr=>{
+        const text = tr.innerText || '';
+        tr.style.display = (text.toLowerCase().includes((inp.value||'').trim().toLowerCase())) ? '' : 'none';
+      });
+    });
+  });
+}
+
+function setupExports(){
+  document.getElementById('btnExportCSV').addEventListener('click', exportCompletedCSV);
+}
+
+/* =======================
+   CHART HELPERS
+   ======================= */
+function buildBarChart(elId, dataArr, titleText){
+  const ctx = document.getElementById(elId).getContext('2d');
+  const labels = dataArr.map(i=>i.label);
+  const counts = dataArr.map(i=>i.count);
+  const backgroundColors = counts.map((_,i)=>`hsla(${(i*30)%360},70%,50%,0.7)`);
+  const config = {
+    type:'bar',
+    data:{ labels, datasets:[{ label:'Jumlah Pesakit Selesai', data:counts, backgroundColor:backgroundColors, borderColor:'rgba(0,0,0,.1)', borderWidth:1 }] },
+    options:{
+      responsive:true, maintainAspectRatio:false,
+      plugins:{ title:{ display:true, text:titleText, font:{ size:14 } }, legend:{ display:false }, datalabels:{ display:false } },
+      scales:{ y:{ beginAtZero:true, title:{ display:true, text:'Jumlah Pesakit'} }, x:{ title:{ display:true, text:'Bulan/Tahun'} } },
+      animation:{ duration:500 }
+    }
+  };
+  return new Chart(ctx, config);
+}
+
+/* =======================
+   LOG CALLS DRAWER
+   ======================= */
+let logDrawerTimer=null, lastLogCount=0;
+function setupLogDrawer(){
+  document.getElementById('logSearch').addEventListener('input', ()=> refreshLogs());
+}
+function autoRefreshLogs(){ stopAutoRefreshLogs(); logDrawerTimer = setInterval(()=> refreshLogs({silent:true}), 10000); }
+function stopAutoRefreshLogs(){ if (logDrawerTimer){ clearInterval(logDrawerTimer); logDrawerTimer=null; } }
+async function refreshLogs(opts={}){
+  const q = (document.getElementById('logSearch').value||'').trim();
+  const loader = document.getElementById('logLoading');
+  const body   = document.getElementById('logBody');
+  if (!opts.silent) loader.classList.add('active');
+  try{
+    const res = await getJSON({ action:'getCallLogs', q }, { silent:true });
+    if (res.status==='success'){
+      const arr = res.data||[];
+      lastLogCount = arr.length;
+      document.getElementById('logBadge').textContent = arr.length;
+      body.innerHTML = '';
+      arr.forEach(item=>{
+        const me = (item.staff||'').toLowerCase() === (STAFF_EMAIL||'').toLowerCase();
+        const who = item.staff || 'STAFF';
+        const text = `${item.event || 'CALL'} • ${item.nama||'-'} (${item.noIC||'-'}) • ${item.noTelefon||'-'}`;
+        const when = item.time || '';
+        const bubble = document.createElement('div');
+        bubble.className = 'bubble ' + (me?'me':'other');
+        bubble.innerHTML = `<div><i class="fa-solid fa-phone-volume me-1"></i>${text}</div><div class="meta">${who} • ${when}</div>`;
+        body.appendChild(bubble);
+      });
+      body.scrollTop = body.scrollHeight;
+    }
+  }catch(e){ /* senyap */ }
+  finally{ if (!opts.silent) loader.classList.remove('active'); }
+}
+
+/* =======================
+   EXCEL (Kelayakan)
+   ======================= */
+    
+    /* ===== SheetJS guard/fallback: pastikan window.XLSX wujud (LETak DI ATAS "EXCEL (Kelayakan)") ===== */
+// ===== SheetJS guard/fallback: pastikan window.XLSX wujud =====
+function loadScriptOnce(src){
+  return new Promise((resolve, reject) => {
+    if ([...document.scripts].some(s => s.src === src)) return resolve();
+    const s = document.createElement('script');
+    s.src = src; s.async = true;
+    s.onload = () => resolve();
+    s.onerror = () => reject(new Error('Gagal muat: ' + src));
+    document.head.appendChild(s);
+  });
+}
+
+// Cuba path LOKAL dulu, kemudian CDN; laporkan semua cubaan jika gagal
+async function ensureXLSXReady(){
+  if (window.XLSX) return;
+
+  // Anda boleh tambah/ubah path lokal di sini mengikut struktur projek anda
+  const LOCAL_PATHS = (window.__XLSX_LOCAL_PATHS__ && Array.isArray(window.__XLSX_LOCAL_PATHS__))
+    ? window.__XLSX_LOCAL_PATHS__
+    : [
+        './vendor/xlsx/xlsx.full.min.js',
+        'vendor/xlsx/xlsx.full.min.js',
+        '/vendor/xlsx/xlsx.full.min.js'
+      ];
+
+  const CDN_PATHS = [
+    'https://cdn.jsdelivr.net/npm/xlsx@0.19.3/dist/xlsx.full.min.js',
+    'https://unpkg.com/xlsx@0.19.3/dist/xlsx.full.min.js',
+    'https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.19.3/xlsx.full.min.js'
+  ];
+
+  const SOURCES = [...LOCAL_PATHS, ...CDN_PATHS];
+  const tried = [];
+  let lastErr;
+  for (const url of SOURCES){
+    try{
+      tried.push(url);
+      await loadScriptOnce(url);
+      if (window.XLSX) return;
+    }catch(e){ lastErr = e; }
+  }
+  throw new Error('Tidak dapat memuatkan SheetJS (XLSX).\nPercubaan:\n - ' + tried.join('\n - '));
+}
+// Parser CSV ringkas (sokong petikan & "" escape)
+function parseCSVText(text){
+  const rows = [];
+  let row = [], field = '', inQuotes = false;
+
+  for (let i = 0; i < text.length; i++){
+    const ch = text[i];
+    if (inQuotes){
+      if (ch === '"'){
+        if (text[i+1] === '"'){ field += '"'; i++; }
+        else { inQuotes = false; }
+      } else field += ch;
+    } else {
+      if (ch === '"') inQuotes = true;
+      else if (ch === ','){ row.push(field); field = ''; }
+      else if (ch === '\n'){ rows.push([...row, field]); row=[]; field=''; }
+      else if (ch !== '\r'){ field += ch; }
+    }
+  }
+  rows.push([...row, field]);
+  return rows;
+}
+function setupExcel(){
+  const input = document.getElementById('excelFile');
+  const tbody = document.getElementById('kelayakanTable');
+
+  input.addEventListener('change', async (e)=>{
+    const file = e.target.files[0];
+    if (!file) return;
+
+    const name = (file.name || '').toLowerCase();
+    const isCSV = name.endsWith('.csv');
+
+    showLoader('Memproses fail…');
+    try{
+      if (isCSV){
+        // ===== Fallback CSV (tanpa SheetJS) =====
+        const text = await file.text();
+        const rows = parseCSVText(text);
+        tbody.innerHTML = '';
+        if (!rows.length){
+          tbody.innerHTML = `<tr><td colspan="8" class="text-center text-muted">Tiada data.</td></tr>`;
+          return;
+        }
+
+        // Header → indeks (case-insensitive)
+        const header = rows[0].map(h => (h||'').trim().toLowerCase());
+        const idx = {
+          nama:    header.findIndex(h => ['nama','name'].includes(h)),
+          ic:      header.findIndex(h => ['ic','no ic','kad pengenalan','nric'].includes(h)),
+          telefon: header.findIndex(h => ['telefon','phone','no telefon','no tel'].includes(h)),
+          alamat:  header.findIndex(h => ['alamat','address'].includes(h)),
+        };
+
+        let count = 0;
+        for (let r = 1; r < rows.length; r++){
+          const row = rows[r];
+          if (!row || row.length === 0) continue;
+
+          const nama   = idx.nama    >=0 ? row[idx.nama]    : '';
+          const ic     = idx.ic      >=0 ? row[idx.ic]      : '';
+          const telRaw = idx.telefon >=0 ? row[idx.telefon] : '';
+          const alamat = idx.alamat  >=0 ? row[idx.alamat]  : '';
+
+          if (!nama && !ic && !telRaw && !alamat) continue;
+
+          const msisdn = normalizeMsisdnMY(telRaw);
+          const id = 'x'+Date.now()+r;
+
+          // Umur ≥40 ikut IC (YYMMDD……)
+          const lahirYY = (ic||'').slice(0,2), lahirMM = (ic||'').slice(2,4), lahirDD = (ic||'').slice(4,6);
+          let ageOk = false;
+          if (/^\d{6}/.test(ic)){
+            const y = Number(lahirYY); const fullY = (y<=29 ? 2000+y : 1900+y);
+            const dob = new Date(fullY, Number(lahirMM)-1, Number(lahirDD));
+            const now = new Date();
+            let age = now.getFullYear() - dob.getFullYear();
+            const m  = now.getMonth() - dob.getMonth();
+            if (m<0 || (m===0 && now.getDate()<dob.getDate())) age--;
+            ageOk = age >= 40;
+          }
+
+          const tr = `
+            <tr id="${id}">
+              <td>${nama||''}</td>
+              <td>${ic||''}</td>
+              <td>${msisdn||''}</td>
+              <td>${alamat||''}</td>
+              <td class="text-center"><input type="checkbox" class="form-check-input" ${ageOk?'checked':''} onchange="toggleLayak('${id}', true)"></td>
+              <td class="text-center"><input type="checkbox" class="form-check-input" ${ageOk?'':'checked'} onchange="toggleLayak('${id}', false)"></td>
+              <td>
+                <div class="row g-1 align-items-center">
+                  <div class="col"><input type="date" class="form-control form-control-sm tca-date" disabled></div>
+                  <div class="col"><input type="time" class="form-control form-control-sm tca-time" disabled></div>
+                  <div class="col"><input type="text" class="form-control form-control-sm tca-staff" placeholder="Nama staff" disabled></div>
+                </div>
+              </td>
+              <td>
+                <button class="btn btn-sm btn-primary" onclick="daftarFromExcel('${id}', '${encodeURIComponent(nama||'')}', '${encodeURIComponent(ic||'')}', '${msisdn||''}', '${encodeURIComponent(alamat||'')}')" disabled>Daftar</button>
+              </td>
+            </tr>`;
+          tbody.insertAdjacentHTML('beforeend', tr);
+          count++;
+        }
+
+        if (!count){
+          tbody.innerHTML = `<tr><td colspan="8" class="text-center text-muted">Tiada data sah ditemui dalam CSV.</td></tr>`;
+        } else {
+          toast('Berjaya', `CSV dimuat: ${count} rekod`, 'success');
+        }
+
+      } else {
+        // ===== Excel (XLSX/XLS) – guna SheetJS =====
+        try { await ensureXLSXReady(); }
+        catch(err){
+          toast('Ralat', 'Gagal memuat SheetJS. Pastikan fail lokal ./vendor/xlsx/xlsx.full.min.js wujud atau guna CSV.', 'danger');
+          return;
+        }
+
+        const data = await file.arrayBuffer();
+        const wb = window.XLSX.read(data, { type:'array' });
+        const ws = wb.Sheets[wb.SheetNames[0]];
+        const json = window.XLSX.utils.sheet_to_json(ws, { defval:'' });
+
+        tbody.innerHTML = '';
+        if (!json.length){
+          tbody.innerHTML = `<tr><td colspan="8" class="text-center text-muted">Tiada data.</td></tr>`;
+          return;
+        }
+
+        json.forEach((row, idx)=>{
+          const nama   = row.Nama || row.NAMA || row.name || '';
+          const ic     = row.IC || row.Ic || row.ic || '';
+          const tel    = row.Telefon || row.TELEFON || row.Phone || row.phone || '';
+          const alamat = row.Alamat || row.ALAMAT || row.alamat || row.address || '';
+          const msisdn = normalizeMsisdnMY(tel);
+          const id     = 'x'+Date.now()+idx;
+
+          const lahirYY = ic.slice(0,2), lahirMM = ic.slice(2,4), lahirDD = ic.slice(4,6);
+          let ageOk = false;
+          if (/^\d{6}/.test(ic)){
+            const y = Number(lahirYY); const fullY = (y<=29 ? 2000+y : 1900+y);
+            const dob = new Date(fullY, Number(lahirMM)-1, Number(lahirDD));
+            const now = new Date();
+            let age = now.getFullYear()-dob.getFullYear();
+            const m = now.getMonth()-dob.getMonth();
+            if (m<0 || (m===0 && now.getDate()<dob.getDate())) age--;
+            ageOk = age>=40;
+          }
+
+          const tr = `
+            <tr id="${id}">
+              <td>${nama}</td>
+              <td>${ic}</td>
+              <td>${msisdn}</td>
+              <td>${alamat}</td>
+              <td class="text-center"><input type="checkbox" class="form-check-input" ${ageOk?'checked':''} onchange="toggleLayak('${id}', true)"></td>
+              <td class="text-center"><input type="checkbox" class="form-check-input" ${ageOk?'':'checked'} onchange="toggleLayak('${id}', false)"></td>
+              <td>
+                <div class="row g-1 align-items-center">
+                  <div class="col"><input type="date" class="form-control form-control-sm tca-date" disabled></div>
+                  <div class="col"><input type="time" class="form-control form-control-sm tca-time" disabled></div>
+                  <div class="col"><input type="text" class="form-control form-control-sm tca-staff" placeholder="Nama staff" disabled></div>
+                </div>
+              </td>
+              <td>
+                <button class="btn btn-sm btn-primary" onclick="daftarFromExcel('${id}', '${encodeURIComponent(nama)}', '${encodeURIComponent(ic)}', '${msisdn}', '${encodeURIComponent(alamat)}')" disabled>Daftar</button>
+              </td>
+            </tr>`;
+          tbody.insertAdjacentHTML('beforeend', tr);
+        });
+
+        toast('Berjaya', `Berjaya memuat naik ${json.length} rekod dari Excel`, 'success');
+      }
+
+    } catch(e){
+      toast('Ralat', 'Gagal memproses fail: ' + e.message, 'danger');
+    } finally {
+      hideLoader();
+    }
+  });
+}
+function toggleLayak(rowId, isLayak){
+  const tr = document.getElementById(rowId);
+  if (!tr) return;
+  const checks = tr.querySelectorAll('input[type=checkbox]');
+  if (isLayak) { checks[1].checked = false; } else { checks[0].checked = false; }
+  const date  = tr.querySelector('.tca-date');
+  const time  = tr.querySelector('.tca-time');
+  const staff = tr.querySelector('.tca-staff');
+  const btn   = tr.querySelector('button');
+  if (isLayak && checks[0].checked) {
+    date.disabled = false; time.disabled = false; staff.disabled=false; btn.disabled = false;
+  } else {
+    date.disabled = true;  time.disabled = true; staff.disabled=true;  btn.disabled = true;
+  }
+}
+async function daftarFromExcel(rowId, encNama, encIC, msisdn, encAlamat){
+  const tr = document.getElementById(rowId);
+  const nama = decodeURIComponent(encNama);
+  const ic = decodeURIComponent(encIC);
+  const alamat = decodeURIComponent(encAlamat);
+  const date  = tr.querySelector('.tca-date').value;
+  const time  = tr.querySelector('.tca-time').value;
+  const staff = tr.querySelector('.tca-staff').value.trim();
+  if (!date || !time || !staff) { toast('Ralat','Sila isi tarikh, masa & nama staff','danger'); return; }
+  try{
+    const res = await postForm({
+      action:'daftarPesakit', namaPesakit:nama, noIC: ic, noTelefon: msisdn, alamat: alamat,
+      namaStaff: staff, tarikhTCA: date, masaTCA: time
+    }, { msg:'Mendaftar pesakit…' });
+    if (res.status==='success'){
+      toast('Berjaya',`Pesakit ${nama} didaftarkan ke TCA`, 'success');
+      tr.remove();
+      loadDashboardData(); loadTCACallData();
+    } else throw new Error(res.message||'Gagal daftar');
+  }catch(e){ toast('Ralat',e.message,'danger'); }
+}
+
+/* =======================
+   NADI PAGE (tabular view)
+   ======================= */
+let nadiRowCounter = 0;
+let nadiRows = []; // Array to store all NADI rows data
+
+function setupNADI(){
+  const container = document.getElementById('nadiContainer');
+  container.innerHTML = '';
+  addNadiRow();
+  document.getElementById('btnNadiExportCsv').addEventListener('click', exportNadiCSV);
+
+  // [TAMBAH] Set default tarikh program = hari ini
+  const progDate = document.getElementById('nadiProgramDate');
+  if (progDate && !progDate.value) progDate.value = new Date().toISOString().slice(0,10);
+
+  // [TAMBAH] Simpan semua aktiviti (tajuk + semua baris)
+  const btnSaveAll = document.getElementById('btnNadiSaveActivity');
+  btnSaveAll?.addEventListener('click', saveNadiProgramActivity);
+
+  // [TAMBAH] Export Excel format aktiviti
+  const btnXlsx = document.getElementById('btnNadiExportXlsx');
+  btnXlsx?.addEventListener('click', exportNadiExcel);
+}
+
+function calculateAgeFromIC(ic) {
+  if (!ic || ic.length < 6) return '';
+  
+  // Extract birth date from IC (YYMMDD)
+  const birthYY = parseInt(ic.substring(0, 2));
+  const birthMM = parseInt(ic.substring(2, 4)) - 1; // Months are 0-indexed
+  const birthDD = parseInt(ic.substring(4, 6));
+  
+  // Determine full year (handle 2000s vs 1900s)
+  const currentYear = new Date().getFullYear();
+  const currentShortYear = currentYear % 100;
+  const fullBirthYear = birthYY <= currentShortYear ? 2000 + birthYY : 1900 + birthYY;
+  
+  const birthDate = new Date(fullBirthYear, birthMM, birthDD);
+  const today = new Date();
+  
+  // Calculate age in years
+  let age = today.getFullYear() - birthDate.getFullYear();
+  const m = today.getMonth() - birthDate.getMonth();
+  if (m < 0 || (m === 0 && today.getDate() < birthDate.getDate())) {
+    age--;
+  }
+  
+  // Calculate months and days since last birthday
+  let months = today.getMonth() - birthDate.getMonth();
+  let days = today.getDate() - birthDate.getDate();
+  
+  if (days < 0) {
+    const lastMonth = new Date(today.getFullYear(), today.getMonth() - 1, birthDate.getDate());
+    const daysInLastMonth = new Date(today.getFullYear(), today.getMonth(), 0).getDate();
+    days = daysInLastMonth - birthDate.getDate() + today.getDate();
+    months--;
+  }
+  
+  if (months < 0) {
+    months += 12;
+  }
+  
+  return `${age}t ${months}b ${days}h`;
+}
+
+function updateNadiSummary() {
+  let layakCount = 0;
+  let takLayakCount = 0;
+  
+  document.querySelectorAll('.nadi-row').forEach(row => {
+    if (row.querySelector('.nadi-layak').checked) {
+      layakCount++;
+    } else if (row.querySelector('.nadi-taklayak').checked) {
+      takLayakCount++;
+    }
+  });
+  
+  document.getElementById('nadiLayakCount').textContent = layakCount;
+  document.getElementById('nadiTakLayakCount').textContent = takLayakCount;
+}
+
+function addNadiRow(){
+  const container = document.getElementById('nadiContainer');
+  const id = 'n'+Date.now()+Math.random().toString(36).slice(2,6);
+  const row = document.createElement('tr');
+  row.className = 'nadi-row';
+  row.id = id;
+
+  nadiRowCounter++;
+
+  row.innerHTML = `
+    <td class="text-center">
+      <div class="nadi-counter">${nadiRowCounter}</div>
+    </td>
+    <td class="nadi-input-cell">
+      <div class="view-mode" onclick="editNadiCell(this)"></div>
+      <input class="form-control form-control-sm nadi-nama" placeholder="Nama pesakit" style="display:none" onblur="saveNadiCell(this)" />
+    </td>
+    <td class="nadi-input-cell">
+      <div class="view-mode" onclick="editNadiCell(this)"></div>
+      <input class="form-control form-control-sm nadi-ic" placeholder="IC" style="display:none" onblur="saveNadiCell(this)" />
+    </td>
+    <td class="nadi-input-cell">
+      <div class="view-mode nadi-umur-view"></div>
+    </td>
+    <td class="nadi-input-cell">
+      <div class="view-mode" onclick="editNadiCell(this)"></div>
+      <input class="form-control form-control-sm nadi-tel" placeholder="Telefon" style="display:none" onblur="saveNadiCell(this)" />
+    </td>
+    <td class="nadi-input-cell">
+      <div class="view-mode" onclick="editNadiCell(this)"></div>
+      <input class="form-control form-control-sm nadi-alamat" placeholder="Alamat" style="display:none" onblur="saveNadiCell(this)" />
+    </td>
+    <td class="nadi-input-cell">
+      <div class="view-mode" onclick="editNadiCell(this)"></div>
+      <input class="form-control form-control-sm nadi-bp" placeholder="BP" style="display:none" onblur="saveNadiCell(this)" />
+    </td>
+    <td class="nadi-input-cell">
+      <div class="view-mode" onclick="editNadiCell(this)"></div>
+      <input class="form-control form-control-sm nadi-pr" placeholder="PR" style="display:none" onblur="saveNadiCell(this)" />
+    </td>
+    <td>
+      <div class="input-group input-group-sm">
+        <button class="btn btn-outline-secondary dropdown-toggle nadi-dxt-type-btn" data-bs-toggle="dropdown" type="button">Fasting</button>
+        <ul class="dropdown-menu">
+          <li><a class="dropdown-item" href="#" data-value="Fasting">Fasting</a></li>
+          <li><a class="dropdown-item" href="#" data-value="Random">Random</a></li>
+        </ul>
+        <input class="form-control nadi-dxt" placeholder="DXT" style="width:100%; min-width:80px" />
+        <input type="hidden" class="nadi-dxt-type" value="Fasting" />
+      </div>
+    </td>
+    <td class="nadi-input-cell">
+      <div class="view-mode" onclick="editNadiCell(this)"></div>
+      <input class="form-control form-control-sm nadi-tinggi" placeholder="Tinggi" style="display:none" onblur="saveNadiCell(this)" />
+    </td>
+    <td class="nadi-input-cell">
+      <div class="view-mode" onclick="editNadiCell(this)"></div>
+      <input class="form-control form-control-sm nadi-berat" placeholder="Berat" style="display:none" onblur="saveNadiCell(this)" />
+    </td>
+    <td class="nadi-input-cell">
+      <div class="view-mode" onclick="editNadiCell(this)"></div>
+      <input class="form-control form-control-sm nadi-bmi" placeholder="BMI" disabled style="display:none" onblur="saveNadiCell(this)" />
+    </td>
+    <td class="text-center">
+      <input class="form-check-input nadi-layak" type="checkbox">
+    </td>
+    <td class="text-center">
+      <input class="form-check-input nadi-taklayak" type="checkbox">
+    </td>
+    <td>
+      <div class="d-flex gap-1">
+        <input type="date" class="form-control form-control-sm nadi-tca-date" disabled style="min-width:100px">
+        <input type="time" class="form-control form-control-sm nadi-tca-time" disabled style="min-width:80px">
+        <input type="text" class="form-control form-control-sm nadi-staff" placeholder="Staff" disabled style="min-width:100px">
+      </div>
+    </td>
+    <td>
+      <div class="d-flex gap-1">
+        <button class="btn btn-sm btn-outline-primary nadi-daftar" disabled>Daftar</button>
+        <button class="btn btn-sm btn-outline-success nadi-wa">WA Report</button>
+        <button class="btn btn-sm btn-outline-danger nadi-buang">Buang</button>
+      </div>
+    </td>
+  `;
+
+  container.appendChild(row);
+
+  // Initialize dropdown for DXT type
+  const dxtTypeBtn = row.querySelector('.nadi-dxt-type-btn');
+  const dxtTypeMenu = row.querySelector('.dropdown-menu');
+  const dxtTypeInput = row.querySelector('.nadi-dxt-type');
+
+  dxtTypeMenu.querySelectorAll('.dropdown-item').forEach(item => {
+    item.addEventListener('click', function(e) {
+      e.preventDefault();
+      dxtTypeBtn.textContent = this.textContent;
+      dxtTypeInput.value = this.getAttribute('data-value');
+    });
+  });
+
+  // BMI calculation
+  const tinggi = row.querySelector('.nadi-tinggi');
+  const berat = row.querySelector('.nadi-berat');
+  const bmi = row.querySelector('.nadi-bmi');
+
+  const calculateBMI = () => {
+    const height = parseFloat(tinggi.value) / 100;
+    const weight = parseFloat(berat.value);
+    if (height && weight) {
+      bmi.value = (weight / (height * height)).toFixed(1);
+      bmi.previousElementSibling.textContent = bmi.value;
+    } else {
+      bmi.value = '';
+      bmi.previousElementSibling.textContent = '';
+    }
+  };
+
+  tinggi.addEventListener('input', calculateBMI);
+  berat.addEventListener('input', calculateBMI);
+
+  // IC change handler to update age
+  const icInput = row.querySelector('.nadi-ic');
+  icInput.addEventListener('input', function() {
+    const umurView = row.querySelector('.nadi-umur-view');
+    umurView.textContent = calculateAgeFromIC(this.value);
+  });
+
+  // Layak/Tidak Layak toggle
+  const layak = row.querySelector('.nadi-layak');
+  const takLayak = row.querySelector('.nadi-taklayak');
+  const tcaDate = row.querySelector('.nadi-tca-date');
+  const tcaTime = row.querySelector('.nadi-tca-time');
+  const staff = row.querySelector('.nadi-staff');
+  const btnDaftar = row.querySelector('.nadi-daftar');
+
+  layak.addEventListener('change', () => {
+    if (layak.checked) {
+      takLayak.checked = false;
+      tcaDate.disabled = false;
+      tcaTime.disabled = false;
+      staff.disabled = false;
+      btnDaftar.disabled = false;
+    } else {
+      tcaDate.disabled = true;
+      tcaTime.disabled = true;
+      staff.disabled = true;
+      btnDaftar.disabled = true;
+    }
+    updateNadiSummary();
+  });
+
+  takLayak.addEventListener('change', () => {
+    if (takLayak.checked) {
+      layak.checked = false;
+      tcaDate.disabled = true;
+      tcaTime.disabled = true;
+      staff.disabled = true;
+      btnDaftar.disabled = true;
+    }
+    updateNadiSummary();
+  });
+
+  // Daftar button action
+  btnDaftar.addEventListener('click', async () => {
+    const nama = row.querySelector('.nadi-nama').value.trim();
+    const ic = row.querySelector('.nadi-ic').value.trim();
+    const tel = row.querySelector('.nadi-tel').value.trim();
+    const alamat = row.querySelector('.nadi-alamat').value.trim();
+    const date = tcaDate.value;
+    const time = tcaTime.value;
+    const staffName = staff.value.trim();
+
+    if (!nama || !ic || !tel || !date || !time || !staffName) {
+      toast('Ralat', 'Sila isi semua maklumat', 'danger');
+      return;
+    }
+
+    try {
+      const res = await postForm({
+        action: 'daftarPesakit',
+        namaPesakit: nama,
+        noIC: ic,
+        noTelefon: tel,
+        alamat: alamat,
+        tarikhTCA: date,
+        masaTCA: time,
+        namaStaff: staffName
+      }, { msg: 'Mendaftar pesakit...' });
+
+      if (res.status === 'success') {
+        toast('Berjaya', 'Pesakit berjaya didaftarkan', 'success');
+        // Update the row data in nadiRows array
+        updateNadiRowData(row);
+      } else {
+        throw new Error(res.message || 'Gagal mendaftar pesakit');
+      }
+    } catch (e) {
+      toast('Ralat', e.message, 'danger');
+    }
+  });
+
+  // WhatsApp Report (Preview) – KEKAL
+  row.querySelector('.nadi-wa').addEventListener('click', async () => {
+    try {
+      const data = {
+        nama: row.querySelector('.nadi-nama').value.trim(),
+        ic: row.querySelector('.nadi-ic').value.trim(),
+        tel: normalizeMsisdnMY(row.querySelector('.nadi-tel').value.trim()),
+        alamat: row.querySelector('.nadi-alamat').value.trim(),
+        bp: row.querySelector('.nadi-bp').value.trim(),
+        pr: row.querySelector('.nadi-pr').value.trim(),
+        dxtType: row.querySelector('.nadi-dxt-type').value,
+        dxt: row.querySelector('.nadi-dxt').value.trim(),
+        tinggi: row.querySelector('.nadi-tinggi').value.trim(),
+        berat: row.querySelector('.nadi-berat').value.trim(),
+        bmi: row.querySelector('.nadi-bmi').value.trim(),
+        layak: row.querySelector('.nadi-layak').checked
+      };
+
+      // Generate WhatsApp report image (preview)
+      generateWhatsAppReport(data);
+
+    } catch (e) {
+      toast('Ralat', 'Gagal buat laporan: ' + e.message, 'danger');
+    }
+  });
+
+  // Buang button
+  row.querySelector('.nadi-buang').addEventListener('click', () => {
+    if (confirm('Adakah anda pasti ingin membuang baris ini?')) {
+      row.remove();
+      updateNadiRowNumbers();
+      updateNadiSummary();
+    }
+  });
+
+  // Add row data to nadiRows array
+  nadiRows.push({
+    id: id,
+    rowElement: row
+  });
+}
+
+function updateNadiRowData(row) {
+  const rowData = {
+    nama: row.querySelector('.nadi-nama').value.trim(),
+    ic: row.querySelector('.nadi-ic').value.trim(),
+    tel: row.querySelector('.nadi-tel').value.trim(),
+    alamat: row.querySelector('.nadi-alamat').value.trim(),
+    bp: row.querySelector('.nadi-bp').value.trim(),
+    pr: row.querySelector('.nadi-pr').value.trim(),
+    dxtType: row.querySelector('.nadi-dxt-type').value,
+    dxt: row.querySelector('.nadi-dxt').value.trim(),
+    tinggi: row.querySelector('.nadi-tinggi').value.trim(),
+    berat: row.querySelector('.nadi-berat').value.trim(),
+    bmi: row.querySelector('.nadi-bmi').value.trim(),
+    layak: row.querySelector('.nadi-layak').checked,
+    takLayak: row.querySelector('.nadi-taklayak').checked,
+    tcaDate: row.querySelector('.nadi-tca-date').value.trim(),
+    tcaTime: row.querySelector('.nadi-tca-time').value.trim(),
+    staff: row.querySelector('.nadi-staff').value.trim()
+  };
+
+  // Update the row data in nadiRows array
+  const rowId = row.id;
+  const rowIndex = nadiRows.findIndex(r => r.id === rowId);
+  if (rowIndex !== -1) {
+    nadiRows[rowIndex].data = rowData;
+  }
+}
+
+function editNadiCell(viewModeEl) {
+  const input = viewModeEl.nextElementSibling;
+  viewModeEl.style.display = 'none';
+  input.style.display = 'block';
+  input.value = viewModeEl.textContent || '';
+  input.focus();
+}
+
+function saveNadiCell(inputEl) {
+  const viewMode = inputEl.previousElementSibling;
+  viewMode.textContent = inputEl.value || '';
+  viewMode.style.display = 'block';
+  inputEl.style.display = 'none';
+
+  // If this is IC field, update age
+  if (inputEl.classList.contains('nadi-ic')) {
+    const row = inputEl.closest('tr');
+    const umurView = row.querySelector('.nadi-umur-view');
+    umurView.textContent = calculateAgeFromIC(inputEl.value);
+  }
+
+  // If this is height or weight, calculate BMI
+  if (inputEl.classList.contains('nadi-tinggi') || inputEl.classList.contains('nadi-berat')) {
+    const row = inputEl.closest('tr');
+    const tinggi = row.querySelector('.nadi-tinggi').value;
+    const berat = row.querySelector('.nadi-berat').value;
+    const bmi = row.querySelector('.nadi-bmi');
+
+    if (tinggi && berat) {
+      const height = parseFloat(tinggi) / 100;
+      const weight = parseFloat(berat);
+      const bmiValue = (weight / (height * height)).toFixed(1);
+      bmi.value = bmiValue;
+      bmi.previousElementSibling.textContent = bmiValue;
+    } else {
+      bmi.value = '';
+      bmi.previousElementSibling.textContent = '';
+    }
+  }
+}
+
+function updateNadiRowNumbers() {
+  const rows = document.querySelectorAll('#nadiContainer tr');
+  let counter = 0;
+  rows.forEach(row => {
+    counter++;
+    const counterEl = row.querySelector('.nadi-counter');
+    if (counterEl) { counterEl.textContent = counter; }
+  });
+  nadiRowCounter = counter;
+}
+
+function generateWhatsAppReport(data) {
+  const reportContainer = document.getElementById('whatsappReportPreview');
+  reportContainer.innerHTML = '';
+
+  const reportHTML = `
+    <div class="whatsapp-report">
+      <div class="whatsapp-report-header">
+        <img src="${LOGO_URL}" alt="Logo Klinik" class="whatsapp-report-logo" onerror="this.src='https://via.placeholder.com/50x50.png?text=KS'">
+        <div>
+          <div class="whatsapp-report-title">Laporan Saringan Kesihatan Bersama NADI</div>
+          <div class="whatsapp-report-subtitle">Klinik SihatSokmo - Program PEKA B40</div>
+        </div>
+      </div>
+      <div class="whatsapp-report-body">
+        <div class="whatsapp-report-row">
+          <div class="whatsapp-report-label">Nama Pesakit:</div>
+          <div class="whatsapp-report-value">${data.nama || '-'}</div>
+        </div>
+        <div class="whatsapp-report-row">
+          <div class="whatsapp-report-label">No. IC:</div>
+          <div class="whatsapp-report-value">${data.ic || '-'}</div>
+        </div>
+        <div class="whatsapp-report-row">
+          <div class="whatsapp-report-label">Alamat:</div>
+          <div class="whatsapp-report-value">${data.alamat || '-'}</div>
+        </div>
+        <div class="whatsapp-report-row">
+          <div class="whatsapp-report-label">BP:</div>
+          <div class="whatsapp-report-value">${data.bp || '-'} mmHg</div>
+        </div>
+        <div class="whatsapp-report-row">
+          <div class="whatsapp-report-label">PR:</div>
+          <div class="whatsapp-report-value">${data.pr || '-'} bpm</div>
+        </div>
+        <div class="whatsapp-report-row">
+          <div class="whatsapp-report-label">DXT (${data.dxtType || 'Fasting'}):</div>
+          <div class="whatsapp-report-value">${data.dxt || '-'} mmol/L</div>
+        </div>
+        <div class="whatsapp-report-row">
+          <div class="whatsapp-report-label">Tinggi:</div>
+          <div class="whatsapp-report-value">${data.tinggi || '-'} cm</div>
+        </div>
+        <div class="whatsapp-report-row">
+          <div class="whatsapp-report-label">Berat:</div>
+          <div class="whatsapp-report-value">${data.berat || '-'} kg</div>
+        </div>
+        <div class="whatsapp-report-row">
+          <div class="whatsapp-report-label">BMI:</div>
+          <div class="whatsapp-report-value">${data.bmi || '-'}</div>
+        </div>
+        <div class="whatsapp-report-row">
+          <div class="whatsapp-report-label">Status:</div>
+          <div class="whatsapp-report-value">${data.layak ? 'Layak PEKA B40' : 'Tidak Layak PEKA B40'}</div>
+        </div>
+      </div>
+      <div class="whatsapp-report-footer">
+        Sila hubungi klinik untuk maklumat lanjut. Terima kasih.
+      </div>
+    </div>
+  `;
+
+  reportContainer.innerHTML = reportHTML;
+  currentWhatsAppData = data;
+  CURRENT_WA_MSISDN = data.tel || '';  // SIMPAN no. telefon untuk hantar gambar
+  whatsappReportModal.show();
+}
+
+function sendWhatsAppReport() {
+  if (!currentWhatsAppData) return;
+
+  const nama = currentWhatsAppData.nama || '';
+  const ic = currentWhatsAppData.ic || '';
+  const bp = currentWhatsAppData.bp || '';
+  const pr = currentWhatsAppData.pr || '';
+  const dxtType = currentWhatsAppData.dxtType || 'Fasting';
+  const dxt = currentWhatsAppData.dxt || '';
+  const tinggi = currentWhatsAppData.tinggi || '';
+  const berat = currentWhatsAppData.berat || '';
+  const bmi = currentWhatsAppData.bmi || '';
+  const layak = currentWhatsAppData.layak ? 'Layak PEKA B40' : 'Tidak Layak PEKA B40';
+
+  const message = `Laporan Saringan Kesihatan Bersama NADI
+Nama: ${nama}
+IC: ${ic}
+BP: ${bp} mmHg
+PR: ${pr} bpm
+DXT (${dxtType}): ${dxt} mmol/L
+Tinggi: ${tinggi} cm
+Berat: ${berat} kg
+BMI: ${bmi}
+Status: ${layak}
+
+Sila hubungi klinik untuk maklumat lanjut. Terima kasih.`;
+
+  if (currentWhatsAppData.tel) {
+    window.open(waHref(currentWhatsAppData.tel, message), '_blank');
+    whatsappReportModal.hide();
+    toast('Berjaya', 'Laporan (teks) dihantar melalui WhatsApp', 'success');
+  } else {
+    toast('Ralat', 'Nombor telefon tidak sah', 'danger');
+  }
+}
+
+// GANTIKAN fungsi exportNadiCSV() sedia ada dengan yang ini
+async function exportNadiCSV() {
+  const rows = Array.from(document.querySelectorAll('#nadiContainer .nadi-row'));
+  if (!rows.length) {
+    toast('Makluman', 'Tiada data untuk diexport', 'warning');
+    return;
+  }
+
+  // Ambil tajuk & tarikh program (jika tiada input, guna default)
+  const programTitle = (document.getElementById('nadiProgramTitle')?.value || 'Tajuk Program').trim();
+  const programDate  = (document.getElementById('nadiProgramDate')?.value || new Date().toISOString().slice(0, 10)).trim();
+
+  // Header seperti diminta
+  const HEADER = ['TARIKH','NAMA','NO IC','NO TEL','ALAMAT','WT','HT','BP','HR','UMUR','BMI','DXT TYPE','DXT','KELAYAKAN'];
+
+  // Baris tajuk: letak pada kolum tengah jadual (supaya “nampak” di tengah)
+  const midCol = Math.floor(HEADER.length / 2);
+  const titleRow = Array(HEADER.length).fill('');
+  titleRow[midCol] = programTitle;
+
+  // Kumpul data ikut susunan header
+  const dataRows = rows.map(function (r) {
+    const nama    = (r.querySelector('.nadi-nama')?.value || '').trim();
+    const ic      = (r.querySelector('.nadi-ic')?.value || '').trim();
+    const tel     = (r.querySelector('.nadi-tel')?.value || '').trim();
+    const alamat  = (r.querySelector('.nadi-alamat')?.value || '').trim();
+    const wt      = (r.querySelector('.nadi-berat')?.value || '').trim();   // kg
+    const ht      = (r.querySelector('.nadi-tinggi')?.value || '').trim();  // cm
+    const bp      = (r.querySelector('.nadi-bp')?.value || '').trim();
+    const hr      = (r.querySelector('.nadi-pr')?.value || '').trim();
+    const umurTxt = (r.querySelector('.nadi-umur-view')?.textContent || '').trim(); // cth "52t 3b 2h"
+    const umur    = (umurTxt.match(/^(\d+)/)?.[1]) || umurTxt || '';        // ambil angka tahun jika ada
+    const bmi     = (r.querySelector('.nadi-bmi')?.value || '').trim();
+    const dxtType = (r.querySelector('.nadi-dxt-type')?.value || '').trim();
+    const dxt     = (r.querySelector('.nadi-dxt')?.value || '').trim();
+    const kelayak = (r.querySelector('.nadi-layak')?.checked ? 'Layak' : 'Tidak Layak');
+
+    return [programDate, nama, ic, tel, alamat, wt, ht, bp, hr, umur, bmi, dxtType, dxt, kelayak];
+  });
+
+  // Cuba hasilkan Excel (.xlsx) dahulu
+  try {
+    if (typeof ensureXLSXReady === 'function') {
+      await ensureXLSXReady();
+    }
+    if (window.XLSX) {
+      const wb  = XLSX.utils.book_new();
+      const aoa = [titleRow, HEADER, ...dataRows];
+      const ws  = XLSX.utils.aoa_to_sheet(aoa);
+
+      // Lebar kolum supaya kemas
+      ws['!cols'] = [
+        { wch: 12 }, // TARIKH
+        { wch: 22 }, // NAMA
+        { wch: 18 }, // NO IC
+        { wch: 16 }, // NO TEL
+        { wch: 36 }, // ALAMAT
+        { wch: 8  }, // WT
+        { wch: 8  }, // HT
+        { wch: 12 }, // BP
+        { wch: 8  }, // HR
+        { wch: 8  }, // UMUR
+        { wch: 8  }, // BMI
+        { wch: 12 }, // DXT TYPE
+        { wch: 10 }, // DXT
+        { wch: 12 }  // KELAYAKAN
+      ];
+
+      XLSX.utils.book_append_sheet(wb, ws, 'Aktiviti Program');
+
+      // Nama fail kemas (ASCII sahaja untuk elak isu)
+      const safeTitle = programTitle.replace(/[^A-Za-z0-9\-_. ]/g, '').trim().replace(/\s+/g, '_').slice(0, 60);
+      const fname = 'aktiviti_program_' + programDate + (safeTitle ? '_' + safeTitle : '') + '.xlsx';
+
+      XLSX.writeFile(wb, fname);
+      toast('Export', 'Fail Excel dimuat turun', 'success');
+      return;
+    }
+  } catch (e) {
+    // Jika gagal, teruskan ke CSV fallback
+  }
+
+  // Fallback: CSV (tajuk tetap di kolum tengah)
+  const BOM = '\uFEFF';
+  const toCsvRow = function (arr) {
+    return arr.map(function (v) {
+      const s = String(v == null ? '' : v).replace(/"/g, '""');
+      return '"' + s + '"';
+    }).join(',');
+  };
+  const csv = [titleRow, HEADER, ...dataRows].map(toCsvRow).join('\r\n');
+
+  const blob = new Blob([BOM + csv], { type: 'text/csv;charset=utf-8;' });
+  const url  = URL.createObjectURL(blob);
+  const a    = document.createElement('a');
+  a.href = url;
+  a.download = 'aktiviti_program_' + programDate + '.csv';
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  URL.revokeObjectURL(url);
+
+  toast('Export', 'Fail CSV dimuat turun', 'success');
+}
+
+
+function collectNadiRowsForActivity(){
+  const rows = Array.from(document.querySelectorAll('#nadiContainer .nadi-row'));
+  const title = (document.getElementById('nadiProgramTitle')?.value || '').trim();
+  const d = (document.getElementById('nadiProgramDate')?.value || '').trim();
+  const tarikh = d || new Date().toISOString().slice(0,10);
+
+  return {
+    title,
+    tarikh,
+    items: rows.map(r => {
+      const nama   = r.querySelector('.nadi-nama')?.value.trim() || '';
+      const ic     = r.querySelector('.nadi-ic')?.value.trim() || '';
+      const tel    = r.querySelector('.nadi-tel')?.value.trim() || '';
+      const alamat = r.querySelector('.nadi-alamat')?.value.trim() || '';
+      const wt     = r.querySelector('.nadi-berat')?.value.trim() || '';
+      const ht     = r.querySelector('.nadi-tinggi')?.value.trim() || '';
+      const bp     = r.querySelector('.nadi-bp')?.value.trim() || '';
+      const hr     = r.querySelector('.nadi-pr')?.value.trim() || '';
+      const umur   = r.querySelector('.nadi-umur-view')?.textContent.trim() || '';
+      const bmi    = r.querySelector('.nadi-bmi')?.value.trim() || '';
+      const dxtType= r.querySelector('.nadi-dxt-type')?.value || '';
+      const dxt    = r.querySelector('.nadi-dxt')?.value.trim() || '';
+      const kelayak= r.querySelector('.nadi-layak')?.checked ? 'Layak' : 'Tidak Layak';
+
+      return { tarikh, nama, ic, tel, alamat, wt, ht, bp, hr, umur, bmi, dxtType, dxt, kelayak };
+    })
+  };
+}
+async function saveNadiProgramActivity(){
+  const { title, tarikh, items } = collectNadiRowsForActivity();
+  if (!title) { toast('Ralat','Sila isi Tajuk Program','danger'); return; }
+  if (!items.length){ toast('Makluman','Tiada baris untuk disimpan','warning'); return; }
+
+  try{
+    const res = await postForm({
+      action: 'saveNadiProgramActivity',     // <-- TAMBAH handler ini di Apps Script
+      programTitle: title,
+      programDate: tarikh,
+      rows: JSON.stringify(items)
+    }, { msg: 'Menyimpan aktiviti…' });
+
+    if (res.status === 'success'){
+      toast('Berjaya', 'Aktiviti program disimpan ke sheet aktiviti', 'success');
+    } else {
+      throw new Error(res.message || 'Gagal simpan aktiviti');
+    }
+  } catch(e){
+    toast('Ralat', e.message, 'danger');
+  }
+
+/* =======================
+   DATA LOADERS
+   ======================= */
+async function loadDashboardData(){
+  try{
+    const data = await getJSON({ action:'getDashboardData' }, { msg:'Memuat Dashboard…' });
+    if (data.status==='success'){
+      const d = data.data || {};
+      totalDaftar.textContent = d.totalDaftar || 0;
+      totalFirstVisit.textContent = d.totalFirstVisit || 0;
+      totalSecondVisit.textContent = d.totalSecondVisit || 0;
+      totalSelesai.textContent = d.totalSelesai || 0;
+      labFollowUpDue.textContent = d.labFollowUpDue || 0;
+      labFollowUpPending.textContent = d.labFollowUpPending || 0;
+
+      // Badges navbar (tunjuk hanya jika >0)
+      setBadge('badgeTCA', d.totalDaftar);
+      setBadge('badgeFirst', d.totalFirstVisit);
+      setBadge('badgeSecond', d.totalSecondVisit);
+      setBadge('badgeLab', d.labFollowUpDue + d.labFollowUpPending);
+    }
+  }catch(e){ toast('Ralat','Gagal memuat data dashboard','danger'); }
+}
+function setBadge(id,val){
+  const el = document.getElementById(id);
+  if (!el) return;
+  if (val>0){ el.textContent = val; el.style.display='inline-block'; }
+  else { el.style.display='none'; }
+}
+
+async function loadStatistics(period){
+  try{
+    const data = await getJSON({ action:'getStatistics', period }, { msg:'Memuat statistik…' });
+    if (data.status==='success'){
+      if (stats3dChart) stats3dChart.destroy();
+      stats3dChart = buildBarChart('stats3dChart', data.data, `Statistik Pesakit Selesai (${getPeriodLabel(period)})`);
+    }
+  }catch(e){}
+}
+async function loadCompletedStatistics(period){
+  try{
+    const data = await getJSON({ action:'getStatistics', period }, { msg:'Memuat statistik…' });
+    if (data.status==='success'){
+      if (completed3dChart) completed3dChart.destroy();
+      completed3dChart = buildBarChart('completed3dChart', data.data, `Statistik Pesakit Selesai (${getPeriodLabel(period)})`);
+    }
+  }catch(e){}
+}
+function getPeriodLabel(p){ if(p==='3months')return'3 Bulan Terakhir'; if(p==='6months')return'6 Bulan Terakhir'; if(p==='12months')return'12 Bulan Terakhir'; return p; }
+
+async function loadTCACallData(){
+  try{
+    const data = await getJSON({ action:'getTCACall' }, { msg:'Memuat TCA Hari Ini…' });
+    const tb1 = document.getElementById('tcaCallTable');
+    if (tb1) tb1.innerHTML = '';
+
+    const renderRow = (p) => {
+      const msisdn = normalizeMsisdnMY(p.noTelefon||'');
+      return `
+      <tr data-ic="${p.noIC}">
+        <td>${p.nama}</td>
+        <td>${p.noIC}</td>
+        <td class="mini-actions">
+          <a class="btn btn-sm btn-outline-secondary" href="${telHref(msisdn)}"><i class="fa-solid fa-phone"></i> Call</a>
+          <a class="btn btn-sm btn-outline-success" target="_blank" href="${waHref(msisdn)}"><i class="fa-brands fa-whatsapp"></i> WhatsApp</a>
+          <div class="small text-muted mt-1">${msisdn}</div>
+        </td>
+        <td>${p.alamat || '-'}</td>
+        <td>${p.tarikhTCA}</td>
+        <td><span class="badge ${p.status==='CALLED'?'bg-success':'bg-warning'}">${p.status || 'PENDING'}</span></td>
+      </tr>`;
+    };
+
+    if (data.status==='success' && data.data.length>0){
+      data.data.forEach(p=>{ if (tb1) tb1.insertAdjacentHTML('beforeend', renderRow(p)); });
+    } else {
+      if (tb1) tb1.innerHTML = `<tr><td colspan="6" class="text-center text-muted">Tiada pesakit perlu dihubungi hari ini</td></tr>`;
+    }
+  }catch(e){ /* senyap */ }
+}
+
+/* === TCA PAGE (rekod; tiada tanda selesai manual) === */
+let TCA_ALL = [];
+async function loadTCACallPage(){
+  try{
+    const res = await getJSON({ action:'getTCACall', all:1 }, { msg:'Memuat rekod TCA…' });
+    TCA_ALL = (res.status==='success') ? (res.data||[]) : [];
+    renderTcaList('today');
+  }catch(e){ renderTcaList('all'); }
+  document.querySelectorAll('#tcaFilter [data-filter]').forEach(btn=>{
+    btn.addEventListener('click', ()=>{
+      document.querySelectorAll('#tcaFilter [data-filter]').forEach(b=>b.classList.remove('active'));
+      btn.classList.add('active');
+      renderTcaList(btn.getAttribute('data-filter'));
+    });
+  });
+}
+function renderTcaList(mode){
+  const tbody = document.getElementById('tcaCallList');
+  if (!tbody) return;
+
+  tbody.innerHTML = '';
+  const today = new Date(); today.setHours(0,0,0,0);
+
+  const filtered = (TCA_ALL || []).filter(p => {
+    const d = parseDDMMYYYY(p.tarikhTCA);
+    if (!d) return mode === 'all';
+    d.setHours(0,0,0,0);
+
+    if (mode === 'today')    return isSameDay(d, today);
+    if (mode === 'upcoming') return d > today;
+    if (mode === 'past')     return d < today;
+    return true; // 'all'
+  });
+
+  if (!filtered.length){
+    tbody.innerHTML = `<tr><td colspan="6" class="text-center text-muted">Tiada rekod untuk paparan ini</td></tr>`;
+    return;
+  }
+
+  filtered.forEach(p => {
+    const msisdn = normalizeMsisdnMY(p.noTelefon || '');
+    const statusClass = (p.status === 'CALLED') ? 'bg-success' : 'bg-warning';
+    const rowHtml = `
+      <tr data-ic="${p.noIC}">
+        <td>${p.nama || '-'}</td>
+        <td>${p.noIC || '-'}</td>
+        <td class="mini-actions">
+          <a class="btn btn-sm btn-outline-secondary" href="${telHref(msisdn)}"><i class="fa-solid fa-phone"></i> Call</a>
+          <a class="btn btn-sm btn-outline-success" target="_blank" href="${waHref(msisdn)}"><i class="fa-brands fa-whatsapp"></i> WhatsApp</a>
+          <div class="small text-muted mt-1">${msisdn || '-'}</div>
+        </td>
+        <td>${p.alamat || '-'}</td>
+        <td>${p.tarikhTCA || '-'}</td>
+        <td><span class="badge ${statusClass}">${p.status || 'PENDING'}</span></td>
+      </tr>`;
+    tbody.insertAdjacentHTML('beforeend', rowHtml);
+  });
+}
+async function loadFirstVisitData(){
+  try{
+    const data = await getJSON({ action:'getFirstVisit' }, { msg:'Memuat First Visit…' });
+    const tbody = document.getElementById('firstVisitList');
+    tbody.innerHTML = '';
+    if (data.status==='success' && data.data.length>0){
+      data.data.forEach(p=>{
+        const hadir = p.status==='HADIR';
+        const within = isWithin24hOfDate(p.tarikhTCA);
+        const msisdn = normalizeMsisdnMY(p.noTelefon||'');
+
+        let pdpaHTML = '';
+        if (p.pdpaFileId){
+          pdpaHTML = `
+            <div class="d-flex flex-wrap gap-1">
+              <a class="btn btn-sm btn-outline-success" target="_blank" href="https://drive.google.com/file/d/${p.pdpaFileId}/preview"><i class="fa-solid fa-eye"></i> Lihat</a>
+              <a class="btn btn-sm btn-outline-primary" target="_blank" href="https://drive.google.com/uc?export=download&id=${p.pdpaFileId}"><i class="fa-solid fa-download"></i> Muat Turun</a>
+              <button class="btn btn-sm btn-outline-danger" onclick="deletePDPA('${p.noIC}')"><i class="fa-solid fa-trash"></i> Padam</button>
+            </div>`;
+        } else {
+          pdpaHTML = hadir ? `<button class="btn btn-sm btn-outline-primary" onclick="openPDPA('${p.noIC}')"><i class="fa-solid fa-file-arrow-up"></i> Upload</button>`
+                           : `<span class="text-muted">-</span>`;
+        }
+
+        const row = `
+        <tr data-ic="${p.noIC}">
+          <td>${p.nama}</td>
+          <td>${p.noIC}</td>
+          <td>${p.alamat || '-'}</td>
+          <td>${p.tarikhTCA||'-'}</td>
+          <td>${pdpaHTML}</td>
+          <td><span class="badge ${hadir?'bg-success':'bg-warning'}">${hadir?'Hadir':'Belum Hadir'}</span></td>
+          <td class="mini-actions">
+            ${within && !hadir ? `<button class="btn btn-sm btn-success" onclick="markFirstVisit('${p.noIC}')"><i class="fa-solid fa-circle-check"></i> Hadir</button>` : ''}
+            ${!hadir ? `<button class="btn btn-sm btn-primary" onclick="openRetcaModal('${p.noIC}')"><i class="fa-solid fa-calendar-plus"></i> Re-TCA</button>` : ''}
+            ${msisdn ? `
+              <a class="btn btn-sm btn-outline-secondary" href="${telHref(msisdn)}"><i class="fa-solid fa-phone"></i></a>
+              <a class="btn btn-sm btn-outline-success" target="_blank" href="${waHref(msisdn)}"><i class="fa-brands fa-whatsapp"></i></a>` : ''}
+          </td>
+        </tr>`;
+        tbody.insertAdjacentHTML('beforeend', row);
+      });
+    } else {
+      tbody.innerHTML = `<tr><td colspan="7" class="text-center text-muted">Tiada data First Visit</td></tr>`;
+    }
+  }catch(e){ /* senyap */ }
+}
+
+function isWithin24hOfDate(dateStr){
+  const d = parseDDMMYYYY(dateStr);
+  if (!d) return false;
+  const start = new Date(d.getFullYear(), d.getMonth(), d.getDate(), 0,0,0,0);
+  const end = new Date(start.getTime() + 24*60*60*1000);
+  const now = new Date();
+  return now >= start && now < end;
+}
+
+async function loadLabFollowUp(){
+  try{
+    const data = await getJSON({ action:'getLabFollowUp' }, { msg:'Memuat Follow-up Lab…' });
+    const tbody = document.getElementById('labFollowupTable');
+    tbody.innerHTML = '';
+    if (data.status==='success' && data.data.length>0){
+      data.data.forEach(p=>{
+        const msisdn = normalizeMsisdnMY(p.noTelefon||'');
+        const badge = p.labStatus==='DONE' ? 'bg-success' : (p.labStatus==='REPEAT' ? 'bg-danger' : (p.labStatus==='IN_PROCESS' ? 'bg-warning' : 'bg-secondary'));
+        const label = p.labStatus || 'PENDING';
+        const row = `
+        <tr data-ic="${p.noIC}">
+          <td>${p.nama}</td>
+          <td>${p.noIC}</td>
+          <td class="mini-actions">
+            <a class="btn btn-sm btn-outline-secondary" href="${telHref(msisdn)}"><i class="fa-solid fa-phone"></i> Call</a>
+            <a class="btn btn-sm btn-outline-success" target="_blank" href="${waHref(msisdn,'Keputusan makmal anda telah siap.')}"><i class="fa-brands fa-whatsapp"></i> WhatsApp</a>
+            <div class="small text-muted mt-1">${msisdn}</div>
+          </td>
+          <td>${p.alamat || '-'}</td>
+          <td>${p.firstVisitDate}</td>
+          <td>${p.daysSince}</td>
+          <td><span class="badge ${badge}">${label}</span></td>
+          <td class="mini-actions">
+            <button class="btn btn-sm btn-success" onclick="openSecondTca('${p.noIC}')"><i class="fa-solid fa-square-check"></i> Result complete & berjaya call</button>
+            <button class="btn btn-sm btn-warning" onclick="markLabStatus('${p.noIC}','IN_PROCESS')"><i class="fa-solid fa-hourglass-half"></i> In process</button>
+            <button class="btn btn-sm btn-danger" onclick="markLabStatus('${p.noIC}','REPEAT')"><i class="fa-solid fa-rotate-left"></i> Repeat sample</button>
+          </td>
+        </tr>`;
+        tbody.insertAdjacentHTML('beforeend', row);
+      });
+    } else {
+      tbody.innerHTML = `<tr><td colspan="8" class="text-center text-muted">Tiada pesakit untuk follow-up.</td></tr>`;
+    }
+  }catch(e){ /* senyap */ }
+}
+
+async function loadSecondVisitData(){
+  try{
+    const data = await getJSON({ action:'getSecondVisit' }, { msg:'Memuat Second Visit…' });
+    const tbody = document.getElementById('secondVisitList');
+    tbody.innerHTML = '';
+    if (data.status==='success' && data.data.length>0){
+      data.data.forEach(p=>{
+        const hadir = p.status==='HADIR';
+        const within = isWithin24hOfDate(p.tarikhTCA);
+        const msisdn = normalizeMsisdnMY(p.noTelefon||'');
+
+        let pdpaHTML = p.pdpaFileId
+          ? `<div class="d-flex flex-wrap gap-1">
+              <a class="btn btn-sm btn-outline-success" target="_blank" href="https://drive.google.com/file/d/${p.pdpaFileId}/preview"><i class="fa-solid fa-eye"></i> Lihat</a>
+              <a class="btn btn-sm btn-outline-primary" target="_blank" href="https://drive.google.com/uc?export=download&id=${p.pdpaFileId}"><i class="fa-solid fa-download"></i> Muat Turun</a>
+            </div>`
+          : `<span class="text-danger">PDPA tiada</span>`;
+
+        const row = `
+        <tr data-ic="${p.noIC}">
+          <td>${p.nama}</td>
+          <td>${p.noIC}</td>
+          <td>${p.alamat || '-'}</td>
+          <td>${p.tarikhTCA||'-'}</td>
+          <td>${pdpaHTML}</td>
+          <td><span class="badge ${hadir?'bg-success':'bg-warning'}">${hadir?'Hadir':'Belum Hadir'}</span></td>
+          <td class="mini-actions">
+            ${within && !hadir ? `<button class="btn btn-sm btn-success" onclick="markSecondVisitHadir('${p.noIC}')"><i class="fa-solid fa-circle-check"></i> Hadir</button>` : ''}
+            ${msisdn ? `
+              <a class="btn btn-sm btn-outline-secondary" href="${telHref(msisdn)}"><i class="fa-solid fa-phone"></i></a>
+              <a class="btn btn-sm btn-outline-success" target="_blank" href="${waHref(msisdn)}"><i class="fa-brands fa-whatsapp"></i></a>` : ''}
+          </td>
+        </tr>`;
+        tbody.insertAdjacentHTML('beforeend', row);
+      });
+    } else {
+      tbody.innerHTML = `<tr><td colspan="7" class="text-center text-muted">Tiada data Second Visit</td></tr>`;
+    }
+  }catch(e){ /* senyap */ }
+}
+
+async function loadCompletedData(){
+  try{
+    const data = await getJSON({ action:'getCompleted' }, { msg:'Memuat Selesai…' });
+    const tbody = document.getElementById('completedTable');
+    tbody.innerHTML = '';
+    if (data.status==='success' && data.data.length>0){
+      data.data.forEach(p=>{
+        const msisdn = normalizeMsisdnMY(p.noTelefon||'');
+        const pdpaHTML = p.pdpaFileId
+          ? `<div class="d-flex flex-wrap gap-1">
+              <a class="btn btn-sm btn-outline-success" target="_blank" href="https://drive.google.com/file/d/${p.pdpaFileId}/preview"><i class="fa-solid fa-eye"></i> Lihat</a>
+              <a class="btn btn-sm btn-outline-primary" target="_blank" href="https://drive.google.com/uc?export=download&id=${p.pdpaFileId}"><i class="fa-solid fa-download"></i> Muat Turun</a>
+            </div>`
+          : `<span class="text-muted">-</span>`;
+
+        const labCompleted = p.labCompletedAt ? `${p.labCompletedAt}` : '-';
+        const row = `<tr data-ic="${p.noIC}">
+          <td>${p.nama}</td><td>${p.noIC}</td><td>${msisdn}</td><td>${p.alamat || '-'}</td><td>${pdpaHTML}</td>
+          <td>${p.tarikhDaftar||'-'}</td>
+          <td>${p.firstVisitDate||'-'}</td>
+          <td>${labCompleted}</td>
+          <td>${p.secondVisitDate||'-'}</td>
+          <td>${p.tarikhSelesai||'-'}</td>
+          <td><button class="btn btn-sm btn-outline-secondary" onclick="archivePatient('${p.noIC}')"><i class="fa-solid fa-box-archive"></i> Arkib</button></td>
+        </tr>`;
+        tbody.insertAdjacentHTML('beforeend', row);
+      });
+    } else {
+      tbody.innerHTML = `<tr><td colspan="11" class="text-center text-muted">Tiada data pesakit selesai</td></tr>`;
+    }
+  }catch(e){ /* senyap */ }
+}
+
+async function loadArchivedData(){
+  try{
+    const data = await getJSON({ action:'getArchived' }, { msg:'Memuat Arkib…' });
+    const tbody = document.getElementById('archiveTable');
+    tbody.innerHTML = '';
+    if (data.status==='success' && data.data.length>0){
+      data.data.forEach(p=>{
+        const msisdn = normalizeMsisdnMY(p.noTelefon||'');
+        const row = `<tr data-ic="${p.noIC}">
+          <td>${p.nama}</td><td>${p.noIC}</td><td>${msisdn}</td><td>${p.alamat || '-'}</td><td>${p.tarikhDaftar}</td><td>${p.tarikhSelesai}</td><td>${p.archivedAt||'-'}</td>
+          <td><button class="btn btn-sm btn-outline-primary" onclick="restorePatient('${p.noIC}')"><i class="fa-solid fa-rotate-left"></i> Pulihkan</button></td>
+        </tr>`;
+        tbody.insertAdjacentHTML('beforeend', row);
+      });
+    } else {
+      tbody.innerHTML = `<tr><td colspan="8" class="text-center text-muted">Tiada rekod arkib</td></tr>`;
+    }
+  }catch(e){ /* senyap */ }
+}
+
+/* =======================
+   ACTIONS
+   ======================= */
+async function markFirstVisit(noIC){
+  try{
+    const res = await postForm({ action:'updateStatus', op:'firstVisit', noIC, staff: STAFF_EMAIL }, { msg:'Merekod Hadir (First Visit)…' });
+    if (res.status==='success'){
+      toast('Berjaya','Hadir (First Visit) direkodkan. Sila muat naik PDPA.', 'success');
+      openPDPA(noIC);
+      loadFirstVisitData(); loadLabFollowUp(); loadSecondVisitData(); loadDashboardData();
+    } else throw new Error(res.message||'Gagal rekod hadir');
+  }catch(e){ toast('Ralat', e.message, 'danger'); }
+}
+async function markSecondVisitHadir(noIC){
+  try{
+    const res = await postForm({ action:'updateStatus', op:'secondVisitHadir', noIC, staff: STAFF_EMAIL }, { msg:'Menandakan Hadir (Second Visit)…' });
+    if (res.status==='success'){
+      toast('Berjaya','Second Visit selesai → Selesai','success');
+      loadSecondVisitData(); loadCompletedData(); loadDashboardData();
+    } else throw new Error(res.message||'Gagal menandakan hadir');
+  }catch(e){ toast('Ralat', e.message, 'danger'); }
+}
+
+function openRetcaModal(noIC){
+  document.getElementById('retcaIC').value = noIC;
+  document.getElementById('retcaDate').value = '';
+  document.getElementById('retcaTime').value = '';
+  retcaModal.show();
+}
+async function submitRetca(){
+  const noIC = document.getElementById('retcaIC').value;
+  const tarikhTCA = document.getElementById('retcaDate').value;
+  const masaTCA = document.getElementById('retcaTime').value;
+  if (!noIC || !tarikhTCA || !masaTCA) return toast('Ralat','Sila lengkapkan tarikh & masa','danger');
+  try{
+    const res = await postForm({ action:'updateStatus', op:'retca', noIC, tarikhTCA, masaTCA, staff: STAFF_EMAIL }, { msg:'Mendaftar TCA semula…' });
+    if (res.status==='success'){
+      retcaModal.hide();
+      toast('Berjaya','TCA baharu disimpan','success');
+      loadTCACallData(); loadFirstVisitData(); loadSecondVisitData(); loadDashboardData();
+    } else throw new Error(res.message||'Gagal kemaskini TCA');
+  }catch(e){ toast('Ralat', e.message, 'danger'); }
+}
+
+/* Lab complete → set second TCA + log caller + set Lab DONE */
+function openSecondTca(noIC){
+  document.getElementById('secondTcaIC').value = noIC;
+  document.getElementById('secondTcaDate').value = '';
+  document.getElementById('secondTcaTime').value = '';
+  document.getElementById('secondTcaStaff').value = '';
+  secondTcaModal.show();
+}
+async function submitSecondTca(){
+  const noIC = document.getElementById('secondTcaIC').value;
+  const date = document.getElementById('secondTcaDate').value;
+  const time = document.getElementById('secondTcaTime').value;
+  const staff= document.getElementById('secondTcaStaff').value.trim();
+  if (!date || !time || !staff) { toast('Ralat','Sila isi tarikh, masa & nama staff','danger'); return; }
+  try{
+    const a = await postForm({ action:'updatePatient', noIC, tarikhTCA:date, masaTCA:time, staff }, { msg:'Menetapkan TCA Second Visit…' });
+    if (a.status!=='success') throw new Error(a.message||'Gagal tetapkan TCA');
+
+    const b = await postForm({ action:'logCall', noIC, staff, event:'LAB_COMPLETE_CALL' }, { msg:'Merekod log panggilan…' });
+    if (b.status!=='success') throw new Error(b.message||'Gagal rekod log');
+
+    const c = await postForm({ action:'updateLabStatus', noIC, status:'DONE', staff }, { msg:'Mengemas kini status follow-up…' });
+    if (c.status!=='success') throw new Error(c.message||'Gagal set follow-up DONE');
+
+    secondTcaModal.hide();
+    toast('Berjaya','TCA Second Visit ditetapkan, log disimpan & lab ditanda Selesai','success');
+
+    loadLabFollowUp(); loadSecondVisitData(); loadCompletedData(); loadDashboardData();
+    refreshLogs({silent:true});
+  }catch(e){ toast('Ralat', e.message, 'danger'); }
+}
+
+function openPDPA(noIC){
+  document.getElementById('pdpaIC').value = noIC;
+  document.getElementById('pdpaFile').value = '';
+  pdpaModal.show();
+}
+async function uploadPDPA(){
+  const noIC = document.getElementById('pdpaIC').value;
+  const file = document.getElementById('pdpaFile').files[0];
+  if (!file) { toast('Ralat','Sila pilih fail PDPA','danger'); return; }
+
+  showLoader('Memuat naik PDPA…');
+  try{
+    const base64 = await fileToBase64(file); const pure64 = base64.split(',').pop();
+    const res = await fetch(SCRIPT_URL, {
+      method: 'POST',
+      headers: { 'Content-Type':'application/x-www-form-urlencoded' },
+      body: new URLSearchParams({
+        action: 'uploadPDPA', id_token: ID_TOKEN, noIC, staff: STAFF_EMAIL,
+        fileBase64: pure64, fileName: file.name, fileType: file.type || 'application/octet-stream'
+      })
+    });
+    const json = await res.json();
+    if (json.status === 'success'){
+      pdpaModal.hide();
+      toast('Berjaya','PDPA dimuat naik','success');
+      loadFirstVisitData(); loadSecondVisitData(); loadCompletedData();
+    } else { throw new Error(json.message || 'Gagal muat naik PDPA'); }
+  } catch(e){
+    toast('Ralat', e.message, 'danger');
+  } finally { hideLoader(); }
+}
+function fileToBase64(file){
+  return new Promise((resolve, reject)=>{
+    const fr = new FileReader();
+    fr.onload = () => resolve(fr.result);
+    fr.onerror = reject;
+    fr.readAsDataURL(file);
+  });
+}
+
+async function deletePDPA(noIC){
+  if (!confirm('Padam PDPA untuk pesakit ini?')) return;
+  try{
+    const res = await postForm({ action:'deletePDPA', noIC, staff: STAFF_EMAIL }, { msg:'Memadam PDPA…' });
+    if (res.status==='success'){
+      toast('Berjaya','PDPA dipadam.','success');
+      loadFirstVisitData(); loadSecondVisitData(); loadCompletedData();
+    } else throw new Error(res.message||'Gagal padam PDPA');
+  }catch(e){ toast('Ralat', e.message, 'danger'); }
+}
+
+async function archivePatient(noIC){
+  if (!confirm('Arkibkan rekod pesakit ini?')) return;
+  try{
+    const res = await postForm({ action:'archivePatient', noIC, staff: STAFF_EMAIL }, { msg:'Mengarkib rekod…' });
+    if (res.status==='success'){
+      toast('Arkib','Rekod telah diarkibkan','success');
+      loadCompletedData();
+    } else throw new Error(res.message||'Gagal arkib');
+  }catch(e){ toast('Ralat', e.message, 'danger'); }
+}
+async function restorePatient(noIC){
+  if (!confirm('Pulihkan rekod ini ke senarai utama?')) return;
+  try{
+    const res = await postForm({ action:'restorePatient', noIC, staff: STAFF_EMAIL }, { msg:'Memulihkan rekod…' });
+    if (res.status==='success'){
+      toast('Pulih','Rekod telah dipulihkan','success');
+      loadArchivedData(); loadCompletedData(); loadDashboardData();
+    } else throw new Error(res.message||'Gagal pulih');
+  }catch(e){ toast('Ralat', e.message, 'danger'); }
+}
+
+/* =======================
+   PENDAFTARAN & EXPORT
+   ======================= */
+async function daftarPesakit(){
+  const formData = {
+    action:'daftarPesakit',
+    namaPesakit: document.getElementById('namaPesakit').value.trim(),
+    noIC:        document.getElementById('noIC').value.trim(),
+    noTelefon:   normalizeMsisdnMY(document.getElementById('noTelefon').value.trim()),
+    alamat:      document.getElementById('alamatPesakit').value.trim(),
+    namaStaff:   document.getElementById('namaStaff').value.trim() || STAFF_EMAIL || 'SYSTEM',
+    tarikhTCA:   document.getElementById('tarikhTCA').value,
+    masaTCA:     document.getElementById('masaTCA').value
+  };
+  if (!formData.namaPesakit || !formData.noIC || !formData.noTelefon || !formData.namaStaff || !formData.tarikhTCA || !formData.masaTCA){
+    toast('Ralat','Sila isi semua maklumat','danger'); return;
+  }
+  try{
+    const result = await postForm(formData, { msg:'Mendaftar pesakit…' });
+    if (result.status==='success'){
+      toast('Berjaya','Pendaftaran berjaya (IC sebagai kunci, tiada duplikasi)','success');
+      document.getElementById('namaPesakit').value = '';
+      document.getElementById('noIC').value = '';
+      document.getElementById('noTelefon').value = '';
+      document.getElementById('alamatPesakit').value = '';
+      loadDashboardData(); loadTCACallData();
+    } else throw new Error(result.message||'Gagal mendaftar');
+  }catch(e){ toast('Ralat', e.message, 'danger'); }
+}
+
+  async function exportCompletedCSV(){
+    try{
+      // Ambil semua rekod selesai
+      const res = await getJSON({ action:'getCompleted', all: 1 }, { msg:'Menjana CSV…' });
+      const arr = (res.status === 'success' && Array.isArray(res.data)) ? res.data : [];
+      if (!arr.length){
+        toast('Makluman', 'Tiada rekod selesai untuk dieksport', 'warning');
+        return;
+      }
+
+      // Tajuk & data CSV (ringkas dan berguna)
+      const header = [
+        'Nama Pesakit','No IC','No Telefon','Alamat',
+        'Tarikh Daftar','First Visit','Lab Report Completed','Second Visit','Tarikh Selesai'
+      ];
+      const rows = arr.map(p => [
+        p.nama || '',
+        p.noIC || '',
+        normalizeMsisdnMY(p.noTelefon || ''),
+        p.alamat || '',
+        p.tarikhDaftar || '',
+        p.firstVisitDate || '',
+        p.labCompletedAt || '',
+        p.secondVisitDate || '',
+        p.tarikhSelesai || ''
+      ]);
+
+      const csv = [header, ...rows]
+        .map(r => r.map(v => `"${String(v||'').replace(/"/g,'""')}"`).join(','))
+        .join('\r\n');
+
+      const blob = new Blob([csv], { type:'text/csv;charset=utf-8;' });
+      const url  = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `pesakit_selesai_${new Date().toISOString().slice(0,10)}.csv`;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      URL.revokeObjectURL(url);
+
+      toast('Export', 'CSV selesai dimuat turun', 'success');
+    }catch(e){
+      toast('Ralat', 'Gagal eksport CSV: ' + e.message, 'danger');
+    }
+  }
+
+  // ====== UTIL ACTION untuk Follow-up Lab (digunakan pada butang IN_PROCESS/REPEAT) ======
+  async function markLabStatus(noIC, status){
+    try{
+      const res = await postForm(
+        { action:'updateLabStatus', noIC, status, staff: STAFF_EMAIL },
+        { msg:'Mengemas kini status lab…' }
+      );
+      if (res.status === 'success'){
+        toast('Berjaya', 'Status lab dikemas kini', 'success');
+        loadLabFollowUp();   // segar semula jadual lab
+        loadDashboardData(); // kemas kini indikator pada dashboard/badge
+      }else{
+        throw new Error(res.message || 'Gagal kemas kini status lab');
+      }
+    }catch(e){
+      toast('Ralat', e.message, 'danger');
+    }
+  }
+
+  // Pastikan butang Sign-In Google muncul selepas load
+  window.addEventListener('load', () => {
+    try { initGoogleSignIn(); } catch(e) { console.error(e); }
+  });
+    
+(function () {
+  // Helper: load script sekali sahaja
+  window.loadScriptOnce = window.loadScriptOnce || (function () {
+    const loaded = new Set();
+    return function loadScriptOnce(url) {
+      return new Promise((resolve, reject) => {
+        if (loaded.has(url)) return resolve();
+        const s = document.createElement('script');
+        s.src = url;
+        s.async = true;
+        s.onload = () => { loaded.add(url); resolve(); };
+        s.onerror = () => reject(new Error('Gagal muat: ' + url));
+        document.head.appendChild(s);
+      });
+    };
+  })();
+
+  // OVERRIDE: pastikan hanya cuba CDN (tiada lagi 'vendor/...').
+  window.ensureXLSXReady = async function ensureXLSXReady() {
+    if (window.XLSX) return;
+    const cdns = [
+      'https://cdn.jsdelivr.net/npm/xlsx@0.19.3/dist/xlsx.full.min.js',
+      'https://unpkg.com/xlsx@0.19.3/dist/xlsx.full.min.js',
+      'https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.19.3/xlsx.full.min.js'
+    ];
+    let lastErr;
+    for (const url of cdns) {
+      try {
+        await window.loadScriptOnce(url);
+        if (window.XLSX) {
+          console.log('[XLSX] Loaded from', url);
+          return;
+        }
+      } catch (e) { lastErr = e; }
+    }
+    console.error('[XLSX] Gagal dimuat dari semua CDN.');
+    throw new Error('Tidak dapat memuatkan SheetJS (XLSX).');
+  };
+})();
+  </script>
+</body>
+</html>
