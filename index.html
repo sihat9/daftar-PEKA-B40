@@ -2577,45 +2577,45 @@ async function loadTCACallPage(){
 function renderTcaList(mode){
   const tbody = document.getElementById('tcaCallList');
   if (!tbody) return;
+
   tbody.innerHTML = '';
   const today = new Date(); today.setHours(0,0,0,0);
 
-  const filtered = TCA_ALL.filter(p=>{
+  const filtered = (TCA_ALL || []).filter(p => {
     const d = parseDDMMYYYY(p.tarikhTCA);
-    if (!d) return mode==='all';
+    if (!d) return mode === 'all';
     d.setHours(0,0,0,0);
-    if (mode==='today') return isSameDay(d, today);
-    if (mode==='upcoming') return d.getTime() > today.getTime();
-    if (mode==='past') return d.getTime() < today.getTime();
-    return true;
+
+    if (mode === 'today')    return isSameDay(d, today);
+    if (mode === 'upcoming') return d > today;
+    if (mode === 'past')     return d < today;
+    return true; // 'all'
   });
 
   if (!filtered.length){
-    tbody.innerHTML = `<tr><td colspan="6" class="text-center text-muted">Tiada rekod untuk paparan ini.</td></tr>`;
+    tbody.innerHTML = `<tr><td colspan="6" class="text-center text-muted">Tiada rekod untuk paparan ini</td></tr>`;
     return;
   }
 
-  filtered.forEach(p=>{
-    const msisdn = normalizeMsisdnMY(p.noTelefon||'');
-    const badgeCls = p.status==='CALLED' ? 'bg-success' : (parseDDMMYYYY(p.tarikhTCA)?.getTime()<today.getTime() ? 'bg-secondary' : 'bg-warning');
-    const label = p.status==='CALLED' ? 'CALLED' : (parseDDMMYYYY(p.tarikhTCA)?.getTime()<today.getTime() ? 'LEPAS' : (isSameDay(parseDDMMYYYY(p.tarikhTCA), today) ? 'HARI INI' : 'AKAN DATANG'));
-    const row = `
+  filtered.forEach(p => {
+    const msisdn = normalizeMsisdnMY(p.noTelefon || '');
+    const statusClass = (p.status === 'CALLED') ? 'bg-success' : 'bg-warning';
+    const rowHtml = `
       <tr data-ic="${p.noIC}">
-        <td>${p.nama}</td>
-        <td>${p.noIC}</td>
+        <td>${p.nama || '-'}</td>
+        <td>${p.noIC || '-'}</td>
         <td class="mini-actions">
           <a class="btn btn-sm btn-outline-secondary" href="${telHref(msisdn)}"><i class="fa-solid fa-phone"></i> Call</a>
           <a class="btn btn-sm btn-outline-success" target="_blank" href="${waHref(msisdn)}"><i class="fa-brands fa-whatsapp"></i> WhatsApp</a>
-          <div class="small text-muted mt-1">${msisdn}</div>
+          <div class="small text-muted mt-1">${msisdn || '-'}</div>
         </td>
         <td>${p.alamat || '-'}</td>
-        <td>${p.tarikhTCA||'-'}</td>
-        <td><span class="badge ${badgeCls}">${label}</span></td>
+        <td>${p.tarikhTCA || '-'}</td>
+        <td><span class="badge ${statusClass}">${p.status || 'PENDING'}</span></td>
       </tr>`;
-    tbody.insertAdjacentHTML('beforeend', row);
+    tbody.insertAdjacentHTML('beforeend', rowHtml);
   });
 }
-
 async function loadFirstVisitData(){
   try{
     const data = await getJSON({ action:'getFirstVisit' }, { msg:'Memuat First Visit…' });
