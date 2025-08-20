@@ -2458,6 +2458,7 @@ Sila hubungi klinik untuk maklumat lanjut. Terima kasih.`;
   }
 }
 
+// GANTIKAN fungsi exportNadiCSV() sedia ada dengan yang ini
 // GANTIKAN fungsi ini
 async function exportNadiCSV() {
   const container = document.getElementById('nadiContainer');
@@ -2532,6 +2533,20 @@ async function exportNadiCSV() {
   toast('Export','Fail CSV dimuat turun','success');
 }
 
+  // Fallback: CSV (tajuk baris 1, header baris 2)
+  const BOM = '\uFEFF';
+  const csvTitle = `"${programTitle.replace(/"/g,'""')}"`;
+  const csvHead  = HEADER.map(h => `"${h}"`).join(',');
+  const csvRows  = dataRows.map(r => r.map(v => `"${String(v ?? '').replace(/"/g,'""')}"`).join(',')).join('\r\n');
+  const csv      = [csvTitle, csvHead, csvRows].join('\r\n');
+
+  const blob = new Blob([BOM + csv], { type:'text/csv;charset=utf-8;' });
+  const url  = URL.createObjectURL(blob);
+  const a    = Object.assign(document.createElement('a'), { href: url, download: `aktiviti_program_${programDate}.csv` });
+  document.body.appendChild(a); a.click(); a.remove(); URL.revokeObjectURL(url);
+  toast('Export','Fail CSV dimuat turun','success');
+}
+    }
 function collectNadiRowsForActivity(){
   const rows = Array.from(document.querySelectorAll('#nadiContainer .nadi-row'));
   const title = (document.getElementById('nadiProgramTitle')?.value || '').trim();
@@ -2581,7 +2596,6 @@ async function saveNadiProgramActivity(){
   } catch(e){
     toast('Ralat', e.message, 'danger');
   }
-}
 
 /* =======================
    DATA LOADERS
