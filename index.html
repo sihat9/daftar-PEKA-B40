@@ -1962,8 +1962,20 @@ let nadiRows = []; // Array to store all NADI rows data
 function setupNADI(){
   const container = document.getElementById('nadiContainer');
   container.innerHTML = '';
-  addNadiRow(); // Start with 1 row
+  addNadiRow();
   document.getElementById('btnNadiExportCsv').addEventListener('click', exportNadiCSV);
+
+  // [TAMBAH] Set default tarikh program = hari ini
+  const progDate = document.getElementById('nadiProgramDate');
+  if (progDate && !progDate.value) progDate.value = new Date().toISOString().slice(0,10);
+
+  // [TAMBAH] Simpan semua aktiviti (tajuk + semua baris)
+  const btnSaveAll = document.getElementById('btnNadiSaveActivity');
+  btnSaveAll?.addEventListener('click', saveNadiProgramActivity);
+
+  // [TAMBAH] Export Excel format aktiviti
+  const btnXlsx = document.getElementById('btnNadiExportXlsx');
+  btnXlsx?.addEventListener('click', exportNadiExcel);
 }
 
 function calculateAgeFromIC(ic) {
@@ -2493,6 +2505,100 @@ function exportNadiCSV() {
   a.remove();
   URL.revokeObjectURL(url);
   toast('Export','Fail CSV telah dimuat turun','success');
+}
+function collectNadiRowsForActivity(){
+  const rows = Array.from(document.querySelectorAll('#nadiContainer .nadi-row'));
+  const title = (document.getElementById('nadiProgramTitle')?.value || '').trim();
+  const d = (document.getElementById('nadiProgramDate')?.value || '').trim();
+  const tarikh = d || new Date().toISOString().slice(0,10);
+
+  return {
+    title,
+    tarikh,
+    items: rows.map(r => {
+      const nama   = r.querySelector('.nadi-nama')?.value.trim() || '';
+      const ic     = r.querySelector('.nadi-ic')?.value.trim() || '';
+      const tel    = r.querySelector('.nadi-tel')?.value.trim() || '';
+      const alamat = r.querySelector('.nadi-alamat')?.value.trim() || '';
+      const wt     = r.querySelector('.nadi-berat')?.value.trim() || '';
+      const ht     = r.querySelector('.nadi-tinggi')?.value.trim() || '';
+      const bp     = r.querySelector('.nadi-bp')?.value.trim() || '';
+      const hr     = r.querySelector('.nadi-pr')?.value.trim() || '';
+      const umur   = r.querySelector('.nadi-umur-view')?.textContent.trim() || '';
+      const bmi    = r.querySelector('.nadi-bmi')?.value.trim() || '';
+      const dxtType= r.querySelector('.nadi-dxt-type')?.value || '';
+      const dxt    = r.querySelector('.nadi-dxt')?.value.trim() || '';
+      const kelayak= r.querySelector('.nadi-layak')?.checked ? 'Layak' : 'Tidak Layak';
+
+      return { tarikh, nama, ic, tel, alamat, wt, ht, bp, hr, umur, bmi, dxtType, dxt, kelayak };
+    })
+  };
+}
+async function saveNadiProgramActivity(){
+  const { title, tarikh, items } = collectNadiRowsForActivity();
+  if (!title) { toast('Ralat','Sila isi Tajuk Program','danger'); return; }
+  if (!items.length){ toast('Makluman','Tiada baris untuk disimpan','warning'); return; }
+
+  try{
+    const res = await postForm({
+      action: 'saveNadiProgramActivity',     // <-- TAMBAH handler ini di Apps Script
+      programTitle: title,
+      programDate: tarikh,
+      rows: JSON.stringify(items)
+    }, { msg: 'Menyimpan aktiviti…' });
+
+    if (res.status === 'success'){
+      toast('Berjaya', 'Aktiviti program disimpan ke sheet aktiviti', 'success');
+    } else {
+      throw new Error(res.message || 'Gagal simpan aktiviti');
+    }
+  } catch(e){
+    toast('Ralat', e.message, 'danger');
+  }
+}
+async function exportNadiExcel(){
+  const { title, tarikh, items } = collectNadiRowsForActivity();
+  if (!items.length){ toast('Makluman','Tiada data untuk diexport','warning'); return; }
+
+  const HEADER = ['TARIKH','NAMA','NO IC','NO TEL','ALAMAT','WT','HT','BP','HR','UMUR','BMI','DXT TYPE','DXT','KELAYAKAN'];
+  const rows = items.map(x => [x.tarikh, x.nama, x.ic, x.tel, x.alamat, x.wt, x.ht, x.bp, x.hr, x.umur, x.bmi, x.dxtType, x.dxt, x.kelayak]);
+
+  // Cuba XLSX dahulu
+  try{
+    if (typeof ensureXLSXReady === 'function') { await ensureXLSXReady(); }
+    if (window.XLSX){
+      const wb = XLSX.utils.book_new();
+      const aoa = [[title || 'Tajuk Program'], HEADER, ...rows];
+      const ws = XLSX.utils.aoa_to_sheet(aoa);
+
+      // Merge A1:N1 supaya tajuk nampak “di tengah”
+      ws['!merges'] = [{ s:{r:0,c:0}, e:{r:0,c:13} }];
+
+      // (Alignment center mungkin terhad ikut build; cuba set juga)
+      ws['A1'] = Object.assign(ws['A1']||{}, { v: title || 'Tajuk Program' });
+      ws['A1'].s = { alignment:{ horizontal:'center', vertical:'center' }, font:{ bold:true, sz:14 } };
+
+      // Lebar kolum ringan
+      ws['!cols'] = [12,22,16,16,30,8,8,10,8,12,8,12,10,12].map(w => ({ wch:w }));
+
+      XLSX.utils.book_append_sheet(wb, ws, 'Aktiviti');
+      XLSX.writeFile(wb, `aktiviti_nadi_${tarikh}.xlsx`, { cellStyles:true });
+      toast('Export','Fail Excel dimuat turun','success');
+      return;
+    }
+  }catch(e){ /* jatuh ke CSV */ }
+
+  // Fallback CSV + BOM (tajuk baris 1)
+  const BOM = '\uFEFF';
+  const csvTitle = `"${(title||'Tajuk Program').replace(/"/g,'""')}"`;
+  const csvHead  = HEADER.map(h=>`"${h}"`).join(',');
+  const csvRows  = rows.map(r => r.map(v => `"${String(v??'').replace(/"/g,'""')}"`).join(',')).join('\r\n');
+  const csv = [csvTitle, csvHead, csvRows].join('\r\n');
+  const blob = new Blob([BOM + csv], { type:'text/csv;charset=utf-8;' });
+  const url = URL.createObjectURL(blob);
+  const a = Object.assign(document.createElement('a'), { href:url, download:`aktiviti_nadi_${tarikh}.csv` });
+  document.body.appendChild(a); a.click(); a.remove(); URL.revokeObjectURL(url);
+  toast('Export','Fail CSV dimuat turun','success');
 }
 
 /* =======================
