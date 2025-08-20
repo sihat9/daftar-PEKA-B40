@@ -2561,7 +2561,6 @@ async function exportNadiCSV() {
   toast('Export','Fail CSV dimuat turun','success');
 }
 
-    }
 function collectNadiRowsForActivity(){
   const rows = Array.from(document.querySelectorAll('#nadiContainer .nadi-row'));
   const title = (document.getElementById('nadiProgramTitle')?.value || '').trim();
