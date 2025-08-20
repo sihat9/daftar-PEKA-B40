@@ -2459,7 +2459,7 @@ Sila hubungi klinik untuk maklumat lanjut. Terima kasih.`;
 }
 
 // GANTIKAN fungsi exportNadiCSV() sedia ada dengan yang ini
-async function exportNadiCSV() {
+ function exportNadiCSV() {
   const rows = Array.from(document.querySelectorAll('#nadiContainer .nadi-row'));
   if (!rows.length) {
     toast('Makluman', 'Tiada data untuk diexport', 'warning');
@@ -2546,21 +2546,98 @@ async function exportNadiCSV() {
     return arr.map(function (v) {
       const s = String(v == null ? '' : v).replace(/"/g, '""');
       return '"' + s + '"';
-    }).join(',');
-  };
-  const csv = [titleRow, HEADER, ...dataRows].map(toCsvRow).join('\r\n');
 
-  const blob = new Blob([BOM + csv], { type: 'text/csv;charset=utf-8;' });
-  const url  = URL.createObjectURL(blob);
-  const a    = document.createElement('a');
+function exportNadiCSV() {
+  var container = document.getElementById('nadiContainer');
+  var rows = container ? container.getElementsByClassName('nadi-row') : [];
+  if (!rows || !rows.length) {
+    if (typeof toast === 'function') { toast('Makluman','Tiada data untuk diexport','warning'); }
+    return;
+  }
+
+  // Ambil tajuk & tarikh program (fallback jika tiada input)
+  var titleEl = document.getElementById('nadiProgramTitle');
+  var dateEl  = document.getElementById('nadiProgramDate');
+  var programTitle = titleEl ? String(titleEl.value || '').trim() : 'Tajuk Program';
+  var programDate  = dateEl  ? String(dateEl.value  || '').trim() : new Date().toISOString().slice(0,10);
+
+  // Header mengikut spesifikasi
+  var HEADER = ['TARIKH','NAMA','NO IC','NO TEL','ALAMAT','WT','HT','BP','HR','UMUR','BMI','DXT TYPE','DXT','KELAYAKAN'];
+
+  // Baris tajuk diletak di kolum tengah
+  var midCol = Math.floor(HEADER.length / 2);
+  var titleRow = [];
+  for (var i = 0; i < HEADER.length; i++) { titleRow.push(''); }
+  titleRow[midCol] = programTitle;
+
+  // Helper ambil nilai
+  function valInRow(row, sel) {
+    var el = row.querySelector(sel);
+    return el ? String(el.value || '').trim() : '';
+  }
+  function textInRow(row, sel) {
+    var el = row.querySelector(sel);
+    return el ? String(el.textContent || '').trim() : '';
+  }
+  function isChecked(row, sel) {
+    var el = row.querySelector(sel);
+    return !!(el && el.checked);
+  }
+
+  // Bina data
+  var dataRows = [];
+  for (var r = 0; r < rows.length; r++) {
+    var row = rows[r];
+    var nama    = valInRow(row, '.nadi-nama');
+    var ic      = valInRow(row, '.nadi-ic');
+    var tel     = valInRow(row, '.nadi-tel');
+    var alamat  = valInRow(row, '.nadi-alamat');
+    var wt      = valInRow(row, '.nadi-berat');   // kg
+    var ht      = valInRow(row, '.nadi-tinggi');  // cm
+    var bp      = valInRow(row, '.nadi-bp');
+    var hr      = valInRow(row, '.nadi-pr');
+    var umurTxt = textInRow(row, '.nadi-umur-view'); // contoh "52t 3b 2h"
+    var umurMatch = /^(\d+)/.exec(umurTxt);
+    var umur    = umurMatch ? umurMatch[1] : (umurTxt || '');
+    var bmi     = valInRow(row, '.nadi-bmi');
+    var dxtType = (function(){
+      var el = row.querySelector('.nadi-dxt-type');
+      return el ? String(el.value || '').trim() : '';
+    })();
+    var dxt     = valInRow(row, '.nadi-dxt');
+    var kelayak = isChecked(row, '.nadi-layak') ? 'Layak' : 'Tidak Layak';
+
+    dataRows.push([programDate, nama, ic, tel, alamat, wt, ht, bp, hr, umur, bmi, dxtType, dxt, kelayak]);
+  }
+
+  // Tukar ke CSV (dengan BOM supaya Excel buka UTF-8)
+  function toCsvRow(arr) {
+    var out = [];
+    for (var i = 0; i < arr.length; i++) {
+      var s = arr[i] == null ? '' : String(arr[i]);
+      s = s.replace(/"/g, '""');
+      out.push('"' + s + '"');
+    }
+    return out.join(',');
+  }
+
+  var allRows = [titleRow, HEADER].concat(dataRows);
+  var csv = '';
+  for (var j = 0; j < allRows.length; j++) {
+    csv += toCsvRow(allRows[j]) + '\r\n';
+  }
+
+  var blob = new Blob(['\uFEFF' + csv], { type: 'text/csv;charset=utf-8;' });
+  var url  = URL.createObjectURL(blob);
+  var a    = document.createElement('a');
   a.href = url;
   a.download = 'aktiviti_program_' + programDate + '.csv';
   document.body.appendChild(a);
   a.click();
-  a.remove();
+  document.body.removeChild(a);
   URL.revokeObjectURL(url);
 
-  toast('Export', 'Fail CSV dimuat turun', 'success');
+  if (typeof toast === 'function') { toast('Export','Fail CSV dimuat turun','success'); }
 }
 
 function collectNadiRowsForActivity(){
