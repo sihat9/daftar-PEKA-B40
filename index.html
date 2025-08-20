@@ -2459,110 +2459,160 @@ Sila hubungi klinik untuk maklumat lanjut. Terima kasih.`;
 }
 
 // GANTIKAN fungsi exportNadiCSV() sedia ada dengan yang ini
-async function exportNadiCSV() {
-  const rows = Array.from(document.querySelectorAll('#nadiContainer .nadi-row'));
-  if (!rows.length) {
-    toast('Makluman', 'Tiada data untuk diexport', 'warning');
-    return;
+/* ===== Export Aktiviti NADI → Excel (XLSX) dahulu, jatuh ke CSV ===== */
+(function () {
+  // Guna toast jika wujud; jika tidak, log sahaja
+  function safeToast(title, msg, type) {
+    if (typeof toast === 'function') {
+      try { toast(title, msg, type); } catch(e) { console.log(`[${type||'info'}] ${title}: ${msg}`); }
+    } else {
+      console.log(`[${type||'info'}] ${title}: ${msg}`);
+    }
   }
 
-  // Ambil tajuk & tarikh program (jika tiada input, guna default)
-  const programTitle = (document.getElementById('nadiProgramTitle')?.value || 'Tajuk Program').trim();
-  const programDate  = (document.getElementById('nadiProgramDate')?.value || new Date().toISOString().slice(0, 10)).trim();
-
-  // Header seperti diminta
-  const HEADER = ['TARIKH','NAMA','NO IC','NO TEL','ALAMAT','WT','HT','BP','HR','UMUR','BMI','DXT TYPE','DXT','KELAYAKAN'];
-
-  // Baris tajuk: letak pada kolum tengah jadual (supaya “nampak” di tengah)
-  const midCol = Math.floor(HEADER.length / 2);
-  const titleRow = Array(HEADER.length).fill('');
-  titleRow[midCol] = programTitle;
-
-  // Kumpul data ikut susunan header
-  const dataRows = rows.map(function (r) {
-    const nama    = (r.querySelector('.nadi-nama')?.value || '').trim();
-    const ic      = (r.querySelector('.nadi-ic')?.value || '').trim();
-    const tel     = (r.querySelector('.nadi-tel')?.value || '').trim();
-    const alamat  = (r.querySelector('.nadi-alamat')?.value || '').trim();
-    const wt      = (r.querySelector('.nadi-berat')?.value || '').trim();   // kg
-    const ht      = (r.querySelector('.nadi-tinggi')?.value || '').trim();  // cm
-    const bp      = (r.querySelector('.nadi-bp')?.value || '').trim();
-    const hr      = (r.querySelector('.nadi-pr')?.value || '').trim();
-    const umurTxt = (r.querySelector('.nadi-umur-view')?.textContent || '').trim(); // cth "52t 3b 2h"
-    const umur    = (umurTxt.match(/^(\d+)/)?.[1]) || umurTxt || '';        // ambil angka tahun jika ada
-    const bmi     = (r.querySelector('.nadi-bmi')?.value || '').trim();
-    const dxtType = (r.querySelector('.nadi-dxt-type')?.value || '').trim();
-    const dxt     = (r.querySelector('.nadi-dxt')?.value || '').trim();
-    const kelayak = (r.querySelector('.nadi-layak')?.checked ? 'Layak' : 'Tidak Layak');
-
-    return [programDate, nama, ic, tel, alamat, wt, ht, bp, hr, umur, bmi, dxtType, dxt, kelayak];
-  });
-
-  // Cuba hasilkan Excel (.xlsx) dahulu
-  try {
-    if (typeof ensureXLSXReady === 'function') {
-      await ensureXLSXReady();
+  // Baca nilai dari elemen: cuba .value; jika tiada, guna textContent
+  function getCellValue(rowEl, selector) {
+    const el = rowEl.querySelector(selector);
+    if (!el) return '';
+    if (Object.prototype.hasOwnProperty.call(el, 'value')) {
+      const v = el.value;
+      return (v == null ? '' : String(v)).trim();
     }
-    if (window.XLSX) {
-      const wb  = XLSX.utils.book_new();
-      const aoa = [titleRow, HEADER, ...dataRows];
-      const ws  = XLSX.utils.aoa_to_sheet(aoa);
+    const t = el.textContent;
+    return (t == null ? '' : String(t)).trim();
+  }
 
-      // Lebar kolum supaya kemas
-      ws['!cols'] = [
-        { wch: 12 }, // TARIKH
-        { wch: 22 }, // NAMA
-        { wch: 18 }, // NO IC
-        { wch: 16 }, // NO TEL
-        { wch: 36 }, // ALAMAT
-        { wch: 8  }, // WT
-        { wch: 8  }, // HT
-        { wch: 12 }, // BP
-        { wch: 8  }, // HR
-        { wch: 8  }, // UMUR
-        { wch: 8  }, // BMI
-        { wch: 12 }, // DXT TYPE
-        { wch: 10 }, // DXT
-        { wch: 12 }  // KELAYAKAN
-      ];
-
-      XLSX.utils.book_append_sheet(wb, ws, 'Aktiviti Program');
-
-      // Nama fail kemas (ASCII sahaja untuk elak isu)
-      const safeTitle = programTitle.replace(/[^A-Za-z0-9\-_. ]/g, '').trim().replace(/\s+/g, '_').slice(0, 60);
-      const fname = 'aktiviti_program_' + programDate + (safeTitle ? '_' + safeTitle : '') + '.xlsx';
-
-      XLSX.writeFile(wb, fname);
-      toast('Export', 'Fail Excel dimuat turun', 'success');
+  // Fungsi utama export
+  async function exportNadiCSV() {
+    const rows = Array.from(document.querySelectorAll('#nadiContainer .nadi-row'));
+    if (!rows.length) {
+      safeToast('Makluman', 'Tiada data untuk dieksport.', 'warning');
       return;
     }
-  } catch (e) {
-    // Jika gagal, teruskan ke CSV fallback
+
+    // Tajuk & tarikh program
+    const programTitle = (document.getElementById('nadiProgramTitle')?.value || 'Tajuk Program').trim();
+    const programDate  = (document.getElementById('nadiProgramDate')?.value || new Date().toISOString().slice(0,10)).trim();
+
+    // Susunan lajur yang dikehendaki
+    const HEADER = ['TARIKH','NAMA','NO IC','NO TEL','ALAMAT','WT','HT','BP','HR','UMUR','BMI','DXT TYPE','DXT','KELAYAKAN'];
+
+    // Tajuk program “di tengah” (letak pada kolum tengah baris pertama)
+    const midCol   = Math.floor(HEADER.length / 2);
+    const titleRow = Array(HEADER.length).fill('');
+    titleRow[midCol] = programTitle;
+
+    // Kumpul data ikut susunan HEADER
+    const dataRows = rows.map(function (r) {
+      const nama    = getCellValue(r, '.nadi-nama');
+      const ic      = getCellValue(r, '.nadi-ic');
+      const tel     = getCellValue(r, '.nadi-tel');
+      const alamat  = getCellValue(r, '.nadi-alamat');
+      const wt      = getCellValue(r, '.nadi-berat');   // kg
+      const ht      = getCellValue(r, '.nadi-tinggi');  // cm
+      const bp      = getCellValue(r, '.nadi-bp');
+      const hr      = getCellValue(r, '.nadi-pr');
+      const umurTxt = getCellValue(r, '.nadi-umur-view'); // cth “52t 3b 2h”
+      const umur    = (umurTxt.match(/^(\d+)/)?.[1]) || umurTxt || '';
+      const bmi     = getCellValue(r, '.nadi-bmi');
+      const dxtType = getCellValue(r, '.nadi-dxt-type');
+      const dxt     = getCellValue(r, '.nadi-dxt');
+      const kelayak = (r.querySelector('.nadi-layak')?.checked ? 'Layak' : 'Tidak Layak');
+
+      return [programDate, nama, ic, tel, alamat, wt, ht, bp, hr, umur, bmi, dxtType, dxt, kelayak];
+    });
+
+    // Cuba hasilkan Excel (.xlsx) dahulu (jika SheetJS tersedia)
+    try {
+      if (typeof ensureXLSXReady === 'function') {
+        await ensureXLSXReady();
+      }
+      if (window.XLSX) {
+        const wb  = XLSX.utils.book_new();
+        const aoa = [titleRow, HEADER, ...dataRows];
+        const ws  = XLSX.utils.aoa_to_sheet(aoa);
+
+        // Lebar kolum supaya kemas
+        ws['!cols'] = [
+          { wch: 12 }, // TARIKH
+          { wch: 22 }, // NAMA
+          { wch: 18 }, // NO IC
+          { wch: 16 }, // NO TEL
+          { wch: 36 }, // ALAMAT
+          { wch: 8  }, // WT
+          { wch: 8  }, // HT
+          { wch: 12 }, // BP
+          { wch: 8  }, // HR
+          { wch: 8  }, // UMUR
+          { wch: 8  }, // BMI
+          { wch: 12 }, // DXT TYPE
+          { wch: 10 }, // DXT
+          { wch: 12 }  // KELAYAKAN
+        ];
+
+        // Nota: komuniti SheetJS tidak simpan style alignment; kita kekalkan “tengah” dengan meletak tajuk di kolum tengah.
+
+        XLSX.utils.book_append_sheet(wb, ws, 'Aktiviti Program');
+
+        const safeTitle = programTitle
+          .replace(/[^A-Za-z0-9\-_. ]/g, '')
+          .trim()
+          .replace(/\s+/g, '_')
+          .slice(0, 60);
+
+        const fname = 'aktiviti_program_' + programDate + (safeTitle ? '_' + safeTitle : '') + '.xlsx';
+        XLSX.writeFile(wb, fname);
+        safeToast('Export', 'Fail Excel dimuat turun.', 'success');
+        return;
+      }
+    } catch (e) {
+      // Teruskan ke CSV fallback jika apa-apa gagal
+      console.warn('XLSX export gagal, guna CSV fallback.', e);
+    }
+
+    // Fallback: CSV
+    const BOM = '\uFEFF'; // supaya aksara Melayu/UTF-8 betul di Excel
+    function toCsvRow(arr) {
+      return arr.map(function (v) {
+        const s = String(v == null ? '' : v).replace(/"/g, '""');
+        return '"' + s + '"';
+      }).join(',');
+    }
+    const csv = [titleRow, HEADER, ...dataRows].map(toCsvRow).join('\r\n');
+
+    const blob = new Blob([BOM + csv], { type: 'text/csv;charset=utf-8;' });
+    const url  = URL.createObjectURL(blob);
+    const a    = document.createElement('a');
+    a.href = url;
+    a.download = 'aktiviti_program_' + programDate + '.csv';
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    URL.revokeObjectURL(url);
+
+    safeToast('Export', 'Fail CSV dimuat turun.', 'success');
   }
 
-  // Fallback: CSV (tajuk tetap di kolum tengah)
-  const BOM = '\uFEFF';
-  const toCsvRow = function (arr) {
-    return arr.map(function (v) {
-      const s = String(v == null ? '' : v).replace(/"/g, '""');
-      return '"' + s + '"';
-    }).join(',');
-  };
-  const csv = [titleRow, HEADER, ...dataRows].map(toCsvRow).join('\r\n');
+  // Kaitkan dengan butang di halaman NADI
+  function wireExportButton() {
+    const btn = document.getElementById('btnNadiExportCsv');
+    if (btn) {
+      btn.addEventListener('click', function () {
+        exportNadiCSV();
+      });
+    }
+  }
 
-  const blob = new Blob([BOM + csv], { type: 'text/csv;charset=utf-8;' });
-  const url  = URL.createObjectURL(blob);
-  const a    = document.createElement('a');
-  a.href = url;
-  a.download = 'aktiviti_program_' + programDate + '.csv';
-  document.body.appendChild(a);
-  a.click();
-  a.remove();
-  URL.revokeObjectURL(url);
+  // Daftar bila DOM sedia
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', wireExportButton);
+  } else {
+    wireExportButton();
+  }
 
-  toast('Export', 'Fail CSV dimuat turun', 'success');
-}
-
+  // Dedahkan fungsi (jika anda mahu panggil sendiri)
+  window.exportNadiCSV = exportNadiCSV;
+})();
 
 function collectNadiRowsForActivity(){
   const rows = Array.from(document.querySelectorAll('#nadiContainer .nadi-row'));
