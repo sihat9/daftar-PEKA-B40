@@ -2471,7 +2471,7 @@ async function exportNadiCSV() {
   const programDate  = (document.getElementById('nadiProgramDate')?.value || new Date().toISOString().slice(0, 10)).trim();
 
   // Header seperti diminta
-  const HEADER = ['TARIKH','NAMA','NO IC','NO TEL','ALAMAT','WT','HT','BP','HR','UMUR','BMI','DXT TYPE','DXT','KELAYAKAN'];
+  const HEADER = ['TARIKH','NAMA','NO IC','NO TEL','ALAMAT','WT','HT','BP','HR','UMUR','BMI','DXT TYPE','DXT','KELAYAKAN PEKA B40'];
 
   // Baris tajuk: letak pada kolum tengah jadual (supaya “nampak” di tengah)
   const midCol = Math.floor(HEADER.length / 2);
