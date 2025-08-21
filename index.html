@@ -2458,28 +2458,22 @@ Sila hubungi klinik untuk maklumat lanjut. Terima kasih.`;
   }
 }
 
-// GANTIKAN fungsi exportNadiCSV() sedia ada dengan yang ini
+// GANTIKAN fungsi ini
 async function exportNadiCSV() {
-  const rows = Array.from(document.querySelectorAll('#nadiContainer .nadi-row'));
-  if (!rows.length) {
-    toast('Makluman','Tiada data untuk diexport','warning');
-    return;
-  }
+  const container = document.getElementById('nadiContainer');
+  const rows = Array.from(container.querySelectorAll('.nadi-row'));
+  if (!rows.length) { toast('Makluman','Tiada data untuk diexport','warning'); return; }
 
-  // Ambil tajuk & tarikh program (guna input jika ada; jika tiada, guna default)
+  // Ambil Tajuk & Tarikh Program jika ada input; fallback jika tiada
   const programTitle = (document.getElementById('nadiProgramTitle')?.value || 'Tajuk Program').trim();
   const programDate  = (document.getElementById('nadiProgramDate')?.value || new Date().toISOString().slice(0,10)).trim();
 
-  // Header mengikut susunan yang diminta
-  const HEADER = ['TARIKH','NAMA','NO IC','NO TEL','ALAMAT','WT','HT','BP','HR','UMUR','BMI','DXT TYPE','DXT','KELAYAKAN PEKA B40'];
+  // Header ikut spesifikasi
+  const HEADER = ['TARIKH','NAMA','NO IC','NO TEL','ALAMAT','WT','HT','BP','HR','UMUR','BMI','DXT TYPE','DXT','KELAYAKAN'];
 
-  // Row tajuk: letak tajuk pada kolum TENGAH (supaya nampak benar² di tengah jadual dalam .xlsx dan .csv)
-  const midCol = Math.floor(HEADER.length / 2);     // 14 -> 7 (0-based) -> lajur ke-8 (H)
-  const titleRow = Array(HEADER.length).fill('');
-  titleRow[midCol] = programTitle;
-
-  // Kumpul data baris mengikut header
+  // Kumpul data ikut susunan lajur diminta
   const dataRows = rows.map(r => {
+    const tarikh  = programDate; // tarikh program untuk semua baris
     const nama    = r.querySelector('.nadi-nama')?.value.trim() || '';
     const ic      = r.querySelector('.nadi-ic')?.value.trim() || '';
     const tel     = r.querySelector('.nadi-tel')?.value.trim() || '';
@@ -2488,78 +2482,41 @@ async function exportNadiCSV() {
     const ht      = r.querySelector('.nadi-tinggi')?.value.trim() || '';    // cm
     const bp      = r.querySelector('.nadi-bp')?.value.trim() || '';
     const hr      = r.querySelector('.nadi-pr')?.value.trim() || '';
-    const umurTxt = r.querySelector('.nadi-umur-view')?.textContent.trim() || ''; // cth "52t 3b 2h"
-    const umur    = (umurTxt.match(/^(\d+)/)?.[1]) || umurTxt || '';        // ambil tahun sahaja jika ada
+    const umur    = r.querySelector('.nadi-umur-view')?.textContent.trim() || '';
     const bmi     = r.querySelector('.nadi-bmi')?.value.trim() || '';
     const dxtType = r.querySelector('.nadi-dxt-type')?.value || '';
     const dxt     = r.querySelector('.nadi-dxt')?.value.trim() || '';
     const kelayak = r.querySelector('.nadi-layak')?.checked ? 'Layak' : 'Tidak Layak';
 
-    return [programDate, nama, ic, tel, alamat, wt, ht, bp, hr, umur, bmi, dxtType, dxt, kelayak];
+    return [tarikh, nama, ic, tel, alamat, wt, ht, bp, hr, umur, bmi, dxtType, dxt, kelayak];
   });
 
-  // Cuba hasilkan Excel (.xlsx) dahulu
+  // Cuba export sebagai XLSX dahulu (tajuk merge A1:N1 & center)
   try {
-    if (typeof ensureXLSXReady === 'function') {
-      await ensureXLSXReady(); // dari kod anda: akan load xlsx.full.min.js jika belum ada
-    }
+    if (typeof ensureXLSXReady === 'function') { await ensureXLSXReady(); }
     if (window.XLSX) {
       const wb  = XLSX.utils.book_new();
-      const aoa = [titleRow, HEADER, ...dataRows];
+      const aoa = [[programTitle], HEADER, ...dataRows];
       const ws  = XLSX.utils.aoa_to_sheet(aoa);
 
-      // Lebar kolum asas yang kemas
-      ws['!cols'] = [
-        { wch: 12 }, // TARIKH
-        { wch: 22 }, // NAMA
-        { wch: 18 }, // NO IC
-        { wch: 16 }, // NO TEL
-        { wch: 36 }, // ALAMAT
-        { wch: 8  }, // WT
-        { wch: 8  }, // HT
-        { wch: 12 }, // BP
-        { wch: 8  }, // HR
-        { wch: 8  }, // UMUR
-        { wch: 8  }, // BMI
-        { wch: 12 }, // DXT TYPE
-        { wch: 10 }, // DXT
-        { wch: 12 }  // KELAYAKAN
-      ];
+      // Merge tajuk A1:N1 (14 kolum)
+      ws['!merges'] = [{ s:{ r:0, c:0 }, e:{ r:0, c:HEADER.length-1 } }];
 
-      // Nota: SheetJS komuniti tidak menulis gaya (bold/center) ke fail.
-      // Trik "tajuk di kolum tengah" memastikan ia sentiasa nampak centred merentasi jadual.
+      // (Jika build menyokong gaya) cuba center & bold tajuk
+      ws['A1'] = Object.assign(ws['A1'] || {}, { v: programTitle });
+      ws['A1'].s = { alignment:{ horizontal:'center', vertical:'center' }, font:{ bold:true, sz:14 } };
+
+      // Lebar kolum asas
+      ws['!cols'] = [12,22,18,16,32,8,8,12,8,10,8,12,10,12].map(w => ({ wch: w }));
 
       XLSX.utils.book_append_sheet(wb, ws, 'Aktiviti Program');
-
-      // Nama fail kemas (slug tajuk)
-      const safeTitle = programTitle
-        .replace(/[^\p{L}\p{N}\-_. ]/gu,'') // buang aksara pelik
-        .trim().replace(/\s+/g,'_').slice(0,60);
-      const fname = `aktiviti_program_${programDate}${safeTitle ? '_' + safeTitle : ''}.xlsx`;
-
-      XLSX.writeFile(wb, fname);
+      XLSX.writeFile(wb, `aktiviti_program_${programDate}.xlsx`, { cellStyles:true });
       toast('Export','Fail Excel dimuat turun','success');
       return;
     }
-  } catch (e) {
-    // Teruskan ke CSV fallback
+  } catch (_) {
+    // jatuh ke CSV
   }
-
-  // Fallback: CSV (tajuk berada di kolum tengah juga)
-  const BOM = '\uFEFF'; // elak isu aksara di Excel
-  const toCsvRow = arr => arr.map(v => `"${String(v ?? '').replace(/"/g,'""')}"`).join(',');
-  const csv = [titleRow, HEADER, ...dataRows].map(toCsvRow).join('\r\n');
-
-  const blob = new Blob([BOM + csv], { type:'text/csv;charset=utf-8;' });
-  const url  = URL.createObjectURL(blob);
-  const a    = Object.assign(document.createElement('a'), {
-    href: url,
-    download: `aktiviti_program_${programDate}.csv`
-  });
-  document.body.appendChild(a); a.click(); a.remove(); URL.revokeObjectURL(url);
-  toast('Export','Fail CSV dimuat turun','success');
-}
-
 
   // Fallback: CSV (tajuk baris 1, header baris 2)
   const BOM = '\uFEFF';
@@ -2574,7 +2531,7 @@ async function exportNadiCSV() {
   document.body.appendChild(a); a.click(); a.remove(); URL.revokeObjectURL(url);
   toast('Export','Fail CSV dimuat turun','success');
 }
-}
+
 function collectNadiRowsForActivity(){
   const rows = Array.from(document.querySelectorAll('#nadiContainer .nadi-row'));
   const title = (document.getElementById('nadiProgramTitle')?.value || '').trim();
@@ -2624,7 +2581,8 @@ async function saveNadiProgramActivity(){
   } catch(e){
     toast('Ralat', e.message, 'danger');
   }
-    }
+}
+
 /* =======================
    DATA LOADERS
    ======================= */
