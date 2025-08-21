@@ -2473,7 +2473,7 @@ async function exportNadiCSV() {
   const programDate  = (document.getElementById('nadiProgramDate')?.value || new Date().toISOString().slice(0,10)).trim();
 
   // Header mengikut susunan yang diminta
-  const HEADER = ['TARIKH','NAMA','NO IC','NO TEL','ALAMAT','WT','HT','BP','HR','UMUR','BMI','DXT TYPE','DXT','KELAYAKAN'];
+  const HEADER = ['TARIKH','NAMA','NO IC','NO TEL','ALAMAT','WT','HT','BP','HR','UMUR','BMI','DXT TYPE','DXT','KELAYAKAN PEKA B40'];
 
   // Row tajuk: letak tajuk pada kolum TENGAH (supaya nampak benar² di tengah jadual dalam .xlsx dan .csv)
   const midCol = Math.floor(HEADER.length / 2);     // 14 -> 7 (0-based) -> lajur ke-8 (H)
