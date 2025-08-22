@@ -2413,6 +2413,12 @@ function generateWhatsAppReport(data) {
 function sendWhatsAppReport() {
   if (!currentWhatsAppData) return;
 
+  // Validasi: pastikan status kelayakan dipilih (layak atau tidak)
+  if (typeof currentWhatsAppData.layak !== 'boolean') {
+    toast('Ralat', 'Sila pilih status Layak / Tidak Layak sebelum hantar laporan.', 'danger');
+    return;
+  }
+
   const nama = currentWhatsAppData.nama || '';
   const ic = currentWhatsAppData.ic || '';
   const bp = currentWhatsAppData.bp || '';
@@ -2550,35 +2556,28 @@ async function exportNadiCSV() {
   toast('Export','Fail CSV dimuat turun','success');
 }
 
-function collectNadiRowsForActivity(){
-  const rows = Array.from(document.querySelectorAll('#nadiContainer .nadi-row'));
-  const title = (document.getElementById('nadiProgramTitle')?.value || '').trim();
-  const d = (document.getElementById('nadiProgramDate')?.value || '').trim();
-  const tarikh = d || new Date().toISOString().slice(0,10);
+function collectNadiRowsForActivity() {
+  const rows = [];
+  const table = document.getElementById("nadiTable");
+  const trs = table?.querySelectorAll("tbody tr") || [];
 
-  return {
-    title,
-    tarikh,
-    items: rows.map(r => {
-      const nama   = r.querySelector('.nadi-nama')?.value.trim() || '';
-      const ic     = r.querySelector('.nadi-ic')?.value.trim() || '';
-      const tel    = r.querySelector('.nadi-tel')?.value.trim() || '';
-      const alamat = r.querySelector('.nadi-alamat')?.value.trim() || '';
-      const wt     = r.querySelector('.nadi-berat')?.value.trim() || '';
-      const ht     = r.querySelector('.nadi-tinggi')?.value.trim() || '';
-      const bp     = r.querySelector('.nadi-bp')?.value.trim() || '';
-      const hr     = r.querySelector('.nadi-pr')?.value.trim() || '';
-      const umur   = r.querySelector('.nadi-umur-view')?.textContent.trim() || '';
-      const bmi    = r.querySelector('.nadi-bmi')?.value.trim() || '';
-      const dxtType= r.querySelector('.nadi-dxt-type')?.value || '';
-      const dxt    = r.querySelector('.nadi-dxt')?.value.trim() || '';
-      const kelayak= r.querySelector('.nadi-layak')?.checked ? 'Layak' : 'Tidak Layak';
-      const remark = r.querySelector('.nadi-remark')?.value.trim() || ''; // ⬅️ MEDAN BARU
+  trs.forEach(tr => {
+    const nama = tr.querySelector(".nama")?.value?.trim() || "";
+    const layak = tr.querySelector(".layak")?.checked || false;
+    const tidakLayak = tr.querySelector(".tidakLayak")?.checked || false;
+    const remark = tr.querySelector(".remark")?.value?.trim() || "";
 
-      return { tarikh, nama, ic, tel, alamat, wt, ht, bp, hr, umur, bmi, dxtType, dxt, kelayak, remark };
-    })
-  };
+    // Semakan: pastikan layak/tidak layak dipilih
+    if (!layak && !tidakLayak) {
+      throw new Error(`Sila tandakan Layak / Tidak Layak untuk ${nama || 'peserta'}`);
+    }
+
+    rows.push({ nama, layak, tidakLayak, remark });
+  });
+
+  return rows;
 }
+
 function collectNadiItems(){
   // Ambil payload sedia ada
   const payload = collectNadiRowsForActivity() || {};
