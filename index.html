@@ -489,26 +489,28 @@
           <div class="nadi-scroll-container">
             <table class="nadi-table">
               <thead>
-                <tr>
-                  <th style="width: 40px;">#</th>
-                  <th style="min-width: 150px;">Nama Pesakit</th>
-                  <th style="min-width: 120px;">No IC</th>
-                  <th style="min-width: 80px;">Umur</th>
-                  <th style="min-width: 120px;">Telefon</th>
-                  <th style="min-width: 150px;">Alamat</th>
-                  <th style="min-width: 80px;">BP</th>
-                  <th style="min-width: 80px;">PR</th>
-                  <th style="min-width: 120px;">DXT</th>
-                  <th style="min-width: 80px;">Tinggi</th>
-                  <th style="min-width: 80px;">Berat</th>
-                  <th style="min-width: 80px;">BMI</th>
-                  <th style="width: 80px;">Layak</th>
-                  <th style="width: 100px;">Tidak Layak</th>
-                  <th>Remark</th>
-                  <th style="min-width: 200px;">TCA & Staff</th>
-                  <th style="min-width: 180px;">Tindakan</th>
-                </tr>
-              </thead>
+  <tr>
+    <th style="width: 40px;">#</th>
+    <th style="min-width: 150px;">Nama Pesakit</th>
+    <th style="min-width: 120px;">No IC</th>
+    <th style="min-width: 80px;">Umur</th>
+    <th style="min-width: 120px;">Telefon</th>
+    <th style="min-width: 150px;">Alamat</th>
+    <th style="min-width: 80px;">BP</th>
+    <th style="min-width: 80px;">PR</th>
+    <th style="min-width: 120px;">DXT</th>
+    <th style="min-width: 80px;">Tinggi</th>
+    <th style="min-width: 80px;">Berat</th>
+    <th style="min-width: 80px;">BMI</th>
+    <th style="width: 80px;">Layak</th>
+    <th style="width: 100px;">Tidak Layak</th>
+    <!-- ⬇️ TAMBAH KOLUM BARU DI SINI -->
+    <th style="min-width: 160px;">Remark</th>
+    <!-- ⬆️ TAMBAH KOLUM BARU DI SINI -->
+    <th style="min-width: 200px;">TCA & Staff</th>
+    <th style="min-width: 180px;">Tindakan</th>
+  </tr>
+</thead>
               <tbody id="nadiContainer">
                 <!-- Rows will be added dynamically -->
               </tbody>
@@ -2089,7 +2091,14 @@ function addNadiRow(){
     <td class="text-center">
       <input class="form-check-input nadi-taklayak" type="checkbox">
     </td>
-    <td><input type="text" value="${data.remark || ''}" class="form-control remark-input"></td>
+
+    <!-- ⬇️ KOLUM BARU: REMARK (di sebelah kanan "Tidak Layak") -->
+    <td class="nadi-input-cell">
+      <div class="view-mode" onclick="editNadiCell(this)"></div>
+      <input class="form-control form-control-sm nadi-remark" placeholder="Catatan / Remark" style="display:none" onblur="saveNadiCell(this)" />
+    </td>
+    <!-- ⬆️ KOLUM BARU -->
+
     <td>
       <div class="d-flex gap-1">
         <input type="date" class="form-control form-control-sm nadi-tca-date" disabled style="min-width:100px">
@@ -2108,11 +2117,10 @@ function addNadiRow(){
 
   container.appendChild(row);
 
-  // Initialize dropdown for DXT type
+  // Dropdown DXT type
   const dxtTypeBtn = row.querySelector('.nadi-dxt-type-btn');
   const dxtTypeMenu = row.querySelector('.dropdown-menu');
   const dxtTypeInput = row.querySelector('.nadi-dxt-type');
-
   dxtTypeMenu.querySelectorAll('.dropdown-item').forEach(item => {
     item.addEventListener('click', function(e) {
       e.preventDefault();
@@ -2121,11 +2129,10 @@ function addNadiRow(){
     });
   });
 
-  // BMI calculation
+  // BMI calc
   const tinggi = row.querySelector('.nadi-tinggi');
   const berat = row.querySelector('.nadi-berat');
   const bmi = row.querySelector('.nadi-bmi');
-
   const calculateBMI = () => {
     const height = parseFloat(tinggi.value) / 100;
     const weight = parseFloat(berat.value);
@@ -2137,18 +2144,17 @@ function addNadiRow(){
       bmi.previousElementSibling.textContent = '';
     }
   };
-
   tinggi.addEventListener('input', calculateBMI);
   berat.addEventListener('input', calculateBMI);
 
-  // IC change handler to update age
+  // IC -> umur view
   const icInput = row.querySelector('.nadi-ic');
   icInput.addEventListener('input', function() {
     const umurView = row.querySelector('.nadi-umur-view');
     umurView.textContent = calculateAgeFromIC(this.value);
   });
 
-  // Layak/Tidak Layak toggle
+  // Layak/Tak layak toggle
   const layak = row.querySelector('.nadi-layak');
   const takLayak = row.querySelector('.nadi-taklayak');
   const tcaDate = row.querySelector('.nadi-tca-date');
@@ -2183,7 +2189,7 @@ function addNadiRow(){
     updateNadiSummary();
   });
 
-  // Daftar button action
+  // Daftar
   btnDaftar.addEventListener('click', async () => {
     const nama = row.querySelector('.nadi-nama').value.trim();
     const ic = row.querySelector('.nadi-ic').value.trim();
@@ -2212,8 +2218,7 @@ function addNadiRow(){
 
       if (res.status === 'success') {
         toast('Berjaya', 'Pesakit berjaya didaftarkan', 'success');
-        // Update the row data in nadiRows array
-        updateNadiRowData(row);
+        updateNadiRowData(row); // simpan snapshot
       } else {
         throw new Error(res.message || 'Gagal mendaftar pesakit');
       }
@@ -2222,7 +2227,7 @@ function addNadiRow(){
     }
   });
 
-  // WhatsApp Report (Preview) – KEKAL
+  // WA report (preview)
   row.querySelector('.nadi-wa').addEventListener('click', async () => {
     try {
       const data = {
@@ -2238,17 +2243,15 @@ function addNadiRow(){
         berat: row.querySelector('.nadi-berat').value.trim(),
         bmi: row.querySelector('.nadi-bmi').value.trim(),
         layak: row.querySelector('.nadi-layak').checked
+        // remark tak perlu dalam WA report, jadi tak dimasukkan
       };
-
-      // Generate WhatsApp report image (preview)
       generateWhatsAppReport(data);
-
     } catch (e) {
       toast('Ralat', 'Gagal buat laporan: ' + e.message, 'danger');
     }
   });
 
-  // Buang button
+  // Buang
   row.querySelector('.nadi-buang').addEventListener('click', () => {
     if (confirm('Adakah anda pasti ingin membuang baris ini?')) {
       row.remove();
@@ -2257,11 +2260,8 @@ function addNadiRow(){
     }
   });
 
-  // Add row data to nadiRows array
-  nadiRows.push({
-    id: id,
-    rowElement: row
-  });
+  // simpan pointer baris
+  nadiRows.push({ id, rowElement: row });
 }
 
 function updateNadiRowData(row) {
@@ -2279,18 +2279,21 @@ function updateNadiRowData(row) {
     bmi: row.querySelector('.nadi-bmi').value.trim(),
     layak: row.querySelector('.nadi-layak').checked,
     takLayak: row.querySelector('.nadi-taklayak').checked,
+    // ⬇️ medan baru
+    remark: row.querySelector('.nadi-remark')?.value.trim() || '',
+    // ⬆️ medan baru
     tcaDate: row.querySelector('.nadi-tca-date').value.trim(),
     tcaTime: row.querySelector('.nadi-tca-time').value.trim(),
     staff: row.querySelector('.nadi-staff').value.trim()
   };
 
-  // Update the row data in nadiRows array
   const rowId = row.id;
   const rowIndex = nadiRows.findIndex(r => r.id === rowId);
   if (rowIndex !== -1) {
     nadiRows[rowIndex].data = rowData;
   }
 }
+
 
 function editNadiCell(viewModeEl) {
   const input = viewModeEl.nextElementSibling;
@@ -2574,11 +2577,13 @@ function collectNadiRowsForActivity(){
       const dxtType= r.querySelector('.nadi-dxt-type')?.value || '';
       const dxt    = r.querySelector('.nadi-dxt')?.value.trim() || '';
       const kelayak= r.querySelector('.nadi-layak')?.checked ? 'Layak' : 'Tidak Layak';
+      const remark = r.querySelector('.nadi-remark')?.value.trim() || ''; // ⬅️ MEDAN BARU
 
-      return { tarikh, nama, ic, tel, alamat, wt, ht, bp, hr, umur, bmi, dxtType, dxt, kelayak };
+      return { tarikh, nama, ic, tel, alamat, wt, ht, bp, hr, umur, bmi, dxtType, dxt, kelayak, remark };
     })
   };
 }
+
 async function saveNadiProgramActivity(){
   const { title, tarikh, items } = collectNadiRowsForActivity();
   if (!title) { toast('Ralat','Sila isi Tajuk Program','danger'); return; }
