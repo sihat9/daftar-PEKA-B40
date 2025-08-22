@@ -2091,14 +2091,11 @@ function addNadiRow(){
     <td class="text-center">
       <input class="form-check-input nadi-taklayak" type="checkbox">
     </td>
-
-    <!-- ⬇️ KOLUM BARU: REMARK (di sebelah kanan "Tidak Layak") -->
+    <!-- Kolum Remark baharu -->
     <td class="nadi-input-cell">
       <div class="view-mode" onclick="editNadiCell(this)"></div>
       <input class="form-control form-control-sm nadi-remark" placeholder="Catatan / Remark" style="display:none" onblur="saveNadiCell(this)" />
     </td>
-    <!-- ⬆️ KOLUM BARU -->
-
     <td>
       <div class="d-flex gap-1">
         <input type="date" class="form-control form-control-sm nadi-tca-date" disabled style="min-width:100px">
@@ -2218,7 +2215,7 @@ function addNadiRow(){
 
       if (res.status === 'success') {
         toast('Berjaya', 'Pesakit berjaya didaftarkan', 'success');
-        updateNadiRowData(row); // simpan snapshot
+        updateNadiRowData(row);
       } else {
         throw new Error(res.message || 'Gagal mendaftar pesakit');
       }
@@ -2227,7 +2224,7 @@ function addNadiRow(){
     }
   });
 
-  // WA report (preview)
+  // WA report (preview) — perhatikan: pembolehubah `data` DITAKRIF di dalam handler
   row.querySelector('.nadi-wa').addEventListener('click', async () => {
     try {
       const data = {
@@ -2243,7 +2240,6 @@ function addNadiRow(){
         berat: row.querySelector('.nadi-berat').value.trim(),
         bmi: row.querySelector('.nadi-bmi').value.trim(),
         layak: row.querySelector('.nadi-layak').checked
-        // remark tak perlu dalam WA report, jadi tak dimasukkan
       };
       generateWhatsAppReport(data);
     } catch (e) {
