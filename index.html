@@ -2620,18 +2620,30 @@ function collectNadiItems(){
 }
 async function saveNadiProgramActivity(){
   const { title, tarikh, items } = collectNadiRowsForActivity();
-  if (!title){ toast('Ralat','Sila isi Tajuk Program','danger'); return; }
-  if (!items || !items.length){ toast('Ralat','Tiada baris peserta untuk disimpan','danger'); return; }
+
+  // Auto-fallback tajuk jika kosong
+  const finalTitle = (title && title.trim())
+    ? title.trim()
+    : `Program PEKA B40 bersama NADI (${tarikh})`;
+
+  if (!items || !items.length){
+    toast('Ralat','Tiada baris peserta untuk disimpan','danger');
+    return;
+  }
 
   try{
     const res = await postForm({
-      action: 'saveNadiActivity',        // <-- SELARIKAN DENGAN code.gs
-      programTitle: title,
+      action: 'saveNadiActivity',       // selari dengan code.gs
+      programTitle: finalTitle,
       programDate: tarikh,
-      items: JSON.stringify(items)       // <-- HANTAR DALAM 'items', BUKAN 'rows'
+      items: JSON.stringify(items)
     }, { msg: 'Menyimpan aktiviti…' });
 
     if (res.status === 'success'){
+      // Jika input tajuk ada dan kosong, isikan dengan finalTitle supaya nampak di UI
+      const inp = document.getElementById('nadiProgramTitle');
+      if (inp && !inp.value) inp.value = finalTitle;
+
       toast('Berjaya', 'Aktiviti program disimpan ke sheet aktiviti', 'success');
     } else {
       throw new Error(res.message || 'Gagal simpan aktiviti');
@@ -2640,6 +2652,7 @@ async function saveNadiProgramActivity(){
     toast('Ralat', e.message, 'danger');
   }
 }
+
 
 
 // Pastikan butang di-wire sekali sahaja
