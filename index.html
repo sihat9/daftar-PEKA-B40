@@ -2579,22 +2579,89 @@ function collectNadiRowsForActivity(){
     })
   };
 }
+function collectNadiItems(){
+  // Ambil payload sedia ada
+  const payload = collectNadiRowsForActivity() || {};
+  const rows = Array.isArray(payload.items) ? payload.items : [];
 
+  // Peta nama medan:
+  // tel     -> telefon
+  // wt/ht   -> berat/tinggi
+  // hr      -> pr
+  // kelayak -> layak/takLayak + status
+  return rows.map(r => {
+    const kel = String(r.kelayak || '').trim().toLowerCase(); // "Layak" / "Tidak Layak"
+    const isLayak = kel === 'layak';
+    const isTak   = kel === 'tidak layak' || kel === 'tak layak';
+
+    return {
+      nama    : r.nama    || '',
+      ic      : r.ic      || '',
+      umur    : r.umur    || '',                 // jika kosong pun ok
+      telefon : normalizeMsisdnMY(r.tel || ''),  // norm msisdn
+      alamat  : r.alamat  || '',
+      bp      : r.bp      || '',
+      pr      : r.hr      || '',
+      dxt     : r.dxt     || '',
+      tinggi  : r.ht      || '',
+      berat   : r.wt      || '',
+      bmi     : r.bmi     || '',
+      layak   : !!isLayak,
+      takLayak: !!isTak,
+      status  : isLayak ? 'LAYAK' : (isTak ? 'TAK LAYAK' : ''),
+      // TCA di jadual NADI memang ada input, tapi jika collectNadiRowsForActivity
+      // anda tidak mengembalikannya, biarkan kosong (code.gs tidak wajibkan).
+      tcaDate : '',
+      tcaTime : '',
+      tcaStaff: '',
+      // Simpan juga dxtType jika ada (tidak mandatory di code.gs)
+      dxtType : r.dxtType || ''
+    };
+  });
+}
 async function saveNadiProgramActivity(){
-  const { title, tarikh, items } = collectNadiRowsForActivity();
-  if (!title) { toast('Ralat','Sila isi Tajuk Program','danger'); return; }
-  if (!items.length){ toast('Makluman','Tiada baris untuk disimpan','warning'); return; }
+  const titleEl = document.getElementById('nadiProgramTitle');
+  const dateEl  = document.getElementById('nadiProgramDate');
+
+  // Cuba ambil dari input; jika kosong, fallback kepada payload sedia ada
+  let programTitle = (titleEl?.value || '').trim();
+  let programDate  = (dateEl?.value  || '').trim();   // yyyy-MM-dd pilihan terbaik
+
+  const payload = (typeof collectNadiRowsForActivity === 'function')
+    ? (collectNadiRowsForActivity() || {})
+    : {};
+
+  if (!programTitle) programTitle = (payload.title  || payload.programTitle || '').trim();
+  if (!programDate)  programDate  = (payload.tarikh || payload.programDate  || '').trim();
+
+  if (!programTitle){
+    toast('Ralat','Sila isi Tajuk Program','danger');
+    return;
+  }
+  if (!programDate){
+    toast('Ralat','Sila isi Tarikh Program','danger');
+    return;
+  }
+
+  // Guna adapter baru supaya format ikut code.gs (saveNadiActivity_)
+  const items = collectNadiItems();
+  if (!items.length){
+    toast('Ralat','Senarai peserta kosong','danger');
+    return;
+  }
 
   try{
     const res = await postForm({
-      action: 'saveNadiProgramActivity',     // <-- TAMBAH handler ini di Apps Script
-      programTitle: title,
-      programDate: tarikh,
-      rows: JSON.stringify(items)
-    }, { msg: 'Menyimpan aktiviti…' });
+      action: 'saveNadiActivity',     // selari dengan code.gs
+      programTitle,
+      programDate,                    // code.gs terima yyyy-MM-dd atau dd/MM/yyyy
+      items: JSON.stringify(items)
+      // boleh tambah 'note' jika anda ada medan catatan:
+      // note: document.getElementById('nadiNote')?.value || ''
+    }, { msg:'Menyimpan aktiviti…' });
 
     if (res.status === 'success'){
-      toast('Berjaya', 'Aktiviti program disimpan ke sheet aktiviti', 'success');
+      toast('Berjaya', `Aktiviti disimpan (ID: ${res.activityId}). Layak: ${res.layakCount}, Tidak: ${res.takLayakCount}`, 'success');
     } else {
       throw new Error(res.message || 'Gagal simpan aktiviti');
     }
@@ -2603,6 +2670,13 @@ async function saveNadiProgramActivity(){
   }
 }
 
+// Pastikan butang di-wire sekali sahaja
+(function wireNadiSaveButtonOnce(){
+  const btn = document.getElementById('btnNadiSaveActivity');
+  if (!btn || btn._wiredSaveNadi) return;
+  btn.addEventListener('click', saveNadiProgramActivity);
+  btn._wiredSaveNadi = true;
+})();
 /* =======================
    DATA LOADERS
    ======================= */
