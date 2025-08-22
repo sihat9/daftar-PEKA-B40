@@ -2556,26 +2556,47 @@ async function exportNadiCSV() {
   toast('Export','Fail CSV dimuat turun','success');
 }
 
-function collectNadiRowsForActivity() {
-  const rows = [];
-  const table = document.getElementById("nadiTable");
-  const trs = table?.querySelectorAll("tbody tr") || [];
+function collectNadiRowsForActivity(){
+  const rows  = Array.from(document.querySelectorAll('#nadiContainer .nadi-row'));
+  const title = (document.getElementById('nadiProgramTitle')?.value || '').trim();
+  const d     = (document.getElementById('nadiProgramDate')?.value || '').trim();
+  const tarikh= d || new Date().toISOString().slice(0,10);
 
-  trs.forEach(tr => {
-    const nama = tr.querySelector(".nama")?.value?.trim() || "";
-    const layak = tr.querySelector(".layak")?.checked || false;
-    const tidakLayak = tr.querySelector(".tidakLayak")?.checked || false;
-    const remark = tr.querySelector(".remark")?.value?.trim() || "";
+  const items = [];
 
-    // Semakan: pastikan layak/tidak layak dipilih
-    if (!layak && !tidakLayak) {
-      throw new Error(`Sila tandakan Layak / Tidak Layak untuk ${nama || 'peserta'}`);
+  rows.forEach(r => {
+    const val  = (sel) => (r.querySelector(sel)?.value ?? '').trim();
+    const text = (sel) => (r.querySelector(sel)?.textContent ?? '').trim();
+
+    const nama    = val('.nadi-nama');
+    const ic      = val('.nadi-ic');
+    const tel     = val('.nadi-tel');
+    const alamat  = val('.nadi-alamat');
+    const wt      = val('.nadi-berat');   // kg
+    const ht      = val('.nadi-tinggi');  // cm
+    const bp      = val('.nadi-bp');
+    const hr      = val('.nadi-pr');
+    const umurTxt = text('.nadi-umur-view');
+    const bmi     = val('.nadi-bmi');
+    const dxtType = val('.nadi-dxt-type');   // hidden input yang pegang Fasting/Random
+    const dxt     = val('.nadi-dxt');
+    const layakCB = r.querySelector('.nadi-layak')?.checked || false;
+    const kelayak = layakCB ? 'Layak' : 'Tidak Layak';
+    const remark  = val('.nadi-remark');     // jika anda sudah tambah kolum Remark
+
+    // Anggap "ada isi" jika sekurang-kurangnya satu medan utama terisi
+    const adaIsi = [nama, ic, tel, alamat, bp, hr, dxt, ht, wt, bmi].some(Boolean);
+
+    if (adaIsi){
+      items.push({
+        tarikh, nama, ic, tel, alamat,
+        wt, ht, bp, hr, umur: umurTxt, bmi,
+        dxtType, dxt, kelayak, remark
+      });
     }
-
-    rows.push({ nama, layak, tidakLayak, remark });
   });
 
-  return rows;
+  return { title, tarikh, items };
 }
 
 function collectNadiItems(){
