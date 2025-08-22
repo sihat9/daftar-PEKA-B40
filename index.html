@@ -2619,48 +2619,20 @@ function collectNadiItems(){
   });
 }
 async function saveNadiProgramActivity(){
-  const titleEl = document.getElementById('nadiProgramTitle');
-  const dateEl  = document.getElementById('nadiProgramDate');
-
-  // Cuba ambil dari input; jika kosong, fallback kepada payload sedia ada
-  let programTitle = (titleEl?.value || '').trim();
-  let programDate  = (dateEl?.value  || '').trim();   // yyyy-MM-dd pilihan terbaik
-
-  const payload = (typeof collectNadiRowsForActivity === 'function')
-    ? (collectNadiRowsForActivity() || {})
-    : {};
-
-  if (!programTitle) programTitle = (payload.title  || payload.programTitle || '').trim();
-  if (!programDate)  programDate  = (payload.tarikh || payload.programDate  || '').trim();
-
-  if (!programTitle){
-    toast('Ralat','Sila isi Tajuk Program','danger');
-    return;
-  }
-  if (!programDate){
-    toast('Ralat','Sila isi Tarikh Program','danger');
-    return;
-  }
-
-  // Guna adapter baru supaya format ikut code.gs (saveNadiActivity_)
-  const items = collectNadiItems();
-  if (!items.length){
-    toast('Ralat','Senarai peserta kosong','danger');
-    return;
-  }
+  const { title, tarikh, items } = collectNadiRowsForActivity();
+  if (!title){ toast('Ralat','Sila isi Tajuk Program','danger'); return; }
+  if (!items || !items.length){ toast('Ralat','Tiada baris peserta untuk disimpan','danger'); return; }
 
   try{
     const res = await postForm({
-      action: 'saveNadiActivity',     // selari dengan code.gs
-      programTitle,
-      programDate,                    // code.gs terima yyyy-MM-dd atau dd/MM/yyyy
-      items: JSON.stringify(items)
-      // boleh tambah 'note' jika anda ada medan catatan:
-      // note: document.getElementById('nadiNote')?.value || ''
-    }, { msg:'Menyimpan aktiviti…' });
+      action: 'saveNadiActivity',        // <-- SELARIKAN DENGAN code.gs
+      programTitle: title,
+      programDate: tarikh,
+      items: JSON.stringify(items)       // <-- HANTAR DALAM 'items', BUKAN 'rows'
+    }, { msg: 'Menyimpan aktiviti…' });
 
     if (res.status === 'success'){
-      toast('Berjaya', `Aktiviti disimpan (ID: ${res.activityId}). Layak: ${res.layakCount}, Tidak: ${res.takLayakCount}`, 'success');
+      toast('Berjaya', 'Aktiviti program disimpan ke sheet aktiviti', 'success');
     } else {
       throw new Error(res.message || 'Gagal simpan aktiviti');
     }
@@ -2668,6 +2640,7 @@ async function saveNadiProgramActivity(){
     toast('Ralat', e.message, 'danger');
   }
 }
+
 
 // Pastikan butang di-wire sekali sahaja
 (function wireNadiSaveButtonOnce(){
