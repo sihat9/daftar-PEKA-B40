@@ -1429,13 +1429,13 @@ async function captureReportAsBlob() {
   return await new Promise((resolve)=> canvas.toBlob(resolve, 'image/png', 0.95));
 }
 
+// >>> DIBETULKAN: buka SATU pop-up ikut peranti
 function openWhatsAppDeepLink(msisdn, text='') {
   const encoded = encodeURIComponent(text || '');
-  const scheme = `whatsapp://send?phone=${msisdn}&text=${encoded}`;
-  const web    = `https://wa.me/${msisdn}?text=${encoded}`;
-  // cuba app dahulu, kemudian fallback
-  window.open(scheme, '_blank');
-  setTimeout(()=>window.open(web,'_blank'), 600);
+  const scheme  = `whatsapp://send?phone=${msisdn}&text=${encoded}`;
+  const web     = `https://wa.me/${msisdn}?text=${encoded}`;
+  const isMobile = /Android|iPhone|iPad|iPod|Windows Phone/i.test(navigator.userAgent);
+  window.open(isMobile ? scheme : web, '_blank');
 }
 
 // Versi yang memenuhi kehendak: terus buka chat → siapkan imej (clipboard/share/fallback)
@@ -1519,6 +1519,9 @@ function bootstrapApp(){
   setupNADI();
   setupLogDrawer();
   setupFab();
+
+  // >>> Tambah: aktifkan seksyen berdasarkan hash semasa URL
+  activateFromHash();
 
   loadDashboardData();
   loadStatistics('3months');
@@ -1686,66 +1689,43 @@ async function refreshLogs(opts={}){
 /* =======================
    EXCEL (Kelayakan)
    ======================= */
-    
-    /* ===== SheetJS guard/fallback: pastikan window.XLSX wujud (LETak DI ATAS "EXCEL (Kelayakan)") ===== */
-// ===== SheetJS guard/fallback: pastikan window.XLSX wujud =====
-function loadScriptOnce(src){
-  return new Promise((resolve, reject) => {
-    if ([...document.scripts].some(s => s.src === src)) return resolve();
-    const s = document.createElement('script');
-    s.src = src; s.async = true;
-    s.onload = () => resolve();
-    s.onerror = () => reject(new Error('Gagal muat: ' + src));
-    document.head.appendChild(s);
-  });
-}
 
-// Cuba path LOKAL dulu, kemudian CDN; laporkan semua cubaan jika gagal
-async function ensureXLSXReady(){
-  if (window.XLSX) return;
-
-  // Anda boleh tambah/ubah path lokal di sini mengikut struktur projek anda
-  const LOCAL_PATHS = (window.__XLSX_LOCAL_PATHS__ && Array.isArray(window.__XLSX_LOCAL_PATHS__))
-    ? window.__XLSX_LOCAL_PATHS__
-    : [
-        './vendor/xlsx/xlsx.full.min.js',
-        'vendor/xlsx/xlsx.full.min.js',
-        '/vendor/xlsx/xlsx.full.min.js'
-      ];
-
-  const CDN_PATHS = [
-    'https://cdn.jsdelivr.net/npm/xlsx@0.19.3/dist/xlsx.full.min.js',
-    'https://unpkg.com/xlsx@0.19.3/dist/xlsx.full.min.js',
-    'https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.19.3/xlsx.full.min.js'
-  ];
-
-  const SOURCES = [...LOCAL_PATHS, ...CDN_PATHS];
-  const tried = [];
-  let lastErr;
-  for (const url of SOURCES){
-    try{
-      tried.push(url);
-      await loadScriptOnce(url);
-      if (window.XLSX) return;
-    }catch(e){ lastErr = e; }
-  }
-  throw new Error('Tidak dapat memuatkan SheetJS (XLSX).\nPercubaan:\n - ' + tried.join('\n - '));
-}
-// Parser CSV ringkas (sokong petikan & "" escape)
+// ===== CSV parser pintar (ganti fungsi asal; kekal nama) =====
 function parseCSVText(text){
+  function stripBOM(s){ return s && s.charCodeAt(0) === 0xFEFF ? s.slice(1) : s; }
+  function detectDelimiter(s){
+    const sample = (s||'').slice(0, 3000);
+    const cand = [',',';','\t','|'];
+    const count = { ',':0, ';':0, '\t':0, '|':0 };
+    let inQ = false;
+    for (let i=0;i<sample.length;i++){
+      const c = sample[i];
+      if (c === '"'){
+        if (inQ && sample[i+1] === '"'){ i++; }
+        else inQ = !inQ;
+      } else if (!inQ && count.hasOwnProperty(c)){
+        count[c]++;
+      }
+    }
+    return cand.sort((a,b)=>count[b]-count[a])[0] || ',';
+  }
+
+  const src = stripBOM(String(text||''));
+  const delim = detectDelimiter(src);
+
   const rows = [];
   let row = [], field = '', inQuotes = false;
 
-  for (let i = 0; i < text.length; i++){
-    const ch = text[i];
+  for (let i = 0; i < src.length; i++){
+    const ch = src[i];
     if (inQuotes){
       if (ch === '"'){
-        if (text[i+1] === '"'){ field += '"'; i++; }
+        if (src[i+1] === '"'){ field += '"'; i++; }
         else { inQuotes = false; }
       } else field += ch;
     } else {
       if (ch === '"') inQuotes = true;
-      else if (ch === ','){ row.push(field); field = ''; }
+      else if (ch === delim){ row.push(field); field = ''; }
       else if (ch === '\n'){ rows.push([...row, field]); row=[]; field=''; }
       else if (ch !== '\r'){ field += ch; }
     }
@@ -1753,6 +1733,7 @@ function parseCSVText(text){
   rows.push([...row, field]);
   return rows;
 }
+
 function setupExcel(){
   const input = document.getElementById('excelFile');
   const tbody = document.getElementById('kelayakanTable');
@@ -1846,7 +1827,7 @@ function setupExcel(){
         // ===== Excel (XLSX/XLS) – guna SheetJS =====
         try { await ensureXLSXReady(); }
         catch(err){
-          toast('Ralat', 'Gagal memuat SheetJS. Pastikan fail lokal ./vendor/xlsx/xlsx.full.min.js wujud atau guna CSV.', 'danger');
+          toast('Ralat', 'Gagal memuat SheetJS. Pastikan guna CSV jika perlu.', 'danger');
           return;
         }
 
@@ -3188,9 +3169,23 @@ async function daftarPesakit(){
   window.addEventListener('load', () => {
     try { initGoogleSignIn(); } catch(e) { console.error(e); }
   });
-    
+
+/* =======================
+   HASH ROUTING (BARU)
+   ======================= */
+// Aktifkan seksyen ikut hash URL
+function activateFromHash(){
+  const hash = location.hash || '#dashboard';
+  const link = document.querySelector(`.nav-link[href="${hash}"]`);
+  if (link){ link.click(); }
+}
+window.addEventListener('hashchange', activateFromHash);
+
+/* =======================
+   ENSURE XLSX (SATU-SATU NYA; CDN)
+   ======================= */
 (function () {
-  // Helper: load script sekali sahaja
+  // Helper: load script sekali sahaja (global)
   window.loadScriptOnce = window.loadScriptOnce || (function () {
     const loaded = new Set();
     return function loadScriptOnce(url) {
