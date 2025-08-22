@@ -1508,7 +1508,22 @@ async function sendWhatsAppReportImageFlow(msisdn) {
 let stats3dChart, completed3dChart;
 let retcaModal, secondTcaModal, pdpaModal, whatsappReportModal;
 let currentWhatsAppData = null;
+let NADI_LIVE_SESSION_ID = '';
+let nadiLiveTimer = null;
+let nadiLiveSaveQueue = new Map();  // rowId -> payload terkini
+let nadiLiveSaving = false;
 
+// Jana Session Id (berdasarkan tajuk + tarikh program)
+function computeNadiSessionId(){
+  const title = (document.getElementById('nadiProgramTitle')?.value || '').trim();
+  const date  = (document.getElementById('nadiProgramDate')?.value || new Date().toISOString().slice(0,10)).trim();
+  if (!title) return '';
+  const slug = title.toLowerCase()
+    .replace(/[^\p{L}\p{N}]+/gu,'-')
+    .replace(/^-+|-+$/g,'')
+    .slice(0,60);
+  return `${slug}_${date}`;
+}
 /* =======================
    BOOTSTRAP APP
    ======================= */
@@ -1963,6 +1978,8 @@ function setupNADI(){
   // [TAMBAH] Export Excel format aktiviti
   const btnXlsx = document.getElementById('btnNadiExportXlsx');
   btnXlsx?.addEventListener('click', exportNadiExcel);
+   NADI_LIVE_SESSION_ID = computeNadiSessionId();
+  startNadiLiveSync();
 }
 
 function calculateAgeFromIC(ic) {
@@ -2258,6 +2275,26 @@ function addNadiRow(){
 
   // simpan pointer baris
   nadiRows.push({ id, rowElement: row });
+  // — AUTOSAVE bila input diubah —
+const inputsToWatch = [
+  '.nadi-nama','.nadi-ic','.nadi-tel','.nadi-alamat',
+  '.nadi-bp','.nadi-pr','.nadi-dxt','.nadi-tinggi',
+  '.nadi-berat','.nadi-bmi','.nadi-tca-date',
+  '.nadi-tca-time','.nadi-staff','.nadi-dxt-type',
+  '.nadi-remark'
+];
+inputsToWatch.forEach(sel=>{
+  const el = row.querySelector(sel);
+  if (el){
+    el.addEventListener('input', ()=> queueSaveNadiLive(row));
+    el.addEventListener('change', ()=> queueSaveNadiLive(row));
+  }
+});
+layak.addEventListener('change', ()=> queueSaveNadiLive(row));
+takLayak.addEventListener('change', ()=> queueSaveNadiLive(row));
+
+// set rowId mantap (guna id baris)
+row.dataset.rowId = row.id;
 }
 
 function updateNadiRowData(row) {
@@ -2598,6 +2635,171 @@ function collectNadiRowsForActivity(){
 
   return { title, tarikh, items };
 }
+/* =======================
+   NADI LIVE SYNC (baru)
+   ======================= */
+
+// Kumpul payload 1 baris (digunakan utk autosave)
+function extractRowPayload(row){
+  const id      = row.dataset.rowId || row.id;
+  const nama    = row.querySelector('.nadi-nama')?.value.trim() || '';
+  const ic      = row.querySelector('.nadi-ic')?.value.trim() || '';
+  const tel     = row.querySelector('.nadi-tel')?.value.trim() || '';
+  const alamat  = row.querySelector('.nadi-alamat')?.value.trim() || '';
+  const bp      = row.querySelector('.nadi-bp')?.value.trim() || '';
+  const pr      = row.querySelector('.nadi-pr')?.value.trim() || '';
+  const dxtType = row.querySelector('.nadi-dxt-type')?.value || '';
+  const dxt     = row.querySelector('.nadi-dxt')?.value.trim() || '';
+  const tinggi  = row.querySelector('.nadi-tinggi')?.value.trim() || '';
+  const berat   = row.querySelector('.nadi-berat')?.value.trim() || '';
+  const bmi     = row.querySelector('.nadi-bmi')?.value.trim() || '';
+  const layak   = !!row.querySelector('.nadi-layak')?.checked;
+  const takLayak= !!row.querySelector('.nadi-taklayak')?.checked;
+  const tcaDate = row.querySelector('.nadi-tca-date')?.value || '';
+  const tcaTime = row.querySelector('.nadi-tca-time')?.value || '';
+  const tcaStaff= row.querySelector('.nadi-staff')?.value.trim() || '';
+  const remark  = row.querySelector('.nadi-remark')?.value.trim() || '';
+
+  return {
+    id, nama, ic, tel, alamat,
+    bp, pr, dxtType, dxt, tinggi, berat, bmi,
+    layak, takLayak, tcaDate, tcaTime, tcaStaff,
+    remark
+  };
+}
+
+// Queue save (debounce per baris)
+function queueSaveNadiLive(row){
+  if (!NADI_LIVE_SESSION_ID) return;           // tiada sesi (tajuk kosong)
+  const payload = extractRowPayload(row);
+  nadiLiveSaveQueue.set(payload.id, payload);
+  // Debounce global
+  if (!nadiLiveSaving){
+    nadiLiveSaving = true;
+    setTimeout(async ()=>{
+      try{
+        const items = Array.from(nadiLiveSaveQueue.values());
+        nadiLiveSaveQueue.clear();
+        await postForm({
+          action: 'saveNadiLive',
+          sessionId: NADI_LIVE_SESSION_ID,
+          items: JSON.stringify(items)
+        }, { silent:true });
+      }catch(e){ /* senyap */ }
+      finally{ nadiLiveSaving = false; }
+    }, 400);
+  }
+}
+
+// Mula tarik data berkala
+function startNadiLiveSync(){
+  stopNadiLiveSync();
+  if (!NADI_LIVE_SESSION_ID) return; // tajuk belum diisi
+  // Tarik sekali segera
+  pullNadiLiveOnce();
+  // Kemudian setiap 6s
+  nadiLiveTimer = setInterval(pullNadiLiveOnce, 6000);
+}
+function stopNadiLiveSync(){
+  if (nadiLiveTimer){ clearInterval(nadiLiveTimer); nadiLiveTimer = null; }
+}
+
+// Tarik sekali & gabung ke UI
+async function pullNadiLiveOnce(){
+  try{
+    const res = await getJSON({
+      action: 'getNadiLive',
+      sessionId: NADI_LIVE_SESSION_ID
+    }, { silent:true });
+    if (res.status==='success' && Array.isArray(res.items)){
+      mergeLiveRowsIntoUI(res.items);
+    }
+  }catch(e){ /* senyap */ }
+}
+
+// Gabung rekod masuk ke UI (tanpa kacau input sedang fokus)
+function mergeLiveRowsIntoUI(items){
+  const byId = (id)=> document.querySelector(`#nadiContainer .nadi-row[data-row-id="${id}"]`)
+             || document.getElementById(id);
+
+  items.forEach(it=>{
+    let row = byId(it.id);
+    if (!row){
+      // jika baris belum wujud, tambah baris baharu dulu
+      addNadiRow();
+      row = byId(it.id) || document.querySelector('#nadiContainer .nadi-row:last-child');
+      if (row) row.dataset.rowId = it.id;
+    }
+    if (!row) return;
+
+    // Jangan override jika user sedang menaip pada medan itu
+    const safeSet = (sel, val) => {
+      const el = row.querySelector(sel);
+      if (!el) return;
+      if (document.activeElement === el) return; // biar user habis menaip
+      if (el.tagName==='INPUT' || el.tagName==='TEXTAREA'){
+        if (el.type==='checkbox'){
+          el.checked = !!val;
+        } else {
+          el.value = val || '';
+          // jika ada view-mode (inline edit), pantulkan
+          if (el.previousElementSibling && el.previousElementSibling.classList.contains('view-mode')){
+            el.previousElementSibling.textContent = el.value || '';
+          }
+        }
+      }
+    };
+
+    safeSet('.nadi-nama', it.nama);
+    safeSet('.nadi-ic', it.ic);
+    safeSet('.nadi-tel', it.tel);
+    safeSet('.nadi-alamat', it.alamat);
+    safeSet('.nadi-bp', it.bp);
+    safeSet('.nadi-pr', it.pr);
+    // dxt type (butang dropdown – hanya tukar hidden value & label jika tak fokus)
+    const dxtTypeInput = row.querySelector('.nadi-dxt-type');
+    const dxtTypeBtn   = row.querySelector('.nadi-dxt-type-btn');
+    if (dxtTypeInput && document.activeElement !== dxtTypeInput){
+      dxtTypeInput.value = it.dxtType || dxtTypeInput.value;
+      if (dxtTypeBtn && !dxtTypeBtn.matches(':focus')) dxtTypeBtn.textContent = dxtTypeInput.value || 'Fasting';
+    }
+    safeSet('.nadi-dxt', it.dxt);
+    safeSet('.nadi-tinggi', it.tinggi);
+    safeSet('.nadi-berat', it.berat);
+    safeSet('.nadi-bmi', it.bmi);
+    safeSet('.nadi-tca-date', it.tcaDate);
+    safeSet('.nadi-tca-time', it.tcaTime);
+    safeSet('.nadi-staff', it.tcaStaff);
+    safeSet('.nadi-remark', it.remark);
+
+    // checkbox layak/tak layak – hormati mutual exclusive (guna helper asal)
+    const layak   = row.querySelector('.nadi-layak');
+    const takLayak= row.querySelector('.nadi-taklayak');
+    if (layak && document.activeElement !== layak) layak.checked = !!it.layak;
+    if (takLayak && document.activeElement !== takLayak) takLayak.checked = !!it.takLayak;
+
+    // Pantulkan status enable/disable input TCA ikut logik asal
+    const tcaDate = row.querySelector('.nadi-tca-date');
+    const tcaTime = row.querySelector('.nadi-tca-time');
+    const staff   = row.querySelector('.nadi-staff');
+    const btnDaftar = row.querySelector('.nadi-daftar');
+    if (layak && takLayak && tcaDate && tcaTime && staff && btnDaftar){
+      if (layak.checked){
+        takLayak.checked = false;
+        tcaDate.disabled = false; tcaTime.disabled = false; staff.disabled = false; btnDaftar.disabled = false;
+      } else if (takLayak.checked){
+        layak.checked = false;
+        tcaDate.disabled = true;  tcaTime.disabled = true;  staff.disabled = true;  btnDaftar.disabled = true;
+      } else {
+        // tiada pilihan → disable TCA
+        tcaDate.disabled = true;  tcaTime.disabled = true;  staff.disabled = true;  btnDaftar.disabled = true;
+      }
+    }
+  });
+
+  // kemas kini ringkasan
+  updateNadiSummary?.();
+}
 
 function collectNadiItems(){
   // Ambil payload sedia ada
@@ -2661,14 +2863,16 @@ async function saveNadiProgramActivity(){
     }, { msg: 'Menyimpan aktiviti…' });
 
     if (res.status === 'success'){
-      // Jika input tajuk ada dan kosong, isikan dengan finalTitle supaya nampak di UI
-      const inp = document.getElementById('nadiProgramTitle');
-      if (inp && !inp.value) inp.value = finalTitle;
+  toast('Berjaya', 'Aktiviti program disimpan ke sheet aktiviti', 'success');
 
-      toast('Berjaya', 'Aktiviti program disimpan ke sheet aktiviti', 'success');
-    } else {
-      throw new Error(res.message || 'Gagal simpan aktiviti');
-    }
+  // [PILIHAN] — kosongkan live cache
+  if (NADI_LIVE_SESSION_ID){
+    try{ await postForm({ action:'clearNadiLive', sessionId: NADI_LIVE_SESSION_ID }, { silent:true }); }catch(e){}
+  }
+} else {
+  throw new Error(res.message || 'Gagal simpan aktiviti');
+}
+
   } catch(e){
     toast('Ralat', e.message, 'danger');
   }
