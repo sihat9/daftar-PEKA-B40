@@ -242,6 +242,16 @@
   .whatsapp-report-value { flex: 1; }
   .whatsapp-report-footer { text-align: center; font-size: 12px; color: var(--muted); margin-top: 20px; padding-top: 15px; border-top: 1px solid #eee; }
 
+
+.monitor-card .stat {
+  font-size: 28px; font-weight: 700; line-height: 1;
+}
+.monitor-card .label {
+  font-size: 12px; text-transform: uppercase; letter-spacing: .06em;
+}
+
+
+
   /* NADI Summary Cards */
   .nadi-summary-container {
     display: flex;
@@ -454,6 +464,7 @@
         <h2 class="h6 m-0"><i class="bi bi-clipboard2-pulse me-2"></i>Program PEKA B40 bersama NADI</h2>
         <div class="d-flex gap-2">
           <button id="btnNadiExportCsv" class="btn btn-sm btn-outline-success"><i class="bi bi-filetype-csv me-1"></i>Export to CSV</button>
+          <button id="btnMonitorAll" class="btn btn-outline-primary">Monitor Semua (Live)</button>
         </div>
       </div>
       
@@ -713,6 +724,18 @@
       </div>
     </section>
 
+    <section id="monitorAllSection" class="page" style="display:none;">
+  <div class="d-flex align-items-center gap-2 mb-3">
+    <h3 class="mb-0">Monitor Semua Program (Live)</h3>
+    <input id="monitorDate" type="date" class="form-control" style="max-width:200px;">
+    <button class="btn btn-primary" onclick="refreshMonitorNow()">Segar Semula</button>
+  </div>
+
+  <div id="monitorInfo" class="text-muted mb-2"></div>
+  <div id="monitorCards" class="row g-3"></div>
+</section>
+
+
     <!-- Arkib -->
     <section id="arkib" class="mb-4 d-none">
       <div class="d-flex justify-content-between align-items-center mb-2">
@@ -813,7 +836,7 @@
       </div>
     </div></div>
   </div>
-
+  
   <!-- Toast Host (kanan atas) -->
   <div id="toastHost"><div id="toastContainer" class="toast-container"></div></div>
 
@@ -996,7 +1019,129 @@
       alamat:  pick(keysets.alamat)
     };
   }
+// === KONFIG & UTIL ===
+const POLL_MS = 7000; // refresh setiap 7s
+let monitorTimer = null;
 
+function showPage(id){
+  // sembunyikan semua .page, tunjuk satu
+  document.querySelectorAll('.page').forEach(p=> p.style.display='none');
+  const el = document.getElementById(id);
+  if (el) el.style.display = '';
+}
+
+function todayIso(){
+  const d=new Date();
+  const mm=('0'+(d.getMonth()+1)).slice(-2);
+  const dd=('0'+d.getDate()).slice(-2);
+  return d.getFullYear()+'-'+mm+'-'+dd;
+}
+
+// === MONITOR VIEW ===
+async function showMonitorAll(){
+  // masuk skrin
+  showPage('monitorAllSection');
+  const dateInput = document.getElementById('monitorDate');
+  if (!dateInput.value) dateInput.value = todayIso();
+  await loadMonitor(); // first load
+  startMonitorPolling();
+}
+
+function startMonitorPolling(){
+  stopMonitorPolling();
+  monitorTimer = setInterval(loadMonitor, POLL_MS);
+}
+function stopMonitorPolling(){
+  if (monitorTimer) { clearInterval(monitorTimer); monitorTimer=null; }
+}
+async function refreshMonitorNow(){
+  await loadMonitor(true);
+}
+
+async function loadMonitor(force=false){
+  try{
+    const dateIso = document.getElementById('monitorDate')?.value || todayIso();
+    const qs = new URLSearchParams({ action:'getNadiMonitor', date: dateIso });
+    const res = await fetch('?'+qs.toString(), { method:'GET', credentials:'include' });
+    const json = await res.json();
+    if (json.status!=='success') throw new Error(json.message||'Gagal ambil monitor');
+
+    // Info bar
+    document.getElementById('monitorInfo').textContent =
+      `Tarikh: ${json.date} • Auto refresh setiap ${(POLL_MS/1000)}s`;
+
+    renderMonitorCards(json.data||[]);
+  }catch(err){
+    console.error(err);
+    document.getElementById('monitorInfo').textContent = 'Ralat memuat data monitor.';
+  }
+}
+
+function renderMonitorCards(list){
+  const wrap = document.getElementById('monitorCards');
+  if (!wrap) return;
+  if (!list.length){
+    wrap.innerHTML = `<div class="col-12"><div class="alert alert-info">Tiada sesi pada tarikh ini.</div></div>`;
+    return;
+  }
+  wrap.innerHTML = list.map(item=>{
+    const c = item.counts||{layak:0,takLayak:0,total:0};
+    return `
+      <div class="col-12 col-md-6 col-lg-4">
+        <div class="card shadow-sm monitor-card">
+          <div class="card-body">
+            <div class="d-flex justify-content-between align-items-start">
+              <div>
+                <div class="fw-bold">${escapeHtml(item.title||'-')}</div>
+                <div class="text-muted small">${escapeHtml(item.programDate||'')}</div>
+                <div class="text-muted small">ID: ${escapeHtml(item.activityId||'')}</div>
+              </div>
+              <button class="btn btn-sm btn-outline-secondary" onclick="openSessionDetail('${item.activityId}')">Buka</button>
+            </div>
+            <hr>
+            <div class="row text-center">
+              <div class="col">
+                <div class="stat">${c.layak||0}</div>
+                <div class="label">Layak</div>
+              </div>
+              <div class="col">
+                <div class="stat">${c.takLayak||0}</div>
+                <div class="label">Tidak Layak</div>
+              </div>
+              <div class="col">
+                <div class="stat">${c.total||0}</div>
+                <div class="label">Jumlah</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>`;
+  }).join('');
+}
+
+// OPTIONAL: bila klik "Buka" pada kad → terus filter ke sesi tersebut jika anda ada UI detail
+function openSessionDetail(activityId){
+  // Contoh: jika anda sudah ada halaman “Program PEKAB40 bersama NADI”
+  // dan fungsi `activateFromHash` untuk buka panel detail,
+  // anda boleh set hash begini:
+  location.hash = '#nadi?activityId='+encodeURIComponent(activityId);
+  // atau terus tukar ke tab asal anda di sini, jika perlu:
+  // showPage('programNadiSection'); ... dan panggil loader detail dengan activityId
+}
+
+// helper elak XSS
+function escapeHtml(s){
+  return String(s||'').replace(/[&<>"'`=\/]/g, function (c) {
+    return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;','/':'&#x2F;','`':'&#x60;','=':'&#x3D;'}[c];
+  });
+}
+
+// Pastikan hentikan polling bila keluar dari skrin monitor (jika anda ada router tab sendiri)
+// Contoh (optional):
+window.addEventListener('hashchange', ()=>{
+  const onMonitor = location.hash.includes('#monitor');
+  if (!onMonitor) stopMonitorPolling();
+});
   // ---------- Render ----------
   function renderRows(items) {
     if (!items.length) {
@@ -3514,8 +3659,12 @@ window.addEventListener('hashchange', activateFromHash);
     }
     console.error('[XLSX] Gagal dimuat dari semua CDN.');
     throw new Error('Tidak dapat memuatkan SheetJS (XLSX).');
-  };
-})();
-  </script>
+document.addEventListener('DOMContentLoaded', function(){
+    const btnMonitor = document.getElementById('btnMonitorAll');
+    if (btnMonitor) {
+      btnMonitor.addEventListener('click', ()=> showMonitorAll());
+    }
+  });
+</script>
 </body>
 </html>
