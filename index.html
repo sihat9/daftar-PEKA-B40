@@ -1057,73 +1057,144 @@ async function refreshMonitorNow(){
   await loadMonitor(true);
 }
 
-async function loadMonitor(force=false){
-  try{
-    const dateIso = document.getElementById('monitorDate')?.value || todayIso();
+async function loadMonitor(dateStr) {
+  const container = document.getElementById('monitorAllContainer');
+  if (!container) return;
 
-    // ★ Guna helper getJSON (auto: ?id_token=..., base=SCRIPT_URL)
-    const res = await getJSON(
-      { action: 'getNadiMonitor', date: dateIso },
-      { silent: true, msg: 'Memuat Monitor…' }
-    );
+  // Tarikh dari input jika tidak diberi
+  const chosen = (dateStr || document.getElementById('monitorDate')?.value || '').trim();
 
-    if (res.status !== 'success') {
-      throw new Error(res.message || 'Gagal ambil data monitor.');
+  // Papar skeleton sementara
+  container.innerHTML = `
+    <div class="text-muted small mb-2">Memuat data monitor…</div>
+    <div class="row g-2">
+      <div class="col-12 col-md-4"><div class="card placeholder-wave"><div class="card-body">
+        <div class="placeholder col-8 mb-2"></div>
+        <div class="placeholder col-6"></div>
+      </div></div></div>
+      <div class="col-12 col-md-4"><div class="card placeholder-wave"><div class="card-body">
+        <div class="placeholder col-8 mb-2"></div>
+        <div class="placeholder col-6"></div>
+      </div></div></div>
+      <div class="col-12 col-md-4"><div class="card placeholder-wave"><div class="card-body">
+        <div class="placeholder col-8 mb-2"></div>
+        <div class="placeholder col-6"></div>
+      </div></div></div>
+    </div>`;
+
+  // Util kecil: pembantu fetch + parse JSON dengan mesej ralat yang jelas
+  async function fetchJSON(url) {
+    const res = await fetch(url, { method: 'GET', credentials: 'omit' });
+    const text = await res.text();
+    let json;
+    try {
+      json = JSON.parse(text);
+    } catch (e) {
+      // Jika HTML (<!DOCTYPE …) -> biasanya URL silap / token tak dihantar
+      throw new Error('Respons bukan JSON sah daripada pelayan (mungkinkah URL/token salah?).');
     }
-
-    // Info bar
-    const info = document.getElementById('monitorInfo');
-    if (info) info.textContent = `Tarikh: ${res.date || dateIso} • Auto refresh setiap ${(POLL_MS/1000)}s`;
-
-    renderMonitorCards(res.data || []);
-  } catch (err){
-    console.error(err);
-    const info = document.getElementById('monitorInfo');
-    if (info) info.textContent = 'Ralat memuat data monitor.';
-    toast?.('Ralat', err.message || 'Monitor gagal dimuat', 'danger');
+    return json;
   }
-}
 
-function renderMonitorCards(list){
-  const wrap = document.getElementById('monitorCards');
-  if (!wrap) return;
-  if (!list.length){
-    wrap.innerHTML = `<div class="col-12"><div class="alert alert-info">Tiada sesi pada tarikh ini.</div></div>`;
+  // Bina URL
+  const qs = new URLSearchParams();
+  qs.set('action', 'getNadiMonitor');
+  if (chosen) qs.set('date', chosen); // sokong "yyyy-MM-dd" atau "dd/MM/yyyy"
+  if (typeof ID_TOKEN === 'string' && ID_TOKEN) qs.set('id_token', ID_TOKEN);
+
+  // Muat data
+  let json;
+  try {
+    json = await fetchJSON(`${SCRIPT_URL}?${qs.toString()}`);
+  } catch (err) {
+    container.innerHTML = `
+      <div class="alert alert-danger">
+        <div class="fw-bold mb-1">Gagal memuat monitor</div>
+        <div>${err.message || err}</div>
+        <div class="small text-muted mt-1">Semak semula <code>SCRIPT_URL</code>, <code>ID_TOKEN</code>, dan capaian internet.</div>
+      </div>`;
+    if (typeof toast === 'function') toast('Ralat', 'Gagal memuat monitor', 'danger');
     return;
   }
-  wrap.innerHTML = list.map(item=>{
-    const c = item.counts||{layak:0,takLayak:0,total:0};
+
+  // Semak status
+  if (!json || json.status !== 'success') {
+    const msg = (json && (json.message || json.code)) || 'Action tidak sah / akses ditolak';
+    container.innerHTML = `
+      <div class="alert alert-warning">
+        <div class="fw-bold mb-1">Tidak dapat memuat data monitor</div>
+        <div>${msg}</div>
+        <div class="small text-muted mt-1">Pastikan anda telah sign-in dan akaun berada dalam allowlist.</div>
+      </div>`;
+    if (typeof toast === 'function') toast('Makluman', String(msg), 'warning');
+    return;
+  }
+
+  // Bentuk data: { status:'success', date:'dd/MM/yyyy', data:[{activityId,title,programDate,counts:{layak,takLayak,total}}] }
+  const monitorDate = json.date || chosen || '';
+  const items = Array.isArray(json.data) ? json.data : [];
+
+  // Jika tiada sesi pada tarikh dipilih
+  if (!items.length) {
+    container.innerHTML = `
+      <div class="text-center text-muted py-4">
+        Tiada sesi ditemui untuk tarikh <span class="fw-semibold">${monitorDate || '(tidak ditentukan)'}</span>.
+      </div>`;
+    return;
+  }
+
+  // Render kad ringkasan setiap sesi
+  const now = new Date();
+  const rendered = items.map((s) => {
+    const layak = Number(s?.counts?.layak || 0);
+    const tak = Number(s?.counts?.takLayak || 0);
+    const tot = Number(s?.counts?.total || (layak + tak));
+
+    // Pilih warna ringkas ikut status (hanya kosmetik)
+    const barLayak = Math.round(tot ? (layak / tot) * 100 : 0);
+    const barTak = Math.max(0, 100 - barLayak);
+
     return `
       <div class="col-12 col-md-6 col-lg-4">
-        <div class="card shadow-sm monitor-card">
+        <div class="card h-100 shadow-sm">
           <div class="card-body">
-            <div class="d-flex justify-content-between align-items-start">
+            <div class="d-flex justify-content-between align-items-start mb-2">
               <div>
-                <div class="fw-bold">${escapeHtml(item.title||'-')}</div>
-                <div class="text-muted small">${escapeHtml(item.programDate||'')}</div>
-                <div class="text-muted small">ID: ${escapeHtml(item.activityId||'')}</div>
+                <div class="fw-bold">${s.title || 'Tanpa Tajuk'}</div>
+                <div class="text-muted small">${s.programDate || monitorDate}</div>
               </div>
-              <button class="btn btn-sm btn-outline-secondary" onclick="openSessionDetail('${item.activityId}')">Buka</button>
+              <span class="badge bg-secondary">ID: ${s.activityId || '-'}</span>
             </div>
-            <hr>
-            <div class="row text-center">
-              <div class="col">
-                <div class="stat">${c.layak||0}</div>
-                <div class="label">Layak</div>
+
+            <div class="mb-2">
+              <div class="d-flex justify-content-between small text-muted">
+                <span>Layak</span><span>${layak}</span>
               </div>
-              <div class="col">
-                <div class="stat">${c.takLayak||0}</div>
-                <div class="label">Tidak Layak</div>
+              <div class="progress" role="progressbar" aria-label="Layak vs Tidak Layak">
+                <div class="progress-bar" style="width:${barLayak}%"></div>
+                <div class="progress-bar bg-danger" style="width:${barTak}%"></div>
               </div>
-              <div class="col">
-                <div class="stat">${c.total||0}</div>
-                <div class="label">Jumlah</div>
-              </div>
+            </div>
+
+            <div class="d-flex gap-2 mt-3">
+              <span class="badge bg-success">Layak: ${layak}</span>
+              <span class="badge bg-danger">Tidak Layak: ${tak}</span>
+              <span class="badge bg-primary">Jumlah: ${tot}</span>
             </div>
           </div>
         </div>
       </div>`;
   }).join('');
+
+  container.innerHTML = `
+    <div class="d-flex justify-content-between align-items-center mb-2">
+      <div class="small text-muted">
+        Tarikh dipantau: <span class="fw-semibold">${monitorDate || '(tidak ditentukan)'}</span>
+      </div>
+      <div class="small text-muted">Dikemas kini: ${now.toLocaleTimeString()}</div>
+    </div>
+    <div class="row g-2">${rendered}</div>
+  `;
 }
 
 function openSessionDetail(activityId){
