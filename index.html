@@ -3620,7 +3620,7 @@ function activateFromHash(){
 window.addEventListener('hashchange', activateFromHash);
 
 /* =======================
-   ENSURE XLSX (SATU-SATU NYA; CDN)
+   ENSURE XLSX (SATU-SATUNYA; CDN)
    ======================= */
 (function () {
   'use strict';
@@ -3628,7 +3628,6 @@ window.addEventListener('hashchange', activateFromHash);
   // Helper: muatkan skrip satu kali sahaja
   window.loadScriptOnce = window.loadScriptOnce || function loadScriptOnce(src){
     return new Promise((resolve, reject) => {
-      // jika sudah dimuat
       if (document.querySelector('script[data-dynamic-src="'+src+'"]')) return resolve();
       const s = document.createElement('script');
       s.src = src;
@@ -3640,7 +3639,7 @@ window.addEventListener('hashchange', activateFromHash);
     });
   };
 
-  // OVERRIDE: pastikan hanya cuba CDN (tiada lagi 'vendor/...')
+  // OVERRIDE: hanya cuba CDN (tiada lagi 'vendor/...')
   window.ensureXLSXReady = async function ensureXLSXReady() {
     if (window.XLSX) return;
     const cdns = [
@@ -3672,14 +3671,14 @@ window.addEventListener('hashchange', activateFromHash);
     }
   });
 
-  // (Opsyen) Henti polling bila keluar dari paparan monitor
+  // Henti polling bila keluar dari paparan monitor
   window.addEventListener('hashchange', () => {
     if (!location.hash.includes('#monitor')) {
       try { window.stopMonitorPolling && window.stopMonitorPolling(); } catch(e){}
     }
   });
 
-})(); // <— tutup IIFE
+})(); // tutup IIFE
 </script>
 </body>
 </html>
