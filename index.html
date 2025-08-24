@@ -1039,7 +1039,6 @@ function todayIso(){
 
 // === MONITOR VIEW ===
 async function showMonitorAll(){
-  // masuk skrin
   showPage('monitorAllSection');
   const dateInput = document.getElementById('monitorDate');
   if (!dateInput.value) dateInput.value = todayIso();
@@ -1066,7 +1065,6 @@ async function loadMonitor(force=false){
     const json = await res.json();
     if (json.status!=='success') throw new Error(json.message||'Gagal ambil monitor');
 
-    // Info bar
     document.getElementById('monitorInfo').textContent =
       `Tarikh: ${json.date} • Auto refresh setiap ${(POLL_MS/1000)}s`;
 
@@ -1119,69 +1117,23 @@ function renderMonitorCards(list){
   }).join('');
 }
 
-// OPTIONAL: bila klik "Buka" pada kad → terus filter ke sesi tersebut jika anda ada UI detail
 function openSessionDetail(activityId){
-  // Contoh: jika anda sudah ada halaman “Program PEKAB40 bersama NADI”
-  // dan fungsi `activateFromHash` untuk buka panel detail,
-  // anda boleh set hash begini:
   location.hash = '#nadi?activityId='+encodeURIComponent(activityId);
-  // atau terus tukar ke tab asal anda di sini, jika perlu:
-  // showPage('programNadiSection'); ... dan panggil loader detail dengan activityId
 }
 
-// helper elak XSS
-function escapeHtml(s){
-  return String(s||'').replace(/[&<>"'`=\/]/g, function (c) {
-    return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;','/':'&#x2F;','`':'&#x60;','=':'&#x3D;'}[c];
-  });
-}
+// ❌ PADAMKAN fungsi duplikasi ini kalau ada:
+// function escapeHtml(s){ ... }
 
-// Pastikan hentikan polling bila keluar dari skrin monitor (jika anda ada router tab sendiri)
-// Contoh (optional):
+// Henti polling bila keluar dari skrin monitor
 window.addEventListener('hashchange', ()=>{
   const onMonitor = location.hash.includes('#monitor');
   if (!onMonitor) stopMonitorPolling();
 });
-  // ---------- Render ----------
-  function renderRows(items) {
-    if (!items.length) {
-      tableBody.innerHTML =
-        '<tr><td colspan="8" class="text-center text-muted">Tiada data ditemui (semak header CSV anda).</td></tr>';
-      return;
-    }
-    tableBody.innerHTML = items.map((it, idx) => {
-      const age = umurDariIC(it.ic);
-      const eligible = (age !== null) ? age >= 40 : false;
-      const reason = (age === null) ? 'IC tidak sah' : (eligible ? '-' : `Umur ${age} tahun (&lt; 40)`);
 
-      return `
-        <tr data-idx="${idx}">
-          <td>${escapeHtml(it.nama) || '-'}</td>
-          <td>${escapeHtml(it.ic) || '-'}</td>
-          <td>${escapeHtml(it.telefon) || '-'}</td>
-          <td>${escapeHtml(it.alamat) || '-'}</td>
-          <td class="text-center">
-            ${eligible ? '<span class="badge text-bg-success">Layak</span>' :
-                         '<span class="badge text-bg-danger">Tidak Layak</span>'}
-          </td>
-          <td class="text-center">${escapeHtml(reason)}</td>
-          <td>
-            ${eligible ? `
-              <div class="row g-1">
-                <div class="col"><input type="date" class="form-control form-control-sm tca-date"></div>
-                <div class="col"><input type="time" class="form-control form-control-sm tca-time"></div>
-                <div class="col"><input type="text"  class="form-control form-control-sm tca-staff" placeholder="Staff"></div>
-              </div>
-            ` : '<span class="text-muted">—</span>'}
-          </td>
-          <td>
-            ${eligible
-              ? '<button class="btn btn-sm btn-primary daftar-row"><i class="fas fa-save me-1"></i>Daftar</button>'
-              : '<span class="text-muted">—</span>'}
-          </td>
-        </tr>`;
-    }).join('');
-  }
+// ✅ EXPOSE ke global (penting untuk onclick & button)
+window.showMonitorAll = showMonitorAll;
+window.refreshMonitorNow = refreshMonitorNow;
+window.stopMonitorPolling = stopMonitorPolling;
 
   // ---------- Pemproses utama ----------
   async function handleFile(file) {
