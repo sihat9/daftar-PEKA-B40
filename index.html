@@ -1060,18 +1060,27 @@ async function refreshMonitorNow(){
 async function loadMonitor(force=false){
   try{
     const dateIso = document.getElementById('monitorDate')?.value || todayIso();
-    const qs = new URLSearchParams({ action:'getNadiMonitor', date: dateIso });
-    const res = await fetch('?'+qs.toString(), { method:'GET', credentials:'include' });
-    const json = await res.json();
-    if (json.status!=='success') throw new Error(json.message||'Gagal ambil monitor');
 
-    document.getElementById('monitorInfo').textContent =
-      `Tarikh: ${json.date} • Auto refresh setiap ${(POLL_MS/1000)}s`;
+    // ★ Guna helper getJSON (auto: ?id_token=..., base=SCRIPT_URL)
+    const res = await getJSON(
+      { action: 'getNadiMonitor', date: dateIso },
+      { silent: true, msg: 'Memuat Monitor…' }
+    );
 
-    renderMonitorCards(json.data||[]);
-  }catch(err){
+    if (res.status !== 'success') {
+      throw new Error(res.message || 'Gagal ambil data monitor.');
+    }
+
+    // Info bar
+    const info = document.getElementById('monitorInfo');
+    if (info) info.textContent = `Tarikh: ${res.date || dateIso} • Auto refresh setiap ${(POLL_MS/1000)}s`;
+
+    renderMonitorCards(res.data || []);
+  } catch (err){
     console.error(err);
-    document.getElementById('monitorInfo').textContent = 'Ralat memuat data monitor.';
+    const info = document.getElementById('monitorInfo');
+    if (info) info.textContent = 'Ralat memuat data monitor.';
+    toast?.('Ralat', err.message || 'Monitor gagal dimuat', 'danger');
   }
 }
 
