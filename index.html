@@ -3570,7 +3570,187 @@ function activateFromHash(){
   if (link){ link.click(); }
 }
 window.addEventListener('hashchange', activateFromHash);
+// ===================== Monitor Semua (Live) =====================
 
+// Tetapan poll (fallback 7s jika tiada tetapan global)
+const MONITOR_POLL_MS = (window.MONITOR_POLL_MS || 7000);
+
+// Pemasa untuk auto-refresh
+let monitorTimer = null;
+
+/**
+ * Tunjukkan skrin Monitor Semua & mulakan auto-refresh
+ */
+async function showMonitorAll(){
+  // Jika app anda ada helper showPage(id), guna itu; jika tiada, sekurang-kurangnya papar seksyen monitor
+  if (typeof showPage === 'function') {
+    showPage('monitorAllSection');
+  } else {
+    const sec = document.getElementById('monitorAllSection');
+    if (sec) sec.style.display = '';
+  }
+
+  // Tetapkan tarikh default (hari ini) jika kosong
+  const dateInput = document.getElementById('monitorDate');
+  if (dateInput && !dateInput.value) dateInput.value = todayIsoSafe();
+
+  // Muat pertama kali & mula polling
+  await loadMonitor(true);
+  startMonitorPolling();
+}
+
+/** Muat semula sekali (guna pada butang "Segar Semula") */
+async function refreshMonitorNow(){
+  await loadMonitor(true);
+}
+
+/** Mula polling berkala */
+function startMonitorPolling(){
+  stopMonitorPolling();
+  monitorTimer = setInterval(loadMonitor, MONITOR_POLL_MS);
+}
+
+/** Henti polling */
+function stopMonitorPolling(){
+  if (monitorTimer){ clearInterval(monitorTimer); monitorTimer = null; }
+}
+
+/** Util: tarikh hari ini (YYYY-MM-DD) — versi selamat */
+function todayIsoSafe(){
+  const d = new Date();
+  const mm = ('0'+(d.getMonth()+1)).slice(-2);
+  const dd = ('0'+d.getDate()).slice(-2);
+  return `${d.getFullYear()}-${mm}-${dd}`;
+}
+
+/**
+ * Teras pemuatan data monitor
+ * - Cuba guna getJSON + id_token jika tersedia
+ * - Jika tidak, jatuh kepada fetch(SCRIPT_URL) / fetch relatif
+ */
+async function loadMonitor(force=false){
+  const infoEl  = document.getElementById('monitorInfo');
+  const cardsEl = document.getElementById('monitorCards');
+
+  try{
+    const dateIso = document.getElementById('monitorDate')?.value || todayIsoSafe();
+
+    // Papar status kecil (optional)
+    if (infoEl && force){
+      infoEl.textContent = 'Memuat data monitor…';
+    }
+
+    // Keutamaan: getJSON (jika disediakan oleh app anda dan sudah login)
+    let json;
+    if (typeof getJSON === 'function' && window.ID_TOKEN) {
+      json = await getJSON(
+        { action:'getNadiMonitor', date: dateIso },
+        { silent:true }
+      );
+    } else {
+      // Fallback: try direct fetch → SCRIPT_URL jika ada, jika tidak fetch relatif
+      const base = (typeof SCRIPT_URL === 'string' && SCRIPT_URL) ? SCRIPT_URL : '';
+      const qs   = new URLSearchParams({ action:'getNadiMonitor', date: dateIso }).toString();
+      const url  = base ? `${base}?${qs}` : `?${qs}`;
+      const r    = await fetch(url, { method:'GET', credentials:'include' });
+      json       = await r.json();
+    }
+
+    if (json.status !== 'success') throw new Error(json.message || 'Gagal ambil data monitor');
+
+    // Info bar
+    if (infoEl){
+      infoEl.textContent = `Tarikh: ${json.date || dateIso} • Auto refresh setiap ${(MONITOR_POLL_MS/1000)}s`;
+    }
+
+    renderMonitorCards(Array.isArray(json.data) ? json.data : []);
+
+  } catch(err){
+    console.error(err);
+    if (infoEl) infoEl.textContent = 'Ralat memuat data monitor.';
+    if (cardsEl) {
+      cardsEl.innerHTML = `<div class="col-12"><div class="alert alert-danger">Tidak dapat memuat data buat masa ini.</div></div>`;
+    }
+  }
+}
+
+/**
+ * Lukis kad-kad ringkasan untuk semua program pada tarikh dipilih
+ * @param {Array} list - senarai { activityId, title, programDate, counts:{layak,takLayak,total} }
+ */
+function renderMonitorCards(list){
+  const wrap = document.getElementById('monitorCards');
+  if (!wrap) return;
+
+  if (!list.length){
+    wrap.innerHTML = `<div class="col-12"><div class="alert alert-info">Tiada sesi pada tarikh ini.</div></div>`;
+    return;
+  }
+
+  wrap.innerHTML = list.map(item=>{
+    const c = item.counts || { layak:0, takLayak:0, total:0 };
+    return `
+      <div class="col-12 col-md-6 col-lg-4">
+        <div class="card shadow-sm monitor-card">
+          <div class="card-body">
+            <div class="d-flex justify-content-between align-items-start">
+              <div>
+                <div class="fw-bold">${escapeHtmlSafe(item.title||'-')}</div>
+                <div class="text-muted small">${escapeHtmlSafe(item.programDate||'')}</div>
+                <div class="text-muted small">ID: ${escapeHtmlSafe(item.activityId||'')}</div>
+              </div>
+              <button class="btn btn-sm btn-outline-secondary"
+                      onclick="openSessionDetail('${String(item.activityId||'').replace(/["'<>]/g,'')}')">
+                Buka
+              </button>
+            </div>
+            <hr>
+            <div class="row text-center">
+              <div class="col">
+                <div class="stat">${Number(c.layak||0)}</div>
+                <div class="label">Layak</div>
+              </div>
+              <div class="col">
+                <div class="stat">${Number(c.takLayak||0)}</div>
+                <div class="label">Tidak Layak</div>
+              </div>
+              <div class="col">
+                <div class="stat">${Number(c.total||0)}</div>
+                <div class="label">Jumlah</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>`;
+  }).join('');
+}
+
+/** Apabila klik “Buka” pada kad — navigate ke tab NADI dengan activityId (jika anda sediakan) */
+function openSessionDetail(activityId){
+  // Masukkan activityId ke hash supaya tab NADI boleh membacanya
+  location.hash = '#nadi?activityId=' + encodeURIComponent(activityId || '');
+  // Jika app anda perlu buka seksyen NADI secara manual:
+  // const link = document.querySelector('.nav-link[href="#nadi"]'); link?.click();
+}
+
+/** Helper ringkas anti-XSS untuk teks */
+function escapeHtmlSafe(s){
+  return String(s||'').replace(/[&<>"'`=\/]/g, c => ({
+    '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;','/':'&#x2F;','`':'&#x60;','=':'&#x3D;'
+  }[c]));
+}
+
+// -- Expose ke global supaya dipanggil oleh event listener luar / butang HTML --
+window.showMonitorAll     = showMonitorAll;
+window.refreshMonitorNow  = refreshMonitorNow;
+window.stopMonitorPolling = stopMonitorPolling;
+
+// (Pilihan) Hentikan polling bila bertukar hash dan bukan monitor
+window.addEventListener('hashchange', () => {
+  if (!location.hash.includes('#monitor')) {
+    try { stopMonitorPolling(); } catch(e){}
+  }
+});
 /* =======================
    ENSURE XLSX (SATU-SATUNYA; CDN)
    ======================= */
