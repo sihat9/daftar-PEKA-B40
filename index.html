@@ -3614,14 +3614,15 @@ window.addEventListener('hashchange', activateFromHash);
   };
 
   // Event listener untuk butang "Monitor Semua"
-  document.addEventListener('DOMContentLoaded', function(){
-    const btnMonitor = document.getElementById('btnMonitorAll');
-    if (btnMonitor) {
-      btnMonitor.addEventListener('click', () => {
-        try { showMonitorAll(); } catch (e) { console.error(e); }
-      });
-    }
-  });
+document.addEventListener('DOMContentLoaded', function(){
+  const btnMonitor = document.getElementById('btnMonitorAll');
+  if (btnMonitor) {
+    btnMonitor.addEventListener('click', () => {
+      try { showMonitorAll(); } catch (e) { console.error(e); }
+    });
+  }
+});
+
 
   // Henti polling bila keluar dari paparan monitor
   window.addEventListener('hashchange', () => {
