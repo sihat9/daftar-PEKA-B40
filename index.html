@@ -1143,6 +1143,20 @@ window.addEventListener('hashchange', ()=>{
 window.showMonitorAll = showMonitorAll;
 window.refreshMonitorNow = refreshMonitorNow;
 window.stopMonitorPolling = stopMonitorPolling;
+// 1) Helper fetch dengan timeout (abort)
+async function fetchWithTimeout(url, opt={}, ms=15000){
+  const ctl = new AbortController();
+  const id = setTimeout(()=>ctl.abort(new Error('timeout')), ms);
+  try{
+    const res = await fetch(url, { ...opt, signal: ctl.signal });
+    return res;
+  } finally {
+    clearTimeout(id);
+  }
+}
+
+// 2) Single-flight guard untuk monitor
+let MONITOR_LOADING = false;
 
   // ---------- Pemproses utama ----------
   async function handleFile(file) {
