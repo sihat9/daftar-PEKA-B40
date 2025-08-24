@@ -3698,16 +3698,18 @@ async function refreshMonitorNow(){
   await loadMonitor(true);
 }
 
-/** Mula polling berkala */
-function startMonitorPolling(){
+let monitorTimer=null;
+function startMonitorPolling(dateIso){
   stopMonitorPolling();
-  monitorTimer = setInterval(loadMonitor, MONITOR_POLL_MS);
+  // Panggil sekali dulu
+  loadMonitor(dateIso);
+  // Kemudian berkala
+  monitorTimer = setInterval(()=> loadMonitor(dateIso), 15000); // 15s
+}
+function stopMonitorPolling(){
+  if (monitorTimer){ clearInterval(monitorTimer); monitorTimer=null; }
 }
 
-/** Henti polling */
-function stopMonitorPolling(){
-  if (monitorTimer){ clearInterval(monitorTimer); monitorTimer = null; }
-}
 
 /** Util: tarikh hari ini (YYYY-MM-DD) — versi selamat */
 function todayIsoSafe(){
