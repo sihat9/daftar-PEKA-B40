@@ -1046,6 +1046,167 @@
     };
   }
 
+  // ---------- Render ----------
+  function renderRows(items) {
+    if (!items.length) {
+      tableBody.innerHTML =
+        '<tr><td colspan="8" class="text-center text-muted">Tiada data ditemui (semak header CSV anda).</td></tr>';
+      return;
+    }
+    tableBody.innerHTML = items.map((it, idx) => {
+      const age = umurDariIC(it.ic);
+      const eligible = (age !== null) ? age >= 40 : false;
+      const reason = (age === null) ? 'IC tidak sah' : (eligible ? '-' : `Umur ${age} tahun (&lt; 40)`);
+
+      return `
+        <tr data-idx="${idx}">
+          <td>${escapeHtml(it.nama) || '-'}</td>
+          <td>${escapeHtml(it.ic) || '-'}</td>
+          <td>${escapeHtml(it.telefon) || '-'}</td>
+          <td>${escapeHtml(it.alamat) || '-'}</td>
+          <td class="text-center">
+            ${eligible ? '<span class="badge text-bg-success">Layak</span>' :
+                         '<span class="badge text-bg-danger">Tidak Layak</span>'}
+          </td>
+          <td class="text-center">${escapeHtml(reason)}</td>
+          <td>
+            ${eligible ? `
+              <div class="row g-1">
+                <div class="col"><input type="date" class="form-control form-control-sm tca-date"></div>
+                <div class="col"><input type="time" class="form-control form-control-sm tca-time"></div>
+                <div class="col"><input type="text"  class="form-control form-control-sm tca-staff" placeholder="Staff"></div>
+              </div>
+            ` : '<span class="text-muted">—</span>'}
+          </td>
+          <td>
+            ${eligible
+              ? '<button class="btn btn-sm btn-primary daftar-row"><i class="fas fa-save me-1"></i>Daftar</button>'
+              : '<span class="text-muted">—</span>'}
+          </td>
+        </tr>`;
+    }).join('');
+  }
+
+  // ---------- Pemproses utama ----------
+  async function handleFile(file) {
+    try {
+      tableBody.innerHTML =
+        '<tr><td colspan="8" class="text-center text-muted">Memproses fail…</td></tr>';
+
+      const ext = (file.name.split('.').pop() || '').toLowerCase();
+
+      // 1) CSV → terus baca
+      if (ext === 'csv') {
+        const text = await readAsText(file);
+        const raw  = csvTextToObjects(text);
+        const items = raw.map(mapRow)
+          .filter(r => r.nama || r.ic || r.telefon || r.alamat);
+
+        if (!items.length) {
+          const rows = parseCSVToRows(text);
+          const headerRow = findHeaderRow(rows);
+          const hdrs = (rows[headerRow] || []).slice(0,8).map(h=>escapeHtml(h)).join(', ');
+          tableBody.innerHTML =
+            `<tr><td colspan="8" class="text-center text-danger">
+              CSV dibaca tetapi tiada lajur sepadan.<br>
+              <small><b>Jumpa header:</b> ${hdrs || '(kosong)'}<br>
+              Pastikan ada lajur seperti <i>Nama, IC/NRIC/KP, Telefon/HP/WhatsApp, Alamat</i>.</small>
+            </td></tr>`;
+          return;
+        }
+
+        window.__KELAYAKAN_ITEMS__ = items;
+        renderRows(items);
+        return;
+      }
+
+      // 2) XLSX/XLS → cuba SheetJS; jika gagal, minta simpan CSV
+      if (typeof window.ensureXLSXReady === 'function') {
+        try { await window.ensureXLSXReady(); } catch(e) { /* teruskan */ }
+      }
+      if (!window.XLSX) {
+        tableBody.innerHTML =
+          '<tr><td colspan="8" class="text-center text-danger">SheetJS tidak tersedia. Sila simpan Excel sebagai <b>CSV</b> dan muat naik semula.</td></tr>';
+        return;
+      }
+
+      const data = await readAsArrayBuffer(file);
+      const wb   = XLSX.read(data, { type: 'array' });
+      const ws   = wb.Sheets[wb.SheetNames[0]];
+      const raw  = XLSX.utils.sheet_to_json(ws, { defval: '', raw: true });
+
+      const items = raw.map(mapRow)
+        .filter(r => r.nama || r.ic || r.telefon || r.alamat);
+
+      if (!items.length) {
+        const hdrs = Object.keys(raw[0] || {}).slice(0,8).join(', ');
+        tableBody.innerHTML =
+          `<tr><td colspan="8" class="text-center text-danger">
+            Excel dibaca tetapi tiada lajur sepadan.<br>
+            <small><b>Jumpa header:</b> ${escapeHtml(hdrs)}<br>
+            Pastikan ada lajur seperti <i>Nama, IC/NRIC/KP, Telefon/HP/WhatsApp, Alamat</i>.</small>
+          </td></tr>`;
+        return;
+      }
+
+      window.__KELAYAKAN_ITEMS__ = items;
+      renderRows(items);
+
+    } catch (err) {
+      console.error(err);
+      tableBody.innerHTML =
+        '<tr><td colspan="8" class="text-center text-danger">Ralat memproses fail. Pastikan fail CSV/Excel sah.</td></tr>';
+    }
+  }
+
+  // ---------- Events ----------
+  fileInput.addEventListener('change', e => {
+    const f = e.target.files && e.target.files[0];
+    if (f) handleFile(f);
+  });
+
+  tableBody.addEventListener('click', e => {
+    const btn = e.target.closest('.daftar-row');
+    if (!btn) return;
+    const tr  = btn.closest('tr');
+    const idx = Number(tr.dataset.idx);
+    const item = (window.__KELAYAKAN_ITEMS__ || [])[idx];
+    if (!item) return;
+
+    const date  = tr.querySelector('.tca-date')?.value || '';
+    const time  = tr.querySelector('.tca-time')?.value || '';
+    const staff = tr.querySelector('.tca-staff')?.value || '';
+
+    // Isi borang di tab "Daftar Peka" (Bahagian B/C sudah sediakan ID medan)
+    const fNama   = document.getElementById('namaPesakit');
+    const fIC     = document.getElementById('noIC');
+    const fTel    = document.getElementById('noTelefon');
+    const fAlamat = document.getElementById('alamatPesakit');
+    const fTCA    = document.getElementById('tarikhTCA');
+    const fMasa   = document.getElementById('masaTCA');
+    const fStaff  = document.getElementById('namaStaff');
+
+    if (fNama)   fNama.value   = item.nama   || '';
+    if (fIC)     fIC.value     = item.ic     || '';
+    if (fTel)    fTel.value    = item.telefon|| '';
+    if (fAlamat) fAlamat.value = item.alamat || '';
+    if (fTCA && date)  fTCA.value  = date;
+    if (fMasa && time) fMasa.value = time;
+    if (fStaff && staff) fStaff.value = staff;
+
+    // Bawa pengguna ke tab pendaftaran
+    location.hash = '#daftar-peka';
+
+    // Maklumkan butang berjaya
+    btn.innerHTML = '<i class="fas fa-check me-1"></i>Diisi';
+    btn.classList.remove('btn-primary');
+    btn.classList.add('btn-success');
+    btn.disabled = true;
+  });
+})();  // ← TAMAT IIFE Kelayakan
+
+/* ====== Fungsi Monitor (Live) — kekal struktur sedia ada ====== */
+
 // === KONFIG & UTIL ===
 const POLL_MS = 7000; // refresh setiap 7s
 let monitorTimer = null;
@@ -1154,8 +1315,8 @@ function openSessionDetail(activityId){
   // atau terus tukar ke tab asal anda di sini, jika perlu:
   // showPage('programNadiSection'); ... dan panggil loader detail dengan activityId
 };
-                             
-// helper elak XSS
+
+// helper elak XSS (global untuk bahagian Monitor)
 function escapeHtml(s){
   return String(s||'').replace(/[&<>"'`=\/]/g, function (c) {
     return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;','\'':'&#39;','/':'&#x2F;','`':'&#x60;','=':'&#x3D;'}[c];
