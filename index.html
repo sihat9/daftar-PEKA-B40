@@ -932,7 +932,6 @@
 
   // ---------- CSV helpers ----------
   const stripBOM = (s) => s && s.charCodeAt(0) === 0xFEFF ? s.slice(1) : s;
-
   function detectDelimiter(s) {
     const sample = (s || '').slice(0, 3000);
     const cand = [',',';','\t','|'];
@@ -974,17 +973,13 @@
     return rows;
   }
 
-  // Cari baris header terbaik (ada ≥2 kata kunci)
   const keysets = {
     nama:    ['nama','nama penuh','name','nama pesakit'],
     ic:      ['ic','no ic','no. ic','nric','nokp','no kp','no. kp','kp','mykad','no mykad','no k/p','k/p','kad pengenalan','no kad pengenalan'],
     telefon: ['telefon','no telefon','no. telefon','no tel','no. tel','tel','mobile','hp','no hp','h/p','no h/p','whatsapp','no whatsapp','telefon (whatsapp)'],
     alamat:  ['alamat','address','addr','alamat rumah','alamat kediaman']
   };
-  const canon = (s) => String(s||'')
-      .toLowerCase()
-      .replace(/[\s\.\-_/()]+/g,'')   // buang ruang, titik, slash dll
-      .trim();
+  const canon = (s) => String(s||'').toLowerCase().replace(/[\s\.\-_/()]+/g,'');
 
   function scoreHeaderCell(cell) {
     const t = canon(cell);
@@ -1003,7 +998,7 @@
       const sc = hits.size;
       if (sc > best.score) best = { idx: r, score: sc };
     }
-    return (best.score >= 2) ? best.idx : 0; // perlu ≥2 kolum relevan
+    return (best.score >= 2) ? best.idx : 0;
   }
 
   function csvTextToObjects(text) {
@@ -1022,16 +1017,13 @@
       });
   }
 
-  // Padanan objek → {nama, ic, telefon, alamat}
   function mapRow(raw) {
     const entries = Object.entries(raw);
     const pick = (groups) => {
-      // cuba padanan tepat dulu
       for (const [k,v] of entries) {
         const t = canon(k);
         if (groups.some(word => t.includes(canon(word)))) return norm(v);
       }
-      // fallback: cuba contains long->short
       for (const [k,v] of entries) {
         const t = canon(k);
         if (groups.some(word => canon(word).includes(t))) return norm(v);
@@ -1046,7 +1038,6 @@
     };
   }
 
-  // ---------- Render ----------
   function renderRows(items) {
     if (!items.length) {
       tableBody.innerHTML =
@@ -1087,129 +1078,38 @@
     }).join('');
   }
 
-  // ---------- Pemproses utama ----------
-  async function handleFile(file) {
-    try {
-      tableBody.innerHTML =
-        '<tr><td colspan="8" class="text-center text-muted">Memproses fail…</td></tr>';
-
-      const ext = (file.name.split('.').pop() || '').toLowerCase();
-
-      // 1) CSV → terus baca
-      if (ext === 'csv') {
-        const text = await readAsText(file);
-        const raw  = csvTextToObjects(text);
-        const items = raw.map(mapRow)
-          .filter(r => r.nama || r.ic || r.telefon || r.alamat);
-
-        if (!items.length) {
-          const rows = parseCSVToRows(text);
-          const headerRow = findHeaderRow(rows);
-          const hdrs = (rows[headerRow] || []).slice(0,8).map(h=>escapeHtml(h)).join(', ');
-          tableBody.innerHTML =
-            `<tr><td colspan="8" class="text-center text-danger">
-              CSV dibaca tetapi tiada lajur sepadan.<br>
-              <small><b>Jumpa header:</b> ${hdrs || '(kosong)'}<br>
-              Pastikan ada lajur seperti <i>Nama, IC/NRIC/KP, Telefon/HP/WhatsApp, Alamat</i>.</small>
-            </td></tr>`;
-          return;
-        }
-
-        window.__KELAYAKAN_ITEMS__ = items;
-        renderRows(items);
-        return;
-      }
-
-      // 2) XLSX/XLS → cuba SheetJS; jika gagal, minta simpan CSV
-      if (typeof window.ensureXLSXReady === 'function') {
-        try { await window.ensureXLSXReady(); } catch(e) { /* teruskan */ }
-      }
-      if (!window.XLSX) {
-        tableBody.innerHTML =
-          '<tr><td colspan="8" class="text-center text-danger">SheetJS tidak tersedia. Sila simpan Excel sebagai <b>CSV</b> dan muat naik semula.</td></tr>';
-        return;
-      }
-
-      const data = await readAsArrayBuffer(file);
-      const wb   = XLSX.read(data, { type: 'array' });
-      const ws   = wb.Sheets[wb.SheetNames[0]];
-      const raw  = XLSX.utils.sheet_to_json(ws, { defval: '', raw: true });
-
-      const items = raw.map(mapRow)
-        .filter(r => r.nama || r.ic || r.telefon || r.alamat);
-
-      if (!items.length) {
-        const hdrs = Object.keys(raw[0] || {}).slice(0,8).join(', ');
-        tableBody.innerHTML =
-          `<tr><td colspan="8" class="text-center text-danger">
-            Excel dibaca tetapi tiada lajur sepadan.<br>
-            <small><b>Jumpa header:</b> ${escapeHtml(hdrs)}<br>
-            Pastikan ada lajur seperti <i>Nama, IC/NRIC/KP, Telefon/HP/WhatsApp, Alamat</i>.</small>
-          </td></tr>`;
-        return;
-      }
-
-      window.__KELAYAKAN_ITEMS__ = items;
-      renderRows(items);
-
-    } catch (err) {
-      console.error(err);
-      tableBody.innerHTML =
-        '<tr><td colspan="8" class="text-center text-danger">Ralat memproses fail. Pastikan fail CSV/Excel sah.</td></tr>';
-    }
-  }
-
-  // ---------- Events ----------
-  fileInput.addEventListener('change', e => {
+  // Event listener fail Excel
+  fileInput.addEventListener('change', async e => {
     const f = e.target.files && e.target.files[0];
-    if (f) handleFile(f);
+    if (!f) return;
+    const ext = f.name.split('.').pop().toLowerCase();
+    let items = [];
+    try {
+      if (ext === 'csv') {
+        const text = await readAsText(f);
+        items = csvTextToObjects(text).map(mapRow);
+      } else {
+        await window.ensureXLSXReady();
+        const data = await readAsArrayBuffer(f);
+        const wb = XLSX.read(data, { type: 'array' });
+        const sheet = wb.Sheets[wb.SheetNames[0]];
+        const json = XLSX.utils.sheet_to_json(sheet, { defval: '' });
+        items = json.map(mapRow);
+      }
+      renderRows(items);
+      window.__KELAYAKAN_ITEMS__ = items;
+    } catch(err) {
+      console.error(err);
+      alert('Gagal memproses fail: '+err.message);
+    }
   });
+})(); // <-- Tamat IIFE Kelayakan
 
-  tableBody.addEventListener('click', e => {
-    const btn = e.target.closest('.daftar-row');
-    if (!btn) return;
-    const tr  = btn.closest('tr');
-    const idx = Number(tr.dataset.idx);
-    const item = (window.__KELAYAKAN_ITEMS__ || [])[idx];
-    if (!item) return;
-
-    const date  = tr.querySelector('.tca-date')?.value || '';
-    const time  = tr.querySelector('.tca-time')?.value || '';
-    const staff = tr.querySelector('.tca-staff')?.value || '';
-
-    // Isi borang di tab "Daftar Peka" (Bahagian B/C sudah sediakan ID medan)
-    const fNama   = document.getElementById('namaPesakit');
-    const fIC     = document.getElementById('noIC');
-    const fTel    = document.getElementById('noTelefon');
-    const fAlamat = document.getElementById('alamatPesakit');
-    const fTCA    = document.getElementById('tarikhTCA');
-    const fMasa   = document.getElementById('masaTCA');
-    const fStaff  = document.getElementById('namaStaff');
-
-    if (fNama)   fNama.value   = item.nama   || '';
-    if (fIC)     fIC.value     = item.ic     || '';
-    if (fTel)    fTel.value    = item.telefon|| '';
-    if (fAlamat) fAlamat.value = item.alamat || '';
-    if (fTCA && date)  fTCA.value  = date;
-    if (fMasa && time) fMasa.value = time;
-    if (fStaff && staff) fStaff.value = staff;
-
-    // Bawa pengguna ke tab pendaftaran
-    location.hash = '#daftar-peka';
-
-    // Maklumkan butang berjaya
-    btn.innerHTML = '<i class="fas fa-check me-1"></i>Diisi';
-    btn.classList.remove('btn-primary');
-    btn.classList.add('btn-success');
-    btn.disabled = true;
-  });
-})();  // ← TAMAT IIFE Kelayakan
-
-/* ====== Fungsi Monitor (Live) — kekal struktur sedia ada ====== */
-
-// === KONFIG & UTIL ===
-(function () {
-  const POLL_MS = 7000; // refresh setiap 7s
+/* =======================
+   MONITOR LIVE (IIFE berasingan)
+   ======================= */
+(function(){
+  const POLL_MS = 7000;
   let monitorTimer = null;
 
   function showPage(id){
@@ -1217,45 +1117,35 @@
     const el = document.getElementById(id);
     if (el) el.style.display = '';
   }
-
   function todayIso(){
     const d=new Date();
     const mm=('0'+(d.getMonth()+1)).slice(-2);
     const dd=('0'+d.getDate()).slice(-2);
     return d.getFullYear()+'-'+mm+'-'+dd;
   }
-
-  // === MONITOR VIEW ===
   async function showMonitorAll(){
     showPage('monitorAllSection');
     const dateInput = document.getElementById('monitorDate');
     if (!dateInput.value) dateInput.value = todayIso();
-    await loadMonitor(); // first load
+    await loadMonitor();
     startMonitorPolling();
   }
-
   function startMonitorPolling(){
     stopMonitorPolling();
     monitorTimer = setInterval(loadMonitor, POLL_MS);
   }
-
   function stopMonitorPolling(){
     if (monitorTimer) { clearInterval(monitorTimer); monitorTimer=null; }
   }
-
-  async function refreshMonitorNow(){
-    await loadMonitor(true);
-  }
+  async function refreshMonitorNow(){ await loadMonitor(true); }
 
   async function loadMonitor(force=false){
     try{
       const dateIso = document.getElementById('monitorDate')?.value || todayIso();
-      const json = await apiGet('getNadiMonitor', { date: dateIso }); // guna helper AUTH sedia ada
+      const json = await apiGet('getNadiMonitor', { date: dateIso });
       if (json.status!=='success') throw new Error(json.message||'Gagal ambil monitor');
-
       document.getElementById('monitorInfo').textContent =
         `Tarikh: ${json.date} • Auto refresh setiap ${(POLL_MS/1000)}s`;
-
       renderMonitorCards(json.data||[]);
     }catch(err){
       console.error(err);
@@ -1305,22 +1195,24 @@
     }).join('');
   }
 
-  function openSessionDetail(activityId){
-    location.hash = '#nadi?activityId='+encodeURIComponent(activityId);
-  }
-
-  // helper elak XSS (skop tempatan)
   function escapeHtml(s){
     return String(s||'').replace(/[&<>"'`=\/]/g, function (c) {
       return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;','\'':'&#39;','/':'&#x2F;','`':'&#x60;','=':'&#x3D;'}[c];
     });
   }
 
-  // Event wiring dalam IIFE
+  window.openSessionDetail = function(activityId){
+    location.hash = '#nadi?activityId='+encodeURIComponent(activityId);
+  };
+
+  window.refreshMonitorNow = refreshMonitorNow;
+  window.stopMonitorPolling = stopMonitorPolling;
+  document.getElementById('btnMonitorAll')?.addEventListener('click', showMonitorAll);
   window.addEventListener('hashchange', ()=>{
     const onMonitor = location.hash.includes('#monitor');
     if (!onMonitor) stopMonitorPolling();
   });
+})();
   document.getElementById('btnMonitorAll')?.addEventListener('click', showMonitorAll);
 
   // Eksport hanya yang diperlukan oleh HTML
