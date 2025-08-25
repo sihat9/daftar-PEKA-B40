@@ -1213,12 +1213,6 @@
     if (!onMonitor) stopMonitorPolling();
   });
 })();
-  document.getElementById('btnMonitorAll')?.addEventListener('click', showMonitorAll);
-
-  // Eksport hanya yang diperlukan oleh HTML
-  window.refreshMonitorNow = refreshMonitorNow;
-  window.openSessionDetail = openSessionDetail;
-})();
 
   // ---------- Render ----------
   function renderRows(items) {
