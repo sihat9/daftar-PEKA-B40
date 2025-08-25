@@ -16,59 +16,89 @@
   <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2"></script>
 
   <!-- SheetJS (Excel) via CDN -->
-<!-- XLSX robust loader + override (SIAP TAMPAL DI <head>) -->
-<script>
-  (function () {
-    // Jika dah ada, tak perlu apa-apa
-    if (window.XLSX) return;
+  <!-- XLSX robust loader + override (SIAP TAMPAL DI <head>) -->
+  <script>
+    (function () {
+      // Jika dah ada, tak perlu apa-apa
+      if (window.XLSX) return;
 
-    // Helper umum: muat <script> sekali
-    window.loadScriptOnce = window.loadScriptOnce || (function () {
-      const loaded = new Set();
-      return function loadScriptOnce(url) {
-        return new Promise((resolve, reject) => {
-          if (loaded.has(url)) return resolve();
-          const s = document.createElement('script');
-          s.src = url;
-          s.async = true;
-          s.onload = () => { loaded.add(url); resolve(); };
-          s.onerror = () => reject(new Error('Gagal muat: ' + url));
-          document.head.appendChild(s);
-        });
+      // Helper umum: muat <script> sekali
+      window.loadScriptOnce = window.loadScriptOnce || (function () {
+        const loaded = new Set();
+        return function loadScriptOnce(url) {
+          return new Promise((resolve, reject) => {
+            if (loaded.has(url)) return resolve();
+            const s = document.createElement('script');
+            s.src = url;
+            s.async = true;
+            s.onload = () => { loaded.add(url); resolve(); };
+            s.onerror = () => reject(new Error('Gagal muat: ' + url));
+            document.head.appendChild(s);
+          });
+        };
+      })();
+
+      // Override/definisi semula: pastikan XLSX wujud, cuba 3 CDN
+      window.ensureXLSXReady = async function ensureXLSXReady() {
+        if (window.XLSX) return;
+        const cdns = [
+          'https://cdn.jsdelivr.net/npm/xlsx@0.19.3/dist/xlsx.full.min.js',
+          'https://unpkg.com/xlsx@0.19.3/dist/xlsx.full.min.js',
+          'https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.19.3/xlsx.full.min.js'
+        ];
+        let lastErr;
+        for (const url of cdns) {
+          try {
+            await window.loadScriptOnce(url);
+            if (window.XLSX) {
+              console.log('[XLSX] Loaded from', url);
+              return;
+            }
+          } catch (e) {
+            lastErr = e;
+          }
+        }
+        console.error('[XLSX] Gagal dimuat dari semua CDN.', lastErr || '');
+        throw new Error('XLSX gagal dimuat.');
       };
     })();
-
-    // Override/definisi semula: pastikan XLSX wujud, cuba 3 CDN
-    window.ensureXLSXReady = async function ensureXLSXReady() {
-      if (window.XLSX) return;
-      const cdns = [
-        'https://cdn.jsdelivr.net/npm/xlsx@0.19.3/dist/xlsx.full.min.js',
-        'https://unpkg.com/xlsx@0.19.3/dist/xlsx.full.min.js',
-        'https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.19.3/xlsx.full.min.js'
-      ];
-      let lastErr;
-      for (const url of cdns) {
-        try {
-          await window.loadScriptOnce(url);
-          if (window.XLSX) {
-            console.log('[XLSX] Loaded from', url);
-            return;
-          }
-        } catch (e) {
-          lastErr = e;
-        }
-      }
-      console.error('[XLSX] Gagal dimuat dari semua CDN.', lastErr || '');
-      throw new Error('XLSX gagal dimuat.');
-    };
-  })();
-</script>
+  </script>
 
   <!-- Google Identity Services (Sign-In) -->
   <script src="https://accounts.google.com/gsi/client" async defer></script>
 
   <!-- html2canvas untuk tangkap preview → imej (BARU) -->
   <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
+
+  <!-- AUTH & API HELPERS (BARU) -->
+  <script>
+    // Baca token dari tempat biasa anda simpan (akan di-set dalam Bahagian C)
+    function getIdToken() {
+      return (
+        window.ID_TOKEN ||
+        localStorage.getItem('id_token') ||
+        sessionStorage.getItem('id_token') ||
+        ''
+      );
+    }
+    async function apiGet(action, params = {}) {
+      const id_token = getIdToken();
+      const q = new URLSearchParams({ action, id_token, ...params });
+      const url = location.pathname + '?' + q.toString();
+      const res = await fetch(url, { method: 'GET' });
+      return res.json();
+    }
+    async function apiPost(action, body = {}) {
+      const id_token = getIdToken();
+      const form = new URLSearchParams({ action, id_token, ...body });
+      const res = await fetch(location.pathname, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+        body: form.toString()
+      });
+      return res.json();
+    }
+  </script>
 
 <style>
   :root{ --primary:#2c3e50; --secondary:#3498db; --success:#27ae60; --warning:#f39c12; --danger:#e74c3c; --light:#ecf0f1; --dark:#34495e; --muted:#95a5a6; }
@@ -242,15 +272,12 @@
   .whatsapp-report-value { flex: 1; }
   .whatsapp-report-footer { text-align: center; font-size: 12px; color: var(--muted); margin-top: 20px; padding-top: 15px; border-top: 1px solid #eee; }
 
-
-.monitor-card .stat {
-  font-size: 28px; font-weight: 700; line-height: 1;
-}
-.monitor-card .label {
-  font-size: 12px; text-transform: uppercase; letter-spacing: .06em;
-}
-
-
+  .monitor-card .stat {
+    font-size: 28px; font-weight: 700; line-height: 1;
+  }
+  .monitor-card .label {
+    font-size: 12px; text-transform: uppercase; letter-spacing: .06em;
+  }
 
   /* NADI Summary Cards */
   .nadi-summary-container {
@@ -480,48 +507,48 @@
         </div>
       </div>
       <!-- BAR PROGRAM (tajuk + tarikh + aksi) -->
-<div id="nadiProgramBar" class="d-flex flex-wrap gap-2 align-items-end mb-2">
-  <div class="flex-grow-1">
-    <label class="form-label mb-1">Tajuk Program</label>
-    <input id="nadiProgramTitle" class="form-control form-control-sm" placeholder="cth: Saringan Komuniti Tmn Mawar">
-  </div>
-  <div>
-    <label class="form-label mb-1">Tarikh Program</label>
-    <input id="nadiProgramDate" type="date" class="form-control form-control-sm">
-  </div>
-  <div class="ms-auto d-flex gap-2">
-    <button id="btnNadiSaveActivity" class="btn btn-sm btn-primary">
-      <i class="bi bi-cloud-upload me-1"></i>Simpan Aktiviti (Semua)
-    </button>
-  </div>
-</div>
+      <div id="nadiProgramBar" class="d-flex flex-wrap gap-2 align-items-end mb-2">
+        <div class="flex-grow-1">
+          <label class="form-label mb-1">Tajuk Program</label>
+          <input id="nadiProgramTitle" class="form-control form-control-sm" placeholder="cth: Saringan Komuniti Tmn Mawar">
+        </div>
+        <div>
+          <label class="form-label mb-1">Tarikh Program</label>
+          <input id="nadiProgramDate" type="date" class="form-control form-control-sm">
+        </div>
+        <div class="ms-auto d-flex gap-2">
+          <button id="btnNadiSaveActivity" class="btn btn-sm btn-primary">
+            <i class="bi bi-cloud-upload me-1"></i>Simpan Aktiviti (Semua)
+          </button>
+        </div>
+      </div>
       <div class="card">
         <div class="card-body">
           <div class="nadi-scroll-container">
             <table class="nadi-table">
               <thead>
-  <tr>
-    <th style="width: 40px;">#</th>
-    <th style="min-width: 150px;">Nama Pesakit</th>
-    <th style="min-width: 120px;">No IC</th>
-    <th style="min-width: 80px;">Umur</th>
-    <th style="min-width: 120px;">Telefon</th>
-    <th style="min-width: 150px;">Alamat</th>
-    <th style="min-width: 80px;">BP</th>
-    <th style="min-width: 80px;">PR</th>
-    <th style="min-width: 120px;">DXT</th>
-    <th style="min-width: 80px;">Tinggi</th>
-    <th style="min-width: 80px;">Berat</th>
-    <th style="min-width: 80px;">BMI</th>
-    <th style="width: 80px;">Layak</th>
-    <th style="width: 100px;">Tidak Layak</th>
-    <!-- ⬇️ TAMBAH KOLUM BARU DI SINI -->
-    <th style="min-width: 160px;">Remark</th>
-    <!-- ⬆️ TAMBAH KOLUM BARU DI SINI -->
-    <th style="min-width: 200px;">TCA & Staff</th>
-    <th style="min-width: 180px;">Tindakan</th>
-  </tr>
-</thead>
+                <tr>
+                  <th style="width: 40px;">#</th>
+                  <th style="min-width: 150px;">Nama Pesakit</th>
+                  <th style="min-width: 120px;">No IC</th>
+                  <th style="min-width: 80px;">Umur</th>
+                  <th style="min-width: 120px;">Telefon</th>
+                  <th style="min-width: 150px;">Alamat</th>
+                  <th style="min-width: 80px;">BP</th>
+                  <th style="min-width: 80px;">PR</th>
+                  <th style="min-width: 120px;">DXT</th>
+                  <th style="min-width: 80px;">Tinggi</th>
+                  <th style="min-width: 80px;">Berat</th>
+                  <th style="min-width: 80px;">BMI</th>
+                  <th style="width: 80px;">Layak</th>
+                  <th style="width: 100px;">Tidak Layak</th>
+                  <!-- ⬇️ TAMBAH KOLUM BARU DI SINI -->
+                  <th style="min-width: 160px;">Remark</th>
+                  <!-- ⬆️ TAMBAH KOLUM BARU DI SINI -->
+                  <th style="min-width: 200px;">TCA & Staff</th>
+                  <th style="min-width: 180px;">Tindakan</th>
+                </tr>
+              </thead>
               <tbody id="nadiContainer">
                 <!-- Rows will be added dynamically -->
               </tbody>
@@ -725,16 +752,15 @@
     </section>
 
     <section id="monitorAllSection" class="page" style="display:none;">
-  <div class="d-flex align-items-center gap-2 mb-3">
-    <h3 class="mb-0">Monitor Semua Program (Live)</h3>
-    <input id="monitorDate" type="date" class="form-control" style="max-width:200px;">
-    <button class="btn btn-primary" onclick="refreshMonitorNow()">Segar Semula</button>
-  </div>
+      <div class="d-flex align-items-center gap-2 mb-3">
+        <h3 class="mb-0">Monitor Semua Program (Live)</h3>
+        <input id="monitorDate" type="date" class="form-control" style="max-width:200px;">
+        <button class="btn btn-primary" onclick="refreshMonitorNow()">Segar Semula</button>
+      </div>
 
-  <div id="monitorInfo" class="text-muted mb-2"></div>
-  <div id="monitorCards" class="row g-3"></div>
-</section>
-
+      <div id="monitorInfo" class="text-muted mb-2"></div>
+      <div id="monitorCards" class="row g-3"></div>
+    </section>
 
     <!-- Arkib -->
     <section id="arkib" class="mb-4 d-none">
@@ -1019,6 +1045,7 @@
       alamat:  pick(keysets.alamat)
     };
   }
+
 // === KONFIG & UTIL ===
 const POLL_MS = 7000; // refresh setiap 7s
 let monitorTimer = null;
@@ -1039,6 +1066,7 @@ function todayIso(){
 
 // === MONITOR VIEW ===
 async function showMonitorAll(){
+  // masuk skrin
   showPage('monitorAllSection');
   const dateInput = document.getElementById('monitorDate');
   if (!dateInput.value) dateInput.value = todayIso();
@@ -1057,177 +1085,132 @@ async function refreshMonitorNow(){
   await loadMonitor(true);
 }
 
-async function loadMonitor(dateStr) {
-  const container = document.getElementById('monitorAllContainer');
-  if (!container) return;
+async function loadMonitor(force=false){
+  try{
+    const dateIso = document.getElementById('monitorDate')?.value || todayIso();
+    // Guna helper API (bawa id_token)
+    const json = await apiGet('getNadiMonitor', { date: dateIso });
+    if (json.status!=='success') throw new Error(json.message||'Gagal ambil monitor');
 
-  // Tarikh dari input jika tidak diberi
-  const chosen = (dateStr || document.getElementById('monitorDate')?.value || '').trim();
+    // Info bar
+    document.getElementById('monitorInfo').textContent =
+      `Tarikh: ${json.date} • Auto refresh setiap ${(POLL_MS/1000)}s`;
 
-  // Papar skeleton sementara
-  container.innerHTML = `
-    <div class="text-muted small mb-2">Memuat data monitor…</div>
-    <div class="row g-2">
-      <div class="col-12 col-md-4"><div class="card placeholder-wave"><div class="card-body">
-        <div class="placeholder col-8 mb-2"></div>
-        <div class="placeholder col-6"></div>
-      </div></div></div>
-      <div class="col-12 col-md-4"><div class="card placeholder-wave"><div class="card-body">
-        <div class="placeholder col-8 mb-2"></div>
-        <div class="placeholder col-6"></div>
-      </div></div></div>
-      <div class="col-12 col-md-4"><div class="card placeholder-wave"><div class="card-body">
-        <div class="placeholder col-8 mb-2"></div>
-        <div class="placeholder col-6"></div>
-      </div></div></div>
-    </div>`;
-
-  // Util kecil: pembantu fetch + parse JSON dengan mesej ralat yang jelas
-  async function fetchJSON(url) {
-    const res = await fetch(url, { method: 'GET', credentials: 'omit' });
-    const text = await res.text();
-    let json;
-    try {
-      json = JSON.parse(text);
-    } catch (e) {
-      // Jika HTML (<!DOCTYPE …) -> biasanya URL silap / token tak dihantar
-      throw new Error('Respons bukan JSON sah daripada pelayan (mungkinkah URL/token salah?).');
-    }
-    return json;
+    renderMonitorCards(json.data||[]);
+  }catch(err){
+    console.error(err);
+    document.getElementById('monitorInfo').textContent = 'Ralat memuat data monitor.';
   }
+}
 
-  // Bina URL
-  const qs = new URLSearchParams();
-  qs.set('action', 'getNadiMonitor');
-  if (chosen) qs.set('date', chosen); // sokong "yyyy-MM-dd" atau "dd/MM/yyyy"
-  if (typeof ID_TOKEN === 'string' && ID_TOKEN) qs.set('id_token', ID_TOKEN);
-
-  // Muat data
-  let json;
-  try {
-    json = await fetchJSON(`${SCRIPT_URL}?${qs.toString()}`);
-  } catch (err) {
-    container.innerHTML = `
-      <div class="alert alert-danger">
-        <div class="fw-bold mb-1">Gagal memuat monitor</div>
-        <div>${err.message || err}</div>
-        <div class="small text-muted mt-1">Semak semula <code>SCRIPT_URL</code>, <code>ID_TOKEN</code>, dan capaian internet.</div>
-      </div>`;
-    if (typeof toast === 'function') toast('Ralat', 'Gagal memuat monitor', 'danger');
+function renderMonitorCards(list){
+  const wrap = document.getElementById('monitorCards');
+  if (!wrap) return;
+  if (!list.length){
+    wrap.innerHTML = `<div class="col-12"><div class="alert alert-info">Tiada sesi pada tarikh ini.</div></div>`;
     return;
   }
-
-  // Semak status
-  if (!json || json.status !== 'success') {
-    const msg = (json && (json.message || json.code)) || 'Action tidak sah / akses ditolak';
-    container.innerHTML = `
-      <div class="alert alert-warning">
-        <div class="fw-bold mb-1">Tidak dapat memuat data monitor</div>
-        <div>${msg}</div>
-        <div class="small text-muted mt-1">Pastikan anda telah sign-in dan akaun berada dalam allowlist.</div>
-      </div>`;
-    if (typeof toast === 'function') toast('Makluman', String(msg), 'warning');
-    return;
-  }
-
-  // Bentuk data: { status:'success', date:'dd/MM/yyyy', data:[{activityId,title,programDate,counts:{layak,takLayak,total}}] }
-  const monitorDate = json.date || chosen || '';
-  const items = Array.isArray(json.data) ? json.data : [];
-
-  // Jika tiada sesi pada tarikh dipilih
-  if (!items.length) {
-    container.innerHTML = `
-      <div class="text-center text-muted py-4">
-        Tiada sesi ditemui untuk tarikh <span class="fw-semibold">${monitorDate || '(tidak ditentukan)'}</span>.
-      </div>`;
-    return;
-  }
-
-  // Render kad ringkasan setiap sesi
-  const now = new Date();
-  const rendered = items.map((s) => {
-    const layak = Number(s?.counts?.layak || 0);
-    const tak = Number(s?.counts?.takLayak || 0);
-    const tot = Number(s?.counts?.total || (layak + tak));
-
-    // Pilih warna ringkas ikut status (hanya kosmetik)
-    const barLayak = Math.round(tot ? (layak / tot) * 100 : 0);
-    const barTak = Math.max(0, 100 - barLayak);
-
+  wrap.innerHTML = list.map(item=>{
+    const c = item.counts||{layak:0,takLayak:0,total:0};
     return `
       <div class="col-12 col-md-6 col-lg-4">
-        <div class="card h-100 shadow-sm">
+        <div class="card shadow-sm monitor-card">
           <div class="card-body">
-            <div class="d-flex justify-content-between align-items-start mb-2">
+            <div class="d-flex justify-content-between align-items-start">
               <div>
-                <div class="fw-bold">${s.title || 'Tanpa Tajuk'}</div>
-                <div class="text-muted small">${s.programDate || monitorDate}</div>
+                <div class="fw-bold">${escapeHtml(item.title||'-')}</div>
+                <div class="text-muted small">${escapeHtml(item.programDate||'')}</div>
+                <div class="text-muted small">ID: ${escapeHtml(item.activityId||'')}</div>
               </div>
-              <span class="badge bg-secondary">ID: ${s.activityId || '-'}</span>
+              <button class="btn btn-sm btn-outline-secondary" onclick="openSessionDetail('${item.activityId}')">Buka</button>
             </div>
-
-            <div class="mb-2">
-              <div class="d-flex justify-content-between small text-muted">
-                <span>Layak</span><span>${layak}</span>
+            <hr>
+            <div class="row text-center">
+              <div class="col">
+                <div class="stat">${c.layak||0}</div>
+                <div class="label">Layak</div>
               </div>
-              <div class="progress" role="progressbar" aria-label="Layak vs Tidak Layak">
-                <div class="progress-bar" style="width:${barLayak}%"></div>
-                <div class="progress-bar bg-danger" style="width:${barTak}%"></div>
+              <div class="col">
+                <div class="stat">${c.takLayak||0}</div>
+                <div class="label">Tidak Layak</div>
               </div>
-            </div>
-
-            <div class="d-flex gap-2 mt-3">
-              <span class="badge bg-success">Layak: ${layak}</span>
-              <span class="badge bg-danger">Tidak Layak: ${tak}</span>
-              <span class="badge bg-primary">Jumlah: ${tot}</span>
+              <div class="col">
+                <div class="stat">${c.total||0}</div>
+                <div class="label">Jumlah</div>
+              </div>
             </div>
           </div>
         </div>
       </div>`;
   }).join('');
-
-  container.innerHTML = `
-    <div class="d-flex justify-content-between align-items-center mb-2">
-      <div class="small text-muted">
-        Tarikh dipantau: <span class="fw-semibold">${monitorDate || '(tidak ditentukan)'}</span>
-      </div>
-      <div class="small text-muted">Dikemas kini: ${now.toLocaleTimeString()}</div>
-    </div>
-    <div class="row g-2">${rendered}</div>
-  `;
 }
 
+// OPTIONAL: bila klik "Buka" pada kad → terus filter ke sesi tersebut jika anda ada UI detail
 function openSessionDetail(activityId){
+  // Contoh: jika anda sudah ada halaman “Program PEKAB40 bersama NADI”
+  // dan fungsi `activateFromHash` untuk buka panel detail,
+  // anda boleh set hash begini:
   location.hash = '#nadi?activityId='+encodeURIComponent(activityId);
+  // atau terus tukar ke tab asal anda di sini, jika perlu:
+  // showPage('programNadiSection'); ... dan panggil loader detail dengan activityId
 }
 
-// ❌ PADAMKAN fungsi duplikasi ini kalau ada:
-// function escapeHtml(s){ ... }
+// helper elak XSS
+function escapeHtml(s){
+  return String(s||'').replace(/[&<>"'`=\/]/g, function (c) {
+    return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;','\'':'&#39;','/':'&#x2F;','`':'&#x60;','=':'&#x3D;'}[c];
+  });
+}
 
-// Henti polling bila keluar dari skrin monitor
+// Hentikan polling bila tukar hash (jika anda pakai hash untuk navigasi)
 window.addEventListener('hashchange', ()=>{
   const onMonitor = location.hash.includes('#monitor');
   if (!onMonitor) stopMonitorPolling();
 });
 
-// ✅ EXPOSE ke global (penting untuk onclick & button)
-window.showMonitorAll = showMonitorAll;
-window.refreshMonitorNow = refreshMonitorNow;
-window.stopMonitorPolling = stopMonitorPolling;
-// 1) Helper fetch dengan timeout (abort)
-async function fetchWithTimeout(url, opt={}, ms=15000){
-  const ctl = new AbortController();
-  const id = setTimeout(()=>ctl.abort(new Error('timeout')), ms);
-  try{
-    const res = await fetch(url, { ...opt, signal: ctl.signal });
-    return res;
-  } finally {
-    clearTimeout(id);
-  }
-}
+// Wayarkan butang "Monitor Semua (Live)"
+document.getElementById('btnMonitorAll')?.addEventListener('click', showMonitorAll);
 
-// 2) Single-flight guard untuk monitor
-let MONITOR_LOADING = false;
+  // ---------- Render ----------
+  function renderRows(items) {
+    if (!items.length) {
+      tableBody.innerHTML =
+        '<tr><td colspan="8" class="text-center text-muted">Tiada data ditemui (semak header CSV anda).</td></tr>';
+      return;
+    }
+    tableBody.innerHTML = items.map((it, idx) => {
+      const age = umurDariIC(it.ic);
+      const eligible = (age !== null) ? age >= 40 : false;
+      const reason = (age === null) ? 'IC tidak sah' : (eligible ? '-' : `Umur ${age} tahun (&lt; 40)`);
+
+      return `
+        <tr data-idx="${idx}">
+          <td>${escapeHtml(it.nama) || '-'}</td>
+          <td>${escapeHtml(it.ic) || '-'}</td>
+          <td>${escapeHtml(it.telefon) || '-'}</td>
+          <td>${escapeHtml(it.alamat) || '-'}</td>
+          <td class="text-center">
+            ${eligible ? '<span class="badge text-bg-success">Layak</span>' :
+                         '<span class="badge text-bg-danger">Tidak Layak</span>'}
+          </td>
+          <td class="text-center">${escapeHtml(reason)}</td>
+          <td>
+            ${eligible ? `
+              <div class="row g-1">
+                <div class="col"><input type="date" class="form-control form-control-sm tca-date"></div>
+                <div class="col"><input type="time" class="form-control form-control-sm tca-time"></div>
+                <div class="col"><input type="text"  class="form-control form-control-sm tca-staff" placeholder="Staff"></div>
+              </div>
+            ` : '<span class="text-muted">—</span>'}
+          </td>
+          <td>
+            ${eligible
+              ? '<button class="btn btn-sm btn-primary daftar-row"><i class="fas fa-save me-1"></i>Daftar</button>'
+              : '<span class="text-muted">—</span>'}
+          </td>
+        </tr>`;
+    }).join('');
+  }
 
   // ---------- Pemproses utama ----------
   async function handleFile(file) {
@@ -1301,7 +1284,6 @@ let MONITOR_LOADING = false;
         '<tr><td colspan="8" class="text-center text-danger">Ralat memproses fail. Pastikan fail CSV/Excel sah.</td></tr>';
     }
   }
-
   // ---------- Events ----------
   fileInput.addEventListener('change', e => {
     const f = e.target.files && e.target.files[0];
