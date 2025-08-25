@@ -1153,8 +1153,8 @@ function openSessionDetail(activityId){
   location.hash = '#nadi?activityId='+encodeURIComponent(activityId);
   // atau terus tukar ke tab asal anda di sini, jika perlu:
   // showPage('programNadiSection'); ... dan panggil loader detail dengan activityId
-}
-
+};
+                             
 // helper elak XSS
 function escapeHtml(s){
   return String(s||'').replace(/[&<>"'`=\/]/g, function (c) {
