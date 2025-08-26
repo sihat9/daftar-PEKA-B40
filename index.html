@@ -889,9 +889,19 @@
    - Banyak sinonim lajur (IC/NRIC/KP/MyKad, No. H/P/WhatsApp)
    ======================= */
 (function () {
-  const fileInput = document.getElementById('excelFile');
-  const tableBody = document.getElementById('kelayakanTable');
-  if (!fileInput || !tableBody) return;
+  // Pastikan wujud global `fileInput` supaya sebarang skrip lama tidak meletup.
+  try {
+    window.fileInput = document.getElementById('excelFile') || window.fileInput || null;
+  } catch (_) {}
+})();
+
+/* =======================
+   KELAYAKAN: CSV first, XLSX fallback
+   ======================= */
+(function () {
+  const excelInputEl = document.getElementById('excelFile');         // <— gunakan nama tempatan
+  const tableBody    = document.getElementById('kelayakanTable');
+  if (!excelInputEl || !tableBody) return;
 
   // ---------- Util ----------
   const norm = (v) => String(v ?? '').trim();
@@ -932,6 +942,7 @@
 
   // ---------- CSV helpers ----------
   const stripBOM = (s) => s && s.charCodeAt(0) === 0xFEFF ? s.slice(1) : s;
+
   function detectDelimiter(s) {
     const sample = (s || '').slice(0, 3000);
     const cand = [',',';','\t','|'];
@@ -1030,12 +1041,7 @@
       }
       return '';
     };
-    return {
-      nama:    pick(keysets.nama),
-      ic:      pick(keysets.ic),
-      telefon: pick(keysets.telefon),
-      alamat:  pick(keysets.alamat)
-    };
+    return { nama: pick(keysets.nama), ic: pick(keysets.ic), telefon: pick(keysets.telefon), alamat: pick(keysets.alamat) };
   }
 
   function renderRows(items) {
@@ -1078,37 +1084,41 @@
     }).join('');
   }
 
-  // Event listener fail Excel
-  fileInput.addEventListener('change', async e => {
+  // Listener muat naik
+  excelInputEl.addEventListener('change', async e => {
     const f = e.target.files && e.target.files[0];
     if (!f) return;
-    const ext = f.name.split('.').pop().toLowerCase();
+    const ext = (f.name.split('.').pop() || '').toLowerCase();
     let items = [];
     try {
       if (ext === 'csv') {
         const text = await readAsText(f);
         items = csvTextToObjects(text).map(mapRow);
       } else {
-        await window.ensureXLSXReady();
-        const data = await readAsArrayBuffer(f);
-        const wb = XLSX.read(data, { type: 'array' });
-        const sheet = wb.Sheets[wb.SheetNames[0]];
-        const json = XLSX.utils.sheet_to_json(sheet, { defval: '' });
+        // Pastikan SheetJS wujud (fungsi ensureXLSXReady telah dimuat di <head>)
+        if (typeof window.ensureXLSXReady === 'function') { await window.ensureXLSXReady(); }
+        if (!window.XLSX) throw new Error('SheetJS tidak tersedia. Sila simpan Excel sebagai CSV dan muat naik semula.');
+        const data  = await readAsArrayBuffer(f);
+        const wb    = XLSX.read(data, { type: 'array' });
+        const ws    = wb.Sheets[wb.SheetNames[0]];
+        const json  = XLSX.utils.sheet_to_json(ws, { defval: '' });
         items = json.map(mapRow);
       }
-      renderRows(items);
       window.__KELAYAKAN_ITEMS__ = items;
+      renderRows(items);
     } catch(err) {
       console.error(err);
-      alert('Gagal memproses fail: '+err.message);
+      tableBody.innerHTML =
+        '<tr><td colspan="8" class="text-center text-danger">Ralat memproses fail. Pastikan fail CSV/Excel sah.</td></tr>';
+      alert('Gagal memproses fail: ' + (err?.message || err));
     }
   });
-})(); // <-- Tamat IIFE Kelayakan
+})(); // Tamat IIFE Kelayakan
 
 /* =======================
    MONITOR LIVE (IIFE berasingan)
    ======================= */
-(function(){
+(function () {
   const POLL_MS = 7000;
   let monitorTimer = null;
 
@@ -1201,12 +1211,13 @@
     });
   }
 
+  // global kecil yang memang diperlukan oleh butang "Buka" & "Segar Semula"
   window.openSessionDetail = function(activityId){
     location.hash = '#nadi?activityId='+encodeURIComponent(activityId);
   };
-
   window.refreshMonitorNow = refreshMonitorNow;
-  window.stopMonitorPolling = stopMonitorPolling;
+  window.stopMonitorPolling   = stopMonitorPolling;
+
   document.getElementById('btnMonitorAll')?.addEventListener('click', showMonitorAll);
   window.addEventListener('hashchange', ()=>{
     const onMonitor = location.hash.includes('#monitor');
