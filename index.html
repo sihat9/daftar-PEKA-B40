@@ -21,7 +21,110 @@
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css">
 
   <!-- Chart.js + Datalabels -->
-  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js">
+// ======= SEJARAH (History) =======
+async function loadHistPrograms(){
+  try{
+    const data = await getJSON({ action:'getNadiActivities' }, { silent:true });
+    if (data.status!=='success'){ throw new Error('Gagal ambil senarai program'); }
+    const list = data.data || [];
+    const sel = document.getElementById('histProgram');
+    const ul = document.getElementById('histProgramList');
+    sel.innerHTML = '<option value="">Pilih program…</option>';
+    ul.innerHTML = '';
+    list.forEach(p=>{
+      const opt = document.createElement('option');
+      opt.value = p.activityId; opt.textContent = p.programDate+' — '+p.title;
+      sel.appendChild(opt);
+      const a = document.createElement('button');
+      a.className = 'list-group-item list-group-item-action';
+      a.textContent = p.programDate+' — '+p.title;
+      a.onclick = ()=>{ sel.value = p.activityId; loadHistDetails(); };
+      ul.appendChild(a);
+    });
+  }catch(e){ toast('Ralat', e.message||String(e), 'danger'); }
+}
+async function loadHistDetails(){
+  const id = document.getElementById('histProgram').value;
+  const q  = (document.getElementById('histSearch').value||'').toLowerCase().trim();
+  if (!id){ document.getElementById('histRows').innerHTML = ''; return; }
+  try{
+    const data = await getJSON({ action:'getNadiActivityDetail', id }, { silent:true });
+    if (data.status!=='success') throw new Error('Gagal dapatkan butiran');
+    let rows = data.data || [];
+    if (q){
+      rows = rows.filter(r => (r.nama||'').toLowerCase().includes(q) || (r.noIC||'').toLowerCase().includes(q) || (String(r.noTelefon||'')).toLowerCase().includes(q));
+    }
+    const tb = document.getElementById('histRows');
+    tb.innerHTML = '';
+    rows.forEach((r, i)=>{
+      const tr = document.createElement('tr');
+      const tca = (r.tcaDate||'') + (r.tcaTime ? (' ' + r.tcaTime) : '');
+      tr.innerHTML = `<td>${i+1}</td><td>${escapeHtmlSafe(r.nama)}</td><td>${escapeHtmlSafe(r.noIC)}</td><td>${escapeHtmlSafe(r.noTelefon)}</td><td>${escapeHtmlSafe(r.status)}</td><td>${escapeHtmlSafe(r.bp)}</td><td>${escapeHtmlSafe(r.dxt)}</td><td>${escapeHtmlSafe(r.bmi)}</td><td>${escapeHtmlSafe(tca)}</td>`;
+      tb.appendChild(tr);
+    });
+  }catch(e){ toast('Ralat', e.message||String(e), 'danger'); }
+}
+document.getElementById('histReload')?.addEventListener('click', loadHistPrograms);
+document.getElementById('histProgram')?.addEventListener('change', loadHistDetails);
+document.getElementById('histSearch')?.addEventListener('input', loadHistDetails);
+
+
+// === Daftar TCA Voucher direct to Call List ===
+document.getElementById('nadiTable')?.addEventListener('click', async (ev)=>{
+  const btn = ev.target.closest('.nadi-daftar');
+  if (!btn) return;
+  const tr = btn.closest('tr');
+  const p = extractRowPayload(tr);
+  // Require voucher
+  if (!p.voucher){
+    toast('Makluman', 'Tandakan "TCA Voucher" dahulu.', 'warning'); 
+    return;
+  }
+  if (!p.tcaDate || !p.tcaTime){
+    toast('Makluman', 'Sila isi Tarikh TCA dan Masa TCA.', 'warning');
+    return;
+  }
+  // Valid within 30 days from program date
+  const progIso = (document.getElementById('programDate')?.value || '').trim();
+  try{
+    if (progIso){
+      const d0 = new Date(progIso);
+      const d1 = new Date(p.tcaDate);
+      const diff = (d1 - d0) / (24*3600*1000);
+      if (diff > 30){
+        toast('Makluman', 'Tarikh TCA melebihi 30 hari dari tarikh program.', 'warning');
+        return;
+      }
+    }
+  }catch(_){}
+
+  try{
+    btn.disabled = true;
+    const body = {
+      action: 'daftarPesakit',
+      namaPesakit: p.nama || 'Pesakit',
+      noIC: p.ic || '',
+      noTelefon: p.tel || '',
+      alamat: p.alamat || '',
+      tarikhTCA: p.tcaDate, // yyyy-MM-dd
+      masaTCA: p.tcaTime,   // HH:mm
+      staff: p.tcaStaff || (window.WHOAMI?.email || 'SYSTEM')
+    };
+    const resp = await postForm(body, { silent:false, msg:'Mendaftar TCA Voucher…' });
+    if (resp.status === 'success'){
+      toast('Berjaya', 'Pesakit didaftar ke senarai TCA.', 'success');
+    } else {
+      btn.disabled = false;
+      toast('Ralat', resp.message || 'Gagal daftar pesakit', 'danger');
+    }
+  }catch(e){
+    btn.disabled = false;
+    toast('Ralat', e.message || String(e), 'danger');
+  }
+});
+
+</script>
   <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2"></script>
 
   <!-- SheetJS (Excel) via CDN -->
@@ -374,7 +477,8 @@
           <li class="nav-item position-relative">
             <a class="nav-link" href="#arkib"><i class="fa-solid fa-box-archive"></i> Arkib</a>
           </li>
-        </ul>
+          <li class="nav-item"><a class="nav-link" href="#sejarah">Lihat Sejarah</a></li>
+</ul>
 
         <div class="d-none d-lg-flex align-items-center gap-2">
           <div id="signinAreaDesktop"></div>
@@ -479,9 +583,7 @@
       <div class="d-flex justify-content-between align-items-center mb-2">
         <h2 class="h6 m-0"><i class="bi bi-clipboard2-pulse me-2"></i>Program PEKA B40 bersama NADI</h2>
         <div class="d-flex gap-2">
-          <button id="btnNadiExportCsv" class="btn btn-sm btn-outline-success"><i class="bi bi-filetype-csv me-1"></i>Export to CSV</button>
-          <button id="btnMonitorAll" class="btn btn-outline-primary">Monitor Semua (Live)</button>
-        </div>
+          <button id="btnNadiExportCsv" class="btn btn-sm btn-outline-success"><i class="bi bi-filetype-csv me-1"></i>Export to CSV</button></div>
       </div>
       
       <!-- Summary Cards -->
@@ -551,6 +653,7 @@
     <th style="width: 100px;">Tidak Layak</th>
     <!-- ⬇️ TAMBAH KOLUM BARU DI SINI -->
     <th style="min-width: 160px;">Remark</th>
+    <th style="min-width: 120px;">TCA Voucher</th>
     <!-- ⬆️ TAMBAH KOLUM BARU DI SINI -->
     <th style="min-width: 200px;">TCA & Staff</th>
     <th style="min-width: 180px;">Tindakan</th>
@@ -642,6 +745,7 @@
               <tr>
                 <th>Nama</th><th>IC</th><th>Telefon</th><th>Alamat</th>
                 <th class="text-center">Layak</th><th class="text-center">Tidak Layak</th>
+                <th class="text-center">TCA Voucher</th>
                 <th style="width:360px">Jika Layak → TCA & Masa & Staff</th><th>Tindakan</th>
               </tr>
             </thead>
@@ -785,7 +889,43 @@
         </div>
       </div></div>
     </section>
-  </main>
+  
+<section id="sejarah" class="page container py-4" style="display:none">
+  <h2 class="h4 mb-3">Lihat Sejarah Saringan</h2>
+  <div class="row g-2 align-items-end">
+    <div class="col-md-4">
+      <label class="form-label">Pilih Program</label>
+      <select id="histProgram" class="form-select form-select-sm"><option value="">Memuat...</option></select>
+    </div>
+    <div class="col-md-4">
+      <label class="form-label">Carian (Nama / IC / Telefon)</label>
+      <input id="histSearch" class="form-control form-control-sm" placeholder="Taip untuk tapis...">
+    </div>
+    <div class="col-md-2">
+      <button id="histReload" class="btn btn-sm btn-outline-primary w-100">Segar Semula</button>
+    </div>
+  </div>
+  <hr>
+  <div class="row">
+    <div class="col-12 col-lg-4">
+      <div class="list-group" id="histProgramList" style="max-height: 420px; overflow:auto"></div>
+    </div>
+    <div class="col-12 col-lg-8">
+      <div class="table-responsive">
+        <table class="table table-sm table-hover align-middle">
+          <thead class="table-light">
+            <tr>
+              <th>#</th><th>Nama</th><th>IC</th><th>Telefon</th><th>Status</th><th>BP</th><th>DXT</th><th>BMI</th><th>TCA</th>
+            </tr>
+          </thead>
+          <tbody id="histRows"></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</section>
+
+</main>
 
   <!-- Modal Re-TCA -->
   <div class="modal fade" id="retcaModal" tabindex="-1" aria-hidden="true">
@@ -1046,8 +1186,7 @@
       }
       return '';
     };
-    return {
-      nama:    pick(keysets.nama),
+    return {nama:    pick(keysets.nama),
       ic:      pick(keysets.ic),
       telefon: pick(keysets.telefon),
       alamat:  pick(keysets.alamat)
@@ -2354,6 +2493,9 @@ function addNadiRow(){
       <div class="view-mode" onclick="editNadiCell(this)"></div>
       <input class="form-control form-control-sm nadi-remark" placeholder="Catatan / Remark" style="display:none" onblur="saveNadiCell(this)" />
     </td>
+    <td class="text-center">
+      <input class="form-check-input nadi-voucher" type="checkbox">
+    </td>
     <td>
       <div class="d-flex gap-1">
         <input type="date" class="form-control form-control-sm nadi-tca-date" disabled style="min-width:100px">
@@ -2412,7 +2554,9 @@ function addNadiRow(){
   // Layak/Tak layak toggle
   const layak = row.querySelector('.nadi-layak');
   const takLayak = row.querySelector('.nadi-taklayak');
-  const tcaDate = row.querySelector('.nadi-tca-date');
+  const voucher = row.querySelector(\'.nadi-voucher\');
+const voucher = row.querySelector(\'.nadi-voucher\');
+const tcaDate = row.querySelector('.nadi-tca-date');
   const tcaTime = row.querySelector('.nadi-tca-time');
   const staff = row.querySelector('.nadi-staff');
   const btnDaftar = row.querySelector('.nadi-daftar');
@@ -2769,7 +2913,7 @@ async function exportNadiCSV() {
     const dxt     = r.querySelector('.nadi-dxt')?.value.trim() || '';
     const kelayak = r.querySelector('.nadi-layak')?.checked ? 'Layak' : 'Tidak Layak';
 
-    return [programDate, nama, ic, tel, alamat, wt, ht, bp, hr, umur, bmi, dxtType, dxt, kelayak];
+    return [programDate, nama, ic, tel, alamat, wt, ht, bp, hr, umur, bmi, dxtType, dxt, kelayak + (voucherCB ? ' (VOUCHER)' : '')];
   });
 
   // Cuba hasilkan Excel (.xlsx) dahulu
@@ -2860,6 +3004,7 @@ function collectNadiRowsForActivity(){
     const dxt     = val('.nadi-dxt');
     const layakCB = r.querySelector('.nadi-layak')?.checked || false;
     const kelayak = layakCB ? 'Layak' : 'Tidak Layak';
+    const voucherCB = r.querySelector('.nadi-voucher')?.checked || false;
     const remark  = val('.nadi-remark');     // jika anda sudah tambah kolum Remark
 
     // Anggap "ada isi" jika sekurang-kurangnya satu medan utama terisi
@@ -2896,6 +3041,7 @@ function extractRowPayload(row){
   const bmi     = row.querySelector('.nadi-bmi')?.value.trim() || '';
   const layak   = !!row.querySelector('.nadi-layak')?.checked;
   const takLayak= !!row.querySelector('.nadi-taklayak')?.checked;
+  const voucher = !!row.querySelector(\'.nadi-voucher\')?.checked;
   const tcaDate = row.querySelector('.nadi-tca-date')?.value || '';
   const tcaTime = row.querySelector('.nadi-tca-time')?.value || '';
   const tcaStaff= row.querySelector('.nadi-staff')?.value.trim() || '';
@@ -3024,17 +3170,30 @@ function mergeLiveRowsIntoUI(items){
     const tcaTime = row.querySelector('.nadi-tca-time');
     const staff   = row.querySelector('.nadi-staff');
     const btnDaftar = row.querySelector('.nadi-daftar');
-    if (layak && takLayak && tcaDate && tcaTime && staff && btnDaftar){
-      if (layak.checked){
-        takLayak.checked = false;
-        tcaDate.disabled = false; tcaTime.disabled = false; staff.disabled = false; btnDaftar.disabled = false;
-      } else if (takLayak.checked){
-        layak.checked = false;
-        tcaDate.disabled = true;  tcaTime.disabled = true;  staff.disabled = true;  btnDaftar.disabled = true;
-      } else {
-        // tiada pilihan → disable TCA
-        tcaDate.disabled = true;  tcaTime.disabled = true;  staff.disabled = true;  btnDaftar.disabled = true;
-      }
+    if (layak && takLayak && tcaDate && tcaTime && staff && btnDaftar && voucher){
+      // Mutually exclusive: layak, tak layak, voucher
+      const syncStates = () => {
+        if (voucher.checked) { layak.checked = false; takLayak.checked = false; }
+        if (layak.checked)  { takLayak.checked = false; voucher.checked = false; }
+        if (takLayak.checked){ layak.checked = false; voucher.checked = false; }
+        // Enable TCA inputs for Layak OR Voucher; disable when Tak Layak or none
+        if (layak.checked || voucher.checked) {
+          tcaDate.disabled = false; tcaTime.disabled = false; staff.disabled = false; btnDaftar.disabled = false;
+          if (voucher.checked && !row.querySelector('.nadi-remark').value) {
+            row.querySelector('.nadi-remark').value = 'Saringan kesihatan voucher';
+          }
+        } else if (takLayak.checked) {
+          tcaDate.disabled = true;  tcaTime.disabled = true;  staff.disabled = true;  btnDaftar.disabled = true;
+        } else {
+          tcaDate.disabled = true;  tcaTime.disabled = true;  staff.disabled = true;  btnDaftar.disabled = true;
+        }
+      };
+      ['change','input'].forEach(evt=>{
+        layak.addEventListener(evt, syncStates);
+        takLayak.addEventListener(evt, syncStates);
+        voucher.addEventListener(evt, syncStates);
+      });
+      syncStates();
     }
   });
 
@@ -3071,14 +3230,16 @@ function collectNadiItems(){
       bmi     : r.bmi     || '',
       layak   : !!isLayak,
       takLayak: !!isTak,
-      status  : isLayak ? 'LAYAK' : (isTak ? 'TAK LAYAK' : ''),
+      status  : isVoucher ? 'TCA_VOUCHER' : (isLayak ? 'LAYAK' : (isTak ? 'TAK LAYAK' : '')),
       // TCA di jadual NADI memang ada input, tapi jika collectNadiRowsForActivity
       // anda tidak mengembalikannya, biarkan kosong (code.gs tidak wajibkan).
       tcaDate : '',
       tcaTime : '',
       tcaStaff: '',
       // Simpan juga dxtType jika ada (tidak mandatory di code.gs)
-      dxtType : r.dxtType || ''
+      dxtType : r.dxtType || '',
+      voucher : isVoucher,
+      remark  : isVoucher ? (r.remark || 'Saringan kesihatan voucher') : (r.remark || '')
     };
   });
 }
