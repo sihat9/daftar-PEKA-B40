@@ -1,6 +1,15 @@
 <!DOCTYPE html>
 <html lang="ms">
 <head>
+
+  <!-- Performance resource hints -->
+  <link rel="preconnect" href="https://cdn.jsdelivr.net">
+  <link rel="preconnect" href="https://cdnjs.cloudflare.com">
+  <link rel="preconnect" href="https://unpkg.com">
+  <link rel="dns-prefetch" href="https://cdn.jsdelivr.net">
+  <link rel="dns-prefetch" href="https://cdnjs.cloudflare.com">
+  <link rel="dns-prefetch" href="https://unpkg.com">
+
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
 
@@ -279,6 +288,13 @@
   }
   .nadi-summary-card.layak { border-top: 4px solid var(--success); }
   .nadi-summary-card.tak-layak { border-top: 4px solid var(--danger); }
+
+  /* === Light Theme Overrides (added) === */
+  body{ background:#f7f9fc; color:#222; }
+  .navbar-main{ background:#ffffff; }
+  .page-header{ background:linear-gradient(135deg,#4e73df,#1cc88a); }
+  .card{ background:#ffffff; }
+
 </style>
 </head>
 <body>
@@ -312,7 +328,7 @@
   <nav class="navbar navbar-expand-lg navbar-main sticky-top">
     <div class="container">
       <a class="navbar-brand" href="#dashboard">
-        <img id="brandLogo" alt="Logo" style="width:32px;height:32px;border-radius:8px;object-fit:cover;border:1px solid rgba(0,0,0,.08)">
+        <img loading="lazy" id="brandLogo" alt="Logo" style="width:32px;height:32px;border-radius:8px;object-fit:cover;border:1px solid rgba(0,0,0,.08)">
         <span>Klinik SihatSokmo</span>
       </a>
 
@@ -2578,7 +2594,7 @@ function generateWhatsAppReport(data) {
   const reportHTML = `
     <div class="whatsapp-report">
       <div class="whatsapp-report-header">
-        <img src="${LOGO_URL}" alt="Logo Klinik" class="whatsapp-report-logo" onerror="this.src='https://via.placeholder.com/50x50.png?text=KS'">
+        <img loading="lazy" src="${LOGO_URL}" alt="Logo Klinik" class="whatsapp-report-logo" onerror="this.src='https://via.placeholder.com/50x50.png?text=KS'">
         <div>
           <div class="whatsapp-report-title">Laporan Saringan Kesihatan Bersama NADI</div>
           <div class="whatsapp-report-subtitle">Klinik SihatSokmo - Program PEKA B40</div>
@@ -3664,5 +3680,55 @@ function activateFromHash(){
   if (link){ link.click(); }
 }
 </script>
+
+  <script>
+  (function(){
+    // === Auto-refresh (gentle) ===
+    // Refresh every REFRESH_MS if the user is idle for IDLE_MS, page visible, and tiada modal terbuka.
+    var REFRESH_MS = 10 * 60 * 1000; // 10 min
+    var IDLE_MS = 60 * 1000;         // 60s idle
+    var lastActive = Date.now();
+    var idleTimer;
+
+    function markActive(){ lastActive = Date.now(); }
+    ['mousemove','keydown','scroll','touchstart','click'].forEach(function(ev){
+      window.addEventListener(ev, markActive, {passive:true});
+    });
+
+    function anyModalOpen(){
+      return !!document.querySelector('.modal.show');
+    }
+    function visible(){ return !document.hidden; }
+
+    function doRefresh(){
+      // Only soft reload if hash stays the same; this preserves your SPA behaviour.
+      // If you have exposed functions to refresh sections, call them here by hash.
+      var idleLong = (Date.now() - lastActive) >= IDLE_MS;
+      if (!idleLong || !visible() || anyModalOpen()) return;
+
+      // Try to call section-level refreshers if exist; fallback to full reload.
+      var h = (location.hash || '#dashboard').toLowerCase();
+      try {
+        if (typeof window.refreshDashboard === 'function' && (h==='#' || h==='#dashboard')) {
+          window.refreshDashboard();
+          return;
+        }
+        if (typeof window.refreshMonitorNow === 'function' && h.indexOf('#monitor')===0) {
+          window.refreshMonitorNow();
+          return;
+        }
+        // Other sections can be added similarly, else fallback:
+      } catch(e){ /* ignore and fallback */ }
+      location.reload();
+    }
+
+    // kick interval
+    setInterval(doRefresh, REFRESH_MS);
+
+    // Expose optional manual hook if you want to trigger from UI
+    window.__autoRefreshNow = doRefresh;
+  })();
+  </script>
+
 </body>
 </html>
