@@ -22,9 +22,47 @@
     // Jika dah ada, tak perlu apa-apa
     if (window.XLSX) return;
 
-    // Helper umum: muat 
-<!-- removed duplicate ensureXLSXReady block -->
+    // Helper umum: muat <script> sekali
+    window.loadScriptOnce = window.loadScriptOnce || (function () {
+      const loaded = new Set();
+      return function loadScriptOnce(url) {
+        return new Promise((resolve, reject) => {
+          if (loaded.has(url)) return resolve();
+          const s = document.createElement('script');
+          s.src = url;
+          s.async = true;
+          s.onload = () => { loaded.add(url); resolve(); };
+          s.onerror = () => reject(new Error('Gagal muat: ' + url));
+          document.head.appendChild(s);
+        });
+      };
+    })();
 
+    // Override/definisi semula: pastikan XLSX wujud, cuba 3 CDN
+    window.ensureXLSXReady = async function ensureXLSXReady() {
+      if (window.XLSX) return;
+      const cdns = [
+        'https://cdn.jsdelivr.net/npm/xlsx@0.19.3/dist/xlsx.full.min.js',
+        'https://unpkg.com/xlsx@0.19.3/dist/xlsx.full.min.js',
+        'https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.19.3/xlsx.full.min.js'
+      ];
+      let lastErr;
+      for (const url of cdns) {
+        try {
+          await window.loadScriptOnce(url);
+          if (window.XLSX) {
+            console.log('[XLSX] Loaded from', url);
+            return;
+          }
+        } catch (e) {
+          lastErr = e;
+        }
+      }
+      console.error('[XLSX] Gagal dimuat dari semua CDN.', lastErr || '');
+      throw new Error('XLSX gagal dimuat.');
+    };
+  })();
+</script>
 
   <!-- Google Identity Services (Sign-In) -->
   <script src="https://accounts.google.com/gsi/client" async defer></script>
@@ -1000,23 +1038,164 @@ function todayIso(){
 }
 
 // === MONITOR VIEW ===
-async 
-/* removed duplicate function */
+async function showMonitorAll(){
+  showPage('monitorAllSection');
+  const dateInput = document.getElementById('monitorDate');
+  if (!dateInput.value) dateInput.value = todayIso();
+  await loadMonitor(); // first load
+  startMonitorPolling();
+}
 
+function startMonitorPolling(){
+  stopMonitorPolling();
+  monitorTimer = setInterval(loadMonitor, POLL_MS);
+}
+function stopMonitorPolling(){
+  if (monitorTimer) { clearInterval(monitorTimer); monitorTimer=null; }
+}
+async function refreshMonitorNow(){
+  await loadMonitor(true);
+}
 
+async function loadMonitor(dateStr) {
+  const container = document.getElementById('monitorAllContainer');
+  if (!container) return;
 
-/* removed duplicate function */
+  // Tarikh dari input jika tidak diberi
+  const chosen = (dateStr || document.getElementById('monitorDate')?.value || '').trim();
 
+  // Papar skeleton sementara
+  container.innerHTML = `
+    <div class="text-muted small mb-2">Memuat data monitor…</div>
+    <div class="row g-2">
+      <div class="col-12 col-md-4"><div class="card placeholder-wave"><div class="card-body">
+        <div class="placeholder col-8 mb-2"></div>
+        <div class="placeholder col-6"></div>
+      </div></div></div>
+      <div class="col-12 col-md-4"><div class="card placeholder-wave"><div class="card-body">
+        <div class="placeholder col-8 mb-2"></div>
+        <div class="placeholder col-6"></div>
+      </div></div></div>
+      <div class="col-12 col-md-4"><div class="card placeholder-wave"><div class="card-body">
+        <div class="placeholder col-8 mb-2"></div>
+        <div class="placeholder col-6"></div>
+      </div></div></div>
+    </div>`;
 
-/* removed duplicate function */
+  // Util kecil: pembantu fetch + parse JSON dengan mesej ralat yang jelas
+  async function fetchJSON(url) {
+    const res = await fetch(url, { method: 'GET', credentials: 'omit' });
+    const text = await res.text();
+    let json;
+    try {
+      json = JSON.parse(text);
+    } catch (e) {
+      // Jika HTML (<!DOCTYPE …) -> biasanya URL silap / token tak dihantar
+      throw new Error('Respons bukan JSON sah daripada pelayan (mungkinkah URL/token salah?).');
+    }
+    return json;
+  }
 
-async 
-/* removed duplicate function */
+  // Bina URL
+  const qs = new URLSearchParams();
+  qs.set('action', 'getNadiMonitor');
+  if (chosen) qs.set('date', chosen); // sokong "yyyy-MM-dd" atau "dd/MM/yyyy"
+  if (typeof ID_TOKEN === 'string' && ID_TOKEN) qs.set('id_token', ID_TOKEN);
 
+  // Muat data
+  let json;
+  try {
+    json = await fetchJSON(`${SCRIPT_URL}?${qs.toString()}`);
+  } catch (err) {
+    container.innerHTML = `
+      <div class="alert alert-danger">
+        <div class="fw-bold mb-1">Gagal memuat monitor</div>
+        <div>${err.message || err}</div>
+        <div class="small text-muted mt-1">Semak semula <code>SCRIPT_URL</code>, <code>ID_TOKEN</code>, dan capaian internet.</div>
+      </div>`;
+    if (typeof toast === 'function') toast('Ralat', 'Gagal memuat monitor', 'danger');
+    return;
+  }
 
-async 
-/* removed duplicate function */
+  // Semak status
+  if (!json || json.status !== 'success') {
+    const msg = (json && (json.message || json.code)) || 'Action tidak sah / akses ditolak';
+    container.innerHTML = `
+      <div class="alert alert-warning">
+        <div class="fw-bold mb-1">Tidak dapat memuat data monitor</div>
+        <div>${msg}</div>
+        <div class="small text-muted mt-1">Pastikan anda telah sign-in dan akaun berada dalam allowlist.</div>
+      </div>`;
+    if (typeof toast === 'function') toast('Makluman', String(msg), 'warning');
+    return;
+  }
 
+  // Bentuk data: { status:'success', date:'dd/MM/yyyy', data:[{activityId,title,programDate,counts:{layak,takLayak,total}}] }
+  const monitorDate = json.date || chosen || '';
+  const items = Array.isArray(json.data) ? json.data : [];
+
+  // Jika tiada sesi pada tarikh dipilih
+  if (!items.length) {
+    container.innerHTML = `
+      <div class="text-center text-muted py-4">
+        Tiada sesi ditemui untuk tarikh <span class="fw-semibold">${monitorDate || '(tidak ditentukan)'}</span>.
+      </div>`;
+    return;
+  }
+
+  // Render kad ringkasan setiap sesi
+  const now = new Date();
+  const rendered = items.map((s) => {
+    const layak = Number(s?.counts?.layak || 0);
+    const tak = Number(s?.counts?.takLayak || 0);
+    const tot = Number(s?.counts?.total || (layak + tak));
+
+    // Pilih warna ringkas ikut status (hanya kosmetik)
+    const barLayak = Math.round(tot ? (layak / tot) * 100 : 0);
+    const barTak = Math.max(0, 100 - barLayak);
+
+    return `
+      <div class="col-12 col-md-6 col-lg-4">
+        <div class="card h-100 shadow-sm">
+          <div class="card-body">
+            <div class="d-flex justify-content-between align-items-start mb-2">
+              <div>
+                <div class="fw-bold">${s.title || 'Tanpa Tajuk'}</div>
+                <div class="text-muted small">${s.programDate || monitorDate}</div>
+              </div>
+              <span class="badge bg-secondary">ID: ${s.activityId || '-'}</span>
+            </div>
+
+            <div class="mb-2">
+              <div class="d-flex justify-content-between small text-muted">
+                <span>Layak</span><span>${layak}</span>
+              </div>
+              <div class="progress" role="progressbar" aria-label="Layak vs Tidak Layak">
+                <div class="progress-bar" style="width:${barLayak}%"></div>
+                <div class="progress-bar bg-danger" style="width:${barTak}%"></div>
+              </div>
+            </div>
+
+            <div class="d-flex gap-2 mt-3">
+              <span class="badge bg-success">Layak: ${layak}</span>
+              <span class="badge bg-danger">Tidak Layak: ${tak}</span>
+              <span class="badge bg-primary">Jumlah: ${tot}</span>
+            </div>
+          </div>
+        </div>
+      </div>`;
+  }).join('');
+
+  container.innerHTML = `
+    <div class="d-flex justify-content-between align-items-center mb-2">
+      <div class="small text-muted">
+        Tarikh dipantau: <span class="fw-semibold">${monitorDate || '(tidak ditentukan)'}</span>
+      </div>
+      <div class="small text-muted">Dikemas kini: ${now.toLocaleTimeString()}</div>
+    </div>
+    <div class="row g-2">${rendered}</div>
+  `;
+}
 
 function openSessionDetail(activityId){
   location.hash = '#nadi?activityId='+encodeURIComponent(activityId);
@@ -1026,9 +1205,10 @@ function openSessionDetail(activityId){
 // function escapeHtml(s){ ... }
 
 // Henti polling bila keluar dari skrin monitor
-
-/* removed duplicate hashchange listener */
-
+window.addEventListener('hashchange', ()=>{
+  const onMonitor = location.hash.includes('#monitor');
+  if (!onMonitor) stopMonitorPolling();
+});
 
 // ✅ EXPOSE ke global (penting untuk onclick & button)
 window.showMonitorAll = showMonitorAll;
@@ -3483,250 +3663,7 @@ function activateFromHash(){
   const link = document.querySelector(`.nav-link[href="${hash}"]`);
   if (link){ link.click(); }
 }
-window.addEventListener('hashchange', activateFromHash);
-// ===================== Monitor Semua (Live) =====================
-
-// Tetapan poll (fallback 7s jika tiada tetapan global)
-const MONITOR_POLL_MS = (window.MONITOR_POLL_MS || 7000);
-
-// Pemasa untuk auto-refresh
-let monitorTimer = null;
-
-/**
- * Tunjukkan skrin Monitor Semua & mulakan auto-refresh
- */
-async function showMonitorAll(){
-  // Jika app anda ada helper showPage(id), guna itu; jika tiada, sekurang-kurangnya papar seksyen monitor
-  if (typeof showPage === 'function') {
-    showPage('monitorAllSection');
-  } else {
-    const sec = document.getElementById('monitorAllSection');
-    if (sec) sec.style.display = '';
-  }
-
-  // Tetapkan tarikh default (hari ini) jika kosong
-  const dateInput = document.getElementById('monitorDate');
-  if (dateInput && !dateInput.value) dateInput.value = todayIsoSafe();
-
-  // Muat pertama kali & mula polling
-  await loadMonitor(true);
-  startMonitorPolling();
-}
-
-/** Muat semula sekali (guna pada butang "Segar Semula") */
-async function refreshMonitorNow(){
-  await loadMonitor(true);
-}
-
-function startMonitorPolling(dateIso){
-  stopMonitorPolling();
-  // Panggil sekali dulu
-  loadMonitor(dateIso);
-  // Kemudian berkala
-  monitorTimer = setInterval(()=> loadMonitor(dateIso), 15000); // 15s
-}
-function stopMonitorPolling(){
-  if (monitorTimer){ clearInterval(monitorTimer); monitorTimer=null; }
-}
-
-
-/** Util: tarikh hari ini (YYYY-MM-DD) — versi selamat */
-function todayIsoSafe(){
-  const d = new Date();
-  const mm = ('0'+(d.getMonth()+1)).slice(-2);
-  const dd = ('0'+d.getDate()).slice(-2);
-  return `${d.getFullYear()}-${mm}-${dd}`;
-}
-
-/**
- * Teras pemuatan data monitor
- * - Cuba guna getJSON + id_token jika tersedia
- * - Jika tidak, jatuh kepada fetch(SCRIPT_URL) / fetch relatif
- */
-async function loadMonitor(force=false){
-  const infoEl  = document.getElementById('monitorInfo');
-  const cardsEl = document.getElementById('monitorCards');
-
-  try{
-    const dateIso = document.getElementById('monitorDate')?.value || todayIsoSafe();
-
-    // Papar status kecil (optional)
-    if (infoEl && force){
-      infoEl.textContent = 'Memuat data monitor…';
-    }
-
-    // Keutamaan: getJSON (jika disediakan oleh app anda dan sudah login)
-    let json;
-    if (typeof getJSON === 'function' && window.ID_TOKEN) {
-      json = await getJSON(
-        { action:'getNadiMonitor', date: dateIso },
-        { silent:true }
-      );
-    } else {
-      // Fallback: try direct fetch → SCRIPT_URL jika ada, jika tidak fetch relatif
-      const base = (typeof SCRIPT_URL === 'string' && SCRIPT_URL) ? SCRIPT_URL : '';
-      const qs   = new URLSearchParams({ action:'getNadiMonitor', date: dateIso }).toString();
-      const url  = base ? `${base}?${qs}` : `?${qs}`;
-      const r    = await fetch(url, { method:'GET', credentials:'include' });
-      json       = await r.json();
-    }
-
-    if (json.status !== 'success') throw new Error(json.message || 'Gagal ambil data monitor');
-
-    // Info bar
-    if (infoEl){
-      infoEl.textContent = `Tarikh: ${json.date || dateIso} • Auto refresh setiap ${(MONITOR_POLL_MS/1000)}s`;
-    }
-
-    renderMonitorCards(Array.isArray(json.data) ? json.data : []);
-
-  } catch(err){
-    console.error(err);
-    if (infoEl) infoEl.textContent = 'Ralat memuat data monitor.';
-    if (cardsEl) {
-      cardsEl.innerHTML = `<div class="col-12"><div class="alert alert-danger">Tidak dapat memuat data buat masa ini.</div></div>`;
-    }
-  }
-}
-
-/**
- * Lukis kad-kad ringkasan untuk semua program pada tarikh dipilih
- * @param {Array} list - senarai { activityId, title, programDate, counts:{layak,takLayak,total} }
- */
-function renderMonitorCards(list){
-  const wrap = document.getElementById('monitorCards');
-  if (!wrap) return;
-
-  if (!list.length){
-    wrap.innerHTML = `<div class="col-12"><div class="alert alert-info">Tiada sesi pada tarikh ini.</div></div>`;
-    return;
-  }
-
-  wrap.innerHTML = list.map(item=>{
-    const c = item.counts || { layak:0, takLayak:0, total:0 };
-    return `
-      <div class="col-12 col-md-6 col-lg-4">
-        <div class="card shadow-sm monitor-card">
-          <div class="card-body">
-            <div class="d-flex justify-content-between align-items-start">
-              <div>
-                <div class="fw-bold">${escapeHtmlSafe(item.title||'-')}</div>
-                <div class="text-muted small">${escapeHtmlSafe(item.programDate||'')}</div>
-                <div class="text-muted small">ID: ${escapeHtmlSafe(item.activityId||'')}</div>
-              </div>
-              <button class="btn btn-sm btn-outline-secondary"
-                      onclick="openSessionDetail('${String(item.activityId||'').replace(/["'<>]/g,'')}')">
-                Buka
-              </button>
-            </div>
-            <hr>
-            <div class="row text-center">
-              <div class="col">
-                <div class="stat">${Number(c.layak||0)}</div>
-                <div class="label">Layak</div>
-              </div>
-              <div class="col">
-                <div class="stat">${Number(c.takLayak||0)}</div>
-                <div class="label">Tidak Layak</div>
-              </div>
-              <div class="col">
-                <div class="stat">${Number(c.total||0)}</div>
-                <div class="label">Jumlah</div>
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>`;
-  }).join('');
-}
-
-/** Apabila klik “Buka” pada kad — navigate ke tab NADI dengan activityId (jika anda sediakan) */
-function openSessionDetail(activityId){
-  // Masukkan activityId ke hash supaya tab NADI boleh membacanya
-  location.hash = '#nadi?activityId=' + encodeURIComponent(activityId || '');
-  // Jika app anda perlu buka seksyen NADI secara manual:
-  // const link = document.querySelector('.nav-link[href="#nadi"]'); link?.click();
-}
-
-/** Helper ringkas anti-XSS untuk teks */
-function escapeHtmlSafe(s){
-  return String(s||'').replace(/[&<>"'`=\/]/g, c => ({
-    '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;','/':'&#x2F;','`':'&#x60;','=':'&#x3D;'
-  }[c]));
-}
-
-// -- Expose ke global supaya dipanggil oleh event listener luar / butang HTML --
-window.showMonitorAll     = showMonitorAll;
-window.refreshMonitorNow  = refreshMonitorNow;
-window.stopMonitorPolling = stopMonitorPolling;
-
-// (Pilihan) Hentikan polling bila bertukar hash dan bukan monitor
-
-/* removed duplicate hashchange(stopPolling) */
- } catch(e){}
-  }
-});
 /* =======================
-   ENSURE XLSX (SATU-SATUNYA; CDN)
-   ======================= */
-(function () {
-  'use strict';
-
-  // Helper: muatkan skrip satu kali sahaja
-  window.loadScriptOnce = window.loadScriptOnce || function loadScriptOnce(src){
-    return new Promise((resolve, reject) => {
-      if (document.querySelector('script[data-dynamic-src="'+src+'"]')) return resolve();
-      const s = document.createElement('script');
-      s.src = src;
-      s.async = true;
-      s.setAttribute('data-dynamic-src', src);
-      s.onload = () => resolve();
-      s.onerror = () => reject(new Error('Gagal memuat: '+src));
-      document.head.appendChild(s);
-    });
-  };
-
-  // OVERRIDE: hanya cuba CDN (tiada lagi 'vendor/...')
-  window.ensureXLSXReady = async function ensureXLSXReady() {
-    if (window.XLSX) return;
-    const cdns = [
-      'https://cdn.jsdelivr.net/npm/xlsx@0.19.3/dist/xlsx.full.min.js',
-      'https://unpkg.com/xlsx@0.19.3/dist/xlsx.full.min.js',
-      'https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.19.3/xlsx.full.min.js'
-    ];
-    let lastErr;
-    for (const url of cdns) {
-      try {
-        await window.loadScriptOnce(url);
-        if (window.XLSX) {
-          console.log('[XLSX] Loaded from', url);
-          return;
-        }
-      } catch (e) { lastErr = e; }
-    }
-    console.error('[XLSX] Gagal dimuat dari semua CDN.', lastErr);
-    throw new Error('Tidak dapat memuatkan SheetJS (XLSX).');
-  };
-
-  // Event listener untuk butang "Monitor Semua"
-document.addEventListener('DOMContentLoaded', function(){
-  const btnMonitor = document.getElementById('btnMonitorAll');
-  if (btnMonitor) {
-    btnMonitor.addEventListener('click', () => {
-      try { showMonitorAll(); } catch (e) { console.error(e); }
-    });
-  }
-});
-
-
-  // Henti polling bila keluar dari paparan monitor
-  window.addEventListener('hashchange', () => {
-    if (!location.hash.includes('#monitor')) {
-      try { window.stopMonitorPolling && window.stopMonitorPolling(); } catch(e){}
-    }
-  });
-
-})(); // tutup IIFE
 </script>
 </body>
 </html>
