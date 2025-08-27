@@ -1,15 +1,6 @@
 <!DOCTYPE html>
 <html lang="ms">
 <head>
-
-  <!-- Performance resource hints -->
-  <link rel="preconnect" href="https://cdn.jsdelivr.net">
-  <link rel="preconnect" href="https://cdnjs.cloudflare.com">
-  <link rel="preconnect" href="https://unpkg.com">
-  <link rel="dns-prefetch" href="https://cdn.jsdelivr.net">
-  <link rel="dns-prefetch" href="https://cdnjs.cloudflare.com">
-  <link rel="dns-prefetch" href="https://unpkg.com">
-
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
 
@@ -288,13 +279,6 @@
   }
   .nadi-summary-card.layak { border-top: 4px solid var(--success); }
   .nadi-summary-card.tak-layak { border-top: 4px solid var(--danger); }
-
-  /* === Light Theme Overrides (added) === */
-  body{ background:#f7f9fc; color:#222; }
-  .navbar-main{ background:#ffffff; }
-  .page-header{ background:linear-gradient(135deg,#4e73df,#1cc88a); }
-  .card{ background:#ffffff; }
-
 </style>
 </head>
 <body>
@@ -328,7 +312,7 @@
   <nav class="navbar navbar-expand-lg navbar-main sticky-top">
     <div class="container">
       <a class="navbar-brand" href="#dashboard">
-        <img loading="lazy" id="brandLogo" alt="Logo" style="width:32px;height:32px;border-radius:8px;object-fit:cover;border:1px solid rgba(0,0,0,.08)">
+        <img id="brandLogo" alt="Logo" style="width:32px;height:32px;border-radius:8px;object-fit:cover;border:1px solid rgba(0,0,0,.08)">
         <span>Klinik SihatSokmo</span>
       </a>
 
@@ -2594,7 +2578,7 @@ function generateWhatsAppReport(data) {
   const reportHTML = `
     <div class="whatsapp-report">
       <div class="whatsapp-report-header">
-        <img loading="lazy" src="${LOGO_URL}" alt="Logo Klinik" class="whatsapp-report-logo" onerror="this.src='https://via.placeholder.com/50x50.png?text=KS'">
+        <img src="${LOGO_URL}" alt="Logo Klinik" class="whatsapp-report-logo" onerror="this.src='https://via.placeholder.com/50x50.png?text=KS'">
         <div>
           <div class="whatsapp-report-title">Laporan Saringan Kesihatan Bersama NADI</div>
           <div class="whatsapp-report-subtitle">Klinik SihatSokmo - Program PEKA B40</div>
@@ -3681,54 +3665,130 @@ function activateFromHash(){
 }
 </script>
 
-  <script>
-  (function(){
-    // === Auto-refresh (gentle) ===
-    // Refresh every REFRESH_MS if the user is idle for IDLE_MS, page visible, and tiada modal terbuka.
-    var REFRESH_MS = 10 * 60 * 1000; // 10 min
-    var IDLE_MS = 60 * 1000;         // 60s idle
-    var lastActive = Date.now();
-    var idleTimer;
+<!-- ===== Live Sync Enhancements (non-breaking) ===== -->
+<script>
+(function () {
+  'use strict';
 
-    function markActive(){ lastActive = Date.now(); }
-    ['mousemove','keydown','scroll','touchstart','click'].forEach(function(ev){
-      window.addEventListener(ev, markActive, {passive:true});
+  // Guard until app code is loaded
+  function onReady(fn){
+    if (document.readyState === 'loading') {
+      document.addEventListener('DOMContentLoaded', fn, { once: true });
+    } else {
+      fn();
+    }
+  }
+
+  // Helpers
+  function ensureRowId(row){
+    if (!row) return '';
+    if (!row.dataset.rowId) {
+      row.dataset.rowId = 'row_' + Math.random().toString(36).slice(2);
+    }
+    return row.dataset.rowId;
+  }
+
+  async function announceNewRowLive(row){
+    try{
+      if (!window.NADI_LIVE_SESSION_ID || !window.postForm) return;
+      ensureRowId(row);
+      const payload = [{
+        id: row.dataset.rowId,
+        nama: '', ic: '', tel: '', alamat: '',
+        bp: '', pr: '', dxtType: row.querySelector('.nadi-dxt-type')?.value || 'Fasting',
+        dxt: '', tinggi: '', berat: '', bmi: '',
+        layak: !!row.querySelector('.nadi-layak')?.checked,
+        takLayak: !!row.querySelector('.nadi-taklayak')?.checked,
+        tcaDate: '', tcaTime: '', tcaStaff: '', remark: ''
+      }];
+      await window.postForm({
+        action: 'saveNadiLive',
+        sessionId: window.NADI_LIVE_SESSION_ID,
+        items: JSON.stringify(payload)
+      }, { silent:true });
+    }catch(e){ /* silent */ }
+  }
+
+  // Attach input/change listeners once
+  function attachLiveListenersOnce(){
+    if (window.__liveListenersAttached) return;
+    window.__liveListenersAttached = true;
+
+    document.addEventListener('input', (e) => {
+      const el = e.target;
+      const row = el.closest?.('.nadi-row');
+      if (!row || typeof window.queueSaveNadiLive !== 'function') return;
+
+      if (el.matches('.nadi-nama, .nadi-ic, .nadi-tel, .nadi-alamat, .nadi-bp, .nadi-pr, .nadi-dxt, .nadi-tinggi, .nadi-berat, .nadi-bmi, .nadi-remark')) {
+        ensureRowId(row);
+        window.queueSaveNadiLive(row);
+      }
     });
 
-    function anyModalOpen(){
-      return !!document.querySelector('.modal.show');
-    }
-    function visible(){ return !document.hidden; }
+    document.addEventListener('change', (e) => {
+      const el = e.target;
+      const row = el.closest?.('.nadi-row');
+      if (!row || typeof window.queueSaveNadiLive !== 'function') return;
 
-    function doRefresh(){
-      // Only soft reload if hash stays the same; this preserves your SPA behaviour.
-      // If you have exposed functions to refresh sections, call them here by hash.
-      var idleLong = (Date.now() - lastActive) >= IDLE_MS;
-      if (!idleLong || !visible() || anyModalOpen()) return;
+      if (el.matches('.nadi-layak, .nadi-taklayak, .nadi-dxt-type, .nadi-tca-date, .nadi-tca-time, .nadi-staff')) {
+        ensureRowId(row);
+        window.queueSaveNadiLive(row);
+      }
+    });
+  }
 
-      // Try to call section-level refreshers if exist; fallback to full reload.
-      var h = (location.hash || '#dashboard').toLowerCase();
-      try {
-        if (typeof window.refreshDashboard === 'function' && (h==='#' || h==='#dashboard')) {
-          window.refreshDashboard();
-          return;
+  // Monkey patch addNadiRow so that new rows appear live on other laptops
+  function wrapAddNadiRow(){
+    if (window.__addRowWrapped) return;
+    if (typeof window.addNadiRow !== 'function') return; // respect original structure
+    window.__addRowWrapped = true;
+
+    const _origAdd = window.addNadiRow;
+    window.addNadiRow = function(){
+      const before = document.querySelectorAll('#nadiContainer .nadi-row').length;
+      const ret = _origAdd.apply(this, arguments);
+      onReady(() => {
+        // find the actual added row (last one or by count difference)
+        let row = null;
+        const rows = document.querySelectorAll('#nadiContainer .nadi-row');
+        if (rows.length) {
+          row = rows[rows.length - 1];
         }
-        if (typeof window.refreshMonitorNow === 'function' && h.indexOf('#monitor')===0) {
-          window.refreshMonitorNow();
-          return;
+        if (row) {
+          ensureRowId(row);
+          announceNewRowLive(row);
         }
-        // Other sections can be added similarly, else fallback:
-      } catch(e){ /* ignore and fallback */ }
-      location.reload();
-    }
+      });
+      return ret;
+    };
+  }
 
-    // kick interval
-    setInterval(doRefresh, REFRESH_MS);
+  // Make live polling faster without changing other logic
+  function patchStartNadiLiveSync(){
+    if (window.__startLivePatched) return;
+    if (typeof window.startNadiLiveSync !== 'function') return;
+    if (typeof window.pullNadiLiveOnce !== 'function') return;
+    window.__startLivePatched = true;
 
-    // Expose optional manual hook if you want to trigger from UI
-    window.__autoRefreshNow = doRefresh;
-  })();
-  </script>
+    const _origStart = window.startNadiLiveSync;
+    window.startNadiLiveSync = function(){
+      // run original
+      const ret = _origStart.apply(this, arguments);
+      try{
+        // reset the timer to 2s
+        if (window.nadiLiveTimer) { clearInterval(window.nadiLiveTimer); }
+        window.nadiLiveTimer = setInterval(window.pullNadiLiveOnce, 2000);
+      }catch(e){}
+      return ret;
+    };
+  }
 
+  onReady(() => {
+    attachLiveListenersOnce();
+    wrapAddNadiRow();
+    patchStartNadiLiveSync();
+  });
+})();
+</script>
 </body>
 </html>
