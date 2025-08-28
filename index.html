@@ -1,30 +1,25 @@
 <!DOCTYPE html>
+
 <html lang="ms">
 <head>
-
-  <!-- Performance resource hints -->
-  <link rel="preconnect" href="https://cdn.jsdelivr.net">
-  <link rel="preconnect" href="https://cdnjs.cloudflare.com">
-  <link rel="preconnect" href="https://unpkg.com">
-  <link rel="dns-prefetch" href="https://cdn.jsdelivr.net">
-  <link rel="dns-prefetch" href="https://cdnjs.cloudflare.com">
-  <link rel="dns-prefetch" href="https://unpkg.com">
-
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-
-  <title>Sistem Tracker PEKA B40 - Klinik SihatSokmo</title>
-
-  <!-- Bootstrap & Icons -->
-  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
-  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css">
-  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css">
-
-  <!-- Chart.js + Datalabels -->
-  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2"></script>
-
-  <!-- SheetJS (Excel) via CDN -->
+<!-- Performance resource hints -->
+<link href="https://cdn.jsdelivr.net" rel="preconnect"/>
+<link href="https://cdnjs.cloudflare.com" rel="preconnect"/>
+<link href="https://unpkg.com" rel="preconnect"/>
+<link href="https://cdn.jsdelivr.net" rel="dns-prefetch"/>
+<link href="https://cdnjs.cloudflare.com" rel="dns-prefetch"/>
+<link href="https://unpkg.com" rel="dns-prefetch"/>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Sistem Tracker PEKA B40 - Klinik SihatSokmo</title>
+<!-- Bootstrap & Icons -->
+<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet"/>
+<link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css" rel="stylesheet"/>
+<link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" rel="stylesheet"/>
+<!-- Chart.js + Datalabels -->
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2"></script>
+<!-- SheetJS (Excel) via CDN -->
 <!-- XLSX robust loader + override (SIAP TAMPAL DI <head>) -->
 <script>
   (function () {
@@ -72,13 +67,10 @@
     };
   })();
 </script>
-
-  <!-- Google Identity Services (Sign-In) -->
-  <script src="https://accounts.google.com/gsi/client" async defer></script>
-
-  <!-- html2canvas untuk tangkap preview → imej (BARU) -->
-  <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
-
+<!-- Google Identity Services (Sign-In) -->
+<script async="" defer="" src="https://accounts.google.com/gsi/client"></script>
+<!-- html2canvas untuk tangkap preview → imej (BARU) -->
+<script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
 <style>
   :root{ --primary:#2c3e50; --secondary:#3498db; --success:#27ae60; --warning:#f39c12; --danger:#e74c3c; --light:#ecf0f1; --dark:#34495e; --muted:#95a5a6; }
   html{ font-size:15px; }
@@ -322,246 +314,233 @@
 </style>
 </head>
 <body>
-  <!-- Global Loader -->
-  <div id="appLoader" aria-hidden="true">
-    <div class="loader-card">
-      <div class="spinner-premium"></div>
-      <div class="fw-bold">Sila tunggu…</div>
-      <div class="text-muted small" id="loaderMsg">Memproses permintaan anda</div>
-    </div>
-  </div>
-
-  <!-- Log Calls Drawer -->
-  <div id="logDrawer" aria-hidden="true">
-    <div class="log-header">
-      <button class="btn btn-sm btn-outline-secondary" id="btnCloseLog"><i class="bi bi-x-lg"></i></button>
-      <div class="title"><i class="bi bi-chat-dots me-1"></i> Log Calls</div>
-      <div id="logBadge" class="badge text-bg-primary">0</div>
-    </div>
-    <div class="log-search">
-      <input id="logSearch" class="form-control form-control-sm" placeholder="Cari: nama / IC / telefon / staff…" />
-    </div>
-    <div id="logLoading" class="log-loading">
-      <div class="spinner-border spinner-border-sm" role="status"></div>
-      <div class="small text-muted mt-1">Memuat Log Calls…</div>
-    </div>
-    <div id="logBody" class="log-body"></div>
-  </div>
-
-  <!-- Navbar -->
-  <nav class="navbar navbar-expand-lg navbar-main sticky-top">
-    <div class="container">
-      <a class="navbar-brand" href="#dashboard">
-        <img loading="lazy" id="brandLogo" alt="Logo" style="width:32px;height:32px;border-radius:8px;object-fit:cover;border:1px solid rgba(0,0,0,.08)">
-        <span>Klinik SihatSokmo</span>
-      </a>
-
-      <!-- Google Sign-in button placeholder -->
-      <div id="signinArea" class="d-lg-none me-2"></div>
-
-      <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarMain">
-        <span class="navbar-toggler-icon"></span>
-      </button>
-      <div class="collapse navbar-collapse" id="navbarMain">
-        <ul class="navbar-nav me-auto mb-2 mb-lg-0">
-          <li class="nav-item position-relative">
-            <a class="nav-link active" href="#dashboard"><i class="fas fa-tachometer-alt"></i> Dashboard</a>
-          </li>
-          <li class="nav-item position-relative">
-            <a class="nav-link" href="#nadi"><i class="bi bi-clipboard2-pulse"></i> Program PEKA B40 bersama NADI</a>
-          </li>
-          <li class="nav-item position-relative">
-            <a class="nav-link" href="#sejarah"><i class="bi bi-clock-history"></i> Lihat Sejarah Saringan</a>
-          </li>
-          <li class="nav-item position-relative">
-            <a class="nav-link" href="#daftar-peka"><i class="fas fa-user-plus"></i> Daftar Peka</a>
-          </li>
-          <li class="nav-item position-relative">
-            <a class="nav-link" href="#kelayakan"><i class="fa-solid fa-file-excel"></i> Kelayakan (Excel)</a>
-          </li>
-          <li class="nav-item position-relative">
-            <a class="nav-link" href="#tca-call"><i class="fas fa-phone"></i> TCA Call</a>
-            <span id="badgeTCA" class="nav-badge">0</span>
-          </li>
-          <li class="nav-item position-relative">
-            <a class="nav-link" href="#first-visit"><i class="fas fa-calendar-check"></i> First Visit</a>
-            <span id="badgeFirst" class="nav-badge">0</span>
-          </li>
-          <li class="nav-item position-relative">
-            <a class="nav-link" href="#lab-followup"><i class="fa-solid fa-flask-vial"></i> Follow-up Lab Report</a>
-            <span id="badgeLab" class="nav-badge">0</span>
-          </li>
-          <li class="nav-item position-relative">
-            <a class="nav-link" href="#second-visit"><i class="fas fa-calendar-check"></i> Second Visit</a>
-            <span id="badgeSecond" class="nav-badge">0</span>
-          </li>
-          <li class="nav-item position-relative">
-            <a class="nav-link" href="#selesai"><i class="fas fa-check-circle"></i> Selesai</a>
-          </li>
-          <li class="nav-item position-relative">
-            <a class="nav-link" href="#arkib"><i class="fa-solid fa-box-archive"></i> Arkib</a>
-          </li>
-        </ul>
-
-        <div class="d-none d-lg-flex align-items-center gap-2">
-          <div id="signinAreaDesktop"></div>
-          <span id="staffBadge" class="badge bg-secondary d-none"><i class="bi bi-person-check me-1"></i><span id="staffEmail"></span></span>
-          <!-- (Butang Log Calls terapung di bawah – tidak dalam navbar) -->
-        </div>
-      </div>
-    </div>
-  </nav>
-
-  <!-- Header -->
-  <header class="page-header">
-    <div class="container">
-      <div class="row align-items-center g-2">
-        <div class="col-md-6">
-          <h1 class="h5 m-0"><i class="fas fa-heartbeat me-2"></i> Sistem TRacKer PEKA B40</h1>
-          <div class="small opacity-75">Sistem pengurusan pesakit untuk program saringan kesihatan PEKA B40</div>
-        </div>
-        <div class="col-md-6 text-md-end">
-          <span class="badge bg-light text-dark fs-6 p-2"><i class="fas fa-calendar-day me-1"></i> <span id="current-date"></span></span>
-        </div>
-      </div>
-    </div>
-  </header>
-
-  <main class="container">
-
-    <!-- Dashboard -->
-    <section id="dashboard" class="mb-4">
-      <div class="d-flex justify-content-between align-items-center mb-3">
-        <h2 class="h6 m-0"><i class="fas fa-tachometer-alt me-2"></i>Dashboard</h2>
-        <div class="d-flex gap-2">
-          <button class="btn btn-sm btn-outline-success" id="btnExportCSV"><i class="fa-solid fa-file-csv me-1"></i>Export (CSV)</button>
-        </div>
-      </div>
-
-      <div class="row g-3 mb-3">
-        <div class="col-6 col-md-2">
-          <div class="stat-card" data-goto="#tca-call" style="background:linear-gradient(135deg,var(--secondary),#2980b9)">
-            <div class="number" id="totalDaftar">0</div><div class="small">Aktif</div>
-          </div>
-        </div>
-        <div class="col-6 col-md-2">
-          <div class="stat-card" data-goto="#first-visit" style="background:linear-gradient(135deg,var(--warning),#e67e22)">
-            <div class="number" id="totalFirstVisit">0</div><div class="small">First Visit (Pending)</div>
-          </div>
-        </div>
-        <div class="col-6 col-md-2">
-          <div class="stat-card" data-goto="#second-visit" style="background:linear-gradient(135deg,#9b59b6,#8e44ad)">
-            <div class="number" id="totalSecondVisit">0</div><div class="small">Second Visit (Pending)</div>
-          </div>
-        </div>
-        <div class="col-6 col-md-2">
-          <div class="stat-card" data-goto="#selesai" style="background:linear-gradient(135deg,var(--success),#16a085)">
-            <div class="number" id="totalSelesai">0</div><div class="small">Selesai</div>
-          </div>
-        </div>
-        <div class="col-6 col-md-2">
-          <div class="stat-card" data-goto="#lab-followup" style="background:linear-gradient(135deg,#8e44ad,#6c5ce7)">
-            <div class="number" id="labFollowUpDue">0</div><div class="small">Result > 3 Hari</div>
-          </div>
-        </div>
-        <div class="col-6 col-md-2">
-          <div class="stat-card" data-goto="#lab-followup" style="background:linear-gradient(135deg,#d35400,#c0392b)">
-            <div class="number" id="labFollowUpPending">0</div><div class="small">Perlu Follow-up</div>
-          </div>
-        </div>
-      </div>
-
-      <!-- Pesakit perlu dihubungi (ringkas hari ini mengikut backend lalai) -->
-      <div class="card mb-3">
-        <div class="card-header d-flex justify-content-between align-items-center">
-          <span><i class="fas fa-phone me-2"></i>Pesakit Perlu Dihubungi Hari Ini</span>
-          <input class="form-control form-control-sm searchbar" id="searchTCA" placeholder="Cari nama/IC/telefon…" />
-        </div>
-        <div class="card-body">
-          <div class="table-responsive">
-            <table class="table table-hover align-middle">
-              <thead class="table-light"><tr><th>Nama Pesakit</th><th>No IC</th><th>No Telefon</th><th>Alamat</th><th>Tarikh TCA</th><th>Status</th></tr></thead>
-              <tbody id="tcaCallTable"><tr><td colspan="6" class="text-center text-muted">Memuat data...</td></tr></tbody>
-            </table>
-          </div>
-        </div>
-      </div>
-
-      <!-- Statistik -->
-      <div class="card">
-        <div class="card-header d-flex justify-content-between align-items-center">
-          <span><i class="fas fa-chart-bar me-2"></i>Statistik Pesakit Selesai</span>
-          <select id="statPeriod" class="form-select form-select-sm" style="max-width:200px">
-            <option value="3months">3 Bulan Terakhir</option>
-            <option value="6months">6 Bulan Terakhir</option>
-            <option value="12months">12 Bulan Terakhir</option>
-          </select>
-        </div>
-        <div class="card-body"><div style="height:320px;"><canvas id="stats3dChart"></canvas></div></div>
-      </div>
-    </section>
-
-    <!-- Program NADI -->
-    <section id="nadi" class="mb-4 d-none">
-      <div class="d-flex justify-content-between align-items-center mb-2">
-        <h2 class="h6 m-0"><i class="bi bi-clipboard2-pulse me-2"></i>Program PEKA B40 bersama NADI</h2>
-        <div class="d-flex gap-2">
-          <button id="btnNadiExportCsv" class="btn btn-sm btn-outline-success"><i class="bi bi-filetype-csv me-1"></i>Export to CSV</button>
-        </div>
-      </div>
-      
-      <!-- Summary Cards -->
-      <div class="nadi-summary-container">
-        <div class="nadi-summary-card layak">
-          <div class="title">Layak PEKA B40</div>
-          <div class="count" id="nadiLayakCount">0</div>
-        </div>
-        <div class="nadi-summary-card tak-layak">
-          <div class="title">Tidak Layak</div>
-          <div class="count" id="nadiTakLayakCount">0</div>
-        </div>
-      </div>
-      <!-- BAR PROGRAM (tajuk + tarikh + aksi) -->
-<div id="nadiProgramBar" class="card card-body mb-3">
-  <div class="row g-2 align-items-end">
-    <div class="col-md-5">
-      <label class="form-label mb-1">Tajuk Program</label>
-      <input id="nadiProgramTitle" class="form-control form-control-sm" placeholder="cth: Saringan Komuniti Tmn Mawar">
-    </div>
-    <div class="col-md-3">
-      <label class="form-label mb-1">Tarikh Program</label>
-      <input id="nadiProgramDate" type="date" class="form-control form-control-sm">
-    </div>
-    <div class="col-md-4 text-md-end">
-      <div class="small text-muted">Sesi aktif: <span id="liveSessionLabel" class="fw-semibold">-</span></div>
-    </div>
-  </div>
-  <div class="row g-2 align-items-center mt-2">
-    <div class="col-md-8">
-      <label class="form-label mb-1">Pilih Sesi (Live) — hari yang sama</label>
-      <div class="input-group input-group-sm">
-        <select id="nadiSessionSelect" class="form-select">
-          <option value="">(Pilih sesi live untuk hari ini)</option>
-        </select>
-        <button class="btn btn-outline-secondary" type="button" id="btnRefreshSessions"><i class="fa-solid fa-rotate-right"></i> Segar</button>
-        <button class="btn btn-primary" type="button" id="btnUseSession"><i class="fa-solid fa-link"></i> Guna</button>
-      </div>
-      <div class="form-text">Sesi ditentukan oleh Tajuk Program + Tarikh. Guna pilihan ini untuk kongsi jadual antara laptop A & B.</div>
-    </div>
-    <div class="col-md-4 text-md-end">
-      <button id="btnNadiSaveActivity" class="btn btn-sm btn-primary">
-        <i class="bi bi-cloud-upload me-1"></i>Simpan Aktiviti (Semua)
-      </button>
-    </div>
-  </div>
+<!-- Global Loader -->
+<div aria-hidden="true" id="appLoader">
+<div class="loader-card">
+<div class="spinner-premium"></div>
+<div class="fw-bold">Sila tunggu…</div>
+<div class="text-muted small" id="loaderMsg">Memproses permintaan anda</div>
 </div>
-  </div>
-      <div class="card">
-        <div class="card-body">
-          <div class="nadi-scroll-container">
-            <table class="nadi-table">
-              <thead>
-  <tr><th style="width: 40px;">#</th>
+</div>
+<!-- Log Calls Drawer -->
+<div aria-hidden="true" id="logDrawer">
+<div class="log-header">
+<button class="btn btn-sm btn-outline-secondary" id="btnCloseLog"><i class="bi bi-x-lg"></i></button>
+<div class="title"><i class="bi bi-chat-dots me-1"></i> Log Calls</div>
+<div class="badge text-bg-primary" id="logBadge">0</div>
+</div>
+<div class="log-search">
+<input class="form-control form-control-sm" id="logSearch" placeholder="Cari: nama / IC / telefon / staff…"/>
+</div>
+<div class="log-loading" id="logLoading">
+<div class="spinner-border spinner-border-sm" role="status"></div>
+<div class="small text-muted mt-1">Memuat Log Calls…</div>
+</div>
+<div class="log-body" id="logBody"></div>
+</div>
+<!-- Navbar -->
+<nav class="navbar navbar-expand-lg navbar-main sticky-top">
+<div class="container">
+<a class="navbar-brand" href="#dashboard">
+<img alt="Logo" id="brandLogo" loading="lazy" style="width:32px;height:32px;border-radius:8px;object-fit:cover;border:1px solid rgba(0,0,0,.08)"/>
+<span>Klinik SihatSokmo</span>
+</a>
+<!-- Google Sign-in button placeholder -->
+<div class="d-lg-none me-2" id="signinArea"></div>
+<button class="navbar-toggler" data-bs-target="#navbarMain" data-bs-toggle="collapse" type="button">
+<span class="navbar-toggler-icon"></span>
+</button>
+<div class="collapse navbar-collapse" id="navbarMain">
+<ul class="navbar-nav me-auto mb-2 mb-lg-0">
+<li class="nav-item position-relative">
+<a class="nav-link active" href="#dashboard"><i class="fas fa-tachometer-alt"></i> Dashboard</a>
+</li>
+<li class="nav-item position-relative">
+<a class="nav-link" href="#nadi"><i class="bi bi-clipboard2-pulse"></i> Program PEKA B40 bersama NADI</a>
+</li>
+<li class="nav-item position-relative">
+<a class="nav-link" href="#sejarah"><i class="bi bi-clock-history"></i> Lihat Sejarah Saringan</a>
+</li>
+<li class="nav-item position-relative">
+<a class="nav-link" href="#daftar-peka"><i class="fas fa-user-plus"></i> Daftar Peka</a>
+</li>
+<li class="nav-item position-relative">
+<a class="nav-link" href="#kelayakan"><i class="fa-solid fa-file-excel"></i> Kelayakan (Excel)</a>
+</li>
+<li class="nav-item position-relative">
+<a class="nav-link" href="#tca-call"><i class="fas fa-phone"></i> TCA Call</a>
+<span class="nav-badge" id="badgeTCA">0</span>
+</li>
+<li class="nav-item position-relative">
+<a class="nav-link" href="#first-visit"><i class="fas fa-calendar-check"></i> First Visit</a>
+<span class="nav-badge" id="badgeFirst">0</span>
+</li>
+<li class="nav-item position-relative">
+<a class="nav-link" href="#lab-followup"><i class="fa-solid fa-flask-vial"></i> Follow-up Lab Report</a>
+<span class="nav-badge" id="badgeLab">0</span>
+</li>
+<li class="nav-item position-relative">
+<a class="nav-link" href="#second-visit"><i class="fas fa-calendar-check"></i> Second Visit</a>
+<span class="nav-badge" id="badgeSecond">0</span>
+</li>
+<li class="nav-item position-relative">
+<a class="nav-link" href="#selesai"><i class="fas fa-check-circle"></i> Selesai</a>
+</li>
+<li class="nav-item position-relative">
+<a class="nav-link" href="#arkib"><i class="fa-solid fa-box-archive"></i> Arkib</a>
+</li>
+</ul>
+<div class="d-none d-lg-flex align-items-center gap-2">
+<div id="signinAreaDesktop"></div>
+<span class="badge bg-secondary d-none" id="staffBadge"><i class="bi bi-person-check me-1"></i><span id="staffEmail"></span></span>
+<!-- (Butang Log Calls terapung di bawah – tidak dalam navbar) -->
+</div>
+</div>
+</div>
+</nav>
+<!-- Header -->
+<header class="page-header">
+<div class="container">
+<div class="row align-items-center g-2">
+<div class="col-md-6">
+<h1 class="h5 m-0"><i class="fas fa-heartbeat me-2"></i> Sistem TRacKer PEKA B40</h1>
+<div class="small opacity-75">Sistem pengurusan pesakit untuk program saringan kesihatan PEKA B40</div>
+</div>
+<div class="col-md-6 text-md-end">
+<span class="badge bg-light text-dark fs-6 p-2"><i class="fas fa-calendar-day me-1"></i> <span id="current-date"></span></span>
+</div>
+</div>
+</div>
+</header>
+<main class="container">
+<!-- Dashboard -->
+<section class="mb-4" id="dashboard">
+<div class="d-flex justify-content-between align-items-center mb-3">
+<h2 class="h6 m-0"><i class="fas fa-tachometer-alt me-2"></i>Dashboard</h2>
+<div class="d-flex gap-2">
+<button class="btn btn-sm btn-outline-success" id="btnExportCSV"><i class="fa-solid fa-file-csv me-1"></i>Export (CSV)</button>
+</div>
+</div>
+<div class="row g-3 mb-3">
+<div class="col-6 col-md-2">
+<div class="stat-card" data-goto="#tca-call" style="background:linear-gradient(135deg,var(--secondary),#2980b9)">
+<div class="number" id="totalDaftar">0</div><div class="small">Aktif</div>
+</div>
+</div>
+<div class="col-6 col-md-2">
+<div class="stat-card" data-goto="#first-visit" style="background:linear-gradient(135deg,var(--warning),#e67e22)">
+<div class="number" id="totalFirstVisit">0</div><div class="small">First Visit (Pending)</div>
+</div>
+</div>
+<div class="col-6 col-md-2">
+<div class="stat-card" data-goto="#second-visit" style="background:linear-gradient(135deg,#9b59b6,#8e44ad)">
+<div class="number" id="totalSecondVisit">0</div><div class="small">Second Visit (Pending)</div>
+</div>
+</div>
+<div class="col-6 col-md-2">
+<div class="stat-card" data-goto="#selesai" style="background:linear-gradient(135deg,var(--success),#16a085)">
+<div class="number" id="totalSelesai">0</div><div class="small">Selesai</div>
+</div>
+</div>
+<div class="col-6 col-md-2">
+<div class="stat-card" data-goto="#lab-followup" style="background:linear-gradient(135deg,#8e44ad,#6c5ce7)">
+<div class="number" id="labFollowUpDue">0</div><div class="small">Result &gt; 3 Hari</div>
+</div>
+</div>
+<div class="col-6 col-md-2">
+<div class="stat-card" data-goto="#lab-followup" style="background:linear-gradient(135deg,#d35400,#c0392b)">
+<div class="number" id="labFollowUpPending">0</div><div class="small">Perlu Follow-up</div>
+</div>
+</div>
+</div>
+<!-- Pesakit perlu dihubungi (ringkas hari ini mengikut backend lalai) -->
+<div class="card mb-3">
+<div class="card-header d-flex justify-content-between align-items-center">
+<span><i class="fas fa-phone me-2"></i>Pesakit Perlu Dihubungi Hari Ini</span>
+<input class="form-control form-control-sm searchbar" id="searchTCA" placeholder="Cari nama/IC/telefon…"/>
+</div>
+<div class="card-body">
+<div class="table-responsive">
+<table class="table table-hover align-middle">
+<thead class="table-light"><tr><th>Nama Pesakit</th><th>No IC</th><th>No Telefon</th><th>Alamat</th><th>Tarikh TCA</th><th>Status</th></tr></thead>
+<tbody id="tcaCallTable"><tr><td class="text-center text-muted" colspan="6">Memuat data...</td></tr></tbody>
+</table>
+</div>
+</div>
+</div>
+<!-- Statistik -->
+<div class="card">
+<div class="card-header d-flex justify-content-between align-items-center">
+<span><i class="fas fa-chart-bar me-2"></i>Statistik Pesakit Selesai</span>
+<select class="form-select form-select-sm" id="statPeriod" style="max-width:200px">
+<option value="3months">3 Bulan Terakhir</option>
+<option value="6months">6 Bulan Terakhir</option>
+<option value="12months">12 Bulan Terakhir</option>
+</select>
+</div>
+<div class="card-body"><div style="height:320px;"><canvas id="stats3dChart"></canvas></div></div>
+</div>
+</section>
+<!-- Program NADI -->
+<section class="mb-4 d-none" id="nadi">
+<div class="d-flex justify-content-between align-items-center mb-2">
+<h2 class="h6 m-0"><i class="bi bi-clipboard2-pulse me-2"></i>Program PEKA B40 bersama NADI</h2>
+<div class="d-flex gap-2">
+<button class="btn btn-sm btn-outline-success" id="btnNadiExportCsv"><i class="bi bi-filetype-csv me-1"></i>Export to CSV</button>
+</div>
+</div>
+<!-- Summary Cards -->
+<div class="nadi-summary-container">
+<div class="nadi-summary-card layak">
+<div class="title">Layak PEKA B40</div>
+<div class="count" id="nadiLayakCount">0</div>
+</div>
+<div class="nadi-summary-card tak-layak">
+<div class="title">Tidak Layak</div>
+<div class="count" id="nadiTakLayakCount">0</div>
+</div>
+</div>
+<!-- BAR PROGRAM (tajuk + tarikh + aksi) -->
+<div class="card card-body mb-3" id="nadiProgramBar">
+<div class="row g-2 align-items-end">
+<div class="col-md-5">
+<label class="form-label mb-1">Tajuk Program</label>
+<input class="form-control form-control-sm" id="nadiProgramTitle" placeholder="cth: Saringan Komuniti Tmn Mawar"/>
+</div>
+<div class="col-md-3">
+<label class="form-label mb-1">Tarikh Program</label>
+<input class="form-control form-control-sm" id="nadiProgramDate" type="date"/>
+</div>
+<div class="col-md-4 text-md-end">
+<div class="small text-muted">Sesi aktif: <span class="fw-semibold" id="liveSessionLabel">-</span></div>
+</div>
+</div>
+<div class="row g-2 align-items-center mt-2">
+<div class="col-md-8">
+<label class="form-label mb-1">Pilih Sesi (Live) — hari yang sama</label>
+<div class="input-group input-group-sm">
+<select class="form-select" id="nadiSessionSelect">
+<option value="">(Pilih sesi live untuk hari ini)</option>
+</select>
+<button class="btn btn-outline-secondary" id="btnRefreshSessions" type="button"><i class="fa-solid fa-rotate-right"></i> Segar</button>
+<button class="btn btn-primary" id="btnUseSession" type="button"><i class="fa-solid fa-link"></i> Guna</button>
+</div>
+<div class="form-text">Sesi ditentukan oleh Tajuk Program + Tarikh. Guna pilihan ini untuk kongsi jadual antara laptop A &amp; B.</div>
+</div>
+<div class="col-md-4 text-md-end">
+<button class="btn btn-sm btn-primary" id="btnNadiSaveActivity">
+<i class="bi bi-cloud-upload me-1"></i>Simpan Aktiviti (Semua)
+      </button>
+</div>
+</div>
+</div>
+
+<div class="card">
+<div class="card-body">
+<div class="nadi-scroll-container">
+<table class="nadi-table">
+<thead>
+<tr><th style="width: 40px;">#</th>
 <th style="min-width: 150px;">Nama Pesakit</th>
 <th style="min-width: 120px;">No IC</th>
 <th style="min-width: 80px;">Umur</th>
@@ -577,394 +556,368 @@
 <th style="width: 100px;">Tidak Layak</th>
 <th style="width: 120px;">TCA voucher</th>
 <th style="min-width: 160px;">Remark</th>
-<th style="min-width: 200px;">TCA & Staff</th>
+<th style="min-width: 200px;">TCA &amp; Staff</th>
 <th style="min-width: 180px;">Tindakan</th>
 </tr>
 </thead>
-              <tbody id="nadiContainer">
-                <!-- Rows will be added dynamically -->
-              </tbody>
-            </table>
-          </div>
-          <div class="sticky-form-actions">
-            <button class="btn btn-primary" onclick="addNadiRow()"><i class="bi bi-plus-circle me-1"></i>Tambah Pesakit</button>
-          </div>
-          <div class="text-muted small mt-2">Nota: Baris "Layak" boleh terus <b>Daftar</b> (simpan ke sheet). Baris "Tidak Layak" <u>tidak</u> disimpan ke sheet tetapi <b>tetap dieksport CSV</b> bersama-sama.</div>
-        </div>
-      </div>
-    </section>
-
-    <!-- Daftar Peka -->
-    <section id="daftar-peka" class="mb-4 d-none">
-      <div class="d-flex justify-content-between align-items-center mb-3">
-        <h2 class="h6 m-0"><i class="fas fa-user-plus me-2"></i>Daftar Peka</h2>
-      </div>
-
-      <div class="form-section">
-        <h5><i class="fas fa-user-circle me-2"></i>Maklumat Pesakit</h5>
-        <div class="row g-3">
-          <div class="col-md-6">
-            <label class="form-label">Nama Penuh Pesakit</label>
-            <input id="namaPesakit" class="form-control" required>
-          </div>
-          <div class="col-md-6">
-            <label class="form-label">Nombor IC</label>
-            <input id="noIC" class="form-control" required>
-          </div>
-          <div class="col-md-6">
-            <label class="form-label">Nombor Telefon</label>
-            <input id="noTelefon" class="form-control" type="tel" required placeholder="cth: 0123456789 atau 60123456789">
-          </div>
-          <div class="col-md-6">
-            <label class="form-label">Alamat Pesakit</label>
-            <textarea id="alamatPesakit" class="form-control" rows="2"></textarea>
-          </div>
-        </div>
-      </div>
-
-      <div class="form-section">
-        <h5><i class="fas fa-calendar-alt me-2"></i>Tarikh Temujanji</h5>
-        <div class="row g-3">
-          <div class="col-md-6">
-            <label class="form-label">Tarikh TCA</label>
-            <input id="tarikhTCA" class="form-control" type="date" required>
-          </div>
-          <div class="col-md-6">
-            <label class="form-label">Masa TCA</label>
-            <input id="masaTCA" class="form-control" type="time" required>
-          </div>
-        </div>
-      </div>
-
-      <div class="form-section">
-        <h5><i class="fas fa-user-tie me-2"></i>Maklumat Staff</h5>
-        <div class="row g-3">
-          <div class="col-md-6">
-            <label class="form-label">Nama Staff</label>
-            <input id="namaStaff" class="form-control" required>
-          </div>
-        </div>
-      </div>
-
-      <div class="sticky-form-actions">
-        <button class="btn btn-primary" id="btnDaftarPesakit"><i class="fas fa-save me-1"></i>Daftar Pesakit</button>
-      </div>
-    </section>
-
-    <!-- Kelayakan (Excel) -->
-    <section id="kelayakan" class="mb-4 d-none">
-      <h2 class="h6 mb-3"><i class="fa-solid fa-file-excel me-2"></i>Semak Kelayakan (Import Excel)</h2>
-      <div class="card"><div class="card-body">
-        <div class="row g-2 align-items-center mb-3">
-          <div class="col-md-6">
-            <input type="file" id="excelFile" class="form-control" accept=".xlsx,.xls,.csv" />
-            <div class="form-text">Fail perlu ada lajur: <b>Nama</b>, <b>IC</b>, <b>Telefon</b>, <b>Alamat</b>. (Sistem tapis umur ≥40 ikut IC)</div>
-          </div>
-        </div>
-        <div class="table-responsive">
-          <table class="table table-hover align-middle">
-            <thead class="table-light">
-              <tr>
-                <th>Nama</th><th>IC</th><th>Telefon</th><th>Alamat</th>
-                <th class="text-center">Layak</th><th class="text-center">Tidak Layak</th>
-                <th style="width:360px">Jika Layak → TCA & Masa & Staff</th><th>Tindakan</th>
-              </tr>
-            </thead>
-            <tbody id="kelayakanTable"><tr><td colspan="8" class="text-center text-muted">Muat naik Excel untuk mula.</td></tr></tbody>
-          </table>
-        </div>
-      </div></div>
-    </section>
-
-    <!-- TCA Call (senarai rekod — tiada tanda selesai manual) -->
-    <section id="tca-call" class="mb-4 d-none">
-      <div class="d-flex justify-content-between align-items-center mb-2">
-        <h2 class="h6 m-0"><i class="fas fa-phone me-2"></i>Senarai Rekod TCA Call</h2>
-        <div class="d-flex align-items-center gap-2">
-          <div class="btn-group btn-group-sm" role="group" id="tcaFilter">
-            <button class="btn btn-outline-primary active" data-filter="today">Hari ini</button>
-            <button class="btn btn-outline-primary" data-filter="upcoming">Akan datang</button>
-            <button class="btn btn-outline-primary" data-filter="past">Lepas</button>
-            <button class="btn btn-outline-secondary" data-filter="all">Semua</button>
-          </div>
-          <input class="form-control form-control-sm searchbar" id="searchTCAPage" placeholder="Cari nama/IC/telefon…"/>
-        </div>
-      </div>
-      <div class="card"><div class="card-body">
-        <div class="table-responsive">
-          <table class="table table-hover align-middle">
-            <thead class="table-light"><tr><th>Nama Pesakit</th><th>No IC</th><th>No Telefon</th><th>Alamat</th><th>Tarikh TCA</th><th>Status</th></tr></thead>
-            <tbody id="tcaCallList"><tr><td colspan="6" class="text-center text-muted">Memuat data...</td></tr></tbody>
-          </table>
-        </div>
-      </div></div>
-    </section>
-
-    <!-- First Visit -->
-    <section id="first-visit" class="mb-4 d-none">
-      <div class="d-flex justify-content-between align-items-center mb-2">
-        <h2 class="h6 m-0"><i class="fas fa-calendar-check me-2"></i>First Visit</h2>
-        <input class="form-control form-control-sm searchbar" id="searchFirst" placeholder="Cari nama/IC/telefon…"/>
-      </div>
-      <div class="card"><div class="card-body">
-        <div class="table-responsive">
-          <table class="table table-hover align-middle">
-            <thead class="table-light"><tr><th>Nama Pesakit</th><th>No IC</th><th>Alamat</th><th>Tarikh TCA</th><th>PDPA</th><th>Status</th><th>Tindakan</th></tr></thead>
-            <tbody id="firstVisitList"><tr><td colspan="7" class="text-center text-muted">Memuat data...</td></tr></tbody>
-          </table>
-        </div>
-      </div></div>
-    </section>
-
-    <!-- Follow-up Lab Report -->
-    <section id="lab-followup" class="mb-4 d-none">
-      <div class="d-flex justify-content-between align-items-center mb-2">
-        <h2 class="h6 m-0"><i class="fa-solid fa-flask-vial me-2"></i>Follow-up Lab Report</h2>
-        <input class="form-control form-control-sm searchbar" id="searchLab" placeholder="Cari nama/IC/telefon…"/>
-      </div>
-      <div class="card"><div class="card-body">
-        <div class="table-responsive">
-          <table class="table table-hover align-middle">
-            <thead class="table-light">
-              <tr><th>Nama</th><th>IC</th><th>Telefon</th><th>Alamat</th><th>Tarikh First Visit</th><th>Hari Ke-</th><th>Status</th><th>Tindakan</th></tr>
-            </thead>
-            <tbody id="labFollowupTable"><tr><td colspan="8" class="text-center text-muted">Memuat data...</td></tr></tbody>
-          </table>
-        </div>
-      </div></div>
-    </section>
-
-    <!-- Second Visit -->
-    <section id="second-visit" class="mb-4 d-none">
-      <div class="d-flex justify-content-between align-items-center mb-2">
-        <h2 class="h6 m-0"><i class="fas fa-calendar-check me-2"></i>Second Visit</h2>
-        <input class="form-control form-control-sm searchbar" id="searchSecond" placeholder="Cari nama/IC/telefon…"/>
-      </div>
-      <div class="card"><div class="card-body">
-        <div class="table-responsive">
-          <table class="table table-hover align-middle">
-            <thead class="table-light"><tr><th>Nama Pesakit</th><th>No IC</th><th>Alamat</th><th>Tarikh TCA</th><th>PDPA</th><th>Status</th><th>Tindakan</th></tr></thead>
-            <tbody id="secondVisitList"><tr><td colspan="7" class="text-center text-muted">Memuat data...</td></tr></tbody>
-          </table>
-        </div>
-      </div></div>
-    </section>
-
-    <!-- Selesai -->
-    <section id="selesai" class="mb-4 d-none">
-      <div class="d-flex justify-content-between align-items-center mb-2">
-        <h2 class="h6 m-0"><i class="fas fa-check-circle me-2"></i>Pesakit Selesai</h2>
-        <input class="form-control form-control-sm searchbar" id="searchCompleted" placeholder="Cari nama/IC/telefon…"/>
-      </div>
-      <div class="card mb-3"><div class="card-body">
-        <div class="table-responsive">
-          <table class="table table-hover align-middle">
-            <thead class="table-light">
-              <tr>
-                <th>Nama Pesakit</th><th>No IC</th><th>No Telefon</th><th>Alamat</th><th>PDPA</th>
-                <th>Tarikh Daftar</th><th>First Visit</th><th>Lab Report Completed</th><th>Second Visit</th><th>Tarikh Selesai</th><th>Tindakan</th>
-              </tr>
-            </thead>
-            <tbody id="completedTable"><tr><td colspan="11" class="text-center text-muted">Memuat data...</td></tr></tbody>
-          </table>
-        </div>
-      </div></div>
-
-      <div class="card">
-        <div class="card-header d-flex justify-content-between align-items-center">
-          <span><i class="fas fa-chart-bar me-2"></i>Statistik Pesakit Selesai</span>
-          <select id="statPeriodCompleted" class="form-select form-select-sm" style="max-width:200px">
-            <option value="3months">3 Bulan Terakhir</option>
-            <option value="6months">6 Bulan Terakhir</option>
-            <option value="12months">12 Bulan Terakhir</option>
-          </select>
-        </div>
-        <div class="card-body"><div style="height:300px;"><canvas id="completed3dChart"></canvas></div></div>
-      </div>
-    </section>
-
-    <section id="monitorAllSection" class="page" style="display:none;">
-  <div class="d-flex align-items-center gap-2 mb-3">
-    <h3 class="mb-0">Monitor Semua Program (Live)</h3>
-    <input id="monitorDate" type="date" class="form-control" style="max-width:200px;">
-    <button class="btn btn-primary" onclick="refreshMonitorNow()">Segar Semula</button>
-  </div>
-
-  <div id="monitorInfo" class="text-muted mb-2"></div>
-  <div id="monitorCards" class="row g-3"></div>
+<tbody id="nadiContainer">
+<!-- Rows will be added dynamically -->
+</tbody>
+</table>
+</div>
+<div class="sticky-form-actions">
+<button class="btn btn-primary" onclick="addNadiRow()"><i class="bi bi-plus-circle me-1"></i>Tambah Pesakit</button>
+</div>
+<div class="text-muted small mt-2">Nota: Baris "Layak" boleh terus <b>Daftar</b> (simpan ke sheet). Baris "Tidak Layak" <u>tidak</u> disimpan ke sheet tetapi <b>tetap dieksport CSV</b> bersama-sama.</div>
+</div>
+</div>
 </section>
-
-
-    <!-- Arkib -->
-    <section id="arkib" class="mb-4 d-none">
-      <div class="d-flex justify-content-between align-items-center mb-2">
-        <h2 class="h6 m-0"><i class="fa-solid fa-box-archive me-2"></i>Arkib</h2>
-        <input class="form-control form-control-sm searchbar" id="searchArchive" placeholder="Cari nama/IC/telefon…"/>
-      </div>
-      <div class="card"><div class="card-body">
-        <div class="table-responsive">
-          <table class="table table-hover align-middle">
-            <thead class="table-light"><tr><th>Nama Pesakit</th><th>No IC</th><th>No Telefon</th><th>Alamat</th><th>Tarikh Daftar</th><th>Tarikh Selesai</th><th>Diarkib</th><th>Tindakan</th></tr></thead>
-            <tbody id="archiveTable"><tr><td colspan="8" class="text-center text-muted">Tiada rekod arkib</td></tr></tbody>
-          </table>
-        </div>
-      </div></div>
-    </section>
-  
-    <!-- Sejarah Saringan -->
-    <section id="sejarah" class="mb-4 d-none page">
-      <div class="d-flex justify-content-between align-items-center mb-3">
-        <h2 class="h6 m-0"><i class="bi bi-clock-history me-2"></i>Lihat Sejarah Saringan</h2>
-        <div class="d-flex gap-2">
-          <input id="sejarahSearch" class="form-control form-control-sm" placeholder="Cari nama / IC / telefon...">
-          <button id="btnSejarahReload" class="btn btn-sm btn-outline-secondary"><i class="fa-solid fa-rotate-right"></i> Segar</button>
-        </div>
-      </div>
-      <div class="row g-3">
-        <div class="col-md-4">
-          <div class="card">
-            <div class="card-header">Senarai Program</div>
-            <div class="card-body">
-              <div class="input-group input-group-sm mb-2">
-                <span class="input-group-text"><i class="bi bi-search"></i></span>
-                <input id="programFilter" class="form-control" placeholder="Tapiskan tajuk / tarikh...">
-              </div>
-              <div id="programList" class="list-group small" style="max-height:420px;overflow:auto;">
-                <div class="text-muted text-center p-3">Memuat program...</div>
-              </div>
-            </div>
-          </div>
-        </div>
-        <div class="col-md-8">
-          <div class="card">
-            <div class="card-header d-flex justify-content-between align-items-center">
-              <span id="programTitleLabel">Maklumat Program</span>
-              <span class="badge bg-light text-dark" id="programDateLabel"></span>
-            </div>
-            <div class="card-body">
-              <div class="table-responsive">
-                <table class="table table-hover align-middle">
-                  <thead class="table-light">
-                    <tr>
-                      <th>#</th><th>Nama</th><th>IC</th><th>Telefon</th><th>Alamat</th>
-                      <th>Status</th><th>BP</th><th>PR</th><th>DXT</th><th>BMI</th>
-                      <th>TCA</th><th>Staff</th><th>Remark</th>
-                    </tr>
-                  </thead>
-                  <tbody id="sejarahTable">
-                    <tr><td colspan="13" class="text-center text-muted">Pilih program di sebelah kiri.</td></tr>
-                  </tbody>
-                </table>
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
-    </section>
-
-  </main>
-
-  <!-- Modal Re-TCA -->
-  <div class="modal fade" id="retcaModal" tabindex="-1" aria-hidden="true">
-    <div class="modal-dialog modal-dialog-centered"><div class="modal-content">
-      <div class="modal-header">
-        <h5 class="modal-title"><i class="fa-solid fa-calendar-plus me-2"></i>Daftar TCA Semula</h5>
-        <button class="btn-close" data-bs-dismiss="modal"></button>
-      </div>
-      <div class="modal-body">
-        <input type="hidden" id="retcaIC">
-        <div class="mb-3"><label class="form-label">Tarikh TCA Baharu</label><input type="date" id="retcaDate" class="form-control" required></div>
-        <div class="mb-2"><label class="form-label">Masa TCA Baharu</label><input type="time" id="retcaTime" class="form-control" required></div>
-        <small class="text-muted">Status pesakit akan ditukar kepada <b>TCA CALL</b>.</small>
-      </div>
-      <div class="modal-footer">
-        <button class="btn btn-secondary" data-bs-dismiss="modal">Batal</button>
-        <button class="btn btn-primary" id="btnSubmitRetca"><i class="fa-solid fa-floppy-disk me-1"></i>Simpan</button>
-      </div>
-    </div></div>
-  </div>
-
-  <!-- Modal Set Second Visit TCA (Lab Complete & Call) -->
-  <div class="modal fade" id="secondTcaModal" tabindex="-1" aria-hidden="true">
-    <div class="modal-dialog modal-dialog-centered"><div class="modal-content">
-      <div class="modal-header">
-        <h5 class="modal-title"><i class="fa-solid fa-calendar-check me-2"></i>Tetapkan TCA Second Visit</h5>
-        <button class="btn-close" data-bs-dismiss="modal"></button>
-      </div>
-      <div class="modal-body">
-        <input type="hidden" id="secondTcaIC">
-        <div class="mb-2"><label class="form-label">Tarikh TCA Second Visit</label><input type="date" id="secondTcaDate" class="form-control" required></div>
-        <div class="mb-2"><label class="form-label">Masa TCA</label><input type="time" id="secondTcaTime" class="form-control" required></div>
-        <div class="mb-2"><label class="form-label">Nama Staff (wajib isi)</label><input type="text" id="secondTcaStaff" class="form-control" required placeholder="cth: Dayah"></div>
-        <small class="text-muted">Maklumat ini akan direkod ke Log Calls & ruangan "Lab Report Completed".</small>
-      </div>
-      <div class="modal-footer">
-        <button class="btn btn-secondary" data-bs-dismiss="modal">Batal</button>
-        <button class="btn btn-primary" id="btnSubmitSecondTca"><i class="fa-solid fa-floppy-disk me-1"></i>Simpan</button>
-      </div>
-    </div></div>
-  </div>
-
-  <!-- Modal Upload PDPA -->
-  <div class="modal fade" id="pdpaModal" tabindex="-1" aria-hidden="true">
-    <div class="modal-dialog modal-dialog-centered"><div class="modal-content">
-      <div class="modal-header">
-        <h5 class="modal-title"><i class="fa-solid fa-file-arrow-up me-2"></i>Muat Naik Borang PDPA</h5>
-        <button class="btn-close" data-bs-dismiss="modal"></button>
-      </div>
-      <div class="modal-body">
-        <input type="hidden" id="pdpaIC">
-        <input type="file" id="pdpaFile" class="form-control" accept="application/pdf,image/*" />
-        <div class="form-text">Muat naik PDF / imej borang PDPA pesakit.</div>
-      </div>
-      <div class="modal-footer">
-        <button class="btn btn-secondary" data-bs-dismiss="modal">Tutup</button>
-        <button class="btn btn-primary" id="btnUploadPDPA"><i class="fa-solid fa-cloud-arrow-up me-1"></i>Upload</button>
-      </div>
-    </div></div>
-  </div>
-
-  <!-- Modal WhatsApp Report Preview -->
-  <div class="modal fade" id="whatsappReportModal" tabindex="-1" aria-hidden="true">
-    <div class="modal-dialog modal-lg modal-dialog-centered"><div class="modal-content">
-      <div class="modal-header">
-        <h5 class="modal-title"><i class="fa-brands fa-whatsapp me-2"></i>Pratonton Laporan WhatsApp</h5>
-        <button class="btn-close" data-bs-dismiss="modal"></button>
-      </div>
-      <div class="modal-body">
-        <div id="whatsappReportPreview"></div>
-      </div>
-      <div class="modal-footer">
-        <button class="btn btn-secondary" data-bs-dismiss="modal">Tutup</button>
-        <!-- Kekalkan butang lama (teks) -->
-        <button class="btn btn-outline-success" id="btnSendWhatsApp">
-          <i class="fa-brands fa-whatsapp me-1"></i> Hantar WhatsApp (Teks)
+<!-- Daftar Peka -->
+<section class="mb-4 d-none" id="daftar-peka">
+<div class="d-flex justify-content-between align-items-center mb-3">
+<h2 class="h6 m-0"><i class="fas fa-user-plus me-2"></i>Daftar Peka</h2>
+</div>
+<div class="form-section">
+<h5><i class="fas fa-user-circle me-2"></i>Maklumat Pesakit</h5>
+<div class="row g-3">
+<div class="col-md-6">
+<label class="form-label">Nama Penuh Pesakit</label>
+<input class="form-control" id="namaPesakit" required=""/>
+</div>
+<div class="col-md-6">
+<label class="form-label">Nombor IC</label>
+<input class="form-control" id="noIC" required=""/>
+</div>
+<div class="col-md-6">
+<label class="form-label">Nombor Telefon</label>
+<input class="form-control" id="noTelefon" placeholder="cth: 0123456789 atau 60123456789" required="" type="tel"/>
+</div>
+<div class="col-md-6">
+<label class="form-label">Alamat Pesakit</label>
+<textarea class="form-control" id="alamatPesakit" rows="2"></textarea>
+</div>
+</div>
+</div>
+<div class="form-section">
+<h5><i class="fas fa-calendar-alt me-2"></i>Tarikh Temujanji</h5>
+<div class="row g-3">
+<div class="col-md-6">
+<label class="form-label">Tarikh TCA</label>
+<input class="form-control" id="tarikhTCA" required="" type="date"/>
+</div>
+<div class="col-md-6">
+<label class="form-label">Masa TCA</label>
+<input class="form-control" id="masaTCA" required="" type="time"/>
+</div>
+</div>
+</div>
+<div class="form-section">
+<h5><i class="fas fa-user-tie me-2"></i>Maklumat Staff</h5>
+<div class="row g-3">
+<div class="col-md-6">
+<label class="form-label">Nama Staff</label>
+<input class="form-control" id="namaStaff" required=""/>
+</div>
+</div>
+</div>
+<div class="sticky-form-actions">
+<button class="btn btn-primary" id="btnDaftarPesakit"><i class="fas fa-save me-1"></i>Daftar Pesakit</button>
+</div>
+</section>
+<!-- Kelayakan (Excel) -->
+<section class="mb-4 d-none" id="kelayakan">
+<h2 class="h6 mb-3"><i class="fa-solid fa-file-excel me-2"></i>Semak Kelayakan (Import Excel)</h2>
+<div class="card"><div class="card-body">
+<div class="row g-2 align-items-center mb-3">
+<div class="col-md-6">
+<input accept=".xlsx,.xls,.csv" class="form-control" id="excelFile" type="file">
+<div class="form-text">Fail perlu ada lajur: <b>Nama</b>, <b>IC</b>, <b>Telefon</b>, <b>Alamat</b>. (Sistem tapis umur ≥40 ikut IC)</div>
+</input></div>
+</div>
+<div class="table-responsive">
+<table class="table table-hover align-middle">
+<thead class="table-light">
+<tr>
+<th>Nama</th><th>IC</th><th>Telefon</th><th>Alamat</th>
+<th class="text-center">Layak</th><th class="text-center">Tidak Layak</th>
+<th style="width:360px">Jika Layak → TCA &amp; Masa &amp; Staff</th><th>Tindakan</th>
+</tr>
+</thead>
+<tbody id="kelayakanTable"><tr><td class="text-center text-muted" colspan="8">Muat naik Excel untuk mula.</td></tr></tbody>
+</table>
+</div>
+</div></div>
+</section>
+<!-- TCA Call (senarai rekod — tiada tanda selesai manual) -->
+<section class="mb-4 d-none" id="tca-call">
+<div class="d-flex justify-content-between align-items-center mb-2">
+<h2 class="h6 m-0"><i class="fas fa-phone me-2"></i>Senarai Rekod TCA Call</h2>
+<div class="d-flex align-items-center gap-2">
+<div class="btn-group btn-group-sm" id="tcaFilter" role="group">
+<button class="btn btn-outline-primary active" data-filter="today">Hari ini</button>
+<button class="btn btn-outline-primary" data-filter="upcoming">Akan datang</button>
+<button class="btn btn-outline-primary" data-filter="past">Lepas</button>
+<button class="btn btn-outline-secondary" data-filter="all">Semua</button>
+</div>
+<input class="form-control form-control-sm searchbar" id="searchTCAPage" placeholder="Cari nama/IC/telefon…">
+</input></div>
+</div>
+<div class="card"><div class="card-body">
+<div class="table-responsive">
+<table class="table table-hover align-middle">
+<thead class="table-light"><tr><th>Nama Pesakit</th><th>No IC</th><th>No Telefon</th><th>Alamat</th><th>Tarikh TCA</th><th>Status</th></tr></thead>
+<tbody id="tcaCallList"><tr><td class="text-center text-muted" colspan="6">Memuat data...</td></tr></tbody>
+</table>
+</div>
+</div></div>
+</section>
+<!-- First Visit -->
+<section class="mb-4 d-none" id="first-visit">
+<div class="d-flex justify-content-between align-items-center mb-2">
+<h2 class="h6 m-0"><i class="fas fa-calendar-check me-2"></i>First Visit</h2>
+<input class="form-control form-control-sm searchbar" id="searchFirst" placeholder="Cari nama/IC/telefon…">
+</input></div>
+<div class="card"><div class="card-body">
+<div class="table-responsive">
+<table class="table table-hover align-middle">
+<thead class="table-light"><tr><th>Nama Pesakit</th><th>No IC</th><th>Alamat</th><th>Tarikh TCA</th><th>PDPA</th><th>Status</th><th>Tindakan</th></tr></thead>
+<tbody id="firstVisitList"><tr><td class="text-center text-muted" colspan="7">Memuat data...</td></tr></tbody>
+</table>
+</div>
+</div></div>
+</section>
+<!-- Follow-up Lab Report -->
+<section class="mb-4 d-none" id="lab-followup">
+<div class="d-flex justify-content-between align-items-center mb-2">
+<h2 class="h6 m-0"><i class="fa-solid fa-flask-vial me-2"></i>Follow-up Lab Report</h2>
+<input class="form-control form-control-sm searchbar" id="searchLab" placeholder="Cari nama/IC/telefon…">
+</input></div>
+<div class="card"><div class="card-body">
+<div class="table-responsive">
+<table class="table table-hover align-middle">
+<thead class="table-light">
+<tr><th>Nama</th><th>IC</th><th>Telefon</th><th>Alamat</th><th>Tarikh First Visit</th><th>Hari Ke-</th><th>Status</th><th>Tindakan</th></tr>
+</thead>
+<tbody id="labFollowupTable"><tr><td class="text-center text-muted" colspan="8">Memuat data...</td></tr></tbody>
+</table>
+</div>
+</div></div>
+</section>
+<!-- Second Visit -->
+<section class="mb-4 d-none" id="second-visit">
+<div class="d-flex justify-content-between align-items-center mb-2">
+<h2 class="h6 m-0"><i class="fas fa-calendar-check me-2"></i>Second Visit</h2>
+<input class="form-control form-control-sm searchbar" id="searchSecond" placeholder="Cari nama/IC/telefon…">
+</input></div>
+<div class="card"><div class="card-body">
+<div class="table-responsive">
+<table class="table table-hover align-middle">
+<thead class="table-light"><tr><th>Nama Pesakit</th><th>No IC</th><th>Alamat</th><th>Tarikh TCA</th><th>PDPA</th><th>Status</th><th>Tindakan</th></tr></thead>
+<tbody id="secondVisitList"><tr><td class="text-center text-muted" colspan="7">Memuat data...</td></tr></tbody>
+</table>
+</div>
+</div></div>
+</section>
+<!-- Selesai -->
+<section class="mb-4 d-none" id="selesai">
+<div class="d-flex justify-content-between align-items-center mb-2">
+<h2 class="h6 m-0"><i class="fas fa-check-circle me-2"></i>Pesakit Selesai</h2>
+<input class="form-control form-control-sm searchbar" id="searchCompleted" placeholder="Cari nama/IC/telefon…">
+</input></div>
+<div class="card mb-3"><div class="card-body">
+<div class="table-responsive">
+<table class="table table-hover align-middle">
+<thead class="table-light">
+<tr>
+<th>Nama Pesakit</th><th>No IC</th><th>No Telefon</th><th>Alamat</th><th>PDPA</th>
+<th>Tarikh Daftar</th><th>First Visit</th><th>Lab Report Completed</th><th>Second Visit</th><th>Tarikh Selesai</th><th>Tindakan</th>
+</tr>
+</thead>
+<tbody id="completedTable"><tr><td class="text-center text-muted" colspan="11">Memuat data...</td></tr></tbody>
+</table>
+</div>
+</div></div>
+<div class="card">
+<div class="card-header d-flex justify-content-between align-items-center">
+<span><i class="fas fa-chart-bar me-2"></i>Statistik Pesakit Selesai</span>
+<select class="form-select form-select-sm" id="statPeriodCompleted" style="max-width:200px">
+<option value="3months">3 Bulan Terakhir</option>
+<option value="6months">6 Bulan Terakhir</option>
+<option value="12months">12 Bulan Terakhir</option>
+</select>
+</div>
+<div class="card-body"><div style="height:300px;"><canvas id="completed3dChart"></canvas></div></div>
+</div>
+</section>
+<section class="page" id="monitorAllSection" style="display:none;">
+<div class="d-flex align-items-center gap-2 mb-3">
+<h3 class="mb-0">Monitor Semua Program (Live)</h3>
+<input class="form-control" id="monitorDate" style="max-width:200px;" type="date"/>
+<button class="btn btn-primary" onclick="refreshMonitorNow()">Segar Semula</button>
+</div>
+<div class="text-muted mb-2" id="monitorInfo"></div>
+<div class="row g-3" id="monitorCards"></div>
+</section>
+<!-- Arkib -->
+<section class="mb-4 d-none" id="arkib">
+<div class="d-flex justify-content-between align-items-center mb-2">
+<h2 class="h6 m-0"><i class="fa-solid fa-box-archive me-2"></i>Arkib</h2>
+<input class="form-control form-control-sm searchbar" id="searchArchive" placeholder="Cari nama/IC/telefon…">
+</input></div>
+<div class="card"><div class="card-body">
+<div class="table-responsive">
+<table class="table table-hover align-middle">
+<thead class="table-light"><tr><th>Nama Pesakit</th><th>No IC</th><th>No Telefon</th><th>Alamat</th><th>Tarikh Daftar</th><th>Tarikh Selesai</th><th>Diarkib</th><th>Tindakan</th></tr></thead>
+<tbody id="archiveTable"><tr><td class="text-center text-muted" colspan="8">Tiada rekod arkib</td></tr></tbody>
+</table>
+</div>
+</div></div>
+</section>
+<!-- Sejarah Saringan -->
+<section class="mb-4 d-none page" id="sejarah">
+<div class="d-flex justify-content-between align-items-center mb-3">
+<h2 class="h6 m-0"><i class="bi bi-clock-history me-2"></i>Lihat Sejarah Saringan</h2>
+<div class="d-flex gap-2">
+<input class="form-control form-control-sm" id="sejarahSearch" placeholder="Cari nama / IC / telefon..."/>
+<button class="btn btn-sm btn-outline-secondary" id="btnSejarahReload"><i class="fa-solid fa-rotate-right"></i> Segar</button>
+</div>
+</div>
+<div class="row g-3">
+<div class="col-md-4">
+<div class="card">
+<div class="card-header">Senarai Program</div>
+<div class="card-body">
+<div class="input-group input-group-sm mb-2">
+<span class="input-group-text"><i class="bi bi-search"></i></span>
+<input class="form-control" id="programFilter" placeholder="Tapiskan tajuk / tarikh..."/>
+</div>
+<div class="list-group small" id="programList" style="max-height:420px;overflow:auto;">
+<div class="text-muted text-center p-3">Memuat program...</div>
+</div>
+</div>
+</div>
+</div>
+<div class="col-md-8">
+<div class="card">
+<div class="card-header d-flex justify-content-between align-items-center">
+<span id="programTitleLabel">Maklumat Program</span>
+<span class="badge bg-light text-dark" id="programDateLabel"></span>
+</div>
+<div class="card-body">
+<div class="table-responsive">
+<table class="table table-hover align-middle">
+<thead class="table-light">
+<tr>
+<th>#</th><th>Nama</th><th>IC</th><th>Telefon</th><th>Alamat</th>
+<th>Status</th><th>BP</th><th>PR</th><th>DXT</th><th>BMI</th>
+<th>TCA</th><th>Staff</th><th>Remark</th>
+</tr>
+</thead>
+<tbody id="sejarahTable">
+<tr><td class="text-center text-muted" colspan="13">Pilih program di sebelah kiri.</td></tr>
+</tbody>
+</table>
+</div>
+</div>
+</div>
+</div>
+</div>
+</section>
+</main>
+<!-- Modal Re-TCA -->
+<div aria-hidden="true" class="modal fade" id="retcaModal" tabindex="-1">
+<div class="modal-dialog modal-dialog-centered"><div class="modal-content">
+<div class="modal-header">
+<h5 class="modal-title"><i class="fa-solid fa-calendar-plus me-2"></i>Daftar TCA Semula</h5>
+<button class="btn-close" data-bs-dismiss="modal"></button>
+</div>
+<div class="modal-body">
+<input id="retcaIC" type="hidden"/>
+<div class="mb-3"><label class="form-label">Tarikh TCA Baharu</label><input class="form-control" id="retcaDate" required="" type="date"/></div>
+<div class="mb-2"><label class="form-label">Masa TCA Baharu</label><input class="form-control" id="retcaTime" required="" type="time"/></div>
+<small class="text-muted">Status pesakit akan ditukar kepada <b>TCA CALL</b>.</small>
+</div>
+<div class="modal-footer">
+<button class="btn btn-secondary" data-bs-dismiss="modal">Batal</button>
+<button class="btn btn-primary" id="btnSubmitRetca"><i class="fa-solid fa-floppy-disk me-1"></i>Simpan</button>
+</div>
+</div></div>
+</div>
+<!-- Modal Set Second Visit TCA (Lab Complete & Call) -->
+<div aria-hidden="true" class="modal fade" id="secondTcaModal" tabindex="-1">
+<div class="modal-dialog modal-dialog-centered"><div class="modal-content">
+<div class="modal-header">
+<h5 class="modal-title"><i class="fa-solid fa-calendar-check me-2"></i>Tetapkan TCA Second Visit</h5>
+<button class="btn-close" data-bs-dismiss="modal"></button>
+</div>
+<div class="modal-body">
+<input id="secondTcaIC" type="hidden"/>
+<div class="mb-2"><label class="form-label">Tarikh TCA Second Visit</label><input class="form-control" id="secondTcaDate" required="" type="date"/></div>
+<div class="mb-2"><label class="form-label">Masa TCA</label><input class="form-control" id="secondTcaTime" required="" type="time"/></div>
+<div class="mb-2"><label class="form-label">Nama Staff (wajib isi)</label><input class="form-control" id="secondTcaStaff" placeholder="cth: Dayah" required="" type="text"/></div>
+<small class="text-muted">Maklumat ini akan direkod ke Log Calls &amp; ruangan "Lab Report Completed".</small>
+</div>
+<div class="modal-footer">
+<button class="btn btn-secondary" data-bs-dismiss="modal">Batal</button>
+<button class="btn btn-primary" id="btnSubmitSecondTca"><i class="fa-solid fa-floppy-disk me-1"></i>Simpan</button>
+</div>
+</div></div>
+</div>
+<!-- Modal Upload PDPA -->
+<div aria-hidden="true" class="modal fade" id="pdpaModal" tabindex="-1">
+<div class="modal-dialog modal-dialog-centered"><div class="modal-content">
+<div class="modal-header">
+<h5 class="modal-title"><i class="fa-solid fa-file-arrow-up me-2"></i>Muat Naik Borang PDPA</h5>
+<button class="btn-close" data-bs-dismiss="modal"></button>
+</div>
+<div class="modal-body">
+<input id="pdpaIC" type="hidden"/>
+<input accept="application/pdf,image/*" class="form-control" id="pdpaFile" type="file">
+<div class="form-text">Muat naik PDF / imej borang PDPA pesakit.</div>
+</input></div>
+<div class="modal-footer">
+<button class="btn btn-secondary" data-bs-dismiss="modal">Tutup</button>
+<button class="btn btn-primary" id="btnUploadPDPA"><i class="fa-solid fa-cloud-arrow-up me-1"></i>Upload</button>
+</div>
+</div></div>
+</div>
+<!-- Modal WhatsApp Report Preview -->
+<div aria-hidden="true" class="modal fade" id="whatsappReportModal" tabindex="-1">
+<div class="modal-dialog modal-lg modal-dialog-centered"><div class="modal-content">
+<div class="modal-header">
+<h5 class="modal-title"><i class="fa-brands fa-whatsapp me-2"></i>Pratonton Laporan WhatsApp</h5>
+<button class="btn-close" data-bs-dismiss="modal"></button>
+</div>
+<div class="modal-body">
+<div id="whatsappReportPreview"></div>
+</div>
+<div class="modal-footer">
+<button class="btn btn-secondary" data-bs-dismiss="modal">Tutup</button>
+<!-- Kekalkan butang lama (teks) -->
+<button class="btn btn-outline-success" id="btnSendWhatsApp">
+<i class="fa-brands fa-whatsapp me-1"></i> Hantar WhatsApp (Teks)
         </button>
-        <!-- Butang baharu: hantar Gambar ke WhatsApp + auto-buka chat -->
-        <button class="btn btn-success" id="btnSendWhatsAppImage">
-          <i class="fa-brands fa-whatsapp me-1"></i> Hantar Gambar ke WhatsApp
+<!-- Butang baharu: hantar Gambar ke WhatsApp + auto-buka chat -->
+<button class="btn btn-success" id="btnSendWhatsAppImage">
+<i class="fa-brands fa-whatsapp me-1"></i> Hantar Gambar ke WhatsApp
         </button>
-      </div>
-    </div></div>
-  </div>
-  
-  <!-- Toast Host (kanan atas) -->
-  <div id="toastHost"><div id="toastContainer" class="toast-container"></div></div>
-
-  <!-- FAB Log Calls -->
-  <button id="fabLog" class="btn btn-primary">
-    <i class="bi bi-chat-dots fs-5"></i>
-  </button>
-
-  <footer class="footer mt-4 py-3 bg-light">
-    <div class="container"><div class="d-flex justify-content-between">
-      <div>&copy; 2025 Klinik SihatSokmo. Untuk kegunaan Klinik sahaja.</div>
-      <div>Versi 3.1 (Secure)</div>
-    </div></div>
-  </footer>
-
-  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
-  <script>
+</div>
+</div></div>
+</div>
+<!-- Toast Host (kanan atas) -->
+<div id="toastHost"><div class="toast-container" id="toastContainer"></div></div>
+<!-- FAB Log Calls -->
+<button class="btn btn-primary" id="fabLog">
+<i class="bi bi-chat-dots fs-5"></i>
+</button>
+<footer class="footer mt-4 py-3 bg-light">
+<div class="container"><div class="d-flex justify-content-between">
+<div>© 2025 Klinik SihatSokmo. Untuk kegunaan Klinik sahaja.</div>
+<div>Versi 3.1 (Secure)</div>
+</div></div>
+</footer>
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+<script>
 /* =======================
    KONFIG (EDIT INI SAHAJA)
    ======================= */
@@ -1348,8 +1301,8 @@ let MONITOR_LOADING = false;
 
       const ext = (file.name.split('.').pop() || '').toLowerCase();
 
-      // 1) CSV → terus baca (tak perlu internet/CDN)
-      if (ext === 'csv') {
+      // 1) CSV → terus baca (tak perlu internet/CDN);
+if(ext === 'csv') {
         const text = await readAsText(file);
         const raw  = csvTextToObjects(text);
         const items = raw.map(mapRow)
@@ -1377,8 +1330,8 @@ let MONITOR_LOADING = false;
       // 2) XLSX/XLS → cuba SheetJS; jika gagal, minta simpan CSV
       if (typeof window.ensureXLSXReady === 'function') {
         try { await window.ensureXLSXReady(); } catch(e) { /* ignore */ }
-      }
-      if (!window.XLSX) {
+      };
+if(!window.XLSX) {
         tableBody.innerHTML =
           '<tr><td colspan="8" class="text-center text-danger">SheetJS tidak tersedia. Sila simpan Excel sebagai <b>CSV</b> dan muat naik semula.</td></tr>';
         return;
@@ -1774,8 +1727,8 @@ async function sendWhatsAppReportImageFlow(msisdn) {
 
   const file = new File([blob], `laporan_nadi_${Date.now()}.png`, { type: 'image/png' });
 
-  // 3) MOBILE: cuba Web Share API (anda pilih WhatsApp kemudian chat; had OS)
-  if (navigator.canShare && navigator.canShare({ files: [file] })) {
+  // 3) MOBILE: cuba Web Share API (anda pilih WhatsApp kemudian chat; had OS);
+if(navigator.canShare && navigator.canShare({ files: [file] })) {
     try {
       await navigator.share({ files: [file], title: 'Laporan Saringan NADI', text: '' });
       toast('Berjaya', 'Imej dikongsi melalui aplikasi pilihan anda', 'success');
@@ -2141,9 +2094,8 @@ function setupExcel(){
             </tr>`;
           tbody.insertAdjacentHTML('beforeend', tr);
           count++;
-        }
-
-        if (!count){
+        };
+if(!count){
           tbody.innerHTML = `<tr><td colspan="8" class="text-center text-muted">Tiada data sah ditemui dalam CSV.</td></tr>`;
         } else {
           toast('Berjaya', `CSV dimuat: ${count} rekod`, 'success');
@@ -2332,9 +2284,8 @@ function calculateAgeFromIC(ic) {
     const daysInLastMonth = new Date(today.getFullYear(), today.getMonth(), 0).getDate();
     days = daysInLastMonth - birthDate.getDate() + today.getDate();
     months--;
-  }
-  
-  if (months < 0) {
+  };
+if(months < 0) {
     months += 12;
   }
   
@@ -2797,8 +2748,8 @@ function generateWhatsAppReport(data) {
 function sendWhatsAppReport() {
   if (!currentWhatsAppData) return;
 
-  // Validasi: pastikan status kelayakan dipilih (layak atau tidak)
-  if (typeof currentWhatsAppData.layak !== 'boolean') {
+  // Validasi: pastikan status kelayakan dipilih (layak atau tidak);
+if(typeof currentWhatsAppData.layak !== 'boolean') {
     toast('Ralat', 'Sila pilih status Layak / Tidak Layak sebelum hantar laporan.', 'danger');
     return;
   }
@@ -2882,8 +2833,8 @@ async function exportNadiCSV() {
   try {
     if (typeof ensureXLSXReady === 'function') {
       await ensureXLSXReady(); // dari kod anda: akan load xlsx.full.min.js jika belum ada
-    }
-    if (window.XLSX) {
+    };
+if(window.XLSX) {
       const wb  = XLSX.utils.book_new();
       const aoa = [titleRow, HEADER, ...dataRows];
       const ws  = XLSX.utils.aoa_to_sheet(aoa);
@@ -3076,8 +3027,8 @@ function mergeLiveRowsIntoUI(items){
       addNadiRow();
       row = byId(it.id) || document.querySelector('#nadiContainer .nadi-row:last-child');
       if (row) row.dataset.rowId = it.id;
-    }
-    if (!row) return;
+    };
+if(!row) return;
 
     // Jangan override jika user sedang menaip pada medan itu
     const safeSet = (sel, val) => {
@@ -3820,8 +3771,7 @@ function activateFromHash(){
   if (link){ link.click(); }
 }
 </script>
-
-  <script>
+<script>
   (function(){
     // === Auto-refresh (gentle) ===
     // Refresh every REFRESH_MS if the user is idle for IDLE_MS, page visible, and tiada modal terbuka.
@@ -3852,8 +3802,8 @@ function activateFromHash(){
         if (typeof window.refreshDashboard === 'function' && (h==='#' || h==='#dashboard')) {
           window.refreshDashboard();
           return;
-        }
-        if (typeof window.refreshMonitorNow === 'function' && h.indexOf('#monitor')===0) {
+        };
+if(typeof window.refreshMonitorNow === 'function' && h.indexOf('#monitor')===0) {
           window.refreshMonitorNow();
           return;
         }
@@ -3914,8 +3864,8 @@ function useSelectedSession(){
   if (!sel || !sel.value) { toast('Makluman','Sila pilih satu sesi dahulu','warning'); return; }
   const iso = sel.options[sel.selectedIndex].dataset.iso || '';
   const title = sel.options[sel.selectedIndex].dataset.title || '';
-  if (title){ const t = document.getElementById('nadiProgramTitle'); if (t) t.value = title; }
-  if (iso){ const d = document.getElementById('nadiProgramDate'); if (d) d.value = iso; }
+  if (title){ const t = document.getElementById('nadiProgramTitle'); if (t) t.value = title; };
+if(iso){ const d = document.getElementById('nadiProgramDate'); if (d) d.value = iso; }
   NADI_LIVE_SESSION_ID = sel.value;
   NADI_SESSION_LOCKED = true;
   updateLiveSessionBadge();
@@ -3924,7 +3874,6 @@ function useSelectedSession(){
 }
 
 </script>
-
 <script>
 
 // === Tambahan: Autosave, TCA voucher, dan Sejarah Saringan ===
@@ -4037,8 +3986,8 @@ function useSelectedSession(){
       const tak = tr?.querySelector('input[name="takLayak"]');
       if (el.checked && tak) tak.checked = true;
       saveNadiStateDebounced();
-    }
-    if (el && (el.matches('#nadiContainer input, #nadiContainer textarea'))) {
+    };
+if(el && (el.matches('#nadiContainer input, #nadiContainer textarea'))) {
       saveNadiStateDebounced();
     }
   }, true);
@@ -4215,8 +4164,8 @@ function useSelectedSession(){
         const meta = b.getAttribute('data-meta') || '';
         b.style.display = meta.includes(q) ? '' : 'none';
       });
-    }
-    if (e.target && e.target.id==='sejarahSearch'){
+    };
+if(e.target && e.target.id==='sejarahSearch'){
       const current = document.querySelector('#programList .list-group-item.active') || document.querySelector('#programList .list-group-item');
       if (current) loadProgramDetail(current.getAttribute('data-activity-id'));
     }
@@ -4231,7 +4180,6 @@ function useSelectedSession(){
 })();
 
 </script>
-
 <script>
 // === V3 Patch (Aug 28, 2025): NADI table alignment + Voucher strict behavior ===
 (function(){
@@ -4428,10 +4376,7 @@ function useSelectedSession(){
     return String(s||'').replace(/[&<>"']/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'}[m]));
   }
 })();
-
-
-
+</script>
 <script>(function(){Array.from(document.querySelectorAll('button,a')).forEach(el=>{const t=(el.textContent||'').toLowerCase(); if(t.includes('lihat semua')&&t.includes('live')) el.style.display='none';});})();</script>
-
 </body>
 </html>
