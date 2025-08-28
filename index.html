@@ -314,11 +314,13 @@
 .nadi-table th[data-col="voucherDate"], .nadi-table td[data-col="voucherDate"] { display:none !important; }
 
 
-/* === V3 Patch (Aug 28, 2025) — NADI alignment & visibility === */
-.nadi-table th[data-col="voucher"], .nadi-table td[data-col="voucher"] { text-align: center; vertical-align: middle; }
+/* === V4 Patch (Aug 28, 2025) — NADI strict column alignment === */
+.nadi-table th[data-col="voucher"], .nadi-table td[data-col="voucher"] { text-align:center; vertical-align:middle; white-space:nowrap; }
 .nadi-table td[data-col="voucher"] .form-check { display:flex; align-items:center; justify-content:center; margin:0; }
 .nadi-table td[data-col="voucher"] .form-check-input { float:none; margin:0; }
-.nadi-table th[data-col="voucherDate"], .nadi-table td[data-col="voucherDate"] { display:none !important; } /* ensure removed */
+.nadi-table th[data-col="voucherDate"], .nadi-table td[data-col="voucherDate"] { display:none !important; } /* legacy hidden */
+.nadi-table td[data-col="remark"] textarea, 
+.nadi-table td[data-col="remark"] input[type="text"] { width:100%; }
 
 </style>
 </head>
@@ -4208,13 +4210,12 @@ function useSelectedSession(){
 </script>
 
 <script>
-// === V3 Patch (Aug 28, 2025): NADI "TCA voucher" alignment & logic ===
+// === V4 Patch (Aug 28, 2025): Normalize NADI rows & fix "TCA voucher" vs Remark overlap ===
 (function(){
-  const nadiTable = document.querySelector('#nadi table.nadi-table, .nadi-table') || document.querySelector('.nadi-table');
-  const nadiBody  = document.getElementById('nadiContainer');
-  if (!nadiTable || !nadiBody) return;
+  const table = document.querySelector('#nadi table.nadi-table, .nadi-table') || document.querySelector('.nadi-table');
+  const tbody = document.getElementById('nadiContainer') || (table ? table.querySelector('tbody') : null);
+  if (!table || !tbody) return;
 
-  // --- Toast fallback (non-blocking) ---
   window.toast = window.toast || function(title, msg, type){
     const host = document.getElementById('toastContainer');
     if (!host) { try{ alert((title?title+': ':'')+msg); }catch(e){} return; }
@@ -4227,74 +4228,49 @@ function useSelectedSession(){
     setTimeout(()=> el.remove(), 3000);
   };
 
-  // --- Map header text → col index ---
-  const headerRow = nadiTable.querySelector('thead tr');
-  if (!headerRow) return;
-  const ths = Array.from(headerRow.children);
-  const normalize = (s) => String(s || '').toLowerCase().replace(/\s+/g,' ').trim();
-  const headerMap = {};
-  ths.forEach((th, idx) => {
-    const t = normalize(th.textContent);
-    headerMap[idx] = t;
-    // Tag data-col for key headers
-    if (t.includes('tca voucher')) th.setAttribute('data-col', 'voucher');
-    if (t.includes('tca & staff') || t === 'tca & staff') th.setAttribute('data-col', 'tcaStaff');
-    if (t === 'layak') th.setAttribute('data-col', 'layak');
-    if (t.includes('tidak layak')) th.setAttribute('data-col', 'takLayak');
-    if (t.includes('tindakan')) th.setAttribute('data-col', 'actions');
-    if (t.includes('tarikh tca (voucher)')) th.setAttribute('data-col', 'voucherDate'); // legacy, hide via CSS
+  const ths = Array.from(table.querySelectorAll('thead tr th'));
+  const norm = s => String(s||'').toLowerCase().replace(/\s+/g,' ').trim();
+  const idx = {};
+  ths.forEach((th, i) => {
+    const t = norm(th.textContent);
+    if (t.includes('tca voucher')) { th.setAttribute('data-col','voucher'); idx.voucher = i; }
+    if (t === 'layak') { th.setAttribute('data-col','layak'); idx.layak = i; }
+    if (t.includes('tidak layak')) { th.setAttribute('data-col','takLayak'); idx.takLayak = i; }
+    if (t.includes('tca & staff') || t === 'tca & staff') { th.setAttribute('data-col','tcaStaff'); idx.tcaStaff = i; }
+    if (t.includes('remark') || t.includes('remarks') || t.includes('catatan') || t.includes('nota')) { th.setAttribute('data-col','remark'); idx.remark = i; }
+    if (t.includes('tindakan')) { th.setAttribute('data-col','actions'); idx.actions = i; }
+    if (t.includes('tarikh tca (voucher)')) { th.setAttribute('data-col','voucherDate'); }
   });
 
-  function colIndexBy(colName){
-    for (let i=0;i<ths.length;i++){
-      if (ths[i].getAttribute('data-col') === colName) return i;
+  function ensureCell(tr, i){
+    while (tr.children.length <= i) {
+      const td = document.createElement('td');
+      tr.appendChild(td);
     }
-    for (let i=0;i<ths.length;i++){
-      const t = normalize(ths[i].textContent);
-      if (colName==='voucher' && t.includes('tca voucher')) return i;
-      if (colName==='tcaStaff' && (t.includes('tca & staff') || t==='tca & staff')) return i;
-      if (colName==='layak' && t==='layak') return i;
-      if (colName==='takLayak' && t.includes('tidak layak')) return i;
-      if (colName==='actions' && t.includes('tindakan')) return i;
-    }
-    return -1;
+    return tr.children[i];
   }
 
-  const IDX = {
-    voucher: colIndexBy('voucher'),
-    tcaStaff: colIndexBy('tcaStaff'),
-    layak: colIndexBy('layak'),
-    takLayak: colIndexBy('takLayak'),
-    actions: colIndexBy('actions')
-  };
-
   function initRow(tr){
-    const tds = Array.from(tr.children);
-    if (!tds.length) return;
-
-    // Voucher cell
-    if (IDX.voucher >= 0 && tds[IDX.voucher]) {
-      const cell = tds[IDX.voucher];
-      cell.setAttribute('data-col','voucher');
-      cell.classList.add('nadi-checkbox-cell');
-
-      let cb = cell.querySelector('input[type="checkbox"]');
-      if (!cb) {
-        cell.innerHTML = '<div class="form-check m-0 d-flex justify-content-center"><input type="checkbox" class="form-check-input"></div>';
-        cb = cell.querySelector('input[type="checkbox"]');
+    if (idx.voucher != null) {
+      const c = ensureCell(tr, idx.voucher);
+      c.setAttribute('data-col','voucher');
+      if (containsRemark(c) && idx.remark != null) {
+        const remarkCell = ensureCell(tr, idx.remark);
+        moveAllChildren(c, remarkCell);
       }
-      cb.setAttribute('data-col','voucher');
-
+      let cb = c.querySelector('input[type="checkbox"]');
+      const wasChecked = !!(cb && cb.checked);
+      c.innerHTML = '<div class="form-check m-0 d-flex justify-content-center"><input type="checkbox" class="form-check-input" data-col="voucher"></div>';
+      cb = c.querySelector('input[type="checkbox"][data-col="voucher"]');
+      if (wasChecked) cb.checked = true;
       cb.addEventListener('change', () => onVoucherToggle(tr, cb.checked));
-      onVoucherToggle(tr, cb.checked, true);
     }
 
-    // TCA & Staff cell
-    if (IDX.tcaStaff >= 0 && tds[IDX.tcaStaff]) {
-      const cell = tds[IDX.tcaStaff];
-      cell.setAttribute('data-col','tcaStaff');
-      if (!cell.querySelector('.tca-pack')) {
-        cell.innerHTML = `
+    if (idx.tcaStaff != null) {
+      const c = ensureCell(tr, idx.tcaStaff);
+      c.setAttribute('data-col','tcaStaff');
+      if (!c.querySelector('.tca-pack')) {
+        c.innerHTML = `
           <div class="tca-pack row g-1">
             <div class="col-5"><input type="date" class="form-control form-control-sm tca-date" disabled></div>
             <div class="col-3"><input type="time" class="form-control form-control-sm tca-time" disabled></div>
@@ -4304,86 +4280,93 @@ function useSelectedSession(){
       }
     }
 
-    // Layak / Tidak Layak
-    if (IDX.layak >=0 && tds[IDX.layak]) tds[IDX.layak].setAttribute('data-col','layak');
-    if (IDX.takLayak >=0 && tds[IDX.takLayak]) tds[IDX.takLayak].setAttribute('data-col','takLayak');
+    if (idx.layak != null) ensureCell(tr, idx.layak).setAttribute('data-col','layak');
+    if (idx.takLayak != null) ensureCell(tr, idx.takLayak).setAttribute('data-col','takLayak');
+    if (idx.remark != null) ensureCell(tr, idx.remark).setAttribute('data-col','remark');
 
-    // Actions cell
-    if (IDX.actions >=0 && tds[IDX.actions]) {
-      tds[IDX.actions].setAttribute('data-col','actions');
-      let btn = tds[IDX.actions].querySelector('button');
+    if (idx.actions != null) {
+      const c = ensureCell(tr, idx.actions);
+      c.setAttribute('data-col','actions');
+      let btn = c.querySelector('button, a.btn');
       if (!btn) {
         btn = document.createElement('button');
         btn.className = 'btn btn-sm btn-primary';
         btn.textContent = 'Daftar';
-        tds[IDX.actions].appendChild(btn);
+        c.appendChild(btn);
       }
     }
+
+    const cb = idx.voucher != null ? ensureCell(tr, idx.voucher).querySelector('input[type="checkbox"][data-col="voucher"]') : null;
+    if (cb) onVoucherToggle(tr, cb.checked, true);
   }
 
-  function onVoucherToggle(tr, isChecked, firstPaint){
-    tr.dataset.voucherOnly = isChecked ? "1" : "";
+  function containsRemark(cell){
+    const t = (cell.textContent || '').toLowerCase();
+    return !!cell.querySelector('textarea') || !!cell.querySelector('input[type="text"]') ||
+           t.includes('remark') || t.includes('catatan') || t.includes('nota');
+  }
+  function moveAllChildren(from, to){
+    const frag = document.createDocumentFragment();
+    while (from.firstChild) frag.appendChild(from.firstChild);
+    to.appendChild(frag);
+  }
+
+  function onVoucherToggle(tr, checked, first=false){
+    tr.dataset.voucherOnly = checked ? "1" : "";
     ['.tca-date','.tca-time','.tca-staff'].forEach(sel => {
       const el = tr.querySelector(sel);
-      if (el) el.disabled = !isChecked;
+      if (el) el.disabled = !checked;
     });
-    if (isChecked) {
-      const layakCb = tr.querySelector('input[type="checkbox"][data-col="layak"]') || tr.querySelector('td[data-col="layak"] input[type="checkbox"]');
-      const takCb   = tr.querySelector('input[type="checkbox"][data-col="takLayak"]') || tr.querySelector('td[data-col="takLayak"] input[type="checkbox"]');
+    if (checked) {
+      const layakCb = tr.querySelector('td[data-col="layak"] input[type="checkbox"]');
+      const takCb   = tr.querySelector('td[data-col="takLayak"] input[type="checkbox"]');
       if (layakCb) layakCb.checked = false;
       if (takCb)   takCb.checked = false;
     }
-    const actions = tr.querySelector('td[data-col="actions"]') || tr.lastElementChild;
-    if (actions) {
-      const primaryBtn = actions.querySelector('button') || actions.querySelector('a.btn');
-      if (primaryBtn) {
-        if (isChecked) {
-          if (!primaryBtn.dataset.originalText) primaryBtn.dataset.originalText = (primaryBtn.textContent || '').trim();
-          primaryBtn.textContent = 'Daftar Voucher';
-          primaryBtn.dataset.voucher = "1";
+    if (idx.actions != null) {
+      const cell = ensureCell(tr, idx.actions);
+      const btn = cell.querySelector('button, a.btn');
+      if (btn) {
+        if (checked) {
+          if (!btn.dataset.originalText) btn.dataset.originalText = (btn.textContent||'').trim();
+          btn.textContent = 'Daftar Voucher';
+          btn.dataset.voucher = "1";
         } else {
-          primaryBtn.textContent = primaryBtn.dataset.originalText || 'Daftar';
-          primaryBtn.dataset.voucher = "";
+          btn.textContent = btn.dataset.originalText || 'Daftar';
+          btn.dataset.voucher = "";
         }
       }
     }
-    tr.style.backgroundColor = isChecked ? 'rgba(52,152,219,.06)' : '';
+    tr.style.backgroundColor = checked ? 'rgba(52,152,219,.06)' : '';
   }
 
-  nadiBody.addEventListener('click', (ev) => {
+  tbody.addEventListener('click', (ev) => {
     const btn = ev.target.closest('button, a.btn');
-    if (!btn) return;
-    if (btn.dataset && btn.dataset.voucher === "1") {
-      const tr = btn.closest('tr');
-      if (!tr) return;
-      try{
-        tr.dataset.excludeFromLayakSave = "1";
-        const rec = extractRow(tr);
-        pushToTcaCall(rec);
-        toast('Berjaya', 'Pesakit dimasukkan ke senarai TCA Voucher untuk dihubungi.', 'success');
-      }catch(e){
-        console.warn(e);
-        toast('Ralat','Gagal daftar voucher.','danger');
-      }
-      ev.stopPropagation();
-      ev.preventDefault();
-    }
+    if (!btn || btn.dataset.voucher !== "1") return;
+    const tr = btn.closest('tr');
+    if (!tr) return;
+    try{
+      tr.dataset.excludeFromLayakSave = "1";
+      pushToTcaCall(extractRow(tr));
+      toast('Berjaya','Pesakit dimasukkan ke senarai TCA Voucher untuk dihubungi.','success');
+    }catch(e){ console.warn(e); toast('Ralat','Gagal daftar voucher.','danger'); }
+    ev.stopPropagation();
+    ev.preventDefault();
   }, true);
 
   const btnSaveAll = document.getElementById('btnNadiSaveActivity');
   if (btnSaveAll) {
     btnSaveAll.addEventListener('click', () => {
       try{
-        const rows = Array.from(nadiBody.querySelectorAll('tr'));
-        rows.filter(r => r.dataset.voucherOnly === "1").forEach(r => {
+        Array.from(tbody.querySelectorAll('tr')).filter(r => r.dataset.voucherOnly==="1").forEach(r => {
           r.dataset.excludeFromLayakSave = "1";
           pushToTcaCall(extractRow(r));
         });
-      }catch(e){ console.warn('Voucher routing on save-all failed', e); }
+      }catch(e){ console.warn('SaveAll voucher routing failed', e); }
     }, {capture:true});
   }
 
-  Array.from(nadiBody.querySelectorAll('tr')).forEach(initRow);
+  Array.from(tbody.querySelectorAll('tr')).forEach(initRow);
 
   const obs = new MutationObserver(muts => {
     for (const m of muts) {
@@ -4395,10 +4378,30 @@ function useSelectedSession(){
       });
     }
   });
-  obs.observe(nadiBody, { childList:true, subtree:true });
+  obs.observe(tbody, { childList:true, subtree:true });
 
-  function getCellValue(tr, idx){
-    const td = tr.children[idx];
+  function extractRow(tr){
+    const get = sel => {
+      const el = tr.querySelector(sel);
+      if (!el) return '';
+      if (el.tagName === 'INPUT' || el.tagName === 'TEXTAREA' || el.tagName === 'SELECT') {
+        if (el.type === 'checkbox') return el.checked ? '1' : '';
+        return el.value || '';
+      }
+      return (el.textContent||'').trim();
+    };
+    const nama = get('td[data-col="nama"] input, td[data-col="nama"] .view-mode') || getNth(tr, 1);
+    const ic   = get('td[data-col="ic"] input, td[data-col="ic"] .view-mode')     || getNth(tr, 2);
+    const tel  = get('td[data-col="telefon"] input, td[data-col="telefon"] .view-mode') || getNth(tr, 4);
+    const almt = get('td[data-col="alamat"] textarea, td[data-col="alamat"] input, td[data-col="alamat"] .view-mode') || getNth(tr, 5);
+
+    return {
+      nama: nama, ic: ic, telefon: tel, alamat: almt,
+      tcaDate: get('.tca-date'), tcaTime: get('.tca-time'), staff: get('.tca-staff')
+    };
+  }
+  function getNth(tr, i){
+    const td = tr.children[i];
     if (!td) return '';
     const el = td.querySelector('input, textarea, select, .view-mode');
     if (!el) return (td.textContent||'').trim();
@@ -4408,44 +4411,17 @@ function useSelectedSession(){
     }
     return (el.textContent||'').trim();
   }
-
-  function extractRow(tr){
-    const val = (sel) => {
-      const el = tr.querySelector(sel);
-      if (!el) return '';
-      if (el.tagName === 'INPUT' || el.tagName === 'TEXTAREA' || el.tagName === 'SELECT') {
-        if (el.type === 'checkbox') return el.checked ? '1' : '';
-        return el.value || '';
-      }
-      return el.textContent.trim();
-    };
-    let nama = val('td[data-col="nama"] input, td[data-col="nama"] .view-mode') || getCellValue(tr, 1);
-    let ic   = val('td[data-col="ic"] input, td[data-col="ic"] .view-mode')     || getCellValue(tr, 2);
-    let tel  = val('td[data-col="telefon"] input, td[data-col="telefon"] .view-mode') || getCellValue(tr, 4);
-    let almt = val('td[data-col="alamat"] textarea, td[data-col="alamat"] input, td[data-col="alamat"] .view-mode') || getCellValue(tr, 5);
-
-    return {
-      nama: nama, ic: ic, telefon: tel, alamat: almt,
-      tcaDate: val('.tca-pack .tca-date'), tcaTime: val('.tca-pack .tca-time'), staff: val('.tca-pack .tca-staff')
-    };
-  }
-
   function pushToTcaCall(rec){
     const esc = (s)=> String(s||'').replace(/[&<>"']/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'}[m]));
-
-    const targets = [
-      document.getElementById('tcaCallTable'),
-      document.getElementById('tcaCallList')
-    ].filter(Boolean);
-
+    const targets = [document.getElementById('tcaCallTable'), document.getElementById('tcaCallList')].filter(Boolean);
     targets.forEach(t => {
-      const tbody = t.tagName.toLowerCase()==='tbody' ? t : t.querySelector('tbody');
-      if (!tbody) return;
-      Array.from(tbody.querySelectorAll('tr')).forEach(r => {
+      const tb = t.tagName.toLowerCase()==='tbody' ? t : t.querySelector('tbody');
+      if (!tb) return;
+      Array.from(tb.querySelectorAll('tr')).forEach(r => {
         if (r.children.length < 3 || /Memuat data/i.test(r.textContent)) r.remove();
       });
-      const tr = document.createElement('tr');
-      tr.innerHTML = `
+      const row = document.createElement('tr');
+      row.innerHTML = `
         <td>${esc(rec.nama)}</td>
         <td>${esc(rec.ic)}</td>
         <td>${esc(rec.telefon)}</td>
@@ -4453,24 +4429,21 @@ function useSelectedSession(){
         <td>${esc(rec.tcaDate)} ${esc(rec.tcaTime)}</td>
         <td>Voucher</td>
       `;
-      tbody.appendChild(tr);
+      tb.appendChild(row);
     });
-
     const badge = document.getElementById('badgeTCA');
     if (badge) {
-      const listEls = targets.map(t => (t.tagName.toLowerCase()==='tbody' ? t : t.querySelector('tbody'))).filter(Boolean);
-      const count = listEls.reduce((acc, tb)=> acc + tb.querySelectorAll('tr').length, 0);
+      const lists = targets.map(t => (t.tagName.toLowerCase()==='tbody' ? t : t.querySelector('tbody'))).filter(Boolean);
+      const count = lists.reduce((acc, tb)=> acc + tb.querySelectorAll('tr').length, 0);
       badge.textContent = String(count);
       badge.style.display = count>0 ? 'inline-block' : 'none';
     }
   }
 
-  (function hideLiveButtons(){
-    document.querySelectorAll('button, a').forEach(el=>{
-      const t = (el.textContent||'').toLowerCase();
-      if (t.includes('lihat semua') && t.includes('live')) el.style.display='none';
-    });
-  })();
+  document.querySelectorAll('button, a').forEach(el=>{
+    const t = (el.textContent||'').toLowerCase();
+    if (t.includes('lihat semua') && t.includes('live')) el.style.display='none';
+  });
 
 })();</script>
 
