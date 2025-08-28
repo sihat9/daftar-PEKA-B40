@@ -305,7 +305,13 @@
 #nadiProgramBar .form-text { margin-top: 4px; }
 /* Center and align checkbox cells consistently */
 .nadi-table td.nadi-checkbox-cell, .nadi-table th[data-col="voucher"] { text-align: center; vertical-align: middle; }
-.nadi-table td[data-col="voucherDate"] input[type="date"] { min-width: 155px; }
+
+/* === V2 Patch (Aug 28, 2025) === */
+.nadi-table td.nadi-checkbox-cell, .nadi-table th[data-col="voucher"], .nadi-table td[data-col="voucher"] {
+  text-align:center; vertical-align:middle;
+}
+/* In case any stray voucherDate cells exist in existing rows, hide them: */
+.nadi-table th[data-col="voucherDate"], .nadi-table td[data-col="voucherDate"] { display:none !important; }
 
 </style>
 </head>
@@ -565,8 +571,7 @@
     <th style="width: 80px;">Layak</th>
     <th style="width: 100px;">Tidak Layak</th>
     <th style="width: 120px;">TCA voucher</th>
-    <th style="min-width: 160px;">Tarikh TCA (Voucher)</th>
-    <!-- ⬇️ TAMBAH KOLUM BARU DI SINI -->
+<!-- ⬇️ TAMBAH KOLUM BARU DI SINI -->
     <th style="min-width: 160px;">Remark</th>
     <!-- ⬆️ TAMBAH KOLUM BARU DI SINI -->
     <th style="min-width: 200px;">TCA & Staff</th>
@@ -4196,154 +4201,156 @@ function useSelectedSession(){
 </script>
 
 <script>
-// === Patch (Aug 28, 2025): Stability + TCA Voucher logic + UI tidy ===
+// === V2 Patch (Aug 28, 2025): Voucher UX & Logic ===
+// Requirements covered:
+// - Keep only "TCA voucher" checkbox column (remove dedicated "Tarikh TCA (Voucher)" column)
+// - When "TCA voucher" checked in a row:
+//    * Open up inputs in "TCA & Staff" column (Tarikh TCA, Masa, Staff) for that row
+//    * Change row's action button text to "Daftar Voucher"
+//    * Ensure row is not saved to "Layak" list; instead it goes to "TCA Call" list
+// - When unchecked, disable/hide those inputs and revert button label to "Daftar"
+// - Align the checkbox cell neatly
 
-// 2.1 Prevent accidental data loss: auto-save NADI table drafts to localStorage (per live session)
 (function(){
-  const KEY = () => {
-    const title = document.getElementById('nadiProgramTitle')?.value?.trim() || '(untitled)';
-    const date  = document.getElementById('nadiProgramDate')?.value?.trim() || '(nodate)';
-    return 'nadiDraft::' + title + '::' + date;
-  };
+  const nadiBody = document.getElementById('nadiContainer');
+  if (!nadiBody) return;
 
-  const container = document.getElementById('nadiContainer');
-  if (!container) return;
+  // Utility helpers
+  function $(root, sel){ return (root || document).querySelector(sel); }
+  function $all(root, sel){ return Array.from((root || document).querySelectorAll(sel)); }
+  const esc = (s) => String(s||'').replace(/[&<>"']/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[m]));
 
-  // Restore on load
-  try {
-    const raw = localStorage.getItem(KEY());
-    if (raw) {
-      const {html} = JSON.parse(raw);
-      if (html && !container.dataset.restored) {
-        container.innerHTML = html;
-        container.dataset.restored = "1";
-      }
-    }
-  } catch(e){ console.warn('Draft restore skipped:', e); }
-
-  // Save on any input/checkbox change in NADI rows (debounced)
-  let saveTimer;
-  container.addEventListener('input', scheduleSave, true);
-  container.addEventListener('change', scheduleSave, true);
-
-  function scheduleSave(){
-    clearTimeout(saveTimer);
-    saveTimer = setTimeout(saveDraft, 400);
-  }
-  function saveDraft(){
-    try {
-      localStorage.setItem(KEY(), JSON.stringify({ html: container.innerHTML }));
-    } catch(e) {
-      console.warn('Draft save failed:', e);
-    }
-  }
-
-  // When session title/date changes, migrate draft key (simple approach: clear old, start fresh)
-  ['nadiProgramTitle', 'nadiProgramDate'].forEach(id => {
-    const el = document.getElementById(id);
-    if (el) el.addEventListener('change', () => {
-      // clear autosave for previous key (optional — we skip to avoid data loss across edits)
-      // localStorage.removeItem(KEY());
-      scheduleSave();
-    });
-  });
-})();
-
-// 2.2 Voucher logic: when "TCA voucher" is ticked, enable date input & mark row as "voucherOnly"
-(function(){
-  const table = document.getElementById('nadiContainer');
-  if (!table) return;
-
-  // Event delegation for checkbox toggles
-  table.addEventListener('change', (ev) => {
-    const target = ev.target;
-    if (!(target instanceof HTMLElement)) return;
-
-    // Identify voucher checkbox by data attribute or header position
-    if (target.matches('input[type="checkbox"][data-col="voucher"], td[data-col="voucher"] input[type="checkbox"]')) {
-      const row = target.closest('tr');
-      if (!row) return;
-
-      const dateCell = row.querySelector('td[data-col="voucherDate"] input[type="date"]');
-      if (dateCell) {
-        dateCell.disabled = !target.checked;
-        if (!target.checked) dateCell.value = '';
-      }
-      row.dataset.voucherOnly = target.checked ? "1" : "";
-    }
-
-    // Sync "Layak" vs "Tidak Layak" with voucher: if voucher checked, uncheck both layak/tak-layak
-    if (target.matches('input[type="checkbox"][data-col="voucher"]')) {
-      const row = target.closest('tr');
-      if (!row) return;
-      const layak = row.querySelector('input[type="checkbox"][data-col="layak"]');
-      const tak   = row.querySelector('input[type="checkbox"][data-col="takLayak"]');
-      if (target.checked) {
-        if (layak) layak.checked = false;
-        if (tak)   tak.checked = false;
-      }
-    }
-  });
-
-  // Safety on first paint: ensure voucher date disabled when unchecked
-  requestAnimationFrame(() => {
-    table.querySelectorAll('tr').forEach(row => {
-      const voucher = row.querySelector('input[type="checkbox"][data-col="voucher"]');
-      const dateInp = row.querySelector('td[data-col="voucherDate"] input[type="date"]');
-      if (dateInp) dateInp.disabled = !(voucher && voucher.checked);
-    });
-  });
-})();
-
-// 2.3 Save behavior: exclude "voucherOnly" rows from Layak sheet save; instead push to TCA Call list (front-end fallback)
-(function(){
-  const btnSaveAll = document.getElementById('btnNadiSaveActivity');
-  const nadiContainer = document.getElementById('nadiContainer');
-  const tcaTable = document.getElementById('tcaCallTable') || document.getElementById('tcaCallList');
-
-  if (!btnSaveAll || !nadiContainer) return;
-
-  btnSaveAll.addEventListener('click', async (ev) => {
-    // If original code has its own handler, we let this patch run first and then return silently.
-    try {
-      const rows = Array.from(nadiContainer.querySelectorAll('tr'));
-      const voucherRows = [];
-      rows.forEach(tr => {
-        if (tr.dataset && tr.dataset.voucherOnly === "1") {
-          voucherRows.push(extractRow(tr));
-          // mark the row as already handled to avoid being saved to "Layak"
-          tr.dataset.excludeFromLayakSave = "1";
+  // Attach a MutationObserver to post-process any new rows for structure/attributes
+  const obs = new MutationObserver(muts => {
+    for (const m of muts) {
+      m.addedNodes && m.addedNodes.forEach(node => {
+        if (node.nodeType === 1) {
+          if (node.tagName === 'TR') initRow(node);
+          // Also check nested rows
+          node.querySelectorAll && node.querySelectorAll('tr').forEach(initRow);
         }
       });
+    }
+  });
+  obs.observe(nadiBody, { childList:true, subtree:true });
 
-      // Front-end fallback: append voucher rows to TCA Call list/table immediately if exists
-      if (voucherRows.length && tcaTable) {
-        const tbody = tcaTable.tagName.toLowerCase() === 'tbody' ? tcaTable : tcaTable.querySelector('tbody');
-        if (tbody) {
-          // remove placeholder if any
-          Array.from(tbody.querySelectorAll('tr')).forEach(r => {
-            if (r.children.length === 1 || r.textContent.includes('Memuat data')) r.remove();
-          });
-          voucherRows.forEach(r => {
-            const tr = document.createElement('tr');
-            tr.innerHTML = `
-              <td>${escape(r.nama)}</td>
-              <td>${escape(r.ic)}</td>
-              <td>${escape(r.telefon)}</td>
-              <td>${escape(r.alamat)}</td>
-              <td>${escape(r.tcaDate || '')}</td>
-              <td>Voucher</td>
-            `;
-            tbody.appendChild(tr);
-          });
+  // Initialize existing rows
+  $all(nadiBody, 'tr').forEach(initRow);
+
+  function initRow(tr){
+    // 1) Ensure voucher checkbox cell is aligned
+    const voucherCell = tr.querySelector('td[data-col="voucher"]') || tr.children.item(14);
+    if (voucherCell) voucherCell.classList.add('nadi-checkbox-cell');
+
+    // 2) Ensure "TCA & Staff" column has the 3 inputs (date, time, staff) – hidden/disabled by default
+    let tcaCell = tr.querySelector('td[data-col="tcaStaff"]');
+    if (!tcaCell) {
+      // Try to guess by header index (based on provided header, tca&staff is column 17 / index 16 zero-based)
+      tcaCell = tr.children.item(16);
+      if (tcaCell) tcaCell.setAttribute('data-col', 'tcaStaff');
+    }
+    if (tcaCell && !tcaCell.querySelector('.tca-pack')) {
+      tcaCell.innerHTML = `
+        <div class="tca-pack row g-1">
+          <div class="col-5"><input type="date" class="form-control form-control-sm tca-date" disabled></div>
+          <div class="col-3"><input type="time" class="form-control form-control-sm tca-time" disabled></div>
+          <div class="col-4"><input type="text" class="form-control form-control-sm tca-staff" placeholder="Staff" disabled></div>
+        </div>
+      `;
+    }
+
+    // 3) Hook the per-row voucher checkbox toggle
+    const voucherCb = tr.querySelector('input[type="checkbox"][data-col="voucher"]') ||
+                      tr.querySelector('td[data-col="voucher"] input[type="checkbox"]');
+    if (voucherCb) {
+      voucherCb.addEventListener('change', () => onVoucherToggle(tr, voucherCb.checked));
+      // Ensure initial state applied on first paint
+      onVoucherToggle(tr, voucherCb.checked, true);
+    }
+  }
+
+  function onVoucherToggle(tr, isChecked, firstPaint=false){
+    // toggle dataset & UI
+    tr.dataset.voucherOnly = isChecked ? "1" : "";
+    // Enable/disable the TCA & Staff inputs
+    const dateInp  = tr.querySelector('.tca-pack .tca-date');
+    const timeInp  = tr.querySelector('.tca-pack .tca-time');
+    const staffInp = tr.querySelector('.tca-pack .tca-staff');
+    [dateInp, timeInp, staffInp].forEach(inp => { if (inp) inp.disabled = !isChecked; });
+
+    // Change the primary action button to "Daftar Voucher" (fallback by text match)
+    const actionCell = tr.querySelector('td:last-child') || tr.children.item(tr.children.length-1);
+    if (actionCell) {
+      let primaryBtn = actionCell.querySelector('button.btn-primary, button[data-action="daftar"]') || actionCell.querySelector('button');
+      if (primaryBtn) {
+        if (isChecked) {
+          if (!primaryBtn.dataset.originalText) primaryBtn.dataset.originalText = (primaryBtn.textContent || '').trim();
+          primaryBtn.textContent = 'Daftar Voucher';
+          primaryBtn.dataset.voucher = "1";
+        } else {
+          const orig = primaryBtn.dataset.originalText || 'Daftar';
+          primaryBtn.textContent = orig;
+          primaryBtn.dataset.voucher = "";
         }
       }
-    } catch(e) {
-      console.warn('Voucher patch on save failed:', e);
     }
-    // Do not prevent default; allow original handler to continue for non-voucher rows.
-  }, {capture:true});
 
+    // If voucher is selected, uncheck Layak/Tidak Layak to avoid confusion
+    const layakCb = tr.querySelector('input[type="checkbox"][data-col="layak"]');
+    const takCb   = tr.querySelector('input[type="checkbox"][data-col="takLayak"]');
+    if (isChecked) {
+      if (layakCb) layakCb.checked = false;
+      if (takCb) takCb.checked = false;
+    }
+
+    // Cosmetic: highlight row when voucher
+    tr.style.backgroundColor = isChecked ? 'rgba(52,152,219,.06)' : '';
+  }
+
+  // 4) Intercept per-row "Daftar Voucher" clicks → push to TCA Call & prevent Layak save
+  nadiBody.addEventListener('click', (ev) => {
+    const btn = ev.target.closest('button');
+    if (!btn) return;
+    if (btn.dataset && btn.dataset.voucher === "1") {
+      const tr = btn.closest('tr');
+      if (!tr) return;
+      try {
+        // Mark to exclude from Layak
+        tr.dataset.excludeFromLayakSave = "1";
+        // Extract data to push into TCA Call
+        const rec = extractRow(tr);
+        pushToTcaCall(rec);
+        toast && toast('Berjaya', 'Pesakit dimasukkan ke senarai TCA Voucher untuk dihubungi.', 'success');
+      } catch(e){
+        console.warn('Gagal daftar voucher:', e);
+        toast && toast('Ralat', 'Gagal daftar voucher. Sila cuba lagi.', 'danger');
+      }
+      // Prevent other handlers (if any) from also saving this as "Layak"
+      ev.stopPropagation();
+      ev.preventDefault();
+    }
+  }, true);
+
+  // 5) Also hook "Simpan Aktiviti (Semua)" to route voucher rows to TCA Call
+  const btnSaveAll = document.getElementById('btnNadiSaveActivity');
+  if (btnSaveAll) {
+    btnSaveAll.addEventListener('click', (ev) => {
+      try {
+        const rows = Array.from(nadiBody.querySelectorAll('tr'));
+        const voucherRows = rows.filter(r => r.dataset.voucherOnly === "1");
+        voucherRows.forEach(r => {
+          r.dataset.excludeFromLayakSave = "1";
+          const rec = extractRow(r);
+          pushToTcaCall(rec);
+        });
+      } catch (e) {
+        console.warn('Voucher routing on Save All failed:', e);
+      }
+      // Do not block original handler; we only ensure voucher excluded from Layak
+    }, { capture:true });
+  }
+
+  // Helpers
   function extractRow(tr){
     const val = (sel) => {
       const el = tr.querySelector(sel);
@@ -4359,34 +4366,67 @@ function useSelectedSession(){
       ic:      val('td[data-col="ic"] input, td:nth-child(3) input'),
       telefon: val('td[data-col="telefon"] input, td:nth-child(5) input'),
       alamat:  val('td[data-col="alamat"] input, td:nth-child(6) input'),
-      tcaDate: val('td[data-col="voucherDate"] input[type="date"]'),
+      tcaDate: val('.tca-pack .tca-date'),
+      tcaTime: val('.tca-pack .tca-time'),
+      staff:   val('.tca-pack .tca-staff')
     };
   }
 
-  function escape(s){
-    return String(s||'').replace(/[&<>"']/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'}[m]));
-  }
-})();
+  function pushToTcaCall(rec){
+    // Fill to TCA Call table on Dashboard and TCA Call page (front-end fallback)
+    const targets = [
+      document.getElementById('tcaCallTable'),
+      document.getElementById('tcaCallList')
+    ].filter(Boolean);
 
-// 2.4 Hide the "Lihat semua (Live)" button if present anywhere
-(function(){
-  const btns = Array.from(document.querySelectorAll('button, a'));
-  btns.forEach(b => {
-    const t = (b.textContent || '').toLowerCase();
-    if (t.includes('lihat semua') && t.includes('live')) {
-      b.style.display = 'none';
+    targets.forEach(t => {
+      const tbody = t.tagName.toLowerCase()==='tbody' ? t : t.querySelector('tbody');
+      if (!tbody) return;
+      // remove placeholder rows
+      Array.from(tbody.querySelectorAll('tr')).forEach(r => {
+        if (r.children.length < 3 || /Memuat data/i.test(r.textContent)) r.remove();
+      });
+      const tr = document.createElement('tr');
+      tr.innerHTML = `
+        <td>${esc(rec.nama)}</td>
+        <td>${esc(rec.ic)}</td>
+        <td>${esc(rec.telefon)}</td>
+        <td>${esc(rec.alamat)}</td>
+        <td>${esc(rec.tcaDate)} ${esc(rec.tcaTime)}</td>
+        <td>Voucher</td>
+      `;
+      tbody.appendChild(tr);
+    });
+
+    // Update badges if exist
+    const badge = document.getElementById('badgeTCA');
+    if (badge) {
+      const lists = [document.getElementById('tcaCallTable'), document.getElementById('tcaCallList')].filter(Boolean);
+      const count = lists.reduce((acc, tbl)=>{
+        const tb = tbl.tagName.toLowerCase()==='tbody' ? tbl : tbl.querySelector('tbody');
+        if (!tb) return acc;
+        return acc + tb.querySelectorAll('tr').length;
+      }, 0);
+      badge.textContent = String(count);
+      badge.style.display = count>0 ? 'inline-block' : 'none';
     }
-  });
-})();
+  }
 
-// 2.5 Minor UI tidy: ensure NADI toolbar buttons wrap neatly
-(function(){
-  const css = `.nadi-toolbar .btn{margin:2px}`;
-  const style = document.createElement('style');
-  style.textContent = css;
-  document.head.appendChild(style);
-})();
+  // Small toast helper if not present
+  window.toast = window.toast || function(title, msg, type){
+    const host = document.getElementById('toastContainer');
+    if (!host) return alert((title?title+': ':'')+msg);
+    const id = 't'+Date.now();
+    const el = document.createElement('div');
+    el.className = 'toast align-items-center text-bg-'+(type||'primary')+' border-0 show';
+    el.setAttribute('role','alert');
+    el.innerHTML = '<div class="d-flex"><div class="toast-body"><strong>'+esc(title||'Info')+
+      '</strong><br>'+esc(msg||'')+'</div><button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast" aria-label="Close"></button></div>';
+    host.appendChild(el);
+    setTimeout(()=> el.remove(), 3500);
+  };
 
+})();
 </script>
 
 </body>
