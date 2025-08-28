@@ -333,6 +333,17 @@
 .nadi-table td[data-col="remark"] .tca-time,
 .nadi-table td[data-col="remark"] .tca-staff { display:none !important; } /* never inside remark */
 
+
+/* === V6 Patch (Aug 28, 2025) — NADI final alignment & stability === */
+.nadi-table th[data-col="voucher"], .nadi-table td[data-col="voucher"] { text-align:center; vertical-align:middle; white-space:nowrap; }
+.nadi-table td[data-col="voucher"] .form-check { display:flex; align-items:center; justify-content:center; margin:0; }
+.nadi-table td[data-col="voucher"] .form-check-input { float:none; margin:0; }
+.nadi-table th[data-col="voucherDate"], .nadi-table td[data-col="voucherDate"] { display:none !important; } /* legacy hidden */
+.nadi-table td[data-col="remark"] .tca-pack,
+.nadi-table td[data-col="remark"] .tca-date,
+.nadi-table td[data-col="remark"] .tca-time,
+.nadi-table td[data-col="remark"] .tca-staff { display:none !important; } /* keep remark clean */
+
 </style>
 </head>
 <body>
@@ -4221,12 +4232,41 @@ function useSelectedSession(){
 </script>
 
 <script>
-// === V5 Patch (Aug 28, 2025): Voucher & Layak behaviors, clean Remark, preserve WA/Buang ===
+// === V6 Patch (Aug 28, 2025): Final NADI behavior (Voucher/Layak/Remark) + Autosave ===
 (function(){
   const table = document.querySelector('#nadi table.nadi-table, .nadi-table') || document.querySelector('.nadi-table');
   const tbody = document.getElementById('nadiContainer') || (table ? table.querySelector('tbody') : null);
   if (!table || !tbody) return;
 
+  // -------- Autosave for stability (keyed by Program Title + Date) --------
+  const getKey = () => {
+    const title = document.getElementById('nadiProgramTitle')?.value?.trim() || '(untitled)';
+    const date  = document.getElementById('nadiProgramDate')?.value?.trim() || '(nodate)';
+    return 'nadiDraft::'+title+'::'+date;
+  };
+  try {
+    const raw = localStorage.getItem(getKey());
+    if (raw) {
+      const { html } = JSON.parse(raw);
+      if (html && !tbody.dataset.restored) {
+        tbody.innerHTML = html;
+        tbody.dataset.restored = "1";
+      }
+    }
+  } catch(e){ console.warn('Draft restore skipped:', e); }
+  let saveTimer;
+  const scheduleSave = () => { clearTimeout(saveTimer); saveTimer = setTimeout(saveDraft, 400); };
+  const saveDraft = () => {
+    try { localStorage.setItem(getKey(), JSON.stringify({ html: tbody.innerHTML })); }
+    catch(e){ console.warn('Draft save failed:', e); }
+  };
+  tbody.addEventListener('input', scheduleSave, true);
+  tbody.addEventListener('change', scheduleSave, true);
+  ['nadiProgramTitle', 'nadiProgramDate'].forEach(id => {
+    const el = document.getElementById(id); if (el) el.addEventListener('change', scheduleSave);
+  });
+
+  // -------- Header mapping --------
   const ths = Array.from(table.querySelectorAll('thead tr th'));
   const norm = s => String(s||'').toLowerCase().replace(/\s+/g,' ').trim();
   const idx = {};
@@ -4242,14 +4282,17 @@ function useSelectedSession(){
   });
 
   function ensureCell(tr, i){
-    while (tr.children.length <= i) {
-      tr.appendChild(document.createElement('td'));
-    }
+    while (tr.children.length <= i) tr.appendChild(document.createElement('td'));
     return tr.children[i];
   }
 
+  function createCenteredCheckbox(cell){
+    cell.innerHTML = '<div class="form-check m-0 d-flex justify-content-center"><input type="checkbox" class="form-check-input"></div>';
+    return cell.querySelector('input[type="checkbox"]');
+  }
+
   function initRow(tr){
-    // Voucher checkbox cell
+    // Voucher
     if (idx.voucher != null) {
       const c = ensureCell(tr, idx.voucher);
       c.setAttribute('data-col','voucher');
@@ -4260,8 +4303,7 @@ function useSelectedSession(){
       if (wasChecked) cb.checked = true;
       cb.addEventListener('change', () => onAnyToggle(tr));
     }
-
-    // Layak / Tidak Layak cells
+    // Layak / Tidak Layak
     if (idx.layak != null) {
       const c = ensureCell(tr, idx.layak); c.setAttribute('data-col','layak');
       const cb = c.querySelector('input[type="checkbox"]') || createCenteredCheckbox(c);
@@ -4274,8 +4316,7 @@ function useSelectedSession(){
       cb.setAttribute('data-col','takLayak');
       cb.addEventListener('change', () => onAnyToggle(tr));
     }
-
-    // TCA & Staff inputs
+    // TCA & Staff
     if (idx.tcaStaff != null) {
       const c = ensureCell(tr, idx.tcaStaff);
       c.setAttribute('data-col','tcaStaff');
@@ -4285,31 +4326,19 @@ function useSelectedSession(){
             <div class="col-5"><input type="date" class="form-control form-control-sm tca-date" disabled></div>
             <div class="col-3"><input type="time" class="form-control form-control-sm tca-time" disabled></div>
             <div class="col-4"><input type="text" class="form-control form-control-sm tca-staff" placeholder="Staff" disabled></div>
-          </div>
-        `;
+          </div>`;
       }
     }
-
-    // Remark cell (ensure no TCA pack here)
+    // Remark: purge any TCA elements if present
     if (idx.remark != null) {
       const c = ensureCell(tr, idx.remark);
       c.setAttribute('data-col','remark');
       c.querySelectorAll('.tca-pack, .tca-date, .tca-time, .tca-staff').forEach(el => el.remove());
     }
-
-    // Actions cell: keep existing content (WA Report, Buang, etc.)
-    if (idx.actions != null) {
-      const c = ensureCell(tr, idx.actions);
-      c.setAttribute('data-col','actions');
-      // do NOT clear innerHTML. We'll only rename the primary "Daftar" button dynamically.
-    }
+    // Actions: keep original — no DOM wipe
+    if (idx.actions != null) ensureCell(tr, idx.actions).setAttribute('data-col','actions');
 
     onAnyToggle(tr, true);
-  }
-
-  function createCenteredCheckbox(cell){
-    cell.innerHTML = '<div class="form-check m-0 d-flex justify-content-center"><input type="checkbox" class="form-check-input"></div>';
-    return cell.querySelector('input[type="checkbox"]');
   }
 
   function onAnyToggle(tr, first=false){
@@ -4317,45 +4346,35 @@ function useSelectedSession(){
     const layakCb   = idx.layak!=null ? ensureCell(tr, idx.layak).querySelector('input[type="checkbox"][data-col="layak"]') : null;
     const takCb     = idx.takLayak!=null ? ensureCell(tr, idx.takLayak).querySelector('input[type="checkbox"][data-col="takLayak"]') : null;
 
+    // Exclusivity: one active only
+    if (voucherCb && voucherCb.checked) {
+      if (layakCb) layakCb.checked = false;
+      if (takCb) takCb.checked = false;
+    } else if (layakCb && layakCb.checked) {
+      if (voucherCb) voucherCb.checked = false;
+      if (takCb) takCb.checked = false;
+    } else if (takCb && takCb.checked) {
+      if (voucherCb) voucherCb.checked = false;
+      if (layakCb) layakCb.checked = false;
+    }
+
     const voucher = !!(voucherCb && voucherCb.checked);
     const layak   = !!(layakCb && layakCb.checked);
     const tidak   = !!(takCb && takCb.checked);
 
-    // Mutual exclusivity rules:
-    // - If voucher checked → uncheck layak & tidak
-    if (voucher) {
-      if (layakCb) layakCb.checked = false;
-      if (takCb) takCb.checked = false;
-    }
-    // - If layak checked → uncheck voucher & tidak
-    if (layak) {
-      if (voucherCb) voucherCb.checked = false;
-      if (takCb) takCb.checked = false;
-    }
-    // - If tidak checked → uncheck voucher & layak
-    if (tidak) {
-      if (voucherCb) voucherCb.checked = false;
-      if (layakCb) layakCb.checked = false;
-    }
-
-    // Recompute after exclusivity
-    const isVoucher = voucherCb && voucherCb.checked;
-    const isLayak   = layakCb && layakCb.checked;
-    const isTidak   = takCb && takCb.checked;
-
-    // Enable TCA & Staff inputs when voucher OR layak; disable when neither or "tidak layak" active
-    const enableTca = !!(isVoucher || isLayak);
+    // Enable TCA & Staff if voucher OR layak; disable if neither or "tidak layak"
+    const enableTca = voucher || layak;
     ['.tca-date','.tca-time','.tca-staff'].forEach(sel => {
       const el = tr.querySelector(sel);
       if (el) el.disabled = !enableTca;
     });
 
-    // Button renaming: only when voucher → "Daftar Voucher"; otherwise keep original ("Daftar")
+    // Button label: only when voucher → "Daftar Voucher"; otherwise keep original ("Daftar")
     const actions = idx.actions!=null ? ensureCell(tr, idx.actions) : tr.lastElementChild;
     if (actions) {
       const primaryBtn = pickPrimaryDaftar(actions);
       if (primaryBtn) {
-        if (isVoucher) {
+        if (voucher) {
           if (!primaryBtn.dataset.originalText) primaryBtn.dataset.originalText = (primaryBtn.textContent||'').trim();
           primaryBtn.textContent = 'Daftar Voucher';
           primaryBtn.dataset.voucher = "1";
@@ -4366,42 +4385,37 @@ function useSelectedSession(){
       }
     }
 
-    // Row flags
-    tr.dataset.voucherOnly = isVoucher ? "1" : "";
-    tr.style.backgroundColor = isVoucher ? 'rgba(52,152,219,.06)' : '';
+    tr.dataset.voucherOnly = voucher ? "1" : "";
+    tr.style.backgroundColor = voucher ? 'rgba(52,152,219,.06)' : '';
   }
 
   function pickPrimaryDaftar(actionsCell){
-    // Prefer an explicit [data-action="daftar"]
     let btn = actionsCell.querySelector('button[data-action="daftar"], a.btn[data-action="daftar"]');
     if (btn) return btn;
-    // Else a .btn-primary that is not WA/Buang
     const cands = Array.from(actionsCell.querySelectorAll('button.btn-primary, a.btn.btn-primary'));
     btn = cands.find(b => !/wa|report|buang|hapus|delete/i.test((b.textContent||'')));
     if (btn) return btn;
-    // Else any button whose text contains "Daftar"
     btn = Array.from(actionsCell.querySelectorAll('button, a.btn')).find(b => /daftar/i.test((b.textContent||'')));
     if (btn) return btn;
-    // Else fallback to first button (still preserve others)
     return actionsCell.querySelector('button, a.btn');
   }
 
-  // Intercept only Voucher submissions
+  // Intercept only voucher submissions; let original Layak handlers run untouched
   tbody.addEventListener('click', (ev) => {
     const btn = ev.target.closest('button, a.btn');
-    if (!btn || btn.dataset.voucher !== "1") return; // do not touch normal "Daftar" (Layak) nor WA/Buang
+    if (!btn || btn.dataset.voucher !== "1") return;
     const tr = btn.closest('tr');
     if (!tr) return;
-    try{
-      tr.dataset.excludeFromLayakSave = "1";
+    try {
+      tr.dataset.excludeFromLayakSave = "1"; // flag for backend handler if it checks
       pushToTcaCall(extractRow(tr));
-      toast('Berjaya','Pesakit dimasukkan ke senarai TCA Voucher untuk dihubungi.','success');
-    }catch(e){ console.warn(e); toast('Ralat','Gagal daftar voucher.','danger'); }
+      if (window.toast) toast('Berjaya','Pesakit dimasukkan ke senarai TCA Voucher untuk dihubungi.','success');
+    } catch(e) { console.warn(e); if (window.toast) toast('Ralat','Gagal daftar voucher.','danger'); }
     ev.stopPropagation();
     ev.preventDefault();
   }, true);
 
-  // Save All: route voucher rows only; layak rows kept for original handler
+  // "Simpan Aktiviti (Semua)" routes voucher rows only; Layak rows untouched
   const btnSaveAll = document.getElementById('btnNadiSaveActivity');
   if (btnSaveAll) {
     btnSaveAll.addEventListener('click', () => {
@@ -4414,7 +4428,7 @@ function useSelectedSession(){
     }, {capture:true});
   }
 
-  // Init current & future rows
+  // Initialize current and watch future rows
   Array.from(tbody.querySelectorAll('tr')).forEach(initRow);
   const obs = new MutationObserver(muts => {
     for (const m of muts) {
@@ -4428,7 +4442,7 @@ function useSelectedSession(){
   });
   obs.observe(tbody, { childList:true, subtree:true });
 
-  // Helpers for TCA Call
+  // Helpers
   function extractRow(tr){
     const get = sel => {
       const el = tr.querySelector(sel);
@@ -4444,10 +4458,8 @@ function useSelectedSession(){
     const tel  = get('td[data-col="telefon"] input, td[data-col="telefon"] .view-mode') || getNth(tr, 4);
     const almt = get('td[data-col="alamat"] textarea, td[data-col="alamat"] input, td[data-col="alamat"] .view-mode') || getNth(tr, 5);
 
-    return {
-      nama: nama, ic: ic, telefon: tel, alamat: almt,
-      tcaDate: get('.tca-date'), tcaTime: get('.tca-time'), staff: get('.tca-staff')
-    };
+    return { nama: nama, ic: ic, telefon: tel, alamat: almt,
+             tcaDate: get('.tca-date'), tcaTime: get('.tca-time'), staff: get('.tca-staff') };
   }
   function getNth(tr, i){
     const td = tr.children[i];
@@ -4476,8 +4488,7 @@ function useSelectedSession(){
         <td>${esc(rec.telefon)}</td>
         <td>${esc(rec.alamat)}</td>
         <td>${esc(rec.tcaDate)} ${esc(rec.tcaTime)}</td>
-        <td>Voucher</td>
-      `;
+        <td>Voucher</td>`;
       tb.appendChild(row);
     });
     const badge = document.getElementById('badgeTCA');
@@ -4488,6 +4499,12 @@ function useSelectedSession(){
       badge.style.display = count>0 ? 'inline-block' : 'none';
     }
   }
+
+  // Hide any "lihat semua (live)" ui
+  document.querySelectorAll('button, a').forEach(el=>{
+    const t = (el.textContent||'').toLowerCase();
+    if (t.includes('lihat semua') && t.includes('live')) el.style.display='none';
+  });
 
 })();</script>
 
