@@ -3951,9 +3951,7 @@ function useSelectedSession(){
         bmi: get('input[name="bmi"]')?.value || '',
         layak: get('input[name="layak"]')?.checked || false,
         takLayak: get('input[name="takLayak"]')?.checked || false,
-        voucher: get('input[name="voucher"]')?.checked || false,
-        voucherDate: get('input[name="voucherDate"]')?.value || '',
-        remark: get('input[name="remark"]')?.value || get('textarea[name="remark"]')?.value || '',
+        voucher: get('input[name="voucher"]')?.checked || false,        remark: get('input[name="remark"]')?.value || get('textarea[name="remark"]')?.value || '',
         tcaDate: get('input[name="tcaDate"]')?.value || '',
         tcaTime: get('input[name="tcaTime"]')?.value || '',
         tcaStaff: get('input[name="tcaStaff"]')?.value || ''
@@ -3990,7 +3988,7 @@ function useSelectedSession(){
         set('input[name="layak"]', r.layak);
         set('input[name="takLayak"]', r.takLayak);
         set('input[name="voucher"]', r.voucher);
-        set('input[name="voucherDate"]', r.voucherDate);
+        
         set('input[name="remark"]', r.remark);
         set('textarea[name="remark"]', r.remark);
         set('input[name="tcaDate"]', r.tcaDate);
@@ -4002,232 +4000,22 @@ function useSelectedSession(){
 
   // Tambah kolum voucher secara dinamik bagi baris baharu jika belum wujud
   function ensureVoucherColumns(){
-    document.querySelectorAll('#nadiContainer tr').forEach(tr=>{
-      if (tr.querySelector('input[name="voucher"]')) return; // sudah ada
-      const tdTakLayak = tr.querySelector('td[data-col="takLayak"]') || tr.children[13];
-      // Selepas kolum 'Tidak Layak' (index 13), sisip dua kolum
-      const voucherTd = document.createElement('td');
-      voucherTd.className = 'nadi-checkbox-cell';
-      voucherTd.innerHTML = '<input type="checkbox" name="voucher" />';
-      voucherTd.setAttribute('data-col','voucher');
-      const dateTd = document.createElement('td');
-      dateTd.className = 'nadi-input-cell';
-      dateTd.innerHTML = '<input type="date" name="voucherDate" class="form-control form-control-sm" disabled />';
-      dateTd.setAttribute('data-col','voucherDate');
-      // Sisip ke dalam tr selepas kolum tak layak
-      if (tdTakLayak && tdTakLayak.nextSibling) {
-        tr.insertBefore(voucherTd, tdTakLayak.nextSibling);
-        tr.insertBefore(dateTd, voucherTd.nextSibling);
-      } else {
-        tr.appendChild(voucherTd);
-        tr.appendChild(dateTd);
-      }
-    });
-  }
-
-  // Toggle enable/disable tarikh voucher ikut checkbox
-  document.addEventListener('change', function(e){
-    const el = e.target;
-    if (el && el.name === 'voucher') {
-      const tr = el.closest('tr');
-      const dateInput = tr?.querySelector('input[name="voucherDate"]');
-      if (dateInput) dateInput.disabled = !el.checked;
-      // Jika voucher dicentang, set takLayak true supaya tidak disimpan sebagai "layak"
-      const tak = tr?.querySelector('input[name="takLayak"]');
-      if (el.checked && tak) tak.checked = true;
-      saveNadiStateDebounced();
-    }
-    if (el && (el.matches('#nadiContainer input, #nadiContainer textarea'))) {
-      saveNadiStateDebounced();
-    }
-  }, true);
-
-  document.addEventListener('input', function(e){
-    const el = e.target;
-    if (el && el.closest('#nadiContainer')) saveNadiStateDebounced();
-  }, true);
-
-  // Panggil ensureVoucherColumns apabila baris ditambah (mutasi DOM)
-  const nadiContainer = document.getElementById('nadiContainer');
-  if (nadiContainer) {
-    const mo = new MutationObserver(()=>{ ensureVoucherColumns(); });
-    mo.observe(nadiContainer, {childList:true, subtree:false});
-  }
-
-  // Intercept Simpan Aktiviti: proses baris voucher → daftar sebagai TCA CALL (remark "Saringan kesihatan voucher")
-  document.addEventListener('click', async (e)=>{
-    const btn = e.target.closest('#btnNadiSaveActivity');
-    if (!btn) return;
-    // Kumpul baris voucher
-    const programDate = document.getElementById('nadiProgramDate')?.value || '';
-    const programTitle = document.getElementById('nadiProgramTitle')?.value || '';
-    const staff = (window.STAFF_EMAIL || document.getElementById('staffEmail')?.textContent || '').trim();
-    const voucherRows = [];
-    document.querySelectorAll('#nadiContainer tr').forEach(tr=>{
-      const voucher = tr.querySelector('input[name="voucher"]')?.checked;
-      if (!voucher) return;
-      const row = {
-        nama: tr.querySelector('input[name="nama"]')?.value || '',
-        ic: tr.querySelector('input[name="ic"]')?.value || '',
-        telefon: tr.querySelector('input[name="telefon"]')?.value || '',
-        alamat: tr.querySelector('input[name="alamat"]')?.value || '',
-        voucherDate: tr.querySelector('input[name="voucherDate"]')?.value || ''
-      };
-      if (row.nama || row.ic || row.telefon) voucherRows.append if exists
-      voucherRows.push(row);
-    });
-
-    if (voucherRows.length){
-      // Validasi tarikh voucher <= 30 hari dari tarikh program
-      function within30Days(pd, vd){
-        try{
-          if (!pd || !vd) return true;
-          const p = new Date(pd);
-          const v = new Date(vd);
-          const diff = (v - p) / (1000*60*60*24);
-          return diff >= 0 && diff <= 31;
-        }catch(_){ return true; }
-      }
-
-      const SCRIPT_URL = window.SCRIPT_URL;
-      const ID_TOKEN = window.ID_TOKEN;
-      for (const r of voucherRows){
-        if (!within30Days(programDate, r.voucherDate)) {
-          if (typeof toast === 'function') toast('Tarikh TCA voucher melebihi 1 bulan', r.nama || r.ic || r.telefon, 'warning');
-          continue;
-        }
-        // format masa default 09:00 jika tiada
-        const masa = '09:00';
-        // alamat + remark
-        const alamat = (r.alamat || '').trim();
-        const alamatWithRemark = (alamat ? alamat + ' — ' : '') + 'Saringan kesihatan voucher';
-        try{
-          const form = new URLSearchParams();
-          form.set('action','daftarPesakit');
-          form.set('id_token', ID_TOKEN || '');
-          form.set('namaPesakit', r.nama || 'Pesakit Voucher');
-          form.set('noIC', r.ic || '');
-          form.set('noTelefon', r.telefon || '');
-          form.set('alamat', alamatWithRemark);
-          form.set('namaStaff', staff || 'SYSTEM');
-          form.set('tarikhTCA', r.voucherDate || programDate || '');
-          form.set('masaTCA', masa);
-          const res = await fetch(SCRIPT_URL, { method:'POST', body: form });
-          const j = await res.json().catch(()=>({}));
-          if (j && j.status === 'success') {
-            if (typeof toast === 'function') toast('Berjaya', `Voucher TCA didaftarkan untuk ${r.nama || r.ic}`, 'success');
-          } else {
-            if (typeof toast === 'function') toast('Gagal daftar voucher', (j && (j.message||j.code)) || '-', 'danger');
-          }
-        }catch(err){
-          if (typeof toast === 'function') toast('Ralat', 'Tidak dapat daftar voucher', 'danger');
-        }
-      }
-
-      // Buang baris voucher dari jadual sebelum simpan aktiviti rasmi, supaya tidak dihitung sebagai "layak"
-      document.querySelectorAll('#nadiContainer tr').forEach(tr=>{
-        if (tr.querySelector('input[name="voucher"]')?.checked) tr.remove();
-      });
-      saveNadiState();
-    }
-    // Teruskan handler asal (jika ada) – kita tidak preventDefault
-  }, true);
-
-  // Restore autosave selepas halaman dimuat & pastikan kolum voucher wujud
-  window.addEventListener('load', ()=>{
-    ensureVoucherColumns();
-    restoreNadiState();
-  });
-
-  // ====== Sejarah Saringan ======
-  async function loadPrograms(){
-    const list = document.getElementById('programList');
-    if (!list) return;
-    list.innerHTML = '<div class="text-muted text-center p-3">Memuat program…</div>';
-    try{
-      const qs = new URLSearchParams({ action:'getNadiActivities', id_token: (window.ID_TOKEN||'') });
-      const res = await fetch(`${window.SCRIPT_URL}?${qs.toString()}`);
-      const j = await res.json();
-      if (!j || j.status!=='success') throw new Error(j && (j.message||j.code) || 'Gagal ambil program');
-      const data = Array.isArray(j.data) ? j.data : [];
-      list.innerHTML = data.map(item=>{
-        const title = (item.title || '(Tanpa tajuk)');
-        const date = (item.programDate || '');
-        const id = item.activityId || '';
-        const meta = `${title} — ${date}`;
-        return `<button class="list-group-item list-group-item-action" data-activity-id="${id}" data-meta="${meta.toLowerCase()}">
-          <div class="fw-semibold">${title}</div>
-          <div class="small text-muted">${date} &middot; ID: ${id}</div>
-        </button>`;
-      }).join('') || '<div class="text-muted text-center p-3">Tiada program.</div>';
-    }catch(e){
-      list.innerHTML = '<div class="text-danger text-center p-3">Gagal memuat program.</div>';
-    }
-  }
-
-  async function loadProgramDetail(activityId){
-    const tbody = document.getElementById('sejarahTable');
-    const titleLabel = document.getElementById('programTitleLabel');
-    const dateLabel = document.getElementById('programDateLabel');
-    if (!tbody) return;
-    tbody.innerHTML = '<tr><td colspan="13" class="text-center text-muted">Memuat data…</td></tr>';
-    try{
-      const qs = new URLSearchParams({ action:'getNadiActivityDetail', id: activityId, id_token: (window.ID_TOKEN||'') });
-      const res = await fetch(`${window.SCRIPT_URL}?${qs.toString()}`);
-      const j = await res.json();
-      if (!j || j.status!=='success') throw new Error(j && (j.message||j.code) || 'Gagal ambil detail');
-      const rows = Array.isArray(j.data) ? j.data : [];
-      if (!rows.length){ tbody.innerHTML = '<tr><td colspan="13" class="text-center text-muted">Tiada data.</td></tr>'; return; }
-      // Set tajuk & tarikh (kita tak dapat terus; ambil dari butang terpilih)
-      const btn = document.querySelector(`[data-activity-id="${activityId}"]`);
-      if (btn){
-        titleLabel.textContent = btn.querySelector('.fw-semibold')?.textContent || 'Maklumat Program';
-        dateLabel.textContent = btn.querySelector('.small')?.textContent.split('·')[0].trim() || '';
-      }
-      const q = (document.getElementById('sejarahSearch')?.value || '').toLowerCase();
-      const filtered = rows.filter(r=>{
-        const s = ((r.nama||'') + ' ' + (r.noIC||'') + ' ' + (r.noTelefon||'')).toLowerCase();
-        return !q || s.includes(q);
-      });
-      tbody.innerHTML = filtered.map((r, i)=>`
-        <tr>
-          <td>${i+1}</td><td>${r.nama||''}</td><td>${r.noIC||''}</td><td>${r.noTelefon||''}</td><td>${r.alamat||''}</td>
-          <td>${r.status||''}</td><td>${r.bp||''}</td><td>${r.pr||''}</td><td>${r.dxt||''}</td><td>${r.bmi||''}</td>
-          <td>${r.tcaDate||''} ${r.tcaTime||''}</td><td>${r.tcaStaff||''}</td><td>${r.remark||''}</td>
-        </tr>
-      `).join('') || '<tr><td colspan="13" class="text-center text-muted">Tiada padanan carian.</td></tr>';
-    }catch(e){
-      tbody.innerHTML = '<tr><td colspan="13" class="text-center text-danger">Ralat memuat maklumat.</td></tr>';
-    }
-  }
-
-  document.addEventListener('click', (e)=>{
-    const btn = e.target.closest('#btnSejarahReload');
-    if (btn) loadPrograms();
-    const item = e.target.closest('#programList .list-group-item');
-    if (item) loadProgramDetail(item.getAttribute('data-activity-id'));
-  });
-  document.addEventListener('input', (e)=>{
-    if (e.target && e.target.id==='programFilter'){
-      const q = e.target.value.toLowerCase();
-      document.querySelectorAll('#programList .list-group-item').forEach(b=>{
-        const meta = b.getAttribute('data-meta') || '';
-        b.style.display = meta.includes(q) ? '' : 'none';
-      });
-    }
-    if (e.target && e.target.id==='sejarahSearch'){
-      const current = document.querySelector('#programList .list-group-item.active') || document.querySelector('#programList .list-group-item');
-      if (current) loadProgramDetail(current.getAttribute('data-activity-id'));
+  document.querySelectorAll('#nadiContainer tr').forEach(tr=>{
+    if (tr.querySelector('input[name="voucher"]')) return; // sudah ada
+    const tdTakLayak = tr.querySelector('td[data-col="takLayak"]') || tr.children[13];
+    // Selepas kolum 'Tidak Layak' (index 13), sisip kolum checkbox voucher SAHAJA
+    const voucherTd = document.createElement('td');
+    voucherTd.className = 'nadi-checkbox-cell';
+    voucherTd.innerHTML = '<input type="checkbox" name="voucher" />';
+    voucherTd.setAttribute('data-col','voucher');
+    if (tdTakLayak && tdTakLayak.nextSibling) {
+      tr.insertBefore(voucherTd, tdTakLayak.nextSibling);
+    } else {
+      tr.appendChild(voucherTd);
     }
   });
-
-  // Auto muat bila navigasi ke #sejarah
-  window.addEventListener('hashchange', ()=>{
-    if (location.hash === '#sejarah'){ loadPrograms(); }
-  });
-  // Jika default ke sejarah
-  if (location.hash === '#sejarah'){ loadPrograms(); }
-})();
+}
+)();
 
 </script>
 
