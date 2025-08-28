@@ -313,6 +313,12 @@
 /* In case any stray voucherDate cells exist in existing rows, hide them: */
 .nadi-table th[data-col="voucherDate"], .nadi-table td[data-col="voucherDate"] { display:none !important; }
 
+
+    /* V3 strict alignment for voucher column + hide legacy voucherDate */
+    .nadi-table th[data-col="voucherDate"], .nadi-table td[data-col="voucherDate"] { display:none !important; }
+    .nadi-table td[data-col="voucher"], .nadi-table th[data-col="voucher"] { text-align:center; vertical-align:middle; width:120px; }
+    .nadi-table td[data-col="layak"], .nadi-table td[data-col="takLayak"] { text-align:center; vertical-align:middle; }
+    
 </style>
 </head>
 <body>
@@ -555,28 +561,25 @@
           <div class="nadi-scroll-container">
             <table class="nadi-table">
               <thead>
-  <tr>
-    <th style="width: 40px;">#</th>
-    <th style="min-width: 150px;">Nama Pesakit</th>
-    <th style="min-width: 120px;">No IC</th>
-    <th style="min-width: 80px;">Umur</th>
-    <th style="min-width: 120px;">Telefon</th>
-    <th style="min-width: 150px;">Alamat</th>
-    <th style="min-width: 80px;">BP</th>
-    <th style="min-width: 80px;">PR</th>
-    <th style="min-width: 120px;">DXT</th>
-    <th style="min-width: 80px;">Tinggi</th>
-    <th style="min-width: 80px;">Berat</th>
-    <th style="min-width: 80px;">BMI</th>
-    <th style="width: 80px;">Layak</th>
-    <th style="width: 100px;">Tidak Layak</th>
-    <th style="width: 120px;">TCA voucher</th>
-<!-- ⬇️ TAMBAH KOLUM BARU DI SINI -->
-    <th style="min-width: 160px;">Remark</th>
-    <!-- ⬆️ TAMBAH KOLUM BARU DI SINI -->
-    <th style="min-width: 200px;">TCA & Staff</th>
-    <th style="min-width: 180px;">Tindakan</th>
-  </tr>
+  <tr><th style="width: 40px;">#</th>
+<th style="min-width: 150px;">Nama Pesakit</th>
+<th style="min-width: 120px;">No IC</th>
+<th style="min-width: 80px;">Umur</th>
+<th style="min-width: 120px;">Telefon</th>
+<th style="min-width: 150px;">Alamat</th>
+<th style="min-width: 80px;">BP</th>
+<th style="min-width: 80px;">PR</th>
+<th style="min-width: 120px;">DXT</th>
+<th style="min-width: 80px;">Tinggi</th>
+<th style="min-width: 80px;">Berat</th>
+<th style="min-width: 80px;">BMI</th>
+<th style="width: 80px;">Layak</th>
+<th style="width: 100px;">Tidak Layak</th>
+<th style="width: 120px;">TCA voucher</th>
+<th style="min-width: 160px;">Remark</th>
+<th style="min-width: 200px;">TCA & Staff</th>
+<th style="min-width: 180px;">Tindakan</th>
+</tr>
 </thead>
               <tbody id="nadiContainer">
                 <!-- Rows will be added dynamically -->
@@ -2354,18 +2357,47 @@ function updateNadiSummary() {
   document.getElementById('nadiTakLayakCount').textContent = takLayakCount;
 }
 
-function addNadiRow(){
-  const container = document.getElementById('nadiContainer');
-  const id = 'n'+Date.now()+Math.random().toString(36).slice(2,6);
-  const row = document.createElement('tr');
-  row.className = 'nadi-row';
-  row.id = id;
 
-  nadiRowCounter++;
+function addNadiRow() {
+  const tbody = document.getElementById('nadiContainer');
+  if (!tbody) return;
 
-  row.innerHTML = `
-    <td class="text-center">
-      <div class="nadi-counter">${nadiRowCounter}</div>
+  const idx = tbody.querySelectorAll('tr').length + 1;
+  const tr = document.createElement('tr');
+  tr.innerHTML = `
+    <td data-col="index"><span class="nadi-counter">${idx}</span></td>
+    <td data-col="nama"     class="nadi-input-cell"><input class="form-control form-control-sm" placeholder="Nama"></td>
+    <td data-col="ic"       class="nadi-input-cell"><input class="form-control form-control-sm" placeholder="IC"></td>
+    <td data-col="umur"     class="nadi-input-cell" style="max-width:90px"><input class="form-control form-control-sm" type="number" min="0" placeholder="Umur"></td>
+    <td data-col="telefon"  class="nadi-input-cell"><input class="form-control form-control-sm" placeholder="Telefon"></td>
+    <td data-col="alamat"   class="nadi-input-cell"><input class="form-control form-control-sm" placeholder="Alamat"></td>
+    <td data-col="bp"       class="nadi-input-cell" style="max-width:120px"><input class="form-control form-control-sm" placeholder="cth 120/80"></td>
+    <td data-col="pr"       class="nadi-input-cell" style="max-width:100px"><input class="form-control form-control-sm" placeholder="denyutan"></td>
+    <td data-col="dxt"      class="nadi-input-cell"><input class="form-control form-control-sm" placeholder="DXT"></td>
+    <td data-col="tinggi"   class="nadi-input-cell"><input class="form-control form-control-sm" type="number" step="0.1" placeholder="cm"></td>
+    <td data-col="berat"    class="nadi-input-cell"><input class="form-control form-control-sm" type="number" step="0.1" placeholder="kg"></td>
+    <td data-col="bmi"      class="nadi-input-cell"><input class="form-control form-control-sm" type="number" step="0.1" placeholder="BMI"></td>
+    <td data-col="layak"    class="nadi-checkbox-cell"><input type="checkbox" data-col="layak" /></td>
+    <td data-col="takLayak" class="nadi-checkbox-cell"><input type="checkbox" data-col="takLayak" /></td>
+    <td data-col="voucher"  class="nadi-checkbox-cell"><input type="checkbox" data-col="voucher" title="TCA voucher" /></td>
+    <td data-col="remark"   class="nadi-input-cell"><input class="form-control form-control-sm" placeholder="Remark"></td>
+    <td data-col="tcaStaff">
+      <div class="tca-pack row g-1">
+        <div class="col-5"><input type="date" class="form-control form-control-sm tca-date" disabled></div>
+        <div class="col-3"><input type="time" class="form-control form-control-sm tca-time" disabled></div>
+        <div class="col-4"><input type="text"  class="form-control form-control-sm tca-staff" placeholder="Staff" disabled></div>
+      </div>
+    </td>
+    <td data-col="actions"  class="nadi-actions-cell">
+      <div class="btn-group btn-group-sm">
+        <button class="btn btn-primary" data-action="daftar"><i class="bi bi-check2-circle me-1"></i>Daftar</button>
+        <button class="btn btn-outline-danger" data-action="hapus"><i class="bi bi-trash3"></i></button>
+      </div>
+    </td>
+  `;
+  tbody.appendChild(tr);
+}
+</div>
     </td>
     <td class="nadi-input-cell">
       <div class="view-mode" onclick="editNadiCell(this)"></div>
@@ -4201,233 +4233,205 @@ function useSelectedSession(){
 </script>
 
 <script>
-// === V2 Patch (Aug 28, 2025): Voucher UX & Logic ===
-// Requirements covered:
-// - Keep only "TCA voucher" checkbox column (remove dedicated "Tarikh TCA (Voucher)" column)
-// - When "TCA voucher" checked in a row:
-//    * Open up inputs in "TCA & Staff" column (Tarikh TCA, Masa, Staff) for that row
-//    * Change row's action button text to "Daftar Voucher"
-//    * Ensure row is not saved to "Layak" list; instead it goes to "TCA Call" list
-// - When unchecked, disable/hide those inputs and revert button label to "Daftar"
-// - Align the checkbox cell neatly
-
+// === V3 Patch (Aug 28, 2025): NADI table alignment + Voucher strict behavior ===
 (function(){
   const nadiBody = document.getElementById('nadiContainer');
   if (!nadiBody) return;
 
-  // Utility helpers
-  function $(root, sel){ return (root || document).querySelector(sel); }
-  function $all(root, sel){ return Array.from((root || document).querySelectorAll(sel)); }
-  const esc = (s) => String(s||'').replace(/[&<>"']/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[m]));
+  // Apply on existing rows
+  Array.from(nadiBody.querySelectorAll('tr')).forEach(initRow);
 
-  // Attach a MutationObserver to post-process any new rows for structure/attributes
-  const obs = new MutationObserver(muts => {
-    for (const m of muts) {
-      m.addedNodes && m.addedNodes.forEach(node => {
-        if (node.nodeType === 1) {
-          if (node.tagName === 'TR') initRow(node);
-          // Also check nested rows
-          node.querySelectorAll && node.querySelectorAll('tr').forEach(initRow);
-        }
-      });
-    }
+  // Observe new rows
+  const mo = new MutationObserver(muts => {
+    muts.forEach(m => m.addedNodes && m.addedNodes.forEach(node => {
+      if (node.nodeType === 1 && node.tagName === 'TR') initRow(node);
+    }));
   });
-  obs.observe(nadiBody, { childList:true, subtree:true });
-
-  // Initialize existing rows
-  $all(nadiBody, 'tr').forEach(initRow);
+  mo.observe(nadiBody, { childList:true });
 
   function initRow(tr){
-    // 1) Ensure voucher checkbox cell is aligned
-    const voucherCell = tr.querySelector('td[data-col="voucher"]') || tr.children.item(14);
-    if (voucherCell) voucherCell.classList.add('nadi-checkbox-cell');
-
-    // 2) Ensure "TCA & Staff" column has the 3 inputs (date, time, staff) – hidden/disabled by default
-    let tcaCell = tr.querySelector('td[data-col="tcaStaff"]');
-    if (!tcaCell) {
-      // Try to guess by header index (based on provided header, tca&staff is column 17 / index 16 zero-based)
-      tcaCell = tr.children.item(16);
-      if (tcaCell) tcaCell.setAttribute('data-col', 'tcaStaff');
+    // Enforce data-col order & classes for alignment
+    const cols = [
+      'index','nama','ic','umur','telefon','alamat','bp','pr','dxt','tinggi','berat','bmi',
+      'layak','takLayak','voucher','remark','tcaStaff','actions'
+    ];
+    const tds = tr.children;
+    for (let i=0;i<Math.min(cols.length, tds.length); i++){
+      tds[i].setAttribute('data-col', cols[i]);
+      if (cols[i]==='voucher' || cols[i]==='layak' || cols[i]==='takLayak') {
+        tds[i].classList.add('nadi-checkbox-cell');
+      }
     }
-    if (tcaCell && !tcaCell.querySelector('.tca-pack')) {
-      tcaCell.innerHTML = `
-        <div class="tca-pack row g-1">
-          <div class="col-5"><input type="date" class="form-control form-control-sm tca-date" disabled></div>
-          <div class="col-3"><input type="time" class="form-control form-control-sm tca-time" disabled></div>
-          <div class="col-4"><input type="text" class="form-control form-control-sm tca-staff" placeholder="Staff" disabled></div>
-        </div>
-      `;
+    // Guarantee voucher checkbox exists & is centered
+    let voucherCb = tr.querySelector('td[data-col="voucher"] input[type="checkbox"][data-col="voucher"]');
+    if (!voucherCb) {
+      const vcell = tr.querySelector('td[data-col="voucher"]') || tr.children[14];
+      if (vcell && !vcell.querySelector('input[type="checkbox"]')) {
+        vcell.innerHTML = '<input type="checkbox" data-col="voucher" title="TCA voucher">';
+      }
+      voucherCb = vcell ? vcell.querySelector('input[type="checkbox"][data-col="voucher"]') : null;
     }
 
-    // 3) Hook the per-row voucher checkbox toggle
-    const voucherCb = tr.querySelector('input[type="checkbox"][data-col="voucher"]') ||
-                      tr.querySelector('td[data-col="voucher"] input[type="checkbox"]');
+    // Ensure TCA & Staff pack exists
+    let pack = tr.querySelector('td[data-col="tcaStaff"] .tca-pack');
+    if (!pack) {
+      const tcaCell = tr.querySelector('td[data-col="tcaStaff"]') || tr.children[16];
+      if (tcaCell) {
+        tcaCell.innerHTML = `
+          <div class="tca-pack row g-1">
+            <div class="col-5"><input type="date" class="form-control form-control-sm tca-date" disabled></div>
+            <div class="col-3"><input type="time" class="form-control form-control-sm tca-time" disabled></div>
+            <div class="col-4"><input type="text" class="form-control form-control-sm tca-staff" placeholder="Staff" disabled></div>
+          </div>`;
+      }
+      pack = tr.querySelector('.tca-pack');
+    }
+
+    // Hook voucher toggle
     if (voucherCb) {
       voucherCb.addEventListener('change', () => onVoucherToggle(tr, voucherCb.checked));
-      // Ensure initial state applied on first paint
       onVoucherToggle(tr, voucherCb.checked, true);
+    }
+
+    // Ensure action button has data-action="daftar"
+    const actionCell = tr.querySelector('td[data-col="actions"]') || tr.children[17];
+    if (actionCell) {
+      const primary = actionCell.querySelector('button.btn-primary');
+      if (primary && !primary.hasAttribute('data-action')) primary.setAttribute('data-action','daftar');
     }
   }
 
-  function onVoucherToggle(tr, isChecked, firstPaint=false){
-    // toggle dataset & UI
-    tr.dataset.voucherOnly = isChecked ? "1" : "";
-    // Enable/disable the TCA & Staff inputs
+  function onVoucherToggle(tr, checked, firstPaint){
     const dateInp  = tr.querySelector('.tca-pack .tca-date');
     const timeInp  = tr.querySelector('.tca-pack .tca-time');
     const staffInp = tr.querySelector('.tca-pack .tca-staff');
-    [dateInp, timeInp, staffInp].forEach(inp => { if (inp) inp.disabled = !isChecked; });
+    [dateInp, timeInp, staffInp].forEach(i => i && (i.disabled = !checked));
 
-    // Change the primary action button to "Daftar Voucher" (fallback by text match)
-    const actionCell = tr.querySelector('td:last-child') || tr.children.item(tr.children.length-1);
-    if (actionCell) {
-      let primaryBtn = actionCell.querySelector('button.btn-primary, button[data-action="daftar"]') || actionCell.querySelector('button');
-      if (primaryBtn) {
-        if (isChecked) {
-          if (!primaryBtn.dataset.originalText) primaryBtn.dataset.originalText = (primaryBtn.textContent || '').trim();
-          primaryBtn.textContent = 'Daftar Voucher';
-          primaryBtn.dataset.voucher = "1";
-        } else {
-          const orig = primaryBtn.dataset.originalText || 'Daftar';
-          primaryBtn.textContent = orig;
-          primaryBtn.dataset.voucher = "";
-        }
+    const daftarBtn = tr.querySelector('td[data-col="actions"] [data-action="daftar"]') ||
+                      tr.querySelector('td:last-child [data-action="daftar"]') ||
+                      tr.querySelector('td:last-child .btn-primary');
+    if (daftarBtn) {
+      if (checked) {
+        if (!daftarBtn.dataset.originalText) daftarBtn.dataset.originalText = (daftarBtn.textContent || '').trim();
+        daftarBtn.textContent = 'Daftar Voucher';
+        daftarBtn.dataset.voucher = "1";
+      } else {
+        daftarBtn.textContent = daftarBtn.dataset.originalText || 'Daftar';
+        daftarBtn.dataset.voucher = "";
       }
     }
 
-    // If voucher is selected, uncheck Layak/Tidak Layak to avoid confusion
-    const layakCb = tr.querySelector('input[type="checkbox"][data-col="layak"]');
-    const takCb   = tr.querySelector('input[type="checkbox"][data-col="takLayak"]');
-    if (isChecked) {
-      if (layakCb) layakCb.checked = false;
-      if (takCb) takCb.checked = false;
+    // Voucher overrides Layak/Tak Layak
+    if (checked) {
+      const layak = tr.querySelector('input[type="checkbox"][data-col="layak"]');
+      const tak   = tr.querySelector('input[type="checkbox"][data-col="takLayak"]');
+      if (layak) layak.checked = false;
+      if (tak)   tak.checked = false;
     }
 
-    // Cosmetic: highlight row when voucher
-    tr.style.backgroundColor = isChecked ? 'rgba(52,152,219,.06)' : '';
+    tr.dataset.voucherOnly = checked ? "1" : "";
+    tr.style.backgroundColor = checked ? 'rgba(52,152,219,.06)' : '';
   }
 
-  // 4) Intercept per-row "Daftar Voucher" clicks → push to TCA Call & prevent Layak save
+  // Intercept row action "Daftar Voucher" to route to TCA Call only
   nadiBody.addEventListener('click', (ev) => {
     const btn = ev.target.closest('button');
     if (!btn) return;
     if (btn.dataset && btn.dataset.voucher === "1") {
       const tr = btn.closest('tr');
       if (!tr) return;
-      try {
-        // Mark to exclude from Layak
-        tr.dataset.excludeFromLayakSave = "1";
-        // Extract data to push into TCA Call
-        const rec = extractRow(tr);
-        pushToTcaCall(rec);
-        toast && toast('Berjaya', 'Pesakit dimasukkan ke senarai TCA Voucher untuk dihubungi.', 'success');
-      } catch(e){
-        console.warn('Gagal daftar voucher:', e);
-        toast && toast('Ralat', 'Gagal daftar voucher. Sila cuba lagi.', 'danger');
-      }
-      // Prevent other handlers (if any) from also saving this as "Layak"
-      ev.stopPropagation();
-      ev.preventDefault();
+      tr.dataset.excludeFromLayakSave = "1";
+      const rec = extractRow(tr);
+      pushToTcaCall(rec);
+      showToast('Berjaya','Pesakit dimasukkan ke senarai TCA Voucher untuk dihubungi.','success');
+      ev.stopPropagation(); ev.preventDefault();
     }
   }, true);
 
-  // 5) Also hook "Simpan Aktiviti (Semua)" to route voucher rows to TCA Call
+  // When saving all, route voucher rows
   const btnSaveAll = document.getElementById('btnNadiSaveActivity');
   if (btnSaveAll) {
-    btnSaveAll.addEventListener('click', (ev) => {
-      try {
-        const rows = Array.from(nadiBody.querySelectorAll('tr'));
-        const voucherRows = rows.filter(r => r.dataset.voucherOnly === "1");
-        voucherRows.forEach(r => {
-          r.dataset.excludeFromLayakSave = "1";
-          const rec = extractRow(r);
+    btnSaveAll.addEventListener('click', () => {
+      Array.from(nadiBody.querySelectorAll('tr')).forEach(tr => {
+        if (tr.dataset.voucherOnly === "1") {
+          tr.dataset.excludeFromLayakSave = "1";
+          const rec = extractRow(tr);
           pushToTcaCall(rec);
-        });
-      } catch (e) {
-        console.warn('Voucher routing on Save All failed:', e);
-      }
-      // Do not block original handler; we only ensure voucher excluded from Layak
-    }, { capture:true });
+        }
+      });
+    }, {capture:true});
   }
 
-  // Helpers
   function extractRow(tr){
-    const val = (sel) => {
+    const get = (sel) => {
       const el = tr.querySelector(sel);
       if (!el) return '';
-      if (el.tagName === 'INPUT' || el.tagName === 'TEXTAREA' || el.tagName === 'SELECT') {
+      if (/INPUT|TEXTAREA|SELECT/.test(el.tagName)) {
         if (el.type === 'checkbox') return el.checked ? '1' : '';
         return el.value || '';
       }
       return el.textContent.trim();
     };
     return {
-      nama:    val('td[data-col="nama"] input, td[data-col="nama"] .view-mode, td:nth-child(2) input, td:nth-child(2) .view-mode'),
-      ic:      val('td[data-col="ic"] input, td:nth-child(3) input'),
-      telefon: val('td[data-col="telefon"] input, td:nth-child(5) input'),
-      alamat:  val('td[data-col="alamat"] input, td:nth-child(6) input'),
-      tcaDate: val('.tca-pack .tca-date'),
-      tcaTime: val('.tca-pack .tca-time'),
-      staff:   val('.tca-pack .tca-staff')
+      nama:    get('td[data-col="nama"] input'),
+      ic:      get('td[data-col="ic"] input'),
+      telefon: get('td[data-col="telefon"] input'),
+      alamat:  get('td[data-col="alamat"] input'),
+      tcaDate: get('.tca-pack .tca-date'),
+      tcaTime: get('.tca-pack .tca-time'),
+      staff:   get('.tca-pack .tca-staff')
     };
   }
 
   function pushToTcaCall(rec){
-    // Fill to TCA Call table on Dashboard and TCA Call page (front-end fallback)
-    const targets = [
-      document.getElementById('tcaCallTable'),
-      document.getElementById('tcaCallList')
-    ].filter(Boolean);
-
+    const targets = [document.getElementById('tcaCallTable'), document.getElementById('tcaCallList')].filter(Boolean);
     targets.forEach(t => {
       const tbody = t.tagName.toLowerCase()==='tbody' ? t : t.querySelector('tbody');
       if (!tbody) return;
-      // remove placeholder rows
+      // remove placeholder
       Array.from(tbody.querySelectorAll('tr')).forEach(r => {
-        if (r.children.length < 3 || /Memuat data/i.test(r.textContent)) r.remove();
+        if (r.children.length <= 1 || /Memuat data/i.test(r.textContent)) r.remove();
       });
       const tr = document.createElement('tr');
       tr.innerHTML = `
-        <td>${esc(rec.nama)}</td>
-        <td>${esc(rec.ic)}</td>
-        <td>${esc(rec.telefon)}</td>
-        <td>${esc(rec.alamat)}</td>
-        <td>${esc(rec.tcaDate)} ${esc(rec.tcaTime)}</td>
-        <td>Voucher</td>
-      `;
+        <td>${escapeHtml(rec.nama)}</td>
+        <td>${escapeHtml(rec.ic)}</td>
+        <td>${escapeHtml(rec.telefon)}</td>
+        <td>${escapeHtml(rec.alamat)}</td>
+        <td>${escapeHtml((rec.tcaDate||'') + (rec.tcaTime ? ' ' + rec.tcaTime : ''))}</td>
+        <td>Voucher</td>`;
       tbody.appendChild(tr);
     });
 
-    // Update badges if exist
     const badge = document.getElementById('badgeTCA');
     if (badge) {
-      const lists = [document.getElementById('tcaCallTable'), document.getElementById('tcaCallList')].filter(Boolean);
-      const count = lists.reduce((acc, tbl)=>{
-        const tb = tbl.tagName.toLowerCase()==='tbody' ? tbl : tbl.querySelector('tbody');
-        if (!tb) return acc;
-        return acc + tb.querySelectorAll('tr').length;
-      }, 0);
+      const list = document.getElementById('tcaCallList');
+      const tb = list ? (list.tagName.toLowerCase()==='tbody' ? list : list.querySelector('tbody')) : null;
+      const count = tb ? tb.querySelectorAll('tr').length : 0;
       badge.textContent = String(count);
       badge.style.display = count>0 ? 'inline-block' : 'none';
     }
   }
 
-  // Small toast helper if not present
-  window.toast = window.toast || function(title, msg, type){
+  function showToast(title, msg, type){
     const host = document.getElementById('toastContainer');
     if (!host) return alert((title?title+': ':'')+msg);
-    const id = 't'+Date.now();
     const el = document.createElement('div');
     el.className = 'toast align-items-center text-bg-'+(type||'primary')+' border-0 show';
     el.setAttribute('role','alert');
-    el.innerHTML = '<div class="d-flex"><div class="toast-body"><strong>'+esc(title||'Info')+
-      '</strong><br>'+esc(msg||'')+'</div><button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast" aria-label="Close"></button></div>';
+    el.innerHTML = '<div class="d-flex"><div class="toast-body"><strong>'+escapeHtml(title||'Info')+'</strong><br>'+escapeHtml(msg||'')+'</div><button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast" aria-label="Close"></button></div>';
     host.appendChild(el);
-    setTimeout(()=> el.remove(), 3500);
-  };
+    setTimeout(()=> el.remove(), 3200);
+  }
 
+  function escapeHtml(s){
+    return String(s||'').replace(/[&<>"']/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'}[m]));
+  }
 })();
-</script>
+
+
+
+<script>(function(){Array.from(document.querySelectorAll('button,a')).forEach(el=>{const t=(el.textContent||'').toLowerCase(); if(t.includes('lihat semua')&&t.includes('live')) el.style.display='none';});})();</script>
 
 </body>
 </html>
