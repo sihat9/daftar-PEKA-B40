@@ -296,6 +296,10 @@
   .card{ background:#ffffff; }
 
 
+  /* Toolbar spacing for NADI buttons */
+  .nadi-toolbar .btn { margin: 2px; }
+
+
 /* === NADI program bar tidy === */
 #nadiProgramBar .form-label { font-weight: 600; }
 #nadiProgramBar .form-text { margin-top: 4px; }
@@ -354,9 +358,9 @@
           <li class="nav-item position-relative">
             <a class="nav-link" href="#nadi"><i class="bi bi-clipboard2-pulse"></i> Program PEKA B40 bersama NADI</a>
           </li>
-<li class="nav-item position-relative">
-  <a class="nav-link" href="#sejarah"><i class="bi bi-clock-history"></i> Lihat Sejarah Saringan</a>
-</li>
+          <li class="nav-item position-relative">
+            <a class="nav-link" href="#sejarah"><i class="bi bi-clock-history"></i> Lihat Sejarah Saringan</a>
+          </li>
           <li class="nav-item position-relative">
             <a class="nav-link" href="#daftar-peka"><i class="fas fa-user-plus"></i> Daftar Peka</a>
           </li>
@@ -539,11 +543,27 @@
     </div>
   </div>
 </div>
-<div class="col-md-5 text-md-end">
+  <div>
+    <label class="form-label mb-1">Tarikh Program</label>
+    <input id="nadiProgramDate"
+      <!-- Live Session Picker (baru) -->
+      <div class="row g-2 align-items-center mb-3" id="liveSessionPickerRow">
+        <div class="col-md-7">
+          <label class="form-label">Pilih Sesi (Live) — hari yang sama</label>
+          <div class="input-group">
+            <select id="nadiSessionSelect" class="form-select">
+              <option value="">(Memuat senarai sesi…)</option>
+            </select>
+            <button class="btn btn-outline-secondary" type="button" id="btnRefreshSessions"><i class="fa-solid fa-rotate-right"></i> Segar</button>
+            <button class="btn btn-primary" type="button" id="btnUseSession"><i class="fa-solid fa-link"></i> Guna</button>
+          </div>
+          <div class="form-text">Sesi ditentukan oleh <b>Tajuk Program</b> + <b>Tarikh</b>. Guna pilihan ini untuk kongsi jadual antara laptop A & B.</div>
+        </div>
+        <div class="col-md-5 text-md-end">
           <div class="small text-muted">Sesi aktif: <span id="liveSessionLabel" class="fw-semibold">-</span></div>
         </div>
       </div>
-<div type="date" class="form-control form-control-sm">
+ type="date" class="form-control form-control-sm">
   </div>
   <div class="ms-auto d-flex gap-2">
     <button id="btnNadiSaveActivity" class="btn btn-sm btn-primary">
@@ -571,6 +591,8 @@
     <th style="min-width: 80px;">BMI</th>
     <th style="width: 80px;">Layak</th>
     <th style="width: 100px;">Tidak Layak</th>
+    <th style="width: 120px;">TCA voucher</th>
+    <th style="min-width: 160px;">Tarikh TCA (Voucher)</th>
     <!-- ⬇️ TAMBAH KOLUM BARU DI SINI -->
     <th style="min-width: 160px;">Remark</th>
     <!-- ⬆️ TAMBAH KOLUM BARU DI SINI -->
@@ -858,8 +880,8 @@
         </div>
       </div>
     </section>
-    
-</main>
+
+  </main>
 
   <!-- Modal Re-TCA -->
   <div class="modal fade" id="retcaModal" tabindex="-1" aria-hidden="true">
@@ -3939,6 +3961,7 @@ function useSelectedSession(){
       if(!raw) return;
       const rows = JSON.parse(raw);
       if(!Array.isArray(rows) || !rows.length) return;
+      // Jika ada fungsi addNadiRow sedia ada, guna ia untuk tambah baris, kemudian isi nilai
       rows.forEach((r, idx)=>{
         if (typeof window.addNadiRow === 'function') window.addNadiRow();
         const tr = document.querySelectorAll('#nadiContainer tr')[idx];
@@ -3968,24 +3991,23 @@ function useSelectedSession(){
     }catch(e){ console.warn('Gagal restore autosave:', e); }
   }
 
-  // Sisip kolum voucher pada baris yang belum ada
+  // Tambah kolum voucher secara dinamik bagi baris baharu jika belum wujud
   function ensureVoucherColumns(){
     document.querySelectorAll('#nadiContainer tr').forEach(tr=>{
-      if (tr.querySelector('input[name="voucher"]')) return;
-      const cells = tr.querySelectorAll('td');
-      // Cari kolum "Tidak Layak" berdasarkan input name
-      let takCell = tr.querySelector('input[name="takLayak"]');
-      takCell = takCell ? takCell.closest('td') : null;
+      if (tr.querySelector('input[name="voucher"]')) return; // sudah ada
+      const tdTakLayak = tr.querySelector('td[data-col="takLayak"]') || tr.children[13];
+      // Selepas kolum 'Tidak Layak' (index 13), sisip dua kolum
       const voucherTd = document.createElement('td');
       voucherTd.className = 'nadi-checkbox-cell';
-      voucherTd.setAttribute('data-col','voucher');
       voucherTd.innerHTML = '<input type="checkbox" name="voucher" />';
+      voucherTd.setAttribute('data-col','voucher');
       const dateTd = document.createElement('td');
       dateTd.className = 'nadi-input-cell';
-      dateTd.setAttribute('data-col','voucherDate');
       dateTd.innerHTML = '<input type="date" name="voucherDate" class="form-control form-control-sm" disabled />';
-      if (takCell && takCell.nextSibling) {
-        tr.insertBefore(voucherTd, takCell.nextSibling);
+      dateTd.setAttribute('data-col','voucherDate');
+      // Sisip ke dalam tr selepas kolum tak layak
+      if (tdTakLayak && tdTakLayak.nextSibling) {
+        tr.insertBefore(voucherTd, tdTakLayak.nextSibling);
         tr.insertBefore(dateTd, voucherTd.nextSibling);
       } else {
         tr.appendChild(voucherTd);
@@ -3994,13 +4016,14 @@ function useSelectedSession(){
     });
   }
 
-  // Toggle date bila voucher dicentang
+  // Toggle enable/disable tarikh voucher ikut checkbox
   document.addEventListener('change', function(e){
     const el = e.target;
     if (el && el.name === 'voucher') {
       const tr = el.closest('tr');
       const dateInput = tr?.querySelector('input[name="voucherDate"]');
       if (dateInput) dateInput.disabled = !el.checked;
+      // Jika voucher dicentang, set takLayak true supaya tidak disimpan sebagai "layak"
       const tak = tr?.querySelector('input[name="takLayak"]');
       if (el.checked && tak) tak.checked = true;
       saveNadiStateDebounced();
@@ -4009,47 +4032,24 @@ function useSelectedSession(){
       saveNadiStateDebounced();
     }
   }, true);
+
   document.addEventListener('input', function(e){
-    if (e.target && e.target.closest('#nadiContainer')) saveNadiStateDebounced();
+    const el = e.target;
+    if (el && el.closest('#nadiContainer')) saveNadiStateDebounced();
   }, true);
 
-  // Live session helpers (labels & refresh)
-  async function refreshSessions(){
-    if (!window.SCRIPT_URL) return;
-    try{
-      const today = document.getElementById('nadiProgramDate')?.value || '';
-      const qs = new URLSearchParams({ action:'listNadiSessionsLive', date: today, id_token: (window.ID_TOKEN||'') });
-      const res = await fetch(`${window.SCRIPT_URL}?${qs.toString()}`);
-      const j = await res.json();
-      const sel = document.getElementById('nadiSessionSelect');
-      const label = document.getElementById('liveSessionLabel');
-      if (!sel || !label) return;
-      sel.innerHTML = '<option value="">(Pilih sesi live untuk hari ini)</option>';
-      const sessions = (j && j.sessions) || (j && j.data) || [];
-      sessions.forEach(s=>{
-        const opt = document.createElement('option');
-        opt.value = s.sessionId || '';
-        opt.textContent = `${s.title||''} — ${s.programDate||''}`;
-        sel.appendChild(opt);
-      });
-      label.textContent = '-';
-    }catch(e){ /* ignore */ }
+  // Panggil ensureVoucherColumns apabila baris ditambah (mutasi DOM)
+  const nadiContainer = document.getElementById('nadiContainer');
+  if (nadiContainer) {
+    const mo = new MutationObserver(()=>{ ensureVoucherColumns(); });
+    mo.observe(nadiContainer, {childList:true, subtree:false});
   }
-  document.addEventListener('click', (e)=>{
-    const r = e.target.closest('#btnRefreshSessions');
-    if (r) refreshSessions();
-    const u = e.target.closest('#btnUseSession');
-    if (u){
-      const sel = document.getElementById('nadiSessionSelect');
-      const label = document.getElementById('liveSessionLabel');
-      if (sel && label) label.textContent = sel.selectedOptions[0]?.textContent || '-';
-    }
-  });
 
-  // Intercept Simpan Aktiviti → proses baris voucher kepada daftarPesakit (TCA CALL) + remark
+  // Intercept Simpan Aktiviti: proses baris voucher → daftar sebagai TCA CALL (remark "Saringan kesihatan voucher")
   document.addEventListener('click', async (e)=>{
     const btn = e.target.closest('#btnNadiSaveActivity');
     if (!btn) return;
+    // Kumpul baris voucher
     const programDate = document.getElementById('nadiProgramDate')?.value || '';
     const programTitle = document.getElementById('nadiProgramTitle')?.value || '';
     const staff = (window.STAFF_EMAIL || document.getElementById('staffEmail')?.textContent || '').trim();
@@ -4068,17 +4068,18 @@ function useSelectedSession(){
       voucherRows.push(row);
     });
 
-    function within30Days(pd, vd){
-      try{
-        if (!pd || !vd) return true;
-        const p = new Date(pd);
-        const v = new Date(vd);
-        const diff = (v - p) / (1000*60*60*24);
-        return diff >= 0 && diff <= 31;
-      }catch(_){ return true; }
-    }
-
     if (voucherRows.length){
+      // Validasi tarikh voucher <= 30 hari dari tarikh program
+      function within30Days(pd, vd){
+        try{
+          if (!pd || !vd) return true;
+          const p = new Date(pd);
+          const v = new Date(vd);
+          const diff = (v - p) / (1000*60*60*24);
+          return diff >= 0 && diff <= 31;
+        }catch(_){ return true; }
+      }
+
       const SCRIPT_URL = window.SCRIPT_URL;
       const ID_TOKEN = window.ID_TOKEN;
       for (const r of voucherRows){
@@ -4086,7 +4087,9 @@ function useSelectedSession(){
           if (typeof toast === 'function') toast('Tarikh TCA voucher melebihi 1 bulan', r.nama || r.ic || r.telefon, 'warning');
           continue;
         }
+        // format masa default 09:00 jika tiada
         const masa = '09:00';
+        // alamat + remark
         const alamat = (r.alamat || '').trim();
         const alamatWithRemark = (alamat ? alamat + ' — ' : '') + 'Saringan kesihatan voucher';
         try{
@@ -4111,21 +4114,20 @@ function useSelectedSession(){
           if (typeof toast === 'function') toast('Ralat', 'Tidak dapat daftar voucher', 'danger');
         }
       }
-      // Buang baris voucher dari jadual supaya tidak dikira sebagai Layak
+
+      // Buang baris voucher dari jadual sebelum simpan aktiviti rasmi, supaya tidak dihitung sebagai "layak"
       document.querySelectorAll('#nadiContainer tr').forEach(tr=>{
         if (tr.querySelector('input[name="voucher"]')?.checked) tr.remove();
       });
-      localStorage.removeItem(NADI_KEY);
       saveNadiState();
     }
+    // Teruskan handler asal (jika ada) – kita tidak preventDefault
   }, true);
 
-  // Restore + prepare UI on load
+  // Restore autosave selepas halaman dimuat & pastikan kolum voucher wujud
   window.addEventListener('load', ()=>{
     ensureVoucherColumns();
     restoreNadiState();
-    // auto refresh sessions if on NADI section
-    refreshSessions();
   });
 
   // ====== Sejarah Saringan ======
@@ -4137,7 +4139,8 @@ function useSelectedSession(){
       const qs = new URLSearchParams({ action:'getNadiActivities', id_token: (window.ID_TOKEN||'') });
       const res = await fetch(`${window.SCRIPT_URL}?${qs.toString()}`);
       const j = await res.json();
-      const data = (j && j.status==='success' && Array.isArray(j.data)) ? j.data : [];
+      if (!j || j.status!=='success') throw new Error(j && (j.message||j.code) || 'Gagal ambil program');
+      const data = Array.isArray(j.data) ? j.data : [];
       list.innerHTML = data.map(item=>{
         const title = (item.title || '(Tanpa tajuk)');
         const date = (item.programDate || '');
@@ -4152,6 +4155,7 @@ function useSelectedSession(){
       list.innerHTML = '<div class="text-danger text-center p-3">Gagal memuat program.</div>';
     }
   }
+
   async function loadProgramDetail(activityId){
     const tbody = document.getElementById('sejarahTable');
     const titleLabel = document.getElementById('programTitleLabel');
@@ -4165,6 +4169,7 @@ function useSelectedSession(){
       if (!j || j.status!=='success') throw new Error(j && (j.message||j.code) || 'Gagal ambil detail');
       const rows = Array.isArray(j.data) ? j.data : [];
       if (!rows.length){ tbody.innerHTML = '<tr><td colspan="13" class="text-center text-muted">Tiada data.</td></tr>'; return; }
+      // Set tajuk & tarikh (kita tak dapat terus; ambil dari butang terpilih)
       const btn = document.querySelector(`[data-activity-id="${activityId}"]`);
       if (btn){
         titleLabel.textContent = btn.querySelector('.fw-semibold')?.textContent || 'Maklumat Program';
@@ -4186,6 +4191,7 @@ function useSelectedSession(){
       tbody.innerHTML = '<tr><td colspan="13" class="text-center text-danger">Ralat memuat maklumat.</td></tr>';
     }
   }
+
   document.addEventListener('click', (e)=>{
     const btn = e.target.closest('#btnSejarahReload');
     if (btn) loadPrograms();
@@ -4205,9 +4211,13 @@ function useSelectedSession(){
       if (current) loadProgramDetail(current.getAttribute('data-activity-id'));
     }
   });
-  window.addEventListener('hashchange', ()=>{ if (location.hash === '#sejarah'){ loadPrograms(); } });
-  if (location.hash === '#sejarah'){ loadPrograms(); }
 
+  // Auto muat bila navigasi ke #sejarah
+  window.addEventListener('hashchange', ()=>{
+    if (location.hash === '#sejarah'){ loadPrograms(); }
+  });
+  // Jika default ke sejarah
+  if (location.hash === '#sejarah'){ loadPrograms(); }
 })();
 
 </script>
