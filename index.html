@@ -1,6 +1,35 @@
 <!DOCTYPE html>
 <html lang="ms">
 <head>
+<!-- ==== STRICT LAYOUT CSS (V8 • Aug 29, 2025) ==== -->
+<style>
+  .nadi-scroll-container { overflow-x: auto; width: 100%; }
+  .nadi-table { table-layout: fixed; border-collapse: separate; border-spacing: 0; }
+  .nadi-table th, .nadi-table td { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; vertical-align: middle; }
+  /* Kolum yang boleh balut teks: Alamat & Remark sahaja */
+  .nadi-table td:nth-child(6), .nadi-table th:nth-child(6),
+  .nadi-table td:nth-child(16), .nadi-table th:nth-child(16) { white-space: normal; }
+  .nadi-table td:nth-child(16) textarea, .nadi-table td:nth-child(16) input[type="text"] { width: 100%; min-height: 36px; }
+
+  /* Pusatkan checkbox status */
+  .nadi-table th:nth-child(13), .nadi-table td:nth-child(13),
+  .nadi-table th:nth-child(14), .nadi-table td:nth-child(14),
+  .nadi-table th:nth-child(15), .nadi-table td:nth-child(15) { text-align:center; }
+
+  /* Pastikan input tidak kembang melebihi sel */
+  .nadi-table input.form-control, .nadi-table select.form-select, .nadi-table .form-control {
+    width: 100%; max-width: 100%;
+  }
+  /* Buang segala elemen TCA dalam Remark */
+  .nadi-table td:nth-child(16) .tca-pack,
+  .nadi-table td:nth-child(16) .tca-date,
+  .nadi-table td:nth-child(16) .tca-time,
+  .nadi-table td:nth-child(16) .tca-staff { display: none !important; }
+
+  /* Tindakan spacing */
+  .nadi-table td:nth-child(18) .btn { margin: 2px 3px; }
+</style>
+
 <!-- ==== ANTI-OVERLAP PATCH CSS (V7 • Aug 29, 2025) ==== -->
 <style>
   /* Stabilize table layout to avoid overlapping */
@@ -4625,6 +4654,178 @@ function useSelectedSession(){
   function wireAll(){ $$('#nadiContainer tr').forEach(wireRow); }
 
   // Observe dynamic rows
+  const container = document.getElementById('nadiContainer');
+  if (container){
+    const mo = new MutationObserver(()=>wireAll());
+    mo.observe(container, {childList:true, subtree:true});
+    wireAll();
+  }
+})();
+</script>
+
+<!-- ==== STRICT LAYOUT/LOGIC JS (V8 • Aug 29, 2025) ==== -->
+<script>
+(function(){
+  const $ = (sel, root=document) => root.querySelector(sel);
+  const $$ = (sel, root=document) => Array.from(root.querySelectorAll(sel));
+
+  // 1) Inject <colgroup> with explicit widths (match header order)
+  function ensureColGroup(){
+    const table = $('.nadi-table');
+    if (!table) return;
+    let cg = table.querySelector('colgroup');
+    if (cg) cg.remove();
+    cg = document.createElement('colgroup');
+    // #, Nama, IC, Umur, Tel, Alamat, BP, PR, DXT, Tinggi, Berat, BMI, Layak, Tidak Layak, Voucher, Remark, TCA&Staff, Tindakan
+    const widths = [40,180,120,80,120,220,80,80,120,80,80,80,80,100,120,240,240,200];
+    widths.forEach(w => {
+      const col = document.createElement('col');
+      col.style.width = w + 'px';
+      cg.appendChild(col);
+    });
+    table.insertBefore(cg, table.firstChild);
+  }
+
+  // 2) Helpers get cells by index, as header order is fixed
+  function getCells(row){
+    const cells = row.cells;
+    return {
+      layak: cells[12]?.querySelector('input[type="checkbox"]') || cells[12]?.querySelector('.chk-layak'),
+      tak: cells[13]?.querySelector('input[type="checkbox"]') || cells[13]?.querySelector('.chk-taklayak'),
+      voucher: cells[14]?.querySelector('input[type="checkbox"]') || cells[14]?.querySelector('.chk-voucher'),
+      remarkCell: cells[15] || null,
+      tcaCell: cells[16] || null,
+      actionsCell: cells[17] || null
+    };
+  }
+
+  // 3) Ensure TCA pack exists in TCA&Staff cell; relocate stray TCA inputs from Remark
+  function normalizeTCAFields(row){
+    const c = getCells(row);
+    if (!c.tcaCell) return;
+
+    let pack = c.tcaCell.querySelector('.tca-pack');
+    if (!pack){
+      pack = document.createElement('div');
+      pack.className = 'tca-pack d-flex flex-wrap align-items-center gap-1';
+      // Build inputs if not exist
+      const d = document.createElement('input'); d.type='date'; d.className='form-control form-control-sm tca-date'; d.placeholder='Tarikh TCA';
+      const t = document.createElement('input'); t.type='time'; t.className='form-control form-control-sm tca-time'; t.placeholder='Masa';
+      const s = document.createElement('input'); s.type='text'; s.className='form-control form-control-sm tca-staff'; s.placeholder='Staff';
+      [d,t,s].forEach(el=> { el.style.minWidth='120px'; el.style.flex='1 1 110px'; });
+      pack.appendChild(d); pack.appendChild(t); pack.appendChild(s);
+      c.tcaCell.appendChild(pack);
+    }
+
+    // Move any stray elements from remark into tca pack
+    if (c.remarkCell){
+      const stray = c.remarkCell.querySelectorAll('.tca-date,.tca-time,.tca-staff,.tca-pack');
+      stray.forEach(el => {
+        if (el.classList.contains('tca-pack')) {
+          // move children instead of whole pack to keep one pack only
+          el.querySelectorAll('.tca-date,.tca-time,.tca-staff').forEach(ch => pack.appendChild(ch));
+          el.remove();
+        } else {
+          pack.appendChild(el);
+        }
+      });
+      // Also hide any native date/time inputs mistakenly placed in remark
+      c.remarkCell.querySelectorAll('input[type="date"],input[type="time"]').forEach(el => el.remove());
+    }
+  }
+
+  // 4) Preserve original main button; keep WA/Report/Buang intact
+  function findOriginalMainButton(actionsCell){
+    if (!actionsCell) return null;
+    let btn = actionsCell.querySelector('[data-action="main"], .btn-main-action');
+    if (btn) return btn;
+    const candidates = Array.from(actionsCell.querySelectorAll('.btn')).filter(b=>{
+      const t = (b.textContent||'').toLowerCase();
+      return !/whatsapp|wa|report|laporan|buang|hapus|delete/.test(t);
+    });
+    const primaryFirst = candidates.find(b=>/\bbtn-(primary|success|outline-primary)\b/.test(b.className));
+    return primaryFirst || candidates[0] || null;
+  }
+
+  function setInputsEnabled(enabled, ...els){
+    els.forEach(el=>{ if (el){ el.disabled = !enabled; el.classList.toggle('is-disabled', !enabled); }});
+  }
+
+  function updateRowState(row){
+    const c = getCells(row);
+    if (!c) return;
+    normalizeTCAFields(row);
+
+    const onLayak = !!(c.layak && c.layak.checked);
+    const onTak = !!(c.tak && c.tak.checked);
+    const onVoucher = !!(c.voucher && c.voucher.checked);
+
+    // Exclusivity
+    const all = [c.layak, c.tak, c.voucher].filter(Boolean);
+    const setExclusive = picked => all.forEach(x=>{ if (x && x!==picked) x.checked=false; });
+    if (c.layak && c.layak._justChanged){ setExclusive(c.layak); c.layak._justChanged=false; }
+    if (c.tak && c.tak._justChanged){ setExclusive(c.tak); c.tak._justChanged=false; }
+    if (c.voucher && c.voucher._justChanged){ setExclusive(c.voucher); c.voucher._justChanged=false; }
+
+    // Enable TCA inputs if Layak or Voucher
+    const d = c.tcaCell?.querySelector('.tca-date');
+    const t = c.tcaCell?.querySelector('.tca-time');
+    const s = c.tcaCell?.querySelector('.tca-staff');
+    setInputsEnabled(onLayak || onVoucher, d, t, s);
+
+    // Buttons
+    const main = findOriginalMainButton(c.actionsCell);
+    if (main){
+      if (!main.dataset.origLabel) main.dataset.origLabel = (main.textContent||'').trim();
+      if (onVoucher){
+        main.textContent = 'Daftar Voucher';
+        main.dataset.route = 'tca';
+      } else if (onLayak){
+        main.textContent = main.dataset.origLabel || 'Daftar';
+        main.dataset.route = 'layak';
+      } else {
+        main.textContent = main.dataset.origLabel || main.textContent;
+        main.dataset.route = '';
+      }
+    }
+  }
+
+  function handleMainClick(e){
+    const btn = e.currentTarget;
+    const route = btn.dataset.route || '';
+    const row = btn.closest('tr');
+    if (route === 'tca'){
+      e.preventDefault(); e.stopPropagation();
+      if (typeof window.nadiSaveVoucherRow === 'function') window.nadiSaveVoucherRow(row);
+      else if (typeof window.saveRowToTCA === 'function') window.saveRowToTCA(row);
+      else try{ toast && toast('Makluman','Baris ditandakan Voucher (TCA).','info'); }catch(_){}
+      return false;
+    }
+    return true;
+  }
+
+  function wireRow(row){
+    const c = getCells(row);
+    if (!c) return;
+    [c.layak, c.tak, c.voucher].forEach(inp=>{
+      if (!inp || inp._wired) return;
+      inp._wired = true;
+      inp.addEventListener('change', ()=>{ inp._justChanged=true; updateRowState(row); });
+    });
+    const main = findOriginalMainButton(c.actionsCell);
+    if (main && !main._wired){
+      main._wired = true;
+      main.addEventListener('click', handleMainClick, true);
+    }
+    updateRowState(row);
+  }
+
+  function wireAll(){
+    $$('#nadiContainer tr').forEach(wireRow);
+  }
+
+  // INIT
+  ensureColGroup();
   const container = document.getElementById('nadiContainer');
   if (container){
     const mo = new MutationObserver(()=>wireAll());
