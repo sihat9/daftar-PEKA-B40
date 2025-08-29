@@ -1,6 +1,43 @@
 <!DOCTYPE html>
 <html lang="ms">
 <head>
+<!-- ==== ANTI-OVERLAP PATCH CSS (V7 • Aug 29, 2025) ==== -->
+<style>
+  /* Stabilize table layout to avoid overlapping */
+  .nadi-scroll-container { overflow-x: auto; width: 100%; }
+  .nadi-table { table-layout: fixed; min-width: 1300px; }
+  .nadi-table th, .nadi-table td { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+  /* Ensure remark stays block and wraps when needed */
+  .nadi-table td[data-col="remark"] { white-space: normal; }
+  .nadi-table td[data-col="remark"] textarea,
+  .nadi-table td[data-col="remark"] input[type="text"] { width: 100%; min-height: 36px; }
+
+  /* Checkbox column strict centering */
+  .nadi-table th[data-col="voucher"], .nadi-table td[data-col="voucher"],
+  .nadi-table th[data-col="layak"], .nadi-table td[data-col="layak"],
+  .nadi-table th[data-col="tidakLayak"], .nadi-table td[data-col="tidakLayak"] {
+    text-align: center; vertical-align: middle;
+  }
+  .nadi-table td[data-col="voucher"] .form-check,
+  .nadi-table td[data-col="layak"] .form-check,
+  .nadi-table td[data-col="tidakLayak"] .form-check { display:flex; justify-content:center; align-items:center; margin:0; }
+
+  /* Inputs inside table cells should not auto-expand beyond cell width */
+  .nadi-table input.form-control, .nadi-table select.form-select, .nadi-table .form-control {
+    width: 100%; max-width: 100%;
+  }
+
+  /* Prevent hidden legacy TCA fields from showing inside Remark */
+  .nadi-table td[data-col="remark"] .tca-pack,
+  .nadi-table td[data-col="remark"] .tca-date,
+  .nadi-table td[data-col="remark"] .tca-time,
+  .nadi-table td[data-col="remark"] .tca-staff { display: none !important; }
+
+  /* Keep action buttons visible without crowding */
+  .nadi-table td[data-col="actions"] .btn { margin: 2px 3px; }
+</style>
+
 
   <!-- Performance resource hints -->
   <link rel="preconnect" href="https://cdn.jsdelivr.net">
@@ -4472,6 +4509,128 @@ function useSelectedSession(){
 
   // Penjajaran checkbox voucher: sudah dikawal dalam CSS, pastikan tidak bertindih
   // (tiada tindakan tambahan diperlukan di JS)
+})();
+</script>
+
+<!-- ==== SAFE BUTTON PRESERVER JS (V7 • Aug 29, 2025) ==== -->
+<script>
+(function(){
+  const $ = (sel, root=document) => root.querySelector(sel);
+  const $$ = (sel, root=document) => Array.from(root.querySelectorAll(sel));
+
+  function getCells(row){
+    const c = {
+      layak: $('td[data-col="layak"] input[type="checkbox"]', row) || $('input.chk-layak', row),
+      tak: $('td[data-col="tidakLayak"] input[type="checkbox"]', row) || $('input.chk-taklayak', row),
+      voucher: $('td[data-col="voucher"] input[type="checkbox"]', row) || $('input.chk-voucher', row),
+      tcaDate: $('td[data-col="tcaStaff"] .tca-date', row) || $('.tca-date', row),
+      tcaTime: $('td[data-col="tcaStaff"] .tca-time', row) || $('.tca-time', row),
+      tcaStaff: $('td[data-col="tcaStaff"] .tca-staff', row) || $('.tca-staff', row),
+      actionsCell: $('td[data-col="actions"]', row) || $('td.nadi-actions-cell', row) || row.cells[row.cells.length-1]
+    };
+    return c;
+  }
+
+  // Identify the ORIGINAL main register button without touching WA/Report/Buang
+  function findOriginalMainButton(actionsCell){
+    if (!actionsCell) return null;
+    // If author already marked it
+    let btn = $('[data-action="main"]', actionsCell) || $('.btn-main-action', actionsCell);
+    if (btn) return btn;
+
+    // Heuristic: a primary/outline-primary button that says Daftar/Daftar Voucher/Tindakan
+    const candidates = $$('.btn', actionsCell).filter(b => {
+      const t = (b.textContent||'').toLowerCase();
+      // exclude WA/Report/Buang
+      if (/whatsapp|wa|report|laporan|buang|hapus|delete/.test(t)) return False;
+      return true;
+    });
+    // Prefer the first "primary" looking button
+    const primaryFirst = candidates.find(b => /\bbtn-(primary|success|outline-primary)\b/.test(b.className));
+    return primaryFirst || candidates[0] || null;
+  }
+
+  function setInputsEnabled(enabled, ...els){
+    els.forEach(el=>{ if (el){ el.disabled = !enabled; el.classList.toggle('is-disabled', !enabled); }});
+  }
+
+  function updateRowState(row){
+    const c = getCells(row);
+    if (!c) return;
+    const onLayak = !!(c.layak && c.layak.checked);
+    const onTak = !!(c.tak && c.tak.checked);
+    const onVoucher = !!(c.voucher && c.voucher.checked);
+
+    // Exclusivity
+    const all = [c.layak, c.tak, c.voucher].filter(Boolean);
+    const setExclusive = (picked) => all.forEach(x=>{ if (x && x!==picked) x.checked=false; });
+    if (c.layak && c.layak._justChanged){ setExclusive(c.layak); c.layak._justChanged=false; }
+    if (c.tak && c.tak._justChanged){ setExclusive(c.tak); c.tak._justChanged=false; }
+    if (c.voucher && c.voucher._justChanged){ setExclusive(c.voucher); c.voucher._justChanged=false; }
+
+    // Enable TCA fields when Layak OR Voucher
+    const enableTCA = onLayak || onVoucher;
+    setInputsEnabled(enableTCA, c.tcaDate, c.tcaTime, c.tcaStaff);
+
+    // Preserve original button; only change label when voucher is active,
+    // and restore to original when not voucher.
+    const btn = findOriginalMainButton(c.actionsCell);
+    if (btn){
+      if (!btn.dataset.origLabel) btn.dataset.origLabel = (btn.textContent||'').trim();
+      if (onVoucher){
+        btn.textContent = 'Daftar Voucher';
+        btn.dataset.route = 'tca';
+      } else if (onLayak){
+        // keep original "Daftar" text from your template
+        btn.textContent = btn.dataset.origLabel || 'Daftar';
+        btn.dataset.route = 'layak';
+      } else {
+        btn.textContent = btn.dataset.origLabel || btn.textContent;
+        btn.dataset.route = '';
+      }
+    }
+  }
+
+  function handleMainClick(e){
+    const btn = e.currentTarget;
+    const route = btn.dataset.route || '';
+    const row = btn.closest('tr');
+    if (route === 'tca'){
+      e.preventDefault(); e.stopPropagation();
+      if (typeof window.nadiSaveVoucherRow === 'function') window.nadiSaveVoucherRow(row);
+      else if (typeof window.saveRowToTCA === 'function') window.saveRowToTCA(row);
+      else try{ toast && toast('Makluman', 'Baris ditandakan Voucher (TCA).', 'info'); }catch(_){}
+      return false;
+    }
+    // route 'layak' → allow original handler
+    return true;
+  }
+
+  function wireRow(row){
+    const c = getCells(row);
+    if (!c) return;
+    [c.layak, c.tak, c.voucher].forEach(inp=>{
+      if (!inp || inp._wired) return;
+      inp._wired = true;
+      inp.addEventListener('change', ()=>{ inp._justChanged=true; updateRowState(row); });
+    });
+    const main = findOriginalMainButton(c.actionsCell);
+    if (main && !main._wired){
+      main._wired = true;
+      main.addEventListener('click', handleMainClick, true);
+    }
+    updateRowState(row);
+  }
+
+  function wireAll(){ $$('#nadiContainer tr').forEach(wireRow); }
+
+  // Observe dynamic rows
+  const container = document.getElementById('nadiContainer');
+  if (container){
+    const mo = new MutationObserver(()=>wireAll());
+    mo.observe(container, {childList:true, subtree:true});
+    wireAll();
+  }
 })();
 </script>
 </body>
