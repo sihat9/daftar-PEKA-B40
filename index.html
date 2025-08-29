@@ -370,6 +370,15 @@
 </style>
 </head>
 <body>
+<!-- SAFE UTIL (V10): prevent missing global errors -->
+<script>
+(function(){
+  if (typeof window.toast !== 'function') {
+    window.toast = function(){ /* no-op fallback */ };
+  }
+})();
+</script>
+
   <!-- Global Loader -->
   <div id="appLoader" aria-hidden="true">
     <div class="loader-card">
@@ -4321,7 +4330,7 @@ function useSelectedSession(){
 
 
 <!-- ==== V9 LOGIC (Aug 29, 2025): Actions + Checkbox + Remark hygiene ==== -->
-<script>
+<script>(function(){try{if(!document.getElementById('nadiContainer')) return;/*__BEGIN_PATCH__*/
 (function(){
   const $ = (sel, root=document) => root.querySelector(sel);
   const $$ = (sel, root=document) => Array.from(root.querySelectorAll(sel));
@@ -4492,6 +4501,6 @@ function useSelectedSession(){
     wireAll();
   }
 })();
-</script>
+/*__END_PATCH__*/}catch(e){console.error('[NADI patch error]', e);}})();</script>
 </body>
 </html>
