@@ -4296,5 +4296,183 @@ function useSelectedSession(){
 
 })();</script>
 
+
+<!-- ==== VOUCHER/LAYAK LOGIC OVERRIDE (Aug 29, 2025) ==== -->
+<script>
+(function(){
+  // Helper: safe query
+  const $ = (sel, root=document) => root.querySelector(sel);
+  const $$ = (sel, root=document) => Array.from(root.querySelectorAll(sel));
+
+  function getCells(row){
+    return {
+      layak: $('td[data-col="layak"] input[type="checkbox"]', row) || $('input.chk-layak', row),
+      tak: $('td[data-col="tidakLayak"] input[type="checkbox"]', row) || $('input.chk-taklayak', row),
+      voucher: $('td[data-col="voucher"] input[type="checkbox"]', row) || $('input.chk-voucher', row),
+      remark: $('td[data-col="remark"]', row),
+      tcaDate: $('.tca-date', row),
+      tcaTime: $('.tca-time', row),
+      tcaStaff: $('.tca-staff', row),
+      actionsCell: $('td[data-col="actions"]', row) || $('td.nadi-actions-cell', row) || row.cells[row.cells.length-1]
+    };
+  }
+
+  function findMainButton(actionsCell){
+    if (!actionsCell) return null;
+    // Prefer explicit marker, fallback to first "primary-like" that isn't WA/Report/Buang
+    let btn = $('[data-action="main"]', actionsCell) || $('.btn-main-action', actionsCell);
+    if (btn) return btn;
+    const candidates = $$('.btn', actionsCell).filter(b=>{
+      const t = (b.textContent||'').toLowerCase();
+      return !/whatsapp|wa|report|buang|hapus|delete/.test(t);
+    });
+    return candidates[0] || null;
+  }
+
+  function setInputsEnabled(enabled, ...els){
+    els.forEach(el=>{
+      if (!el) return;
+      el.disabled = !enabled;
+      el.classList.toggle('is-disabled', !enabled);
+    });
+  }
+
+  function updateRowState(row){
+    const c = getCells(row);
+    if (!c) return;
+
+    // Mutually exclusive
+    const onLayak = !!(c.layak && c.layak.checked);
+    const onTak   = !!(c.tak && c.tak.checked);
+    const onVoucher = !!(c.voucher && c.voucher.checked);
+
+    // Force exclusivity without infinite loops
+    const all = [c.layak, c.tak, c.voucher].filter(Boolean);
+    const setExclusive = (picked) => {
+      all.forEach(x=>{ if (x && x!==picked) x.checked = false; });
+    };
+
+    if (c.layak && c.layak._justChanged) { setExclusive(c.layak); c.layak._justChanged=false; }
+    if (c.tak && c.tak._justChanged) { setExclusive(c.tak); c.tak._justChanged=false; }
+    if (c.voucher && c.voucher._justChanged) { setExclusive(c.voucher); c.voucher._justChanged=false; }
+
+    // TCA & Staff enabled when Layak OR Voucher
+    const enableTCA = onLayak || onVoucher;
+    setInputsEnabled(enableTCA, c.tcaDate, c.tcaTime, c.tcaStaff);
+
+    // Remark is notes-only: make sure no TCA controls within remark are visible/active
+    if (c.remark){
+      $$('.tca-pack,.tca-date,.tca-time,.tca-staff', c.remark).forEach(el=>{
+        el.style.display = 'none';
+        if (el.tagName === 'INPUT') el.disabled = true;
+      });
+    }
+
+    // Main button text/behavior
+    const mainBtn = findMainButton(c.actionsCell);
+    if (mainBtn){
+      if (onVoucher){
+        mainBtn.textContent = 'Daftar Voucher';
+        mainBtn.dataset.route = 'tca';
+      } else if (onLayak){
+        mainBtn.textContent = 'Daftar';
+        mainBtn.dataset.route = 'layak';
+      } else {
+        // Jika tidak layak atau kosong, kekalkan neutral
+        mainBtn.textContent = mainBtn.textContent || 'Tindakan';
+        mainBtn.dataset.route = '';
+      }
+    }
+  }
+
+  function handleMainClick(e){
+    const btn = e.currentTarget;
+    const row = btn.closest('tr');
+    const route = btn.dataset.route || '';
+    if (route === 'tca'){
+      // Hantar ke senarai TCA (voucher) dan JANGAN simpan sebagai Layak
+      e.preventDefault();
+      e.stopPropagation();
+      if (typeof window.nadiSaveVoucherRow === 'function'){
+        window.nadiSaveVoucherRow(row);
+      } else if (typeof window.saveRowToTCA === 'function'){
+        window.saveRowToTCA(row);
+      } else {
+        // Fallback notifikasi sahaja
+        try { toast && toast('Makluman', 'Baris ini ditandakan sebagai Voucher (TCA).', 'info'); } catch(_){}
+      }
+      return false;
+    }
+    // route 'layak' → biar logik asal berjalan (jangan ganggu)
+    return true;
+  }
+
+  function wireRow(row){
+    const c = getCells(row);
+    if (!c) return;
+    // Change listeners untuk eksklusif
+    [c.layak, c.tak, c.voucher].forEach(inp=>{
+      if (!inp || inp._wired) return;
+      inp._wired = true;
+      inp.addEventListener('change', ()=>{
+        inp._justChanged = true;
+        updateRowState(row);
+      });
+    });
+
+    // Main button click routing
+    const mainBtn = findMainButton(c.actionsCell);
+    if (mainBtn && !mainBtn._wired){
+      mainBtn._wired = true;
+      mainBtn.addEventListener('click', handleMainClick, true);
+    }
+
+    // Init state
+    updateRowState(row);
+  }
+
+  function wireAll(){
+    $$('#nadiContainer tr').forEach(wireRow);
+  }
+
+  // Observe future rows (dynamically added)
+  const container = document.getElementById('nadiContainer');
+  if (container){
+    const mo = new MutationObserver(()=>wireAll());
+    mo.observe(container, {childList:true, subtree:true});
+    wireAll();
+  }
+
+  // "Simpan Aktiviti (Semua)" → hanya baris voucher dihantar ke senarai TCA;
+  // baris Layak ikut logik asal (biar handler asal jalan)
+  const btnSaveAll = document.getElementById('btnNadiSaveActivity');
+  if (btnSaveAll && !btnSaveAll._wired){
+    btnSaveAll._wired = true;
+    btnSaveAll.addEventListener('click', function(e){
+      // Kita proses voucher sahaja di sini, kemudian biar kod asal jalankan selebihnya
+      const rows = $$('#nadiContainer tr');
+      let cnt = 0;
+      rows.forEach(row=>{
+        const c = getCells(row);
+        if (c && c.voucher && c.voucher.checked){
+          if (typeof window.nadiSaveVoucherRow === 'function'){
+            window.nadiSaveVoucherRow(row);
+            cnt++;
+          } else if (typeof window.saveRowToTCA === 'function'){
+            window.saveRowToTCA(row);
+            cnt++;
+          }
+        }
+      });
+      if (cnt>0){
+        try { toast && toast('Berjaya', cnt+' baris voucher dirutekan ke senarai TCA.', 'success'); } catch(_){}
+      }
+    }, true);
+  }
+
+  // Penjajaran checkbox voucher: sudah dikawal dalam CSS, pastikan tidak bertindih
+  // (tiada tindakan tambahan diperlukan di JS)
+})();
+</script>
 </body>
 </html>
