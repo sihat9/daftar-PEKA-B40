@@ -1,29 +1,6 @@
 <!DOCTYPE html>
 <html lang="ms">
 <head>
-<!-- ==== V9 UI CONSISTENCY CSS (Aug 29, 2025) ==== -->
-<style>
-  .nadi-table th[data-col="layak"], .nadi-table td[data-col="layak"],
-  .nadi-table th[data-col="tidakLayak"], .nadi-table td[data-col="tidakLayak"],
-  .nadi-table th[data-col="voucher"], .nadi-table td[data-col="voucher"] {
-    text-align: center; vertical-align: middle;
-  }
-  .nadi-table td[data-col="layak"] input[type="checkbox"],
-  .nadi-table td[data-col="tidakLayak"] input[type="checkbox"],
-  .nadi-table td[data-col="voucher"] input[type="checkbox"] {
-    width: 1.15em; height: 1.15em; min-width: 18px; min-height: 18px;
-    margin: 0; display: inline-block; vertical-align: middle;
-  }
-  .nadi-table td[data-col="layak"] .form-check,
-  .nadi-table td[data-col="tidakLayak"] .form-check,
-  .nadi-table td[data-col="voucher"] .form-check {
-    display:flex; align-items:center; justify-content:center; margin:0;
-  }
-
-  .nadi-table td[data-col="actions"] { white-space: nowrap; }
-  .nadi-table td[data-col="actions"] .btn { margin: 2px 4px; }
-</style>
-
 
   <!-- Performance resource hints -->
   <link rel="preconnect" href="https://cdn.jsdelivr.net">
@@ -370,15 +347,6 @@
 </style>
 </head>
 <body>
-<!-- SAFE UTIL (V10): prevent missing global errors -->
-<script>
-(function(){
-  if (typeof window.toast !== 'function') {
-    window.toast = function(){ /* no-op fallback */ };
-  }
-})();
-</script>
-
   <!-- Global Loader -->
   <div id="appLoader" aria-hidden="true">
     <div class="loader-card">
@@ -4329,178 +4297,83 @@ function useSelectedSession(){
 })();</script>
 
 
-<!-- ==== V9 LOGIC (Aug 29, 2025): Actions + Checkbox + Remark hygiene ==== -->
-<script>(function(){try{if(!document.getElementById('nadiContainer')) return;/*__BEGIN_PATCH__*/
+<!-- ===== LOGIN HARNESS (V11 • Aug 29, 2025) ===== -->
+<script>
 (function(){
-  const $ = (sel, root=document) => root.querySelector(sel);
-  const $$ = (sel, root=document) => Array.from(root.querySelectorAll(sel));
+  function dbg(){ /* console.log.apply(console, arguments); */ }
 
-  function getCells(row){
-    const cells = row.cells;
-    return {
-      layak: cells[12]?.querySelector('input[type="checkbox"]') || cells[12]?.querySelector('.chk-layak'),
-      tak: cells[13]?.querySelector('input[type="checkbox"]') || cells[13]?.querySelector('.chk-taklayak'),
-      voucher: cells[14]?.querySelector('input[type="checkbox"]') || cells[14]?.querySelector('.chk-voucher'),
-      remarkCell: cells[15] || null,
-      tcaCell: cells[16] || null,
-      actionsCell: cells[17] || null
-    };
-  }
+  if (window.onSignIn || window.handleCredentialResponse) { dbg('Login already wired'); return; }
 
-  function normalizeCheckboxes(row){
-    const c = getCells(row);
-    [c.layak, c.tak, c.voucher].forEach(inp=>{
-      if (!inp) return;
-      inp.classList.add('form-check-input');
-      if (!inp.closest('.form-check')){
-        const wrap = document.createElement('div');
-        wrap.className = 'form-check';
-        inp.parentNode.insertBefore(wrap, inp);
-        wrap.appendChild(inp);
-      }
-    });
-  }
-
-  function sanitizeRemark(row){
-    const c = getCells(row);
-    if (!c.remarkCell) return;
-    const stray = c.remarkCell.querySelectorAll('.tca-date,.tca-time,.tca-staff,.tca-pack,input[type="date"],input[type="time"]');
-    if (stray.length){
-      if (c.tcaCell){
-        let pack = c.tcaCell.querySelector('.tca-pack');
-        if (!pack){
-          pack = document.createElement('div');
-          pack.className = 'tca-pack d-flex flex-wrap align-items-center gap-1';
-          c.tcaCell.appendChild(pack);
-        }
-        stray.forEach(el => {
-          if (el.classList?.contains('tca-pack')){
-            el.querySelectorAll('.tca-date,.tca-time,.tca-staff').forEach(child => pack.appendChild(child));
-            el.remove();
-          } else {
-            if (el.tagName === 'INPUT' && el.type === 'date') el.classList.add('tca-date','form-control','form-control-sm');
-            if (el.tagName === 'INPUT' && el.type === 'time') el.classList.add('tca-time','form-control','form-control-sm');
-            pack.appendChild(el);
-          }
-        });
-      }
-      c.remarkCell.querySelectorAll('input[type="date"],input[type="time"]').forEach(el => el.remove());
+  function detectClientId(){
+    let cid = null;
+    const gOnload = document.getElementById('g_id_onload');
+    if (gOnload && gOnload.dataset && gOnload.dataset.client_id) cid = gOnload.dataset.client_id;
+    if (!cid){
+      const meta = document.querySelector('meta[name="google-signin_client_id"], meta[name="google-signin-client_id"]');
+      if (meta && meta.content) cid = meta.content;
     }
+    if (!cid && window.GOOGLE_CLIENT_ID) cid = window.GOOGLE_CLIENT_ID;
+    return cid;
   }
 
-  function ensureActions(row){
-    const c = getCells(row);
-    if (!c.actionsCell) return;
-    const hasAnyBtn = !!c.actionsCell.querySelector('.btn');
-    if (hasAnyBtn) return;
-
-    const wrap = document.createElement('div');
-    wrap.className = 'btn-group btn-group-sm';
-    const btnMain = document.createElement('button');
-    btnMain.className = 'btn btn-primary btn-main-action';
-    btnMain.textContent = 'Daftar';
-    const btnWA = document.createElement('button');
-    btnWA.className = 'btn btn-outline-success';
-    btnWA.textContent = 'WA Report';
-    const btnDel = document.createElement('button');
-    btnDel.className = 'btn btn-outline-danger';
-    btnDel.textContent = 'Buang';
-    wrap.appendChild(btnMain); wrap.appendChild(btnWA); wrap.appendChild(btnDel);
-    c.actionsCell.appendChild(wrap);
-
-    btnWA.addEventListener('click', (e)=>{
-      e.preventDefault();
-      const rowEl = e.currentTarget.closest('tr');
-      if (typeof window.openWhatsAppReport === 'function') return window.openWhatsAppReport(rowEl);
-      if (typeof window.showWhatsAppReportPreview === 'function') return window.showWhatsAppReportPreview(rowEl);
-      try{ toast && toast('Makluman','Fungsi WA Report tidak ditakrifkan.', 'warning'); }catch(_){}
-    });
-
-    btnDel.addEventListener('click', (e)=>{
-      e.preventDefault();
-      const rowEl = e.currentTarget.closest('tr');
-      if (typeof window.deleteNadiRow === 'function') return window.deleteNadiRow(rowEl);
-      if (confirm('Padam baris ini?')) rowEl.remove();
-    });
-  }
-
-  function findMainButton(c){ 
-    return c.actionsCell?.querySelector('[data-action="main"], .btn-main-action') || null;
-  }
-
-  function setInputsEnabled(enabled, ...els){
-    els.forEach(el=>{ if (el){ el.disabled = !enabled; el.classList.toggle('is-disabled', !enabled); }});
-  }
-
-  function updateRowState(row){
-    const c = getCells(row);
-    sanitizeRemark(row);
-    normalizeCheckboxes(row);
-    ensureActions(row);
-
-    const onLayak = !!(c.layak && c.layak.checked);
-    const onTak = !!(c.tak && c.tak.checked);
-    const onVoucher = !!(c.voucher && c.voucher.checked);
-
-    const group = [c.layak, c.tak, c.voucher].filter(Boolean);
-    const setExclusive = picked => group.forEach(x=>{ if (x && x!==picked) x.checked=false; });
-    if (c.layak && c.layak._justChanged){ setExclusive(c.layak); c.layak._justChanged=false; }
-    if (c.tak && c.tak._justChanged){ setExclusive(c.tak); c.tak._justChanged=false; }
-    if (c.voucher && c.voucher._justChanged){ setExclusive(c.voucher); c.voucher._justChanged=false; }
-
-    const d = c.tcaCell?.querySelector('.tca-date');
-    const t = c.tcaCell?.querySelector('.tca-time');
-    const s = c.tcaCell?.querySelector('.tca-staff');
-    setInputsEnabled(onLayak || onVoucher, d, t, s);
-
-    const main = findMainButton(c);
-    if (main){
-      if (!main.dataset.origLabel) main.dataset.origLabel = (main.textContent||'').trim() || 'Daftar';
-      if (onVoucher){
-        main.textContent = 'Daftar Voucher';
-        main.dataset.route = 'tca';
-      } else if (onLayak){
-        main.textContent = main.dataset.origLabel || 'Daftar';
-        main.dataset.route = 'layak';
+  async function onGoogleCredential(credential){
+    try{
+      if (window.firebase && firebase.auth){
+        const providerCred = firebase.auth.GoogleAuthProvider.credential(credential);
+        return firebase.auth().signInWithCredential(providerCred);
+      } else if (window.firebaseAuth && window.firebaseAuth.GoogleAuthProvider && window.firebaseAuth.getAuth){
+        const cred = window.firebaseAuth.GoogleAuthProvider.credential(credential);
+        return window.firebaseAuth.signInWithCredential(window.firebaseAuth.getAuth(), cred);
       } else {
-        main.textContent = main.dataset.origLabel || main.textContent;
-        main.dataset.route = '';
+        sessionStorage.setItem('google_id_credential', credential);
+        if (typeof window.afterGoogleSignIn === 'function') window.afterGoogleSignIn(credential);
+        return true;
       }
-      if (!main._wired){
-        main._wired = true;
-        main.addEventListener('click', (e)=>{
-          const route = main.dataset.route || '';
-          const rowEl = e.currentTarget.closest('tr');
-          if (route === 'tca'){
-            e.preventDefault(); e.stopPropagation();
-            if (typeof window.nadiSaveVoucherRow === 'function') return window.nadiSaveVoucherRow(rowEl);
-            if (typeof window.saveRowToTCA === 'function') return window.saveRowToTCA(rowEl);
-            try{ toast && toast('Makluman','Baris ditandakan Voucher (TCA).','info'); }catch(_){}
-          }
-        }, true);
-      }
+    }catch(e){
+      console.error('Sign-in error:', e);
+      try { toast && toast('Ralat Login', String(e && e.message || e), 'error'); } catch(_){}
     }
   }
 
-  function wireRow(row){
-    const c = getCells(row);
-    [c.layak, c.tak, c.voucher].forEach(inp=>{
-      if (!inp || inp._wired) return;
-      inp._wired = true;
-      inp.addEventListener('change', ()=>{ inp._justChanged=true; updateRowState(row); });
+  function initGSI(){
+    if (!(window.google && google.accounts && google.accounts.id)) { dbg('GSI not ready'); return; }
+    const client_id = detectClientId();
+    if (!client_id){ dbg('No client_id'); return; }
+    window.handleCredentialResponse = async function(res){
+      if (!res || !res.credential) return;
+      await onGoogleCredential(res.credential);
+    };
+    try{
+      google.accounts.id.initialize({ client_id, callback: window.handleCredentialResponse, auto_select: false, ux_mode: 'popup' });
+    }catch(e){ console.error('GSI init error', e); }
+    var btnHost = document.getElementById('googleSignInContainer') || document.getElementById('gsiBtn');
+    if (btnHost){
+      try{ google.accounts.id.renderButton(btnHost, { type: 'standard', theme: 'outline', size: 'large' }); }catch(e){}
+    }
+  }
+
+  function initGapiAuth2(){
+    if (!(window.gapi && gapi.auth2)) return;
+    const client_id = detectClientId();
+    if (!client_id) return;
+    gapi.load('auth2', function(){
+      try{
+        const auth2 = gapi.auth2.init({ client_id });
+        const el = document.getElementById('googleSignInBtnLegacy');
+        if (el) auth2.attachClickHandler(el, {}, function(googleUser){
+          const id_token = googleUser.getAuthResponse().id_token;
+          onGoogleCredential(id_token);
+        });
+      }catch(e){ console.error('gapi auth2 init error', e); }
     });
-    updateRowState(row);
   }
 
-  function wireAll(){ $$('#nadiContainer tr').forEach(wireRow); }
-
-  const container = document.getElementById('nadiContainer');
-  if (container){
-    const mo = new MutationObserver(()=>wireAll());
-    mo.observe(container, {childList:true, subtree:true});
-    wireAll();
-  }
+  document.addEventListener('DOMContentLoaded', function(){
+    if (!document.getElementById('login') && !document.getElementById('googleSignInContainer') && !document.querySelector('.login-card')) return;
+    initGSI();
+    initGapiAuth2();
+  });
 })();
-/*__END_PATCH__*/}catch(e){console.error('[NADI patch error]', e);}})();</script>
+</script>
 </body>
 </html>
