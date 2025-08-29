@@ -1,6 +1,48 @@
 <!DOCTYPE html>
 <html lang="ms">
 <head>
+<!-- ==== V9 STYLE PATCH (Uniform Checkbox + Actions layout) ==== -->
+<style>
+  /* Uniform checkbox sizing */
+  .nadi-table input[type="checkbox"],
+  .nadi-table .form-check-input {
+    width: 1.1em;
+    height: 1.1em;
+    min-width: 1.1em;
+    min-height: 1.1em;
+  }
+  /* Make sure checkboxes are centered consistently */
+  .nadi-table td[data-col="layak"], 
+  .nadi-table td[data-col="tidakLayak"],
+  .nadi-table td[data-col="voucher"] {
+    text-align: center;
+  }
+  .nadi-table td[data-col="layak"] .form-check,
+  .nadi-table td[data-col="tidakLayak"] .form-check,
+  .nadi-table td[data-col="voucher"] .form-check {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    margin: 0;
+  }
+
+  /* Actions cell: grid so 3–4 buttons don't wrap awkwardly */
+  .nadi-table td[data-col="actions"] {
+    white-space: normal;
+  }
+  .nadi-table td[data-col="actions"] .actions-wrap {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(90px, 1fr));
+    gap: 6px;
+  }
+  @media (min-width: 1400px) {
+    .nadi-table td[data-col="actions"] .actions-wrap {
+      grid-template-columns: repeat(4, minmax(90px, 1fr));
+    }
+  }
+  .nadi-table td[data-col="actions"] .actions-wrap .btn { width: 100%; }
+</style>
+
 <!-- ==== STRICT LAYOUT CSS (V8 • Aug 29, 2025) ==== -->
 <style>
   .nadi-scroll-container { overflow-x: auto; width: 100%; }
@@ -4826,6 +4868,240 @@ function useSelectedSession(){
 
   // INIT
   ensureColGroup();
+  const container = document.getElementById('nadiContainer');
+  if (container){
+    const mo = new MutationObserver(()=>wireAll());
+    mo.observe(container, {childList:true, subtree:true});
+    wireAll();
+  }
+})();
+</script>
+
+<!-- ==== V9 LOGIC PATCH (Normalize TCA fields + Ensure Actions + Uniform Checkboxes) ==== -->
+<script>
+(function(){
+  const $ = (sel, root=document) => root.querySelector(sel);
+  const $$ = (sel, root=document) => Array.from(root.querySelectorAll(sel));
+
+  function td(row, name){
+    return row.querySelector(`td[data-col="${name}"]`) || null;
+  }
+  function getCells(row){
+    const layakTd = td(row,'layak') || row.cells[12];
+    const takTd = td(row,'tidakLayak') || row.cells[13];
+    const voucherTd = td(row,'voucher') || row.cells[14];
+    const remarkTd = td(row,'remark') || row.cells[15];
+    const tcaTd = td(row,'tcaStaff') || row.cells[16];
+    const actionsTd = td(row,'actions') || row.cells[17];
+
+    return {
+      layak: layakTd ? (layakTd.querySelector('input[type="checkbox"]') || layakTd.querySelector('.chk-layak')) : null,
+      tak: takTd ? (takTd.querySelector('input[type="checkbox"]') || takTd.querySelector('.chk-taklayak')) : null,
+      voucher: voucherTd ? (voucherTd.querySelector('input[type="checkbox"]') || voucherTd.querySelector('.chk-voucher')) : null,
+      layakTd, takTd, voucherTd, remarkTd, tcaTd, actionsTd
+    };
+  }
+
+  function uniformCheckbox(el){
+    if (!el) return;
+    el.classList.add('form-check-input');
+    // Wrap in .form-check to center nicely
+    if (!el.closest('.form-check')){
+      const wrap = document.createElement('div');
+      wrap.className = 'form-check m-0 d-inline-flex';
+      el.parentNode.insertBefore(wrap, el);
+      wrap.appendChild(el);
+    }
+  }
+
+  function ensureTcaPack(tcaTd){
+    if (!tcaTd) return null;
+    let pack = tcaTd.querySelector('.tca-pack');
+    if (!pack){
+      pack = document.createElement('div');
+      pack.className = 'tca-pack d-flex flex-wrap align-items-center gap-1';
+      const d = document.createElement('input'); d.type='date'; d.className='form-control form-control-sm tca-date'; d.placeholder='Tarikh TCA';
+      const t = document.createElement('input'); t.type='time'; t.className='form-control form-control-sm tca-time'; t.placeholder='Masa';
+      const s = document.createElement('input'); s.type='text'; s.className='form-control form-control-sm tca-staff'; s.placeholder='Staff';
+      [d,t,s].forEach(el=>{ el.style.minWidth='110px'; el.style.flex='1 1 100px'; });
+      pack.append(d,t,s);
+      tcaTd.appendChild(pack);
+    }
+    return pack;
+  }
+
+  function moveTcaFromRemark(row){
+    const c = getCells(row);
+    if (!c) return;
+    const pack = ensureTcaPack(c.tcaTd);
+    if (!pack) return;
+
+    // Move any TCA elements OUT of remark: classes or native type=date/time
+    if (c.remarkTd){
+      c.remarkTd.querySelectorAll('.tca-pack,.tca-date,.tca-time,.tca-staff, input[type="date"], input[type="time"]').forEach(el=>{
+        if (el.closest('td') === c.tcaTd) return; // already in target
+        // If nested tca-pack, move its children (date/time/staff) only
+        if (el.classList && el.classList.contains('tca-pack')){
+          el.querySelectorAll('.tca-date,.tca-time,.tca-staff').forEach(ch=> pack.appendChild(ch));
+          el.remove();
+        } else {
+          // For native date/time inside remark, replace with plain text placeholder rather than carry over values
+          if (el.matches('input[type="date"],input[type="time"]')){
+            el.remove();
+          } else {
+            pack.appendChild(el);
+          }
+        }
+      });
+    }
+  }
+
+  function ensureActions(row){
+    const c = getCells(row);
+    if (!c || !c.actionsTd) return;
+    // Wrap for layout
+    let wrap = c.actionsTd.querySelector('.actions-wrap');
+    if (!wrap){
+      wrap = document.createElement('div');
+      wrap.className = 'actions-wrap';
+      // If there are existing buttons, move them in
+      c.actionsTd.querySelectorAll(':scope > .btn').forEach(b=>wrap.appendChild(b));
+      c.actionsTd.appendChild(wrap);
+    }
+    // Check if there is at least one main register-like button
+    const hasMain = !!wrap.querySelector('[data-action="main"], .btn-main-action') ||
+                    Array.from(wrap.querySelectorAll('.btn')).some(b => /daftar/i.test(b.textContent||''));
+
+    const hasWA   = Array.from(wrap.querySelectorAll('.btn')).some(b => /(whatsapp|wa report|wa)/i.test(b.textContent||''));
+    const hasDel  = Array.from(wrap.querySelectorAll('.btn')).some(b => /(buang|hapus|delete)/i.test(b.textContent||''));
+
+    // Create missing buttons (fallback only; keep originals)
+    if (!hasMain){
+      const main = document.createElement('button');
+      main.className = 'btn btn-primary btn-sm';
+      main.textContent = 'Daftar';
+      main.setAttribute('data-action','main');
+      wrap.appendChild(main);
+    }
+    if (!hasWA){
+      const wa = document.createElement('button');
+      wa.className = 'btn btn-outline-success btn-sm';
+      wa.textContent = 'WA Report';
+      wa.setAttribute('data-action','wa');
+      wrap.appendChild(wa);
+    }
+    if (!hasDel){
+      const del = document.createElement('button');
+      del.className = 'btn btn-outline-danger btn-sm';
+      del.textContent = 'Buang';
+      del.setAttribute('data-action','delete');
+      wrap.appendChild(del);
+    }
+
+    // Wire behavior:
+    const mainBtn = wrap.querySelector('[data-action="main"], .btn-main-action');
+    if (mainBtn && !mainBtn._wired){
+      mainBtn._wired = true;
+      mainBtn.addEventListener('click', (e)=>{
+        const route = mainBtn.dataset.route || '';
+        const row = mainBtn.closest('tr');
+        if (route === 'tca'){
+          e.preventDefault(); e.stopPropagation();
+          if (typeof window.nadiSaveVoucherRow === 'function') window.nadiSaveVoucherRow(row);
+          else if (typeof window.saveRowToTCA === 'function') window.saveRowToTCA(row);
+          else try{ toast && toast('Makluman','Baris ditandakan Voucher (TCA).','info'); }catch(_){}
+          return false;
+        }
+        // else: let original handler run if present
+        return true;
+      }, true);
+    }
+    const waBtn = wrap.querySelector('[data-action="wa"]');
+    if (waBtn && !waBtn._wired){
+      waBtn._wired = True;
+      waBtn.addEventListener('click', ()=>{
+        const row = waBtn.closest('tr');
+        if (typeof window.openWhatsAppReport === 'function') window.openWhatsAppReport(row);
+        else if ($('#whatsappReportModal')) new bootstrap.Modal($('#whatsappReportModal')).show();
+      });
+    }
+    const delBtn = wrap.querySelector('[data-action="delete"]');
+    if (delBtn && !delBtn._wired){
+      delBtn._wired = true;
+      delBtn.addEventListener('click', ()=>{
+        const row = delBtn.closest('tr');
+        if (typeof window.deleteRow === 'function') window.deleteRow(row);
+        else if (confirm('Buang baris ini?')) row.remove();
+      });
+    }
+  }
+
+  function setInputsEnabled(enabled, ...els){
+    els.forEach(el=>{ if (el){ el.disabled = !enabled; el.classList.toggle('is-disabled', !enabled); }});
+  }
+
+  function updateRowState(row){
+    const c = getCells(row);
+    if (!c) return;
+    // Unify checkbox look
+    [c.layak, c.tak, c.voucher].forEach(uniformCheckbox);
+
+    // Move any TCA inputs out of Remark
+    moveTcaFromRemark(row);
+
+    // Exclusivity
+    const onLayak = !!(c.layak && c.layak.checked);
+    const onTak = !!(c.tak && c.tak.checked);
+    const onVoucher = !!(c.voucher && c.voucher.checked);
+
+    const all = [c.layak, c.tak, c.voucher].filter(Boolean);
+    const setExclusive = picked => all.forEach(x=>{ if (x && x!==picked) x.checked=false; });
+    if (c.layak && c.layak._justChanged){ setExclusive(c.layak); c.layak._justChanged=false; }
+    if (c.tak && c.tak._justChanged){ setExclusive(c.tak); c.tak._justChanged=false; }
+    if (c.voucher && c.voucher._justChanged){ setExclusive(c.voucher); c.voucher._justChanged=false; }
+
+    // Enable TCA inputs when Layak or Voucher
+    const pack = c.tcaTd ? c.tcaTd.querySelector('.tca-pack') : null;
+    const d = pack?.querySelector('.tca-date');
+    const t = pack?.querySelector('.tca-time');
+    const s = pack?.querySelector('.tca-staff');
+    setInputsEnabled(onLayak || onVoucher, d, t, s);
+
+    // Ensure actions visible
+    ensureActions(row);
+
+    // Route label for main:
+    const actionsTd = c.actionsTd;
+    const mainBtn = actionsTd ? (actionsTd.querySelector('[data-action="main"], .btn-main-action')) : null;
+    if (mainBtn){
+      if (!mainBtn.dataset.origLabel) mainBtn.dataset.origLabel = (mainBtn.textContent||'').trim() || 'Daftar';
+      if (onVoucher){
+        mainBtn.textContent = 'Daftar Voucher';
+        mainBtn.dataset.route = 'tca';
+      } else if (onLayak){
+        mainBtn.textContent = mainBtn.dataset.origLabel || 'Daftar';
+        mainBtn.dataset.route = 'layak';
+      } else {
+        mainBtn.textContent = mainBtn.dataset.origLabel || 'Daftar';
+        mainBtn.dataset.route = '';
+      }
+    }
+  }
+
+  function wireRow(row){
+    const c = getCells(row);
+    if (!c) return;
+    [c.layak, c.tak, c.voucher].forEach(inp=>{
+      if (!inp || inp._wired) return;
+      inp._wired = true;
+      inp.addEventListener('change', ()=>{ inp._justChanged=true; updateRowState(row); });
+    });
+    updateRowState(row);
+  }
+
+  function wireAll(){ $$('#nadiContainer tr').forEach(wireRow); }
+
+  // Observe dynamic rows
   const container = document.getElementById('nadiContainer');
   if (container){
     const mo = new MutationObserver(()=>wireAll());
