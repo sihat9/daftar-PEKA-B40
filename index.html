@@ -4247,8 +4247,8 @@ function useSelectedSession(){
 
     // Update main button label
     const btn = row.querySelector('.nadi-daftar');
-    
-      if (btn) btn.disabled = !(layak && layak.checked);if (btn){
+    if (btn) {
+      btn.disabled = !(layak && layak.checked);
       if (vchr && vchr.checked) btn.textContent = 'Daftar TCA';
       else btn.textContent = 'Daftar';
     }
