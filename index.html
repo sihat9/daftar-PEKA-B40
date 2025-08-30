@@ -368,6 +368,67 @@
 .nadi-table td[data-col="remark"] .tca-staff { display:none !important; } /* keep remark clean */
 
 </style>
+
+<!-- === NADI Tidy Overrides (Aug 30, 2025) — preserve original structure === -->
+<style id="nadi-tidy-aug30">
+  /* Do not change structure, only visual alignment/spacing */
+  .nadi-table { width: 100%; min-width: 1300px; border-collapse: separate; border-spacing: 0; }
+  .nadi-table th, .nadi-table td { padding: 8px; border: 1px solid #dee2e6; vertical-align: middle; }
+  .nadi-table thead th { background:#f8f9fa; font-weight:600; text-align:center; position:sticky; top:0; z-index:10; }
+
+  /* Column sizing/left-align for text-heavy fields */
+  .nadi-table th:nth-child(2), .nadi-table td:nth-child(2){ text-align:left; min-width:170px; } /* Nama */
+  .nadi-table th:nth-child(3), .nadi-table td:nth-child(3){ min-width:130px; } /* IC */
+  .nadi-table th:nth-child(6), .nadi-table td:nth-child(6){ text-align:left; min-width:200px; } /* Alamat */
+
+  /* Compact vitals — consistent widths */
+  .nadi-table th:nth-child(7), .nadi-table td:nth-child(7),
+  .nadi-table th:nth-child(8), .nadi-table td:nth-child(8),
+  .nadi-table th:nth-child(9), .nadi-table td:nth-child(9),
+  .nadi-table th:nth-child(10), .nadi-table td:nth-child(10),
+  .nadi-table th:nth-child(11), .nadi-table td:nth-child(11),
+  .nadi-table th:nth-child(12), .nadi-table td:nth-child(12) {
+    width: 92px; text-align:center;
+  }
+
+  /* Strict checkbox centering for Layak / Tidak Layak / TCA voucher */
+  .nadi-table td[data-col="layak"],
+  .nadi-table td[data-col="tidakLayak"],
+  .nadi-table td[data-col="voucher"],
+  .nadi-table th[data-col="layak"],
+  .nadi-table th[data-col="tidakLayak"],
+  .nadi-table th[data-col="voucher"]{
+    text-align:center !important; vertical-align:middle !important; white-space:nowrap;
+  }
+  .nadi-table td[data-col="layak"] .form-check,
+  .nadi-table td[data-col="tidakLayak"] .form-check,
+  .nadi-table td[data-col="voucher"] .form-check{
+    display:flex; align-items:center; justify-content:center; margin:0;
+  }
+  .nadi-table td[data-col="layak"] input[type="checkbox"],
+  .nadi-table td[data-col="tidakLayak"] input[type="checkbox"],
+  .nadi-table td[data-col="voucher"] input[type="checkbox"]{
+    width:18px !important; height:18px !important; min-width:18px !important; min-height:18px !important; margin:0;
+  }
+
+  /* Keep Remark as free text only (no TCA widgets in here) */
+  .nadi-table td[data-col="remark"]{ min-width: 200px; white-space: normal; }
+  .nadi-table td[data-col="remark"] textarea,
+  .nadi-table td[data-col="remark"] input[type="text"]{ width:100%; min-height:36px; }
+  .nadi-table td[data-col="remark"] .tca-pack,
+  .nadi-table td[data-col="remark"] .tca-date,
+  .nadi-table td[data-col="remark"] .tca-time,
+  .nadi-table td[data-col="remark"] .tca-staff{ display:none !important; }
+
+  /* TCA & Staff cell can grow but has a sensible minimum */
+  .nadi-table td[data-col="tcaStaff"]{ min-width: 220px; }
+
+  /* Legacy voucherDate column (if exists) stays hidden */
+  .nadi-table th[data-col="voucherDate"], .nadi-table td[data-col="voucherDate"]{ display:none !important; }
+
+  /* Keep action buttons tidy */
+  .nadi-table td[data-col="actions"] .btn{ margin: 2px 4px; }
+</style>
 </head>
 <body>
 <!-- ==== V12 SAFE UTIL (Aug 30, 2025) ==== -->
