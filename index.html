@@ -1,19 +1,13 @@
 <!DOCTYPE html>
 <html lang="ms">
 <head>
-<!-- ==== V12 CSS • Strict Layout & Uniform Controls (Aug 29, 2025) ==== -->
+<!-- ==== V12 UI FIXES (Aug 30, 2025) ==== -->
 <style>
-  /* General table stability */
   .nadi-scroll-container { overflow-x: auto; width: 100%; }
   .nadi-table { table-layout: fixed; border-collapse: separate; border-spacing: 0; }
   .nadi-table th, .nadi-table td { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; vertical-align: middle; }
-
-  /* Only Remark should wrap text */
-  .nadi-table td[data-col="remark"], .nadi-table th[data-col="remark"] { white-space: normal; }
-  .nadi-table td[data-col="remark"] textarea,
-  .nadi-table td[data-col="remark"] input[type="text"] { width: 100%; min-height: 36px; }
-
-  /* Uniform checkbox sizing & centering for status columns */
+  .nadi-table td[data-col="remark"], .nadi-table th[data-col="remark"],
+  .nadi-table td[data-col="alamat"], .nadi-table th[data-col="alamat"] { white-space: normal; }
   .nadi-table th[data-col="layak"], .nadi-table td[data-col="layak"],
   .nadi-table th[data-col="tidakLayak"], .nadi-table td[data-col="tidakLayak"],
   .nadi-table th[data-col="voucher"], .nadi-table td[data-col="voucher"] {
@@ -21,28 +15,24 @@
   }
   .nadi-table td[data-col="layak"] input[type="checkbox"],
   .nadi-table td[data-col="tidakLayak"] input[type="checkbox"],
-  .nadi-table td[data-col="voucher"] input[type="checkbox"] {
-    width: 1.15em; height: 1.15em; min-width: 18px; min-height: 18px; margin: 0;
-    display: inline-block; vertical-align: middle;
+  .nadi-table td[data-col="voucher"] input[type="checkbox"],
+  .nadi-table input.form-check-input.chk-layak,
+  .nadi-table input.form-check-input.chk-taklayak,
+  .nadi-table input.form-check-input.chk-voucher {
+    width: 18px; height: 18px; min-width: 18px; min-height: 18px;
+    margin: 0; display: inline-block; vertical-align: middle;
   }
   .nadi-table td[data-col="layak"] .form-check,
   .nadi-table td[data-col="tidakLayak"] .form-check,
-  .nadi-table td[data-col="voucher"] .form-check { display: flex; align-items: center; justify-content: center; margin: 0; }
-
-  /* Inputs shouldn't overflow cells */
-  .nadi-table input.form-control, .nadi-table select.form-select, .nadi-table .form-control {
-    width: 100%; max-width: 100%;
+  .nadi-table td[data-col="voucher"] .form-check {
+    display:flex; align-items:center; justify-content:center; margin:0;
   }
-
-  /* Keep actions compact & visible */
   .nadi-table td[data-col="actions"] { white-space: nowrap; }
   .nadi-table td[data-col="actions"] .btn { margin: 2px 4px; }
-
-  /* Ensure no TCA controls display inside Remark */
   .nadi-table td[data-col="remark"] .tca-pack,
   .nadi-table td[data-col="remark"] .tca-date,
   .nadi-table td[data-col="remark"] .tca-time,
-  .nadi-table td[data-col="remark"] .tca-staff { display: none !important; }
+  .nadi-table td[data-col="remark"] .tca-staff,
   .nadi-table td[data-col="remark"] input[type="date"],
   .nadi-table td[data-col="remark"] input[type="time"] { display: none !important; }
 </style>
@@ -4343,236 +4333,194 @@ function useSelectedSession(){
 })();</script>
 
 
-<!-- ==== V12 JS • NADI Logic (Guarded) (Aug 29, 2025) ==== -->
+<!-- ==== V12 LOGIC (Aug 30, 2025): Safe login + NADI patch guarded ==== -->
 <script>
 (function(){
-  // Run only if NADI table exists to avoid interfering with login page
-  if (!document.getElementById('nadiContainer')) return;
+  "use strict";
+  function hasNadi(){ return !!document.getElementById('nadiContainer'); }
+  if (typeof window.toast !== 'function') { window.toast = function(){}; }
 
-  const $  = (sel, root=document) => root.querySelector(sel);
-  const $$ = (sel, root=document) => Array.from(root.querySelectorAll(sel));
+  function runNadiPatch(){
+    if (!hasNadi()) return;
+    const $ = (sel, root=document) => root.querySelector(sel);
+    const $$ = (sel, root=document) => Array.from(root.querySelectorAll(sel));
 
-  // Safe no-op toast if missing
-  if (typeof window.toast !== 'function') window.toast = function(){};
+    (function ensureColGroup(){
+      const table = $('.nadi-table');
+      if (!table || table.querySelector('colgroup')) return;
+      const cg = document.createElement('colgroup');
+      const widths = [40,180,120,90,120,240,80,80,120,80,80,80,80,100,100,260,260,220];
+      widths.forEach(w => { const col = document.createElement('col'); col.style.width = w+'px'; cg.appendChild(col); });
+      table.insertBefore(cg, table.firstChild);
+    })();
 
-  // Build a <colgroup> only if table is found and no colgroup yet
-  function ensureColGroup(){
-    const table = $('.nadi-table');
-    if (!table) return;
-    if (table.querySelector('colgroup')) return;
-    const cg = document.createElement('colgroup');
-    // Widths: tweak as needed — generous for Remark & TCA&Staff
-    const widths = [40,180,120,80,120,220,80,80,120,80,80,80,80,100,120,260,260,220];
-    widths.forEach(w=>{ const col=document.createElement('col'); col.style.width=w+'px'; cg.appendChild(col); });
-    table.insertBefore(cg, table.firstChild);
-  }
-
-  // Locate important cells by data-col
-  function getCells(row){
-    const q = (key) => row.querySelector('td[data-col="'+key+'"]');
-    return {
-      layakCell:    q('layak'),
-      takCell:      q('tidakLayak'),
-      voucherCell:  q('voucher'),
-      remarkCell:   q('remark'),
-      tcaCell:      q('tcaStaff') || q('tcastaff') || q('tca'),
-      actionsCell:  q('actions')  || row.cells[row.cells.length-1]
-    };
-  }
-  function getInputs(cells){
-    return {
-      layak:   cells.layakCell && cells.layakCell.querySelector('input[type="checkbox"]'),
-      tak:     cells.takCell && cells.takCell.querySelector('input[type="checkbox"]'),
-      voucher: cells.voucherCell && cells.voucherCell.querySelector('input[type="checkbox"]')
-    };
-  }
-
-  function wrapCheckbox(inp){
-    if (!inp) return;
-    inp.classList.add('form-check-input');
-    const p = inp.parentElement;
-    if (!p || p.classList.contains('form-check')) return;
-    const wrap = document.createElement('div');
-    wrap.className = 'form-check';
-    p.insertBefore(wrap, inp);
-    wrap.appendChild(inp);
-  }
-
-  function ensureTcaPack(cells){
-    if (!cells.tcaCell) return null;
-    let pack = cells.tcaCell.querySelector('.tca-pack');
-    if (!pack){
-      pack = document.createElement('div');
-      pack.className = 'tca-pack d-flex flex-wrap align-items-center gap-1';
-      const d = document.createElement('input'); d.type='date'; d.className='form-control form-control-sm tca-date'; d.placeholder='Tarikh TCA';
-      const t = document.createElement('input'); t.type='time'; t.className='form-control form-control-sm tca-time'; t.placeholder='Masa';
-      const s = document.createElement('input'); s.type='text';  s.className='form-control form-control-sm tca-staff'; s.placeholder='Staff';
-      [d,t,s].forEach(el=>{ el.style.minWidth='120px'; el.style.flex='1 1 110px'; });
-      pack.appendChild(d); pack.appendChild(t); pack.appendChild(s);
-      cells.tcaCell.appendChild(pack);
+    function getCells(row){
+      const cells = row.cells;
+      const findByData = name => row.querySelector('td[data-col="'+name+'"]');
+      const actionsTd = findByData('actions') || cells[cells.length-1] || null;
+      return {
+        layak: (findByData('layak')||cells[12])?.querySelector('input[type="checkbox"], .chk-layak') || null,
+        tak: (findByData('tidakLayak')||cells[13])?.querySelector('input[type="checkbox"], .chk-taklayak') || null,
+        voucher: (findByData('voucher')||cells[14])?.querySelector('input[type="checkbox"], .chk-voucher') || null,
+        remarkCell: findByData('remark') || null,
+        tcaCell: findByData('tcaStaff') || findByData('tca') || null,
+        actionsCell: actionsTd
+      };
     }
-    return pack;
-  }
 
-  // Move any TCA fields out of Remark into TCA&Staff column
-  function sanitizeRemark(cells){
-    if (!cells.remarkCell) return;
-    const stray = cells.remarkCell.querySelectorAll('.tca-date,.tca-time,.tca-staff,.tca-pack,input[type="date"],input[type="time"]');
-    if (stray.length && cells.tcaCell){
-      const pack = ensureTcaPack(cells);
-      stray.forEach(el=>{
-        if (el.classList && el.classList.contains('tca-pack')){
-          el.querySelectorAll('.tca-date,.tca-time,.tca-staff').forEach(ch=>pack.appendChild(ch));
-          el.remove();
-        }else{
-          if (el.tagName==='INPUT' && el.type==='date') el.classList.add('tca-date','form-control','form-control-sm');
-          if (el.tagName==='INPUT' && el.type==='time') el.classList.add('tca-time','form-control','form-control-sm');
-          pack.appendChild(el);
+    function normalizeCheckboxes(row){
+      const c = getCells(row);
+      [c.layak, c.tak, c.voucher].forEach(inp => {
+        if (!inp) return;
+        inp.classList.add('form-check-input');
+        if (!inp.closest('.form-check')){
+          const wrap = document.createElement('div');
+          wrap.className = 'form-check';
+          inp.parentNode.insertBefore(wrap, inp);
+          wrap.appendChild(inp);
         }
       });
     }
-    // As final guard, remove any raw date/time left in Remark
-    cells.remarkCell.querySelectorAll('input[type="date"],input[type="time"]').forEach(el=>el.remove());
-  }
 
-  // Ensure actions buttons exist (without replacing originals if present)
-  function ensureActions(cells){
-    if (!cells.actionsCell) return;
-    const hasAny = cells.actionsCell.querySelector('.btn');
-    if (hasAny) return;
-    const wrap = document.createElement('div');
-    wrap.className = 'btn-group btn-group-sm';
-    const btnMain = document.createElement('button');
-    btnMain.className = 'btn btn-primary btn-main-action';
-    btnMain.textContent = 'Daftar';
-    const btnWA = document.createElement('button');
-    btnWA.className = 'btn btn-outline-success btn-wa-report';
-    btnWA.textContent = 'WA Report';
-    const btnDel = document.createElement('button');
-    btnDel.className = 'btn btn-outline-danger btn-delete';
-    btnDel.textContent = 'Buang';
-    wrap.appendChild(btnMain); wrap.appendChild(btnWA); wrap.appendChild(btnDel);
-    cells.actionsCell.appendChild(wrap);
+    function sanitizeRemark(row){
+      const c = getCells(row);
+      if (!c.remarkCell) return;
+      c.remarkCell.querySelectorAll('.tca-date, .tca-time, .tca-staff, .tca-pack, input[type="date"], input[type="time"]').forEach(el => {
+        if (el && el.parentNode) el.parentNode.removeChild(el);
+      });
+    }
 
-    // Optional handlers
-    btnWA.addEventListener('click', (e)=>{
-      e.preventDefault();
-      const row = e.currentTarget.closest('tr');
-      if (typeof window.openWhatsAppReport === 'function') return window.openWhatsAppReport(row);
-      if (typeof window.showWhatsAppReportPreview === 'function') return window.showWhatsAppReportPreview(row);
-      window.toast('Makluman','Fungsi WA Report tidak ditakrifkan.','warning');
-    });
-    btnDel.addEventListener('click', (e)=>{
-      e.preventDefault();
-      const row = e.currentTarget.closest('tr');
-      if (typeof window.deleteNadiRow === 'function') return window.deleteNadiRow(row);
-      if (confirm('Padam baris ini?')) row.remove();
-    });
-  }
-
-  function setInputsEnabled(enabled, ...els){
-    els.forEach(el=>{ if (el){ el.disabled = !enabled; el.classList.toggle('is-disabled', !enabled); } });
-  }
-
-  function updateRowState(row){
-    const cells = getCells(row);
-    const { layak, tak, voucher } = getInputs(cells);
-
-    // Wrap for uniform look
-    wrapCheckbox(layak); wrapCheckbox(tak); wrapCheckbox(voucher);
-
-    // Move TCA fields away from Remark and ensure pack in TCA column
-    sanitizeRemark(cells);
-
-    const onLayak   = !!(layak   && layak.checked);
-    const onTak     = !!(tak     && tak.checked);
-    const onVoucher = !!(voucher && voucher.checked);
-
-    // Exclusivity
-    const group = [layak, tak, voucher].filter(Boolean);
-    const setExclusive = (picked) => group.forEach(x=>{ if (x && x!==picked) x.checked = false; });
-    if (layak && layak._justChanged){ setExclusive(layak); layak._justChanged=false; }
-    if (tak && tak._justChanged){ setExclusive(tak); tak._justChanged=false; }
-    if (voucher && voucher._justChanged){ setExclusive(voucher); voucher._justChanged=false; }
-
-    // Enable TCA fields when Layak OR Voucher
-    const pack = ensureTcaPack(cells);
-    const d = pack && pack.querySelector('.tca-date');
-    const t = pack && pack.querySelector('.tca-time');
-    const s = pack && pack.querySelector('.tca-staff');
-    setInputsEnabled(onLayak || onVoucher, d, t, s);
-
-    // Main button label/route (do not touch WA/Report/Buang)
-    const main = cells.actionsCell && (cells.actionsCell.querySelector('[data-action="main"]') || cells.actionsCell.querySelector('.btn-main-action'));
-    if (main){
-      if (!main.dataset.origLabel) main.dataset.origLabel = (main.textContent||'').trim() || 'Daftar';
-      if (onVoucher){
-        main.textContent = 'Daftar Voucher';
-        main.dataset.route = 'tca';
-      }else if (onLayak){
-        main.textContent = main.dataset.origLabel || 'Daftar';
-        main.dataset.route = 'layak';
-      }else{
-        main.textContent = main.dataset.origLabel || main.textContent;
-        main.dataset.route = '';
+    function ensureTcaPack(row){
+      const c = getCells(row);
+      if (!c.tcaCell) return;
+      let pack = c.tcaCell.querySelector('.tca-pack');
+      if (!pack){
+        pack = document.createElement('div');
+        pack.className = 'tca-pack d-flex flex-wrap align-items-center gap-1';
+        const d = document.createElement('input'); d.type='date'; d.className='form-control form-control-sm tca-date'; d.placeholder='Tarikh TCA';
+        const t = document.createElement('input'); t.type='time'; t.className='form-control form-control-sm tca-time'; t.placeholder='Masa';
+        const s = document.createElement('input'); s.type='text'; s.className='form-control form-control-sm tca-staff'; s.placeholder='Staff';
+        [d,t,s].forEach(el => { el.style.minWidth='110px'; el.style.flex='1 1 110px'; });
+        pack.appendChild(d); pack.appendChild(t); pack.appendChild(s);
+        c.tcaCell.appendChild(pack);
       }
-      if (!main._wired){
-        main._wired = true;
-        main.addEventListener('click', (e)=>{
-          const route = main.dataset.route || '';
-          const rowEl = e.currentTarget.closest('tr');
-          if (route === 'tca'){
-            e.preventDefault(); e.stopPropagation();
-            if (typeof window.nadiSaveVoucherRow === 'function') return window.nadiSaveVoucherRow(rowEl);
-            if (typeof window.saveRowToTCA === 'function') return window.saveRowToTCA(rowEl);
-            window.toast('Makluman','Baris ditandakan Voucher (TCA).','info');
-          }
-        }, true);
+      return pack;
+    }
+
+    function ensureActions(row){
+      const c = getCells(row);
+      if (!c.actionsCell) return;
+      if (c.actionsCell.querySelector('.btn')) return;
+      const wrap = document.createElement('div');
+      wrap.className = 'btn-group btn-group-sm';
+      const btnMain = document.createElement('button');
+      btnMain.className = 'btn btn-primary btn-main-action';
+      btnMain.textContent = 'Daftar';
+      const btnWA = document.createElement('button');
+      btnWA.className = 'btn btn-outline-success';
+      btnWA.textContent = 'WA Report';
+      const btnDel = document.createElement('button');
+      btnDel.className = 'btn btn-outline-danger';
+      btnDel.textContent = 'Buang';
+      wrap.appendChild(btnMain); wrap.appendChild(btnWA); wrap.appendChild(btnDel);
+      c.actionsCell.appendChild(wrap);
+      btnWA.addEventListener('click', e => {
+        e.preventDefault();
+        const rowEl = e.currentTarget.closest('tr');
+        if (typeof window.openWhatsAppReport === 'function') return window.openWhatsAppReport(rowEl);
+        if (typeof window.showWhatsAppReportPreview === 'function') return window.showWhatsAppReportPreview(rowEl);
+        try{ window.toast('Makluman','Fungsi WA Report tidak ditakrifkan.','warning'); }catch(_){}
+      });
+      btnDel.addEventListener('click', e => {
+        e.preventDefault();
+        const rowEl = e.currentTarget.closest('tr');
+        if (typeof window.deleteNadiRow === 'function') return window.deleteNadiRow(rowEl);
+        if (confirm('Padam baris ini?')) rowEl.remove();
+      });
+    }
+
+    function findMainButton(c){
+      if (!c.actionsCell) return null;
+      return c.actionsCell.querySelector('[data-action="main"], .btn-main-action');
+    }
+
+    function setInputsEnabled(enabled, ...els){
+      els.forEach(el => { if (el){ el.disabled = !enabled; el.classList && el.classList.toggle('is-disabled', !enabled); } });
+    }
+
+    function updateRowState(row){
+      const c = getCells(row);
+      if (!c) return;
+      sanitizeRemark(row);
+      normalizeCheckboxes(row);
+      ensureTcaPack(row);
+      ensureActions(row);
+
+      const onLayak = !!(c.layak && (c.layak.checked || c.layak.getAttribute('aria-checked')==='true'));
+      const onTak = !!(c.tak && (c.tak.checked || c.tak.getAttribute('aria-checked')==='true'));
+      const onVoucher = !!(c.voucher && (c.voucher.checked || c.voucher.getAttribute('aria-checked')==='true'));
+
+      const group = [c.layak, c.tak, c.voucher].filter(Boolean);
+      const setExclusive = picked => group.forEach(x => { if (x && x!==picked){ x.checked=false; x.setAttribute('aria-checked','false'); } });
+      if (c.layak && c.layak._justChanged){ setExclusive(c.layak); c.layak._justChanged=false; }
+      if (c.tak && c.tak._justChanged){ setExclusive(c.tak); c.tak._justChanged=false; }
+      if (c.voucher && c.voucher._justChanged){ setExclusive(c.voucher); c.voucher._justChanged=false; }
+
+      const d = c.tcaCell ? c.tcaCell.querySelector('.tca-date') : null;
+      const t = c.tcaCell ? c.tcaCell.querySelector('.tca-time') : null;
+      const s = c.tcaCell ? c.tcaCell.querySelector('.tca-staff') : null;
+      setInputsEnabled((onLayak || onVoucher), d, t, s);
+
+      const main = findMainButton(c);
+      if (main){
+        if (!main.dataset.origLabel) main.dataset.origLabel = (main.textContent||'').trim() || 'Daftar';
+        if (onVoucher){
+          main.textContent = 'Daftar Voucher';
+          main.dataset.route = 'tca';
+        } else if (onLayak){
+          main.textContent = main.dataset.origLabel || 'Daftar';
+          main.dataset.route = 'layak';
+        } else {
+          main.textContent = main.dataset.origLabel || main.textContent;
+          main.dataset.route = '';
+        }
+        if (!main._wired){
+          main._wired = true;
+          main.addEventListener('click', e => {
+            const route = main.dataset.route || '';
+            const rowEl = e.currentTarget.closest('tr');
+            if (route === 'tca'){
+              e.preventDefault(); e.stopPropagation();
+              if (typeof window.nadiSaveVoucherRow === 'function') return window.nadiSaveVoucherRow(rowEl);
+              if (typeof window.saveRowToTCA === 'function') return window.saveRowToTCA(rowEl);
+              try{ window.toast('Makluman','Baris ditandakan Voucher (TCA).','info'); }catch(_){}
+            }
+          }, true);
+        }
       }
+    }
+
+    function wireRow(row){
+      const c = getCells(row);
+      [c.layak, c.tak, c.voucher].forEach(inp => {
+        if (!inp || inp._wired) return;
+        inp._wired = true;
+        inp.addEventListener('change', () => { inp._justChanged=true; updateRowState(row); });
+      });
+      updateRowState(row);
+    }
+
+    function wireAll(){ $$('#nadiContainer tr').forEach(wireRow); }
+
+    const container = document.getElementById('nadiContainer');
+    if (container){
+      const mo = new MutationObserver(() => wireAll());
+      mo.observe(container, {childList:true, subtree:true});
+      wireAll();
     }
   }
 
-  function wireRow(row){
-    const cells = getCells(row);
-    const { layak, tak, voucher } = getInputs(cells);
-    [layak, tak, voucher].forEach(inp=>{
-      if (!inp || inp._wired) return;
-      inp._wired = true;
-      inp.addEventListener('change', ()=>{ inp._justChanged = true; updateRowState(row); });
-    });
-    ensureActions(cells);
-    updateRowState(row);
-  }
-
-  function wireAll(){ $$('#nadiContainer tr').forEach(wireRow); }
-
-  // Init
-  ensureColGroup();
-  const container = document.getElementById('nadiContainer');
-  if (container){
-    const mo = new MutationObserver(()=>wireAll());
-    mo.observe(container, {childList:true, subtree:true});
-    wireAll();
-  }
-
-  // Save all: route only Voucher rows to TCA list
-  const btnSaveAll = document.getElementById('btnNadiSaveActivity');
-  if (btnSaveAll && !btnSaveAll._wired){
-    btnSaveAll._wired = true;
-    btnSaveAll.addEventListener('click', function(){
-      const rows = $$('#nadiContainer tr');
-      let cnt = 0;
-      rows.forEach(row=>{
-        const cells = getCells(row);
-        const voucher = cells.voucherCell && cells.voucherCell.querySelector('input[type="checkbox"]');
-        if (voucher && voucher.checked){
-          if (typeof window.nadiSaveVoucherRow === 'function'){ window.nadiSaveVoucherRow(row); cnt++; }
-          else if (typeof window.saveRowToTCA === 'function'){ window.saveRowToTCA(row); cnt++; }
-        }
-      });
-      if (cnt>0) window.toast('Berjaya', cnt+' baris voucher dirutekan ke senarai TCA.','success');
-    }, true);
-  }
+  document.addEventListener('DOMContentLoaded', runNadiPatch);
 })();
 </script>
 </body>
