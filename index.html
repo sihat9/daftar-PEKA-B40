@@ -3047,27 +3047,23 @@ function mergeLiveRowsIntoUI(items){
 
     // Jangan override jika user sedang menaip pada medan itu
     const safeSet = (sel, val) => {
-      const el = row.querySelector(sel);
-      if (!el) return;
-      if (document.activeElement === el) return; // biar user habis menaip
-
-      // Hanya set apabila nilai baharu benar-benar wujud (elak overwrite dengan ''/undefined)
-      const hasValue = !(val === undefined || val === null || val === '');
-
-      if (el.tagName==='INPUT' || el.tagName==='TEXTAREA'){
-        if (el.type==='checkbox'){
-          if (val !== undefined && val !== null) el.checked = !!val;
-        } else {
-          if (hasValue) {
-            el.value = val;
-            // jika ada view-mode (inline edit), pantulkan
-            if (el.previousElementSibling && el.previousElementSibling.classList.contains('view-mode')){
-              el.previousElementSibling.textContent = el.value || '';
-            }
-          }
+  const el = row.querySelector(sel);
+  if (!el) return;
+  if (document.activeElement === el) return; // biar user habis menaip
+  if (el.tagName==='INPUT' || el.tagName==='TEXTAREA'){
+    if (el.type==='checkbox'){
+      if (val !== undefined && val !== null) el.checked = !!val;
+    } else {
+      if (val !== undefined && val !== null && val !== '') {
+        el.value = String(val);
+        // jika ada view-mode (inline edit), pantulkan
+        if (el.previousElementSibling && el.previousElementSibling.classList.contains('view-mode')){
+          el.previousElementSibling.textContent = el.value;
         }
       }
-    };
+    }
+  }
+};;
 
     safeSet('.nadi-nama', it.nama);
     safeSet('.nadi-ic', it.ic);
@@ -3935,6 +3931,11 @@ function useSelectedSession(){
     });
     localStorage.setItem(NADI_KEY, JSON.stringify(rows));
   }
+function saveNadiStateDebounced(){
+  clearTimeout(window.__saveNadiT);
+  window.__saveNadiT = setTimeout(saveNadiState, 400);
+}
+
   const saveNadiStateDebounced = debounce(saveNadiState, 400);
 
   function restoreNadiState(){
@@ -4044,9 +4045,10 @@ function useSelectedSession(){
         alamat: tr.querySelector('input[name="alamat"]')?.value || '',
         voucherDate: tr.querySelector('input[name="voucherDate"]')?.value || ''
       };
-      if (row.nama || row.ic || row.telefon) { voucherRows.push(row); }
-      // pushed above only when any key field exists
-    });
+      if (row.nama || row.ic || row.telefon) {
+        voucherRows.push(row);
+      }
+});
 
     if (voucherRows.length){
       // Validasi tarikh voucher <= 30 hari dari tarikh program
