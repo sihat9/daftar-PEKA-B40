@@ -689,8 +689,8 @@
     <th style="min-width: 80px;">BP</th>
     <th style="min-width: 80px;">PR</th>
     <th style="min-width: 120px;">DXT</th>
-    <th style="min-width: 80px;">Tinggi</th>
-    <th style="min-width: 80px;">Berat</th>
+    <th style="min-width: 80px;">Ht</th>
+    <th style="min-width: 80px;">Wt</th>
     <th style="min-width: 80px;">BMI</th>
     <th style="width: 80px;">Layak</th>
     <th style="width: 100px;">Tidak Layak</th>
@@ -2459,7 +2459,7 @@ function calculateAgeFromIC(ic) {
     months += 12;
   }
   
-  return `${age}t ${months}b ${days}h`;
+  return `${age}T ${months}B ${days}H`;
 }
 
 function updateNadiSummary() {
@@ -2531,11 +2531,11 @@ function addNadiRow(){
     </td>
     <td class="nadi-input-cell">
       <div class="view-mode" onclick="editNadiCell(this)"></div>
-      <input class="form-control form-control-sm nadi-tinggi" placeholder="Tinggi" style="display:none" onblur="saveNadiCell(this)" />
+      <input class="form-control form-control-sm nadi-tinggi" placeholder="Ht (cm)" style="display:none" onblur="saveNadiCell(this)" />
     </td>
     <td class="nadi-input-cell">
       <div class="view-mode" onclick="editNadiCell(this)"></div>
-      <input class="form-control form-control-sm nadi-berat" placeholder="Berat" style="display:none" onblur="saveNadiCell(this)" />
+      <input class="form-control form-control-sm nadi-berat" placeholder="Wt (kg)" style="display:none" onblur="saveNadiCell(this)" />
     </td>
     <td class="nadi-input-cell">
       <div class="view-mode" onclick="editNadiCell(this)"></div>
@@ -2579,8 +2579,22 @@ function addNadiRow(){
       e.preventDefault();
       dxtTypeBtn.textContent = this.textContent;
       dxtTypeInput.value = this.getAttribute('data-value');
-    });
-  });
+    
+      // Re-apply indicator on DXT view
+      const row = dxtTypeBtn.closest('tr');
+      const dxtInput = row?.querySelector('.nadi-dxt');
+      const dxtView  = dxtInput?.previousElementSibling;
+      if (dxtView) applyIndicator(dxtView, 'dxt', dxtInput.value, dxtTypeInput.value);
+});
+  
+  // Colorize DXT input live
+  const dxtInput = row.querySelector('.nadi-dxt');
+  if (dxtInput){
+    const recolorDXT = ()=> applyIndicator(dxtInput, 'dxt', dxtInput.value, dxtTypeInput.value);
+    dxtInput.addEventListener('input', recolorDXT);
+    dxtInput.addEventListener('blur', recolorDXT);
+  }
+});
 
   // BMI calc
   const tinggi = row.querySelector('.nadi-tinggi');
@@ -2775,11 +2789,99 @@ function editNadiCell(viewModeEl) {
   input.focus();
 }
 
+
+// === NADI Indicators (BP/PR/DXT/BMI) ===
+function applyIndicator(viewEl, kind, rawValue, extra){
+  if (!viewEl) return;
+  const el = viewEl;
+  const txt = String(rawValue || '').trim();
+  // Reset classes
+  el.classList.remove('text-success','text-danger','text-warning','fw-semibold');
+  if (!txt){ el.textContent = ''; return; }
+
+  function setClass(level){
+    if (level === 'ok'){ el.classList.add('text-success','fw-semibold'); }
+    else if (level === 'warn'){ el.classList.add('text-warning','fw-semibold'); }
+    else if (level === 'high'){ el.classList.add('text-danger','fw-semibold'); }
+  }
+
+  if (kind === 'bmi'){
+    const klass = classifyBMI(parseFloat(txt));
+    setClass(klass);
+    el.textContent = txt;
+    return;
+  }
+  if (kind === 'bp'){
+    const m = txt.match(/(\d{2,3})\s*[\/\-]\s*(\d{2,3})/);
+    if (!m){ el.textContent = txt; return; }
+    const sys = parseInt(m[1],10), dia = parseInt(m[2],10);
+    const klass = classifyBP(sys, dia);
+    setClass(klass);
+    el.textContent = `${sys}/${dia}`;
+    return;
+  }
+  if (kind === 'pr'){
+    const val = parseInt(txt, 10);
+    const klass = classifyPR(val);
+    setClass(klass);
+    el.textContent = String(val);
+    return;
+  }
+  if (kind === 'dxt'){
+    const val = parseFloat(txt.replace(',','.'));
+    const dxtType = (extra || 'Fasting').toLowerCase();
+    const klass = classifyDXT(val, dxtType);
+    setClass(klass);
+    el.textContent = txt;
+    return;
+  }
+}
+
+function classifyBMI(bmi){
+  if (!isFinite(bmi)) return '';
+  if (bmi < 18.5) return 'warn';
+  if (bmi < 25)   return 'ok';
+  if (bmi < 30)   return 'warn';
+  return 'high';
+}
+function classifyBP(sys, dia){
+  if (!isFinite(sys) || !isFinite(dia)) return '';
+  if (sys >= 140 || dia >= 90) return 'high';
+  if (sys < 120 && dia < 80)   return 'ok';
+  return 'warn';
+}
+function classifyPR(pr){
+  if (!isFinite(pr)) return '';
+  if (pr < 60 || pr > 100) return 'high';
+  return 'ok';
+}
+function classifyDXT(val, mode){
+  if (!isFinite(val)) return '';
+  if (mode === 'fasting'){
+    if (val >= 7.0) return 'high';
+    if (val >= 5.6) return 'warn';
+    return 'ok';
+  } else { // random
+    if (val >= 11.1) return 'high';
+    if (val >= 7.8)  return 'warn';
+    return 'ok';
+  }
+}
+
 function saveNadiCell(inputEl) {
   const viewMode = inputEl.previousElementSibling;
   viewMode.textContent = inputEl.value || '';
   viewMode.style.display = 'block';
   inputEl.style.display = 'none';
+  // Apply indicators for specific fields
+  if (inputEl.classList.contains('nadi-bp')) { applyIndicator(viewMode, 'bp', inputEl.value); }
+  if (inputEl.classList.contains('nadi-pr')) { applyIndicator(viewMode, 'pr', inputEl.value); }
+  if (inputEl.classList.contains('nadi-dxt')) {
+    const row = inputEl.closest('tr');
+    const dxtType = row?.querySelector('.nadi-dxt-type')?.value || 'Fasting';
+    applyIndicator(viewMode, 'dxt', inputEl.value, dxtType);
+  }
+
 
   // If this is IC field, update age
   if (inputEl.classList.contains('nadi-ic')) {
@@ -2801,6 +2903,8 @@ function saveNadiCell(inputEl) {
       const bmiValue = (weight / (height * height)).toFixed(1);
       bmi.value = bmiValue;
       bmi.previousElementSibling.textContent = bmiValue;
+      applyIndicator(bmi.previousElementSibling, 'bmi', bmiValue);
+
     } else {
       bmi.value = '';
       bmi.previousElementSibling.textContent = '';
@@ -4157,14 +4261,14 @@ function useSelectedSession(){
       if (el) el.disabled = !enableTca;
     });
 
-    // Button label: only when voucher → "Daftar Voucher"; otherwise keep original ("Daftar")
+    // Button label: only when voucher → "Daftar TCA"; otherwise keep original ("Daftar")
     const actions = idx.actions!=null ? ensureCell(tr, idx.actions) : tr.lastElementChild;
     if (actions) {
       const primaryBtn = pickPrimaryDaftar(actions);
       if (primaryBtn) {
         if (voucher) {
           if (!primaryBtn.dataset.originalText) primaryBtn.dataset.originalText = (primaryBtn.textContent||'').trim();
-          primaryBtn.textContent = 'Daftar Voucher';
+          primaryBtn.textContent = 'Daftar TCA';
           primaryBtn.dataset.voucher = "1";
         } else {
           primaryBtn.textContent = primaryBtn.dataset.originalText || 'Daftar';
@@ -4459,7 +4563,7 @@ function useSelectedSession(){
       }
       if (main){
         if (!main.dataset.origLabel) main.dataset.origLabel = (main.textContent||'').trim() || 'Daftar';
-        if (onVoucher){ main.textContent = 'Daftar Voucher'; main.dataset.route = 'tca'; }
+        if (onVoucher){ main.textContent = 'Daftar TCA'; main.dataset.route = 'tca'; }
         else if (onLayak){ main.textContent = main.dataset.origLabel || 'Daftar'; main.dataset.route = 'layak'; }
         else { main.textContent = main.dataset.origLabel || main.textContent; main.dataset.route = ''; }
         if (!main._wired){
@@ -4529,8 +4633,8 @@ function useSelectedSession(){
       'bp': '80px',
       'pr': '80px',
       'dxt': '120px',
-      'tinggi': '80px',
-      'berat': '80px',
+      'tinggi': '80px', 'ht': '80px',
+      'berat': '80px', 'wt': '80px',
       'bmi': '80px',
       'layak': '90px',
       'tidak layak': '110px',
@@ -4577,6 +4681,38 @@ function useSelectedSession(){
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', init);
   else init();
 })();
+</script>
+
+
+<script>
+// === Voucher Save: push to TCA Call (without marking as Layak) ===
+function getRowBasic(recRow){
+  if (typeof extractRowPayload === 'function'){
+    return extractRowPayload(recRow);
+  }
+  const q = sel => recRow.querySelector(sel);
+  return {
+    nama: q('.nadi-nama')?.value?.trim() || '',
+    ic: q('.nadi-ic')?.value?.trim() || '',
+    telefon: q('.nadi-tel')?.value?.trim() || '',
+    alamat: q('.nadi-alamat')?.value?.trim() || '',
+    tcaDate: q('.nadi-tca-date')?.value || '',
+    tcaTime: q('.nadi-tca-time')?.value || '',
+    tcaStaff: q('.nadi-staff')?.value?.trim() || ''
+  };
+}
+window.nadiSaveVoucherRow = function(recRow){
+  const data = getRowBasic(recRow);
+  if (!data.tcaDate || !data.tcaTime || !data.tcaStaff){
+    try{ toast('Makluman','Sila lengkapkan Tarikh, Masa & Staff pada kolum "TCA & Staff".','warning'); }catch(_){}
+    return;
+  }
+  if (typeof pushToTcaCall === 'function'){
+    pushToTcaCall({ nama:data.nama, ic:data.ic, telefon:data.telefon, alamat:data.alamat, tcaDate:data.tcaDate, tcaTime:data.tcaTime });
+  }
+  try{ toast('Berjaya','Rekod dimasukkan ke senarai TCA Call. Sistem akan ingat untuk dihubungi 1 hari sebelum tarikh.','success'); }catch(_){}
+};
+window.saveRowToTCA = function(recRow){ return window.nadiSaveVoucherRow(recRow); };
 </script>
 
 </body>
