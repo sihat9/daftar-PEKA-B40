@@ -4017,100 +4017,7 @@ function useSelectedSession(){
 
 </script>
 
-<script>
 
-// === Tambahan: Autosave, TCA voucher, dan Sejarah Saringan ===
-(function(){
-  const NADI_KEY = 'nadi_autosave_v1';
-
-  function debounce(fn, ms){ let t; return function(...a){ clearTimeout(t); t=setTimeout(()=>fn.apply(this,a), ms); }; }
-
-  // Simpan state jadual NADI ke localStorage
-  function saveNadiState(){
-    const rows = [];
-    document.querySelectorAll('#nadiContainer tr').forEach(tr=>{
-      const get = sel => tr.querySelector(sel);
-      const row = {
-        nama: get('input[name="nama"]')?.value || get('.view-mode[data-field="nama"]')?.textContent || '',
-        ic: get('input[name="ic"]')?.value || get('.view-mode[data-field="ic"]')?.textContent || '',
-        umur: get('input[name="umur"]')?.value || get('.view-mode[data-field="umur"]')?.textContent || '',
-        telefon: get('input[name="telefon"]')?.value || get('.view-mode[data-field="telefon"]')?.textContent || '',
-        alamat: get('input[name="alamat"]')?.value || get('.view-mode[data-field="alamat"]')?.textContent || '',
-        bp: get('input[name="bp"]')?.value || '',
-        pr: get('input[name="pr"]')?.value || '',
-        dxt: get('input[name="dxt"]')?.value || '',
-        tinggi: get('input[name="tinggi"]')?.value || '',
-        berat: get('input[name="berat"]')?.value || '',
-        bmi: get('input[name="bmi"]')?.value || '',
-        layak: get('input[name="layak"]')?.checked || false,
-        takLayak: get('input[name="takLayak"]')?.checked || false,
-        voucher: get('input[name="voucher"]')?.checked || false,        remark: get('input[name="remark"]')?.value || get('textarea[name="remark"]')?.value || '',
-        tcaDate: get('input[name="tcaDate"]')?.value || '',
-        tcaTime: get('input[name="tcaTime"]')?.value || '',
-        tcaStaff: get('input[name="tcaStaff"]')?.value || ''
-      };
-      if (Object.values(row).some(v => String(v||'').trim()!=='')) rows.push(row);
-    });
-    localStorage.setItem(NADI_KEY, JSON.stringify(rows));
-  }
-  const saveNadiStateDebounced = debounce(saveNadiState, 400);
-
-  function restoreNadiState(){
-    try{
-      const raw = localStorage.getItem(NADI_KEY);
-      if(!raw) return;
-      const rows = JSON.parse(raw);
-      if(!Array.isArray(rows) || !rows.length) return;
-      // Jika ada fungsi addNadiRow sedia ada, guna ia untuk tambah baris, kemudian isi nilai
-      rows.forEach((r, idx)=>{
-        if (typeof window.addNadiRow === 'function') window.addNadiRow();
-        const tr = document.querySelectorAll('#nadiContainer tr')[idx];
-        if (!tr) return;
-        const set = (sel, val) => { const el=tr.querySelector(sel); if(el){ el.value=val; if(el.type==='checkbox') el.checked=!!val; el.dispatchEvent(new Event('input',{bubbles:true})); el.dispatchEvent(new Event('change',{bubbles:true})); } };
-        set('input[name="nama"]', r.nama);
-        set('input[name="ic"]', r.ic);
-        set('input[name="umur"]', r.umur);
-        set('input[name="telefon"]', r.telefon);
-        set('input[name="alamat"]', r.alamat);
-        set('input[name="bp"]', r.bp);
-        set('input[name="pr"]', r.pr);
-        set('input[name="dxt"]', r.dxt);
-        set('input[name="tinggi"]', r.tinggi);
-        set('input[name="berat"]', r.berat);
-        set('input[name="bmi"]', r.bmi);
-        set('input[name="layak"]', r.layak);
-        set('input[name="takLayak"]', r.takLayak);
-        set('input[name="voucher"]', r.voucher);
-        
-        set('input[name="remark"]', r.remark);
-        set('textarea[name="remark"]', r.remark);
-        set('input[name="tcaDate"]', r.tcaDate);
-        set('input[name="tcaTime"]', r.tcaTime);
-        set('input[name="tcaStaff"]', r.tcaStaff);
-      });
-    }catch(e){ console.warn('Gagal restore autosave:', e); }
-  }
-
-  // Tambah kolum voucher secara dinamik bagi baris baharu jika belum wujud
-  function ensureVoucherColumns(){
-  document.querySelectorAll('#nadiContainer tr').forEach(tr=>{
-    if (tr.querySelector('input[name="voucher"]')) return; // sudah ada
-    const tdTakLayak = tr.querySelector('td[data-col="takLayak"]') || tr.children[13];
-    // Selepas kolum 'Tidak Layak' (index 13), sisip kolum checkbox voucher SAHAJA
-    const voucherTd = document.createElement('td');
-    voucherTd.className = 'nadi-checkbox-cell';
-    voucherTd.innerHTML = '<input type="checkbox" name="voucher" />';
-    voucherTd.setAttribute('data-col','voucher');
-    if (tdTakLayak && tdTakLayak.nextSibling) {
-      tr.insertBefore(voucherTd, tdTakLayak.nextSibling);
-    } else {
-      tr.appendChild(voucherTd);
-    }
-  });
-}
-)();
-
-</script>
 
 <script>
 // === V6 Patch (Aug 28, 2025): Final NADI behavior (Voucher/Layak/Remark) + Autosave ===
@@ -4603,5 +4510,74 @@ function useSelectedSession(){
   else init();
 })();
 </script>
+
+<script>
+// === NADI Colgroup Builder (kept separate to avoid touching original markup) ===
+(function(){
+  function normalize(txt){
+    return String(txt||'').trim().toLowerCase().replace(/\s+/g,' ');
+  }
+  function computeWidths(headers){
+    // Map based on header text
+    const map = {
+      '#': '40px',
+      'nama pesakit': '160px',
+      'no ic': '120px',
+      'umur': '80px',
+      'telefon': '120px',
+      'alamat': '240px',
+      'bp': '80px',
+      'pr': '80px',
+      'dxt': '120px',
+      'tinggi': '80px',
+      'berat': '80px',
+      'bmi': '80px',
+      'layak': '90px',
+      'tidak layak': '110px',
+      'tca voucher': '120px',
+      'remark': '200px',
+      'tca & staff': '220px',
+      'wa report': '120px',
+      'buang': '100px',
+      'daftar': '120px'
+    };
+    return headers.map(h => map[normalize(h.innerText||h.textContent)] || 'auto');
+  }
+  function ensureColgroup(table){
+    if (!table || table.querySelector('colgroup')) return;
+    const thead = table.tHead || table.querySelector('thead');
+    if (!thead) return;
+    const thRow = thead.querySelector('tr:last-child') || thead.rows[thead.rows.length-1];
+    if (!thRow) return;
+    const ths = Array.from(thRow.cells).filter(c => c.tagName === 'TH');
+    const widths = computeWidths(ths);
+    const cg = document.createElement('colgroup');
+    widths.forEach(w => {
+      const col = document.createElement('col');
+      if (w !== 'auto') col.style.width = w;
+      cg.appendChild(col);
+    });
+    table.insertBefore(cg, table.firstChild);
+    // Enforce fixed layout
+    table.style.tableLayout = 'fixed';
+    table.style.width = '100%';
+  }
+
+  function init(){
+    const table = document.querySelector('#nadi table.nadi-table, .nadi-table') || document.querySelector('.nadi-table');
+    if (table) ensureColgroup(table);
+    // If header changes dynamically, watch and rebuild once
+    if (table){
+      const mo = new MutationObserver((muts)=>{
+        if (!table.querySelector('colgroup')) ensureColgroup(table);
+      });
+      mo.observe(table, {childList:true, subtree:true});
+    }
+  }
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', init);
+  else init();
+})();
+</script>
+
 </body>
 </html>
