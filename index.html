@@ -1,29 +1,6 @@
 <!DOCTYPE html>
 <html lang="ms">
 <head>
-<!-- ==== V12 STRICT TABLE CSS (Aug 30, 2025) ==== -->
-<style>
-  #nadiContainer table, table.nadi-table, table[data-nadi], #tableNadi { table-layout: fixed; border-collapse: separate; border-spacing: 0; width: 100%; }
-  #nadiContainer table th, #nadiContainer table td,
-  table.nadi-table th, table.nadi-table td,
-  table[data-nadi] th, table[data-nadi] td,
-  #tableNadi th, #tableNadi td { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; vertical-align: middle; }
-  td[data-col="remark"], td.remark-cell, td.col-remark { white-space: normal; }
-  td[data-col="remark"] textarea, td.remark-cell textarea, td.col-remark textarea,
-  td[data-col="remark"] input[type="text"], td.remark-cell input[type="text"], td.col-remark input[type="text"] { width: 100%; min-height: 36px; }
-  th[data-col="layak"], td[data-col="layak"], th[data-col="tidakLayak"], td[data-col="tidakLayak"],
-  th[data-col="voucher"], td[data-col="voucher"], th.col-layak, td.col-layak, th.col-tidakLayak, td.col-tidakLayak, th.col-voucher, td.col-voucher { text-align: center; vertical-align: middle; }
-  td[data-col="layak"] input[type="checkbox"], td[data-col="tidakLayak"] input[type="checkbox"], td[data-col="voucher"] input[type="checkbox"],
-  td.col-layak input[type="checkbox"], td.col-tidakLayak input[type="checkbox"], td.col-voucher input[type="checkbox"], input.chk-layak, input.chk-taklayak, input.chk-voucher, input[name*="voucher" i] {
-    width: 18px !important; height: 18px !important; min-width: 18px !important; min-height: 18px !important; margin: 0; display: inline-block; vertical-align: middle;
-  }
-  td[data-col="layak"] .form-check, td[data-col="tidakLayak"] .form-check, td[data-col="voucher"] .form-check, td.col-layak .form-check, td.col-tidakLayak .form-check, td.col-voucher .form-check {
-    display:flex; justify-content:center; align-items:center; margin:0;
-  }
-  td[data-col="actions"], td.col-actions, td:last-child { white-space: nowrap; }
-  td[data-col="actions"] .btn, td.col-actions .btn, td:last-child .btn { margin: 2px 4px; }
-</style>
-
 
   <!-- Performance resource hints -->
   <link rel="preconnect" href="https://cdn.jsdelivr.net">
@@ -322,121 +299,9 @@
   /* Toolbar spacing for NADI buttons */
   .nadi-toolbar .btn { margin: 2px; }
 
-
-/* === NADI program bar tidy === */
-#nadiProgramBar .form-label { font-weight: 600; }
-#nadiProgramBar .form-text { margin-top: 4px; }
-/* Center and align checkbox cells consistently */
-.nadi-table td.nadi-checkbox-cell, .nadi-table th[data-col="voucher"] { text-align: center; vertical-align: middle; }
-
-/* === V2 Patch (Aug 28, 2025) === */
-.nadi-table td.nadi-checkbox-cell, .nadi-table th[data-col="voucher"], .nadi-table td[data-col="voucher"] {
-  text-align:center; vertical-align:middle;
-}
-/* In case any stray voucherDate cells exist in existing rows, hide them: */
-.nadi-table th[data-col="voucherDate"], .nadi-table td[data-col="voucherDate"] { display:none !important; }
-
-
-/* === V4 Patch (Aug 28, 2025) — NADI strict column alignment === */
-.nadi-table th[data-col="voucher"], .nadi-table td[data-col="voucher"] { text-align:center; vertical-align:middle; white-space:nowrap; }
-.nadi-table td[data-col="voucher"] .form-check { display:flex; align-items:center; justify-content:center; margin:0; }
-.nadi-table td[data-col="voucher"] .form-check-input { float:none; margin:0; }
-.nadi-table th[data-col="voucherDate"], .nadi-table td[data-col="voucherDate"] { display:none !important; } /* legacy hidden */
-.nadi-table td[data-col="remark"] textarea, 
-.nadi-table td[data-col="remark"] input[type="text"] { width:100%; }
-
-
-/* === V5 Patch (Aug 28, 2025) — NADI strict alignment + preserve actions === */
-.nadi-table th[data-col="voucher"], .nadi-table td[data-col="voucher"] { text-align:center; vertical-align:middle; white-space:nowrap; }
-.nadi-table td[data-col="voucher"] .form-check { display:flex; align-items:center; justify-content:center; margin:0; }
-.nadi-table td[data-col="voucher"] .form-check-input { float:none; margin:0; }
-.nadi-table th[data-col="voucherDate"], .nadi-table td[data-col="voucherDate"] { display:none !important; } /* legacy hidden */
-.nadi-table td[data-col="remark"] .tca-pack, 
-.nadi-table td[data-col="remark"] .tca-date,
-.nadi-table td[data-col="remark"] .tca-time,
-.nadi-table td[data-col="remark"] .tca-staff { display:none !important; } /* never inside remark */
-
-
-/* === V6 Patch (Aug 28, 2025) — NADI final alignment & stability === */
-.nadi-table th[data-col="voucher"], .nadi-table td[data-col="voucher"] { text-align:center; vertical-align:middle; white-space:nowrap; }
-.nadi-table td[data-col="voucher"] .form-check { display:flex; align-items:center; justify-content:center; margin:0; }
-.nadi-table td[data-col="voucher"] .form-check-input { float:none; margin:0; }
-.nadi-table th[data-col="voucherDate"], .nadi-table td[data-col="voucherDate"] { display:none !important; } /* legacy hidden */
-.nadi-table td[data-col="remark"] .tca-pack,
-.nadi-table td[data-col="remark"] .tca-date,
-.nadi-table td[data-col="remark"] .tca-time,
-.nadi-table td[data-col="remark"] .tca-staff { display:none !important; } /* keep remark clean */
-
-</style>
-
-<!-- === NADI Tidy Overrides (Aug 30, 2025) — preserve original structure === -->
-<style id="nadi-tidy-aug30">
-  /* Do not change structure, only visual alignment/spacing */
-  .nadi-table { width: 100%; min-width: 1300px; border-collapse: separate; border-spacing: 0; }
-  .nadi-table th, .nadi-table td { padding: 8px; border: 1px solid #dee2e6; vertical-align: middle; }
-  .nadi-table thead th { background:#f8f9fa; font-weight:600; text-align:center; position:sticky; top:0; z-index:10; }
-
-  /* Column sizing/left-align for text-heavy fields */
-  .nadi-table th:nth-child(2), .nadi-table td:nth-child(2){ text-align:left; min-width:170px; } /* Nama */
-  .nadi-table th:nth-child(3), .nadi-table td:nth-child(3){ min-width:130px; } /* IC */
-  .nadi-table th:nth-child(6), .nadi-table td:nth-child(6){ text-align:left; min-width:200px; } /* Alamat */
-
-  /* Compact vitals — consistent widths */
-  .nadi-table th:nth-child(7), .nadi-table td:nth-child(7),
-  .nadi-table th:nth-child(8), .nadi-table td:nth-child(8),
-  .nadi-table th:nth-child(9), .nadi-table td:nth-child(9),
-  .nadi-table th:nth-child(10), .nadi-table td:nth-child(10),
-  .nadi-table th:nth-child(11), .nadi-table td:nth-child(11),
-  .nadi-table th:nth-child(12), .nadi-table td:nth-child(12) {
-    width: 92px; text-align:center;
-  }
-
-  /* Strict checkbox centering for Layak / Tidak Layak / TCA voucher */
-  .nadi-table td[data-col="layak"],
-  .nadi-table td[data-col="tidakLayak"],
-  .nadi-table td[data-col="voucher"],
-  .nadi-table th[data-col="layak"],
-  .nadi-table th[data-col="tidakLayak"],
-  .nadi-table th[data-col="voucher"]{
-    text-align:center !important; vertical-align:middle !important; white-space:nowrap;
-  }
-  .nadi-table td[data-col="layak"] .form-check,
-  .nadi-table td[data-col="tidakLayak"] .form-check,
-  .nadi-table td[data-col="voucher"] .form-check{
-    display:flex; align-items:center; justify-content:center; margin:0;
-  }
-  .nadi-table td[data-col="layak"] input[type="checkbox"],
-  .nadi-table td[data-col="tidakLayak"] input[type="checkbox"],
-  .nadi-table td[data-col="voucher"] input[type="checkbox"]{
-    width:18px !important; height:18px !important; min-width:18px !important; min-height:18px !important; margin:0;
-  }
-
-  /* Keep Remark as free text only (no TCA widgets in here) */
-  .nadi-table td[data-col="remark"]{ min-width: 200px; white-space: normal; }
-  .nadi-table td[data-col="remark"] textarea,
-  .nadi-table td[data-col="remark"] input[type="text"]{ width:100%; min-height:36px; }
-   }
-
-  /* TCA & Staff cell can grow but has a sensible minimum */
-  .nadi-table td[data-col="tcaStaff"]{ min-width: 220px; }
-
-  /* Legacy voucherDate column (if exists) stays hidden */
-  .nadi-table th[data-col="voucherDate"], .nadi-table td[data-col="voucherDate"]{ display:none !important; }
-
-  /* Keep action buttons tidy */
-  .nadi-table td[data-col="actions"] .btn{ margin: 2px 4px; }
 </style>
 </head>
 <body>
-<!-- ==== V12 SAFE UTIL (Aug 30, 2025) ==== -->
-<script>
-(function(){
-  if (typeof window.toast !== 'function') {
-    window.toast = function(){ /* no-op */ };
-  }
-})();
-</script>
-
   <!-- Global Loader -->
   <div id="appLoader" aria-hidden="true">
     <div class="loader-card">
@@ -622,6 +487,7 @@
         <h2 class="h6 m-0"><i class="bi bi-clipboard2-pulse me-2"></i>Program PEKA B40 bersama NADI</h2>
         <div class="d-flex gap-2">
           <button id="btnNadiExportCsv" class="btn btn-sm btn-outline-success"><i class="bi bi-filetype-csv me-1"></i>Export to CSV</button>
+          <button id="btnMonitorAll" class="btn btn-outline-primary" class="d-none">Monitor Semua (Live)</button>
         </div>
       </div>
       
@@ -637,40 +503,39 @@
         </div>
       </div>
       <!-- BAR PROGRAM (tajuk + tarikh + aksi) -->
-<div id="nadiProgramBar" class="card card-body mb-3">
-  <div class="row g-2 align-items-end">
-    <div class="col-md-5">
-      <label class="form-label mb-1">Tajuk Program</label>
-      <input id="nadiProgramTitle" class="form-control form-control-sm" placeholder="cth: Saringan Komuniti Tmn Mawar">
-    </div>
-    <div class="col-md-3">
-      <label class="form-label mb-1">Tarikh Program</label>
-      <input id="nadiProgramDate" type="date" class="form-control form-control-sm">
-    </div>
-    <div class="col-md-4 text-md-end">
-      <div class="small text-muted">Sesi aktif: <span id="liveSessionLabel" class="fw-semibold">-</span></div>
-    </div>
+<div id="nadiProgramBar" class="d-flex flex-wrap gap-2 align-items-end mb-2">
+  <div class="flex-grow-1">
+    <label class="form-label mb-1">Tajuk Program</label>
+    <input id="nadiProgramTitle" class="form-control form-control-sm" placeholder="cth: Saringan Komuniti Tmn Mawar">
   </div>
-  <div class="row g-2 align-items-center mt-2">
-    <div class="col-md-8">
-      <label class="form-label mb-1">Pilih Sesi (Live) — hari yang sama</label>
-      <div class="input-group input-group-sm">
-        <select id="nadiSessionSelect" class="form-select">
-          <option value="">(Pilih sesi live untuk hari ini)</option>
-        </select>
-        <button class="btn btn-outline-secondary" type="button" id="btnRefreshSessions"><i class="fa-solid fa-rotate-right"></i> Segar</button>
-        <button class="btn btn-primary" type="button" id="btnUseSession"><i class="fa-solid fa-link"></i> Guna</button>
+  <div>
+    <label class="form-label mb-1">Tarikh Program</label>
+    <input id="nadiProgramDate"
+      <!-- Live Session Picker (baru) -->
+      <div class="row g-2 align-items-center mb-3" id="liveSessionPickerRow">
+        <div class="col-md-7">
+          <label class="form-label">Pilih Sesi (Live) — hari yang sama</label>
+          <div class="input-group">
+            <select id="nadiSessionSelect" class="form-select">
+              <option value="">(Memuat senarai sesi…)</option>
+            </select>
+            <button class="btn btn-outline-secondary" type="button" id="btnRefreshSessions"><i class="fa-solid fa-rotate-right"></i> Segar</button>
+            <button class="btn btn-primary" type="button" id="btnUseSession"><i class="fa-solid fa-link"></i> Guna</button>
+          </div>
+          <div class="form-text">Sesi ditentukan oleh <b>Tajuk Program</b> + <b>Tarikh</b>. Guna pilihan ini untuk kongsi jadual antara laptop A & B.</div>
+        </div>
+        <div class="col-md-5 text-md-end">
+          <div class="small text-muted">Sesi aktif: <span id="liveSessionLabel" class="fw-semibold">-</span></div>
+        </div>
       </div>
-      <div class="form-text">Sesi ditentukan oleh Tajuk Program + Tarikh. Guna pilihan ini untuk kongsi jadual antara laptop A & B.</div>
-    </div>
-    <div class="col-md-4 text-md-end">
-      <button id="btnNadiSaveActivity" class="btn btn-sm btn-primary">
-        <i class="bi bi-cloud-upload me-1"></i>Simpan Aktiviti (Semua)
-      </button>
-    </div>
+ type="date" class="form-control form-control-sm">
+  </div>
+  <div class="ms-auto d-flex gap-2">
+    <button id="btnNadiSaveActivity" class="btn btn-sm btn-primary">
+      <i class="bi bi-cloud-upload me-1"></i>Simpan Aktiviti (Semua)
+    </button>
   </div>
 </div>
-  </div>
       <div class="card">
         <div class="card-body">
           <div class="nadi-scroll-container">
@@ -686,13 +551,14 @@
     <th style="min-width: 80px;">BP</th>
     <th style="min-width: 80px;">PR</th>
     <th style="min-width: 120px;">DXT</th>
-    <th style="min-width: 80px;">Ht</th>
-    <th style="min-width: 80px;">Wt</th>
+    <th style="min-width: 80px;">Tinggi</th>
+    <th style="min-width: 80px;">Berat</th>
     <th style="min-width: 80px;">BMI</th>
     <th style="width: 80px;">Layak</th>
     <th style="width: 100px;">Tidak Layak</th>
     <th style="width: 120px;">TCA voucher</th>
-<!-- ⬇️ TAMBAH KOLUM BARU DI SINI -->
+    <th style="min-width: 160px;">Tarikh TCA (Voucher)</th>
+    <!-- ⬇️ TAMBAH KOLUM BARU DI SINI -->
     <th style="min-width: 160px;">Remark</th>
     <!-- ⬆️ TAMBAH KOLUM BARU DI SINI -->
     <th style="min-width: 200px;">TCA & Staff</th>
@@ -2456,7 +2322,7 @@ function calculateAgeFromIC(ic) {
     months += 12;
   }
   
-  return `${age}T ${months}B ${days}H`;
+  return `${age}t ${months}b ${days}h`;
 }
 
 function updateNadiSummary() {
@@ -2528,11 +2394,11 @@ function addNadiRow(){
     </td>
     <td class="nadi-input-cell">
       <div class="view-mode" onclick="editNadiCell(this)"></div>
-      <input class="form-control form-control-sm nadi-tinggi" placeholder="Ht (cm)" style="display:none" onblur="saveNadiCell(this)" />
+      <input class="form-control form-control-sm nadi-tinggi" placeholder="Tinggi" style="display:none" onblur="saveNadiCell(this)" />
     </td>
     <td class="nadi-input-cell">
       <div class="view-mode" onclick="editNadiCell(this)"></div>
-      <input class="form-control form-control-sm nadi-berat" placeholder="Wt (kg)" style="display:none" onblur="saveNadiCell(this)" />
+      <input class="form-control form-control-sm nadi-berat" placeholder="Berat" style="display:none" onblur="saveNadiCell(this)" />
     </td>
     <td class="nadi-input-cell">
       <div class="view-mode" onclick="editNadiCell(this)"></div>
@@ -2576,22 +2442,8 @@ function addNadiRow(){
       e.preventDefault();
       dxtTypeBtn.textContent = this.textContent;
       dxtTypeInput.value = this.getAttribute('data-value');
-    
-      // Re-apply indicator on DXT view
-      const row = dxtTypeBtn.closest('tr');
-      const dxtInput = row?.querySelector('.nadi-dxt');
-      const dxtView  = dxtInput?.previousElementSibling;
-      if (dxtView) applyIndicator(dxtView, 'dxt', dxtInput.value, dxtTypeInput.value);
-});
-  
-  // Colorize DXT input live
-  const dxtInput = row.querySelector('.nadi-dxt');
-  if (dxtInput){
-    const recolorDXT = ()=> applyIndicator(dxtInput, 'dxt', dxtInput.value, dxtTypeInput.value);
-    dxtInput.addEventListener('input', recolorDXT);
-    dxtInput.addEventListener('blur', recolorDXT);
-  }
-});
+    });
+  });
 
   // BMI calc
   const tinggi = row.querySelector('.nadi-tinggi');
@@ -2786,99 +2638,11 @@ function editNadiCell(viewModeEl) {
   input.focus();
 }
 
-
-// === NADI Indicators (BP/PR/DXT/BMI) ===
-function applyIndicator(viewEl, kind, rawValue, extra){
-  if (!viewEl) return;
-  const el = viewEl;
-  const txt = String(rawValue || '').trim();
-  // Reset classes
-  el.classList.remove('text-success','text-danger','text-warning','fw-semibold');
-  if (!txt){ el.textContent = ''; return; }
-
-  function setClass(level){
-    if (level === 'ok'){ el.classList.add('text-success','fw-semibold'); }
-    else if (level === 'warn'){ el.classList.add('text-warning','fw-semibold'); }
-    else if (level === 'high'){ el.classList.add('text-danger','fw-semibold'); }
-  }
-
-  if (kind === 'bmi'){
-    const klass = classifyBMI(parseFloat(txt));
-    setClass(klass);
-    el.textContent = txt;
-    return;
-  }
-  if (kind === 'bp'){
-    const m = txt.match(/(\d{2,3})\s*[\/\-]\s*(\d{2,3})/);
-    if (!m){ el.textContent = txt; return; }
-    const sys = parseInt(m[1],10), dia = parseInt(m[2],10);
-    const klass = classifyBP(sys, dia);
-    setClass(klass);
-    el.textContent = `${sys}/${dia}`;
-    return;
-  }
-  if (kind === 'pr'){
-    const val = parseInt(txt, 10);
-    const klass = classifyPR(val);
-    setClass(klass);
-    el.textContent = String(val);
-    return;
-  }
-  if (kind === 'dxt'){
-    const val = parseFloat(txt.replace(',','.'));
-    const dxtType = (extra || 'Fasting').toLowerCase();
-    const klass = classifyDXT(val, dxtType);
-    setClass(klass);
-    el.textContent = txt;
-    return;
-  }
-}
-
-function classifyBMI(bmi){
-  if (!isFinite(bmi)) return '';
-  if (bmi < 18.5) return 'warn';
-  if (bmi < 25)   return 'ok';
-  if (bmi < 30)   return 'warn';
-  return 'high';
-}
-function classifyBP(sys, dia){
-  if (!isFinite(sys) || !isFinite(dia)) return '';
-  if (sys >= 140 || dia >= 90) return 'high';
-  if (sys < 120 && dia < 80)   return 'ok';
-  return 'warn';
-}
-function classifyPR(pr){
-  if (!isFinite(pr)) return '';
-  if (pr < 60 || pr > 100) return 'high';
-  return 'ok';
-}
-function classifyDXT(val, mode){
-  if (!isFinite(val)) return '';
-  if (mode === 'fasting'){
-    if (val >= 7.0) return 'high';
-    if (val >= 5.6) return 'warn';
-    return 'ok';
-  } else { // random
-    if (val >= 11.1) return 'high';
-    if (val >= 7.8)  return 'warn';
-    return 'ok';
-  }
-}
-
 function saveNadiCell(inputEl) {
   const viewMode = inputEl.previousElementSibling;
   viewMode.textContent = inputEl.value || '';
   viewMode.style.display = 'block';
   inputEl.style.display = 'none';
-  // Apply indicators for specific fields
-  if (inputEl.classList.contains('nadi-bp')) { applyIndicator(viewMode, 'bp', inputEl.value); }
-  if (inputEl.classList.contains('nadi-pr')) { applyIndicator(viewMode, 'pr', inputEl.value); }
-  if (inputEl.classList.contains('nadi-dxt')) {
-    const row = inputEl.closest('tr');
-    const dxtType = row?.querySelector('.nadi-dxt-type')?.value || 'Fasting';
-    applyIndicator(viewMode, 'dxt', inputEl.value, dxtType);
-  }
-
 
   // If this is IC field, update age
   if (inputEl.classList.contains('nadi-ic')) {
@@ -2900,8 +2664,6 @@ function saveNadiCell(inputEl) {
       const bmiValue = (weight / (height * height)).toFixed(1);
       bmi.value = bmiValue;
       bmi.previousElementSibling.textContent = bmiValue;
-      applyIndicator(bmi.previousElementSibling, 'bmi', bmiValue);
-
     } else {
       bmi.value = '';
       bmi.previousElementSibling.textContent = '';
@@ -4118,600 +3880,309 @@ function useSelectedSession(){
 
 </script>
 
-
-
 <script>
-// === V6 Patch (Aug 28, 2025): Final NADI behavior (Voucher/Layak/Remark) + Autosave ===
+
+// === Tambahan: Autosave, TCA voucher, dan Sejarah Saringan ===
 (function(){
-  const table = document.querySelector('#nadi table.nadi-table, .nadi-table') || document.querySelector('.nadi-table');
-  const tbody = document.getElementById('nadiContainer') || (table ? table.querySelector('tbody') : null);
-  if (!table || !tbody) return;
+  const NADI_KEY = 'nadi_autosave_v1';
 
-  // -------- Autosave for stability (keyed by Program Title + Date) --------
-  const getKey = () => {
-    const title = document.getElementById('nadiProgramTitle')?.value?.trim() || '(untitled)';
-    const date  = document.getElementById('nadiProgramDate')?.value?.trim() || '(nodate)';
-    return 'nadiDraft::'+title+'::'+date;
-  };
-  try {
-    const raw = localStorage.getItem(getKey());
-    if (raw) {
-      const { html } = JSON.parse(raw);
-      if (html && !tbody.dataset.restored) {
-        tbody.innerHTML = html;
-        tbody.dataset.restored = "1";
-      }
-    }
-  } catch(e){ console.warn('Draft restore skipped:', e); }
-  let saveTimer;
-  const scheduleSave = () => { clearTimeout(saveTimer); saveTimer = setTimeout(saveDraft, 400); };
-  const saveDraft = () => {
-    try { localStorage.setItem(getKey(), JSON.stringify({ html: tbody.innerHTML })); }
-    catch(e){ console.warn('Draft save failed:', e); }
-  };
-  tbody.addEventListener('input', scheduleSave, true);
-  tbody.addEventListener('change', scheduleSave, true);
-  ['nadiProgramTitle', 'nadiProgramDate'].forEach(id => {
-    const el = document.getElementById(id); if (el) el.addEventListener('change', scheduleSave);
-  });
+  function debounce(fn, ms){ let t; return function(...a){ clearTimeout(t); t=setTimeout(()=>fn.apply(this,a), ms); }; }
 
-  // -------- Header mapping --------
-  const ths = Array.from(table.querySelectorAll('thead tr th'));
-  const norm = s => String(s||'').toLowerCase().replace(/\s+/g,' ').trim();
-  const idx = {};
-  ths.forEach((th, i) => {
-    const t = norm(th.textContent);
-    if (t.includes('tca voucher')) { th.setAttribute('data-col','voucher'); idx.voucher = i; }
-    if (t === 'layak') { th.setAttribute('data-col','layak'); idx.layak = i; }
-    if (t.includes('tidak layak')) { th.setAttribute('data-col','takLayak'); idx.takLayak = i; }
-    if (t.includes('tca & staff') || t === 'tca & staff') { th.setAttribute('data-col','tcaStaff'); idx.tcaStaff = i; }
-    if (t.includes('remark') || t.includes('remarks') || t.includes('catatan') || t.includes('nota')) { th.setAttribute('data-col','remark'); idx.remark = i; }
-    if (t.includes('tindakan')) { th.setAttribute('data-col','actions'); idx.actions = i; }
-    if (t.includes('tarikh tca (voucher)')) { th.setAttribute('data-col','voucherDate'); }
-  });
-
-  function ensureCell(tr, i){
-    while (tr.children.length <= i) tr.appendChild(document.createElement('td'));
-    return tr.children[i];
-  }
-
-  function createCenteredCheckbox(cell){
-    cell.innerHTML = '<div class="form-check m-0 d-flex justify-content-center"><input type="checkbox" class="form-check-input"></div>';
-    return cell.querySelector('input[type="checkbox"]');
-  }
-
-  function initRow(tr){
-    // Voucher
-    if (idx.voucher != null) {
-      const c = ensureCell(tr, idx.voucher);
-      c.setAttribute('data-col','voucher');
-      let cb = c.querySelector('input[type="checkbox"][data-col="voucher"]') || c.querySelector('input[type="checkbox"]');
-      const wasChecked = !!(cb && cb.checked);
-      c.innerHTML = '<div class="form-check m-0 d-flex justify-content-center"><input type="checkbox" class="form-check-input" data-col="voucher"></div>';
-      cb = c.querySelector('input[type="checkbox"][data-col="voucher"]');
-      if (wasChecked) cb.checked = true;
-      cb.addEventListener('change', () => onAnyToggle(tr));
-    }
-    // Layak / Tidak Layak
-    if (idx.layak != null) {
-      const c = ensureCell(tr, idx.layak); c.setAttribute('data-col','layak');
-      const cb = c.querySelector('input[type="checkbox"]') || createCenteredCheckbox(c);
-      cb.setAttribute('data-col','layak');
-      cb.addEventListener('change', () => onAnyToggle(tr));
-    }
-    if (idx.takLayak != null) {
-      const c = ensureCell(tr, idx.takLayak); c.setAttribute('data-col','takLayak');
-      const cb = c.querySelector('input[type="checkbox"]') || createCenteredCheckbox(c);
-      cb.setAttribute('data-col','takLayak');
-      cb.addEventListener('change', () => onAnyToggle(tr));
-    }
-    // TCA & Staff
-    if (idx.tcaStaff != null) {
-      const c = ensureCell(tr, idx.tcaStaff);
-      c.setAttribute('data-col','tcaStaff');
-      if (!c.querySelector('.tca-pack')) {
-        c.innerHTML = `
-          <div class="tca-pack row g-1">
-            <div class="col-5"><input type="date" class="form-control form-control-sm tca-date" disabled></div>
-            <div class="col-3"><input type="time" class="form-control form-control-sm tca-time" disabled></div>
-            <div class="col-4"><input type="text" class="form-control form-control-sm tca-staff" placeholder="Staff" disabled></div>
-          </div>`;
-      }
-    }
-    // Remark: purge any TCA elements if present
-    if (idx.remark != null) {
-      const c = ensureCell(tr, idx.remark);
-      c.setAttribute('data-col','remark');
-      c.querySelectorAll('.tca-pack, .tca-date, .tca-time, .tca-staff').forEach(el => el.remove());
-    }
-    // Actions: keep original — no DOM wipe
-    if (idx.actions != null) ensureCell(tr, idx.actions).setAttribute('data-col','actions');
-
-    onAnyToggle(tr, true);
-  }
-
-  function onAnyToggle(tr, first=false){
-    const voucherCb = idx.voucher!=null ? ensureCell(tr, idx.voucher).querySelector('input[type="checkbox"][data-col="voucher"]') : null;
-    const layakCb   = idx.layak!=null ? ensureCell(tr, idx.layak).querySelector('input[type="checkbox"][data-col="layak"]') : null;
-    const takCb     = idx.takLayak!=null ? ensureCell(tr, idx.takLayak).querySelector('input[type="checkbox"][data-col="takLayak"]') : null;
-
-    // Exclusivity: one active only
-    if (voucherCb && voucherCb.checked) {
-      if (layakCb) layakCb.checked = false;
-      if (takCb) takCb.checked = false;
-    } else if (layakCb && layakCb.checked) {
-      if (voucherCb) voucherCb.checked = false;
-      if (takCb) takCb.checked = false;
-    } else if (takCb && takCb.checked) {
-      if (voucherCb) voucherCb.checked = false;
-      if (layakCb) layakCb.checked = false;
-    }
-
-    const voucher = !!(voucherCb && voucherCb.checked);
-    const layak   = !!(layakCb && layakCb.checked);
-    const tidak   = !!(takCb && takCb.checked);
-
-    // Enable TCA & Staff if voucher OR layak; disable if neither or "tidak layak"
-    const enableTca = voucher || layak;
-    ['.tca-date','.tca-time','.tca-staff'].forEach(sel => {
-      const el = tr.querySelector(sel);
-      if (el) el.disabled = !enableTca;
+  // Simpan state jadual NADI ke localStorage
+  function saveNadiState(){
+    const rows = [];
+    document.querySelectorAll('#nadiContainer tr').forEach(tr=>{
+      const get = sel => tr.querySelector(sel);
+      const row = {
+        nama: get('input[name="nama"]')?.value || get('.view-mode[data-field="nama"]')?.textContent || '',
+        ic: get('input[name="ic"]')?.value || get('.view-mode[data-field="ic"]')?.textContent || '',
+        umur: get('input[name="umur"]')?.value || get('.view-mode[data-field="umur"]')?.textContent || '',
+        telefon: get('input[name="telefon"]')?.value || get('.view-mode[data-field="telefon"]')?.textContent || '',
+        alamat: get('input[name="alamat"]')?.value || get('.view-mode[data-field="alamat"]')?.textContent || '',
+        bp: get('input[name="bp"]')?.value || '',
+        pr: get('input[name="pr"]')?.value || '',
+        dxt: get('input[name="dxt"]')?.value || '',
+        tinggi: get('input[name="tinggi"]')?.value || '',
+        berat: get('input[name="berat"]')?.value || '',
+        bmi: get('input[name="bmi"]')?.value || '',
+        layak: get('input[name="layak"]')?.checked || false,
+        takLayak: get('input[name="takLayak"]')?.checked || false,
+        voucher: get('input[name="voucher"]')?.checked || false,
+        voucherDate: get('input[name="voucherDate"]')?.value || '',
+        remark: get('input[name="remark"]')?.value || get('textarea[name="remark"]')?.value || '',
+        tcaDate: get('input[name="tcaDate"]')?.value || '',
+        tcaTime: get('input[name="tcaTime"]')?.value || '',
+        tcaStaff: get('input[name="tcaStaff"]')?.value || ''
+      };
+      if (Object.values(row).some(v => String(v||'').trim()!=='')) rows.push(row);
     });
+    localStorage.setItem(NADI_KEY, JSON.stringify(rows));
+  }
+  const saveNadiStateDebounced = debounce(saveNadiState, 400);
 
-    // Button label: only when voucher → "Daftar TCA"; otherwise keep original ("Daftar")
-    const actions = idx.actions!=null ? ensureCell(tr, idx.actions) : tr.lastElementChild;
-    if (actions) {
-      const primaryBtn = pickPrimaryDaftar(actions);
-      if (primaryBtn) {
-        if (voucher) {
-          if (!primaryBtn.dataset.originalText) primaryBtn.dataset.originalText = (primaryBtn.textContent||'').trim();
-          primaryBtn.textContent = 'Daftar TCA';
-          primaryBtn.dataset.voucher = "1";
-        } else {
-          primaryBtn.textContent = primaryBtn.dataset.originalText || 'Daftar';
-          primaryBtn.dataset.voucher = "";
-        }
+  function restoreNadiState(){
+    try{
+      const raw = localStorage.getItem(NADI_KEY);
+      if(!raw) return;
+      const rows = JSON.parse(raw);
+      if(!Array.isArray(rows) || !rows.length) return;
+      // Jika ada fungsi addNadiRow sedia ada, guna ia untuk tambah baris, kemudian isi nilai
+      rows.forEach((r, idx)=>{
+        if (typeof window.addNadiRow === 'function') window.addNadiRow();
+        const tr = document.querySelectorAll('#nadiContainer tr')[idx];
+        if (!tr) return;
+        const set = (sel, val) => { const el=tr.querySelector(sel); if(el){ el.value=val; if(el.type==='checkbox') el.checked=!!val; el.dispatchEvent(new Event('input',{bubbles:true})); el.dispatchEvent(new Event('change',{bubbles:true})); } };
+        set('input[name="nama"]', r.nama);
+        set('input[name="ic"]', r.ic);
+        set('input[name="umur"]', r.umur);
+        set('input[name="telefon"]', r.telefon);
+        set('input[name="alamat"]', r.alamat);
+        set('input[name="bp"]', r.bp);
+        set('input[name="pr"]', r.pr);
+        set('input[name="dxt"]', r.dxt);
+        set('input[name="tinggi"]', r.tinggi);
+        set('input[name="berat"]', r.berat);
+        set('input[name="bmi"]', r.bmi);
+        set('input[name="layak"]', r.layak);
+        set('input[name="takLayak"]', r.takLayak);
+        set('input[name="voucher"]', r.voucher);
+        set('input[name="voucherDate"]', r.voucherDate);
+        set('input[name="remark"]', r.remark);
+        set('textarea[name="remark"]', r.remark);
+        set('input[name="tcaDate"]', r.tcaDate);
+        set('input[name="tcaTime"]', r.tcaTime);
+        set('input[name="tcaStaff"]', r.tcaStaff);
+      });
+    }catch(e){ console.warn('Gagal restore autosave:', e); }
+  }
+
+  // Tambah kolum voucher secara dinamik bagi baris baharu jika belum wujud
+  function ensureVoucherColumns(){
+    document.querySelectorAll('#nadiContainer tr').forEach(tr=>{
+      if (tr.querySelector('input[name="voucher"]')) return; // sudah ada
+      const tdTakLayak = tr.querySelector('td[data-col="takLayak"]') || tr.children[13];
+      // Selepas kolum 'Tidak Layak' (index 13), sisip dua kolum
+      const voucherTd = document.createElement('td');
+      voucherTd.className = 'nadi-checkbox-cell';
+      voucherTd.innerHTML = '<input type="checkbox" name="voucher" />';
+      const dateTd = document.createElement('td');
+      dateTd.className = 'nadi-input-cell';
+      dateTd.innerHTML = '<input type="date" name="voucherDate" class="form-control form-control-sm" disabled />';
+      // Sisip ke dalam tr selepas kolum tak layak
+      if (tdTakLayak && tdTakLayak.nextSibling) {
+        tr.insertBefore(voucherTd, tdTakLayak.nextSibling);
+        tr.insertBefore(dateTd, voucherTd.nextSibling);
+      } else {
+        tr.appendChild(voucherTd);
+        tr.appendChild(dateTd);
       }
+    });
+  }
+
+  // Toggle enable/disable tarikh voucher ikut checkbox
+  document.addEventListener('change', function(e){
+    const el = e.target;
+    if (el && el.name === 'voucher') {
+      const tr = el.closest('tr');
+      const dateInput = tr?.querySelector('input[name="voucherDate"]');
+      if (dateInput) dateInput.disabled = !el.checked;
+      // Jika voucher dicentang, set takLayak true supaya tidak disimpan sebagai "layak"
+      const tak = tr?.querySelector('input[name="takLayak"]');
+      if (el.checked && tak) tak.checked = true;
+      saveNadiStateDebounced();
     }
-
-    tr.dataset.voucherOnly = voucher ? "1" : "";
-    tr.style.backgroundColor = voucher ? 'rgba(52,152,219,.06)' : '';
-  }
-
-  function pickPrimaryDaftar(actionsCell){
-    let btn = actionsCell.querySelector('button[data-action="daftar"], a.btn[data-action="daftar"]');
-    if (btn) return btn;
-    const cands = Array.from(actionsCell.querySelectorAll('button.btn-primary, a.btn.btn-primary'));
-    btn = cands.find(b => !/wa|report|buang|hapus|delete/i.test((b.textContent||'')));
-    if (btn) return btn;
-    btn = Array.from(actionsCell.querySelectorAll('button, a.btn')).find(b => /daftar/i.test((b.textContent||'')));
-    if (btn) return btn;
-    return actionsCell.querySelector('button, a.btn');
-  }
-
-  // Intercept only voucher submissions; let original Layak handlers run untouched
-  tbody.addEventListener('click', (ev) => {
-    const btn = ev.target.closest('button, a.btn');
-    if (!btn || btn.dataset.voucher !== "1") return;
-    const tr = btn.closest('tr');
-    if (!tr) return;
-    try {
-      tr.dataset.excludeFromLayakSave = "1"; // flag for backend handler if it checks
-      pushToTcaCall(extractRow(tr));
-      if (window.toast) toast('Berjaya','Pesakit dimasukkan ke senarai TCA Voucher untuk dihubungi.','success');
-    } catch(e) { console.warn(e); if (window.toast) toast('Ralat','Gagal daftar voucher.','danger'); }
-    ev.stopPropagation();
-    ev.preventDefault();
+    if (el && (el.matches('#nadiContainer input, #nadiContainer textarea'))) {
+      saveNadiStateDebounced();
+    }
   }, true);
 
-  // "Simpan Aktiviti (Semua)" routes voucher rows only; Layak rows untouched
-  const btnSaveAll = document.getElementById('btnNadiSaveActivity');
-  if (btnSaveAll) {
-    btnSaveAll.addEventListener('click', () => {
-      try{
-        Array.from(tbody.querySelectorAll('tr')).filter(r => r.dataset.voucherOnly==="1").forEach(r => {
-          r.dataset.excludeFromLayakSave = "1";
-          pushToTcaCall(extractRow(r));
-        });
-      }catch(e){ console.warn('SaveAll voucher routing failed', e); }
-    }, {capture:true});
+  document.addEventListener('input', function(e){
+    const el = e.target;
+    if (el && el.closest('#nadiContainer')) saveNadiStateDebounced();
+  }, true);
+
+  // Panggil ensureVoucherColumns apabila baris ditambah (mutasi DOM)
+  const nadiContainer = document.getElementById('nadiContainer');
+  if (nadiContainer) {
+    const mo = new MutationObserver(()=>{ ensureVoucherColumns(); });
+    mo.observe(nadiContainer, {childList:true, subtree:false});
   }
 
-  // Initialize current and watch future rows
-  Array.from(tbody.querySelectorAll('tr')).forEach(initRow);
-  const obs = new MutationObserver(muts => {
-    for (const m of muts) {
-      m.addedNodes && m.addedNodes.forEach(node => {
-        if (node.nodeType === 1) {
-          if (node.tagName === 'TR') initRow(node);
-          node.querySelectorAll && node.querySelectorAll('tr').forEach(initRow);
-        }
-      });
-    }
-  });
-  obs.observe(tbody, { childList:true, subtree:true });
+  // Intercept Simpan Aktiviti: proses baris voucher → daftar sebagai TCA CALL (remark "Saringan kesihatan voucher")
+  document.addEventListener('click', async (e)=>{
+    const btn = e.target.closest('#btnNadiSaveActivity');
+    if (!btn) return;
+    // Kumpul baris voucher
+    const programDate = document.getElementById('nadiProgramDate')?.value || '';
+    const programTitle = document.getElementById('nadiProgramTitle')?.value || '';
+    const staff = (window.STAFF_EMAIL || document.getElementById('staffEmail')?.textContent || '').trim();
+    const voucherRows = [];
+    document.querySelectorAll('#nadiContainer tr').forEach(tr=>{
+      const voucher = tr.querySelector('input[name="voucher"]')?.checked;
+      if (!voucher) return;
+      const row = {
+        nama: tr.querySelector('input[name="nama"]')?.value || '',
+        ic: tr.querySelector('input[name="ic"]')?.value || '',
+        telefon: tr.querySelector('input[name="telefon"]')?.value || '',
+        alamat: tr.querySelector('input[name="alamat"]')?.value || '',
+        voucherDate: tr.querySelector('input[name="voucherDate"]')?.value || ''
+      };
+      if (row.nama || row.ic || row.telefon) voucherRows.append if exists
+      voucherRows.push(row);
+    });
 
-  // Helpers
-  function extractRow(tr){
-    const get = sel => {
-      const el = tr.querySelector(sel);
-      if (!el) return '';
-      if (el.tagName === 'INPUT' || el.tagName === 'TEXTAREA' || el.tagName === 'SELECT') {
-        if (el.type === 'checkbox') return el.checked ? '1' : '';
-        return el.value || '';
+    if (voucherRows.length){
+      // Validasi tarikh voucher <= 30 hari dari tarikh program
+      function within30Days(pd, vd){
+        try{
+          if (!pd || !vd) return true;
+          const p = new Date(pd);
+          const v = new Date(vd);
+          const diff = (v - p) / (1000*60*60*24);
+          return diff >= 0 && diff <= 31;
+        }catch(_){ return true; }
       }
-      return (el.textContent||'').trim();
-    };
-    const nama = get('td[data-col="nama"] input, td[data-col="nama"] .view-mode') || getNth(tr, 1);
-    const ic   = get('td[data-col="ic"] input, td[data-col="ic"] .view-mode')     || getNth(tr, 2);
-    const tel  = get('td[data-col="telefon"] input, td[data-col="telefon"] .view-mode') || getNth(tr, 4);
-    const almt = get('td[data-col="alamat"] textarea, td[data-col="alamat"] input, td[data-col="alamat"] .view-mode') || getNth(tr, 5);
 
-    return { nama: nama, ic: ic, telefon: tel, alamat: almt,
-             tcaDate: get('.tca-date'), tcaTime: get('.tca-time'), staff: get('.tca-staff') };
-  }
-  function getNth(tr, i){
-    const td = tr.children[i];
-    if (!td) return '';
-    const el = td.querySelector('input, textarea, select, .view-mode');
-    if (!el) return (td.textContent||'').trim();
-    if (el.tagName === 'INPUT' || el.tagName === 'TEXTAREA' || el.tagName === 'SELECT') {
-      if (el.type === 'checkbox') return el.checked ? '1' : '';
-      return el.value || '';
-    }
-    return (el.textContent||'').trim();
-  }
-  function pushToTcaCall(rec){
-    const esc = (s)=> String(s||'').replace(/[&<>"']/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'}[m]));
-    const targets = [document.getElementById('tcaCallTable'), document.getElementById('tcaCallList')].filter(Boolean);
-    targets.forEach(t => {
-      const tb = t.tagName.toLowerCase()==='tbody' ? t : t.querySelector('tbody');
-      if (!tb) return;
-      Array.from(tb.querySelectorAll('tr')).forEach(r => {
-        if (r.children.length < 3 || /Memuat data/i.test(r.textContent)) r.remove();
-      });
-      const row = document.createElement('tr');
-      row.innerHTML = `
-        <td>${esc(rec.nama)}</td>
-        <td>${esc(rec.ic)}</td>
-        <td>${esc(rec.telefon)}</td>
-        <td>${esc(rec.alamat)}</td>
-        <td>${esc(rec.tcaDate)} ${esc(rec.tcaTime)}</td>
-        <td>Voucher</td>`;
-      tb.appendChild(row);
-    });
-    const badge = document.getElementById('badgeTCA');
-    if (badge) {
-      const lists = targets.map(t => (t.tagName.toLowerCase()==='tbody' ? t : t.querySelector('tbody'))).filter(Boolean);
-      const count = lists.reduce((acc, tb)=> acc + tb.querySelectorAll('tr').length, 0);
-      badge.textContent = String(count);
-      badge.style.display = count>0 ? 'inline-block' : 'none';
-    }
-  }
-
-  // Hide any "lihat semua (live)" ui
-  document.querySelectorAll('button, a').forEach(el=>{
-    const t = (el.textContent||'').toLowerCase();
-    if (t.includes('lihat semua') && t.includes('live')) el.style.display='none';
-  });
-
-})();</script>
-
-
-<!-- ==== V12 NADI ROBUST JS (Aug 30, 2025) ==== -->
-<script>
-(function(){
-  'use strict';
-  const $ = (sel, root=document) => root.querySelector(sel);
-  const $$ = (sel, root=document) => Array.from(root.querySelectorAll(sel));
-
-  function findNadiTable(){
-    let tbl = $('#nadiContainer table'); if (tbl) return tbl;
-    tbl = $('table.nadi-table'); if (tbl) return tbl;
-    tbl = $('table[data-nadi]'); if (tbl) return tbl;
-    const tN = $('#tableNadi'); if (tN && tN.tagName && tN.tagName.toLowerCase() === 'table') return tN;
-    const candidates = $$('table');
-    for (const t of candidates){
-      const headText = (t.tHead ? t.tHead.innerText : (t.querySelector('tr')?.innerText || '')).toLowerCase();
-      if (/(layak)/.test(headText) && /(tidak)/.test(headText) && /(voucher)/.test(headText)) return t;
-    }
-    return null;
-  }
-
-  function buildColumnMap(table){
-    const headerRows = table.tHead ? Array.from(table.tHead.rows) : Array.from(table.querySelectorAll('thead tr, tr'));
-    let ths = [];
-    for (let i=headerRows.length-1; i>=0; i--){
-      const row = headerRows[i];
-      const cand = Array.from(row.cells).filter(c=>c.tagName==='TH');
-      if (cand.length){ ths = cand; break; }
-    }
-    const map = { layak:-1, tidak:-1, voucher:-1, remark:-1, tca:-1, actions:-1 };
-    ths.forEach((th,idx)=>{
-      const txt = (th.innerText||'').trim().toLowerCase();
-      if (txt.includes('tidak') && txt.includes('layak')) map.tidak = idx;
-      else if (txt.includes('layak')) map.layak = idx;
-      if (txt.includes('voucher')) map.voucher = idx;
-      if (txt.includes('remark') || txt.includes('catatan')) map.remark = idx;
-      if (txt.includes('tca') || txt.includes('staff')) map.tca = idx;
-      if (txt.includes('tindakan') || txt.includes('action')) map.actions = idx;
-    });
-    const cols = ths.length || (table.tBodies[0]?.rows[0]?.cells.length || 0);
-    if (map.actions < 0 && cols>0) map.actions = cols-1;
-    return map;
-  }
-
-  function cellAt(row, idx){
-    const cells = row.cells;
-    if (idx >= 0 && idx < cells.length) return cells[idx];
-    if (idx === -2 && cells.length) return cells[cells.length-1];
-    return null;
-  }
-
-  function ensureFormCheck(cb){
-    if (!cb) return;
-    cb.classList.add('form-check-input');
-    cb.style.width = '18px'; cb.style.height = '18px';
-    if (!cb.closest('.form-check')){
-      const wrap = document.createElement('div');
-      wrap.className = 'form-check';
-      cb.parentNode.insertBefore(wrap, cb);
-      wrap.appendChild(cb);
-    }
-  }
-
-  function sanitizeRemark(row, map){
-    const remarkCell = cellAt(row, map.remark);
-    const tcaCell = cellAt(row, map.tca);
-    if (!remarkCell) return;
-    const stray = remarkCell.querySelectorAll('.tca-date,.tca-time,.tca-staff,.tca-pack,input[type="date"],input[type="time"]');
-    if (stray.length){
-      if (tcaCell){
-        let pack = tcaCell.querySelector('.tca-pack');
-        if (!pack){
-          pack = document.createElement('div');
-          pack.className = 'tca-pack d-flex flex-wrap align-items-center gap-1';
-          tcaCell.appendChild(pack);
+      const SCRIPT_URL = window.SCRIPT_URL;
+      const ID_TOKEN = window.ID_TOKEN;
+      for (const r of voucherRows){
+        if (!within30Days(programDate, r.voucherDate)) {
+          if (typeof toast === 'function') toast('Tarikh TCA voucher melebihi 1 bulan', r.nama || r.ic || r.telefon, 'warning');
+          continue;
         }
-        stray.forEach(el => {
-          if (el.classList && el.classList.contains('tca-pack')){
-            el.querySelectorAll('.tca-date,.tca-time,.tca-staff').forEach(child => pack.appendChild(child));
-            el.remove();
+        // format masa default 09:00 jika tiada
+        const masa = '09:00';
+        // alamat + remark
+        const alamat = (r.alamat || '').trim();
+        const alamatWithRemark = (alamat ? alamat + ' — ' : '') + 'Saringan kesihatan voucher';
+        try{
+          const form = new URLSearchParams();
+          form.set('action','daftarPesakit');
+          form.set('id_token', ID_TOKEN || '');
+          form.set('namaPesakit', r.nama || 'Pesakit Voucher');
+          form.set('noIC', r.ic || '');
+          form.set('noTelefon', r.telefon || '');
+          form.set('alamat', alamatWithRemark);
+          form.set('namaStaff', staff || 'SYSTEM');
+          form.set('tarikhTCA', r.voucherDate || programDate || '');
+          form.set('masaTCA', masa);
+          const res = await fetch(SCRIPT_URL, { method:'POST', body: form });
+          const j = await res.json().catch(()=>({}));
+          if (j && j.status === 'success') {
+            if (typeof toast === 'function') toast('Berjaya', `Voucher TCA didaftarkan untuk ${r.nama || r.ic}`, 'success');
           } else {
-            if (el.tagName === 'INPUT' && el.type === 'date') el.classList.add('tca-date','form-control','form-control-sm');
-            if (el.tagName === 'INPUT' && el.type === 'time') el.classList.add('tca-time','form-control','form-control-sm');
-            pack.appendChild(el);
+            if (typeof toast === 'function') toast('Gagal daftar voucher', (j && (j.message||j.code)) || '-', 'danger');
           }
-        });
-      }
-      remarkCell.querySelectorAll('input[type="date"],input[type="time"]').forEach(el=>el.remove());
-    }
-  }
-
-  function ensureTCAInputs(row, map){
-    const tcaCell = cellAt(row, map.tca);
-    if (!tcaCell) return {d:null,t:null,s:null};
-    let date = tcaCell.querySelector('.tca-date');
-    let time = tcaCell.querySelector('.tca-time');
-    let staff = tcaCell.querySelector('.tca-staff');
-    if (!date || !time || !staff){
-      let pack = tcaCell.querySelector('.tca-pack');
-      if (!pack){
-        pack = document.createElement('div');
-        pack.className = 'tca-pack d-flex flex-wrap align-items-center gap-1';
-        tcaCell.appendChild(pack);
-      }
-      if (!date){ date = document.createElement('input'); date.type='date'; date.className='form-control form-control-sm tca-date'; pack.appendChild(date); }
-      if (!time){ time = document.createElement('input'); time.type='time'; time.className='form-control form-control-sm tca-time'; pack.appendChild(time); }
-      if (!staff){ staff = document.createElement('input'); staff.type='text'; staff.placeholder='Staff'; staff.className='form-control form-control-sm tca-staff'; pack.appendChild(staff); }
-      [date,time,staff].forEach(el=>{ el.style.minWidth='110px'; el.style.flex='1 1 100px'; });
-    }
-    return {d:date, t:time, s:staff};
-  }
-
-  function ensureActions(row, map){
-    const actionsCell = cellAt(row, map.actions >=0 ? map.actions : -2) || row.cells[row.cells.length-1];
-    if (!actionsCell) return;
-    const hasAny = actionsCell.querySelector('.btn');
-    if (hasAny) return;
-    const wrap = document.createElement('div'); wrap.className = 'btn-group btn-group-sm';
-    const btnMain = document.createElement('button'); btnMain.className='btn btn-primary btn-main-action'; btnMain.textContent='Daftar';
-    const btnWA = document.createElement('button'); btnWA.className='btn btn-outline-success'; btnWA.textContent='WA Report';
-    const btnDel = document.createElement('button'); btnDel.className='btn btn-outline-danger'; btnDel.textContent='Buang';
-    wrap.appendChild(btnMain); wrap.appendChild(btnWA); wrap.appendChild(btnDel);
-    actionsCell.appendChild(wrap);
-    btnWA.addEventListener('click', (e)=>{
-      e.preventDefault(); const r = e.currentTarget.closest('tr');
-      if (typeof window.openWhatsAppReport === 'function') return window.openWhatsAppReport(r);
-      if (typeof window.showWhatsAppReportPreview === 'function') return window.showWhatsAppReportPreview(r);
-      try{ toast('Makluman','Fungsi WA Report tidak ditakrifkan.','warning'); }catch(_){}
-    });
-    btnDel.addEventListener('click', (e)=>{
-      e.preventDefault(); const r = e.currentTarget.closest('tr');
-      if (typeof window.deleteNadiRow === 'function') return window.deleteNadiRow(r);
-      if (confirm('Padam baris ini?')) r.remove();
-    });
-  }
-
-  function updateRowState(row, map){
-    const layak = cellAt(row, map.layak)?.querySelector('input[type="checkbox"], .chk-layak') || null;
-    const tak = cellAt(row, map.tidak)?.querySelector('input[type="checkbox"], .chk-taklayak') || null;
-    const voucher = cellAt(row, map.voucher)?.querySelector('input[type="checkbox"], .chk-voucher, input[name*="voucher" i]') || null;
-    [layak, tak, voucher].forEach(ensureFormCheck);
-    const group = [layak, tak, voucher].filter(Boolean);
-    const setExclusive = (picked) => group.forEach(x=>{ if (x && x!==picked) x.checked=false; });
-    group.forEach(inp=>{
-      if (!inp || inp._wired) return;
-      inp._wired = true;
-      inp.addEventListener('change', ()=>{ setExclusive(inp); applyState(); });
-    });
-    sanitizeRemark(row, map);
-    const tca = ensureTCAInputs(row, map);
-
-    function applyState(){
-      const onLayak = !!(layak && layak.checked);
-      const onVoucher = !!(voucher && voucher.checked);
-      [tca.d, tca.t, tca.s].forEach(el=>{ if (el){ el.disabled = !(onLayak || onVoucher); }});
-      const actionsCell = cellAt(row, map.actions >=0 ? map.actions : -2) || row.cells[row.cells.length-1];
-      let main = actionsCell ? (actionsCell.querySelector('[data-action="main"], .btn-main-action') || null) : null;
-      if (!main){
-        ensureActions(row, map);
-        main = actionsCell.querySelector('[data-action="main"], .btn-main-action');
-      }
-      if (main){
-        if (!main.dataset.origLabel) main.dataset.origLabel = (main.textContent||'').trim() || 'Daftar';
-        if (onVoucher){ main.textContent = 'Daftar TCA'; main.dataset.route = 'tca'; }
-        else if (onLayak){ main.textContent = main.dataset.origLabel || 'Daftar'; main.dataset.route = 'layak'; }
-        else { main.textContent = main.dataset.origLabel || main.textContent; main.dataset.route = ''; }
-        if (!main._wired){
-          main._wired = true;
-          main.addEventListener('click', (e)=>{
-            const route = main.dataset.route || '';
-            const r = e.currentTarget.closest('tr');
-            if (route === 'tca'){
-              e.preventDefault(); e.stopPropagation();
-              if (typeof window.nadiSaveVoucherRow === 'function') return window.nadiSaveVoucherRow(r);
-              if (typeof window.saveRowToTCA === 'function') return window.saveRowToTCA(r);
-              try{ toast('Makluman','Baris ditandakan Voucher (TCA).','info'); }catch(_){}
-            }
-          }, true);
+        }catch(err){
+          if (typeof toast === 'function') toast('Ralat', 'Tidak dapat daftar voucher', 'danger');
         }
       }
+
+      // Buang baris voucher dari jadual sebelum simpan aktiviti rasmi, supaya tidak dihitung sebagai "layak"
+      document.querySelectorAll('#nadiContainer tr').forEach(tr=>{
+        if (tr.querySelector('input[name="voucher"]')?.checked) tr.remove();
+      });
+      saveNadiState();
     }
-    applyState();
-  }
+    // Teruskan handler asal (jika ada) – kita tidak preventDefault
+  }, true);
 
-  function wireTable(table){
-    const map = buildColumnMap(table);
-    const rows = Array.from(table.tBodies).flatMap(tb=>Array.from(tb.rows));
-    rows.forEach(row=>updateRowState(row, map));
-    const mo = new MutationObserver((muts)=>{
-      muts.forEach(m=>{
-        if (m.type === 'childList'){
-          m.addedNodes.forEach(node=>{
-            if (node.nodeType===1 && node.tagName==='TR'){
-              updateRowState(node, map);
-            } else if (node.nodeType===1){
-              const tr = node.closest && node.closest('tr');
-              if (tr) updateRowState(tr, map);
-            }
-          });
-        }
-      });
-    });
-    mo.observe(table, { childList: true, subtree: true });
-  }
+  // Restore autosave selepas halaman dimuat & pastikan kolum voucher wujud
+  window.addEventListener('load', ()=>{
+    ensureVoucherColumns();
+    restoreNadiState();
+  });
 
-  function init(){
-    const table = findNadiTable();
-    if (!table) return;
-    wireTable(table);
-  }
-  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', init);
-  else init();
-})();
-</script>
-
-<script>
-// === NADI Colgroup Builder (kept separate to avoid touching original markup) ===
-(function(){
-  function normalize(txt){
-    return String(txt||'').trim().toLowerCase().replace(/\s+/g,' ');
-  }
-  function computeWidths(headers){
-    // Map based on header text
-    const map = {
-      '#': '40px',
-      'nama pesakit': '160px',
-      'no ic': '120px',
-      'umur': '80px',
-      'telefon': '120px',
-      'alamat': '240px',
-      'bp': '80px',
-      'pr': '80px',
-      'dxt': '120px',
-      'tinggi': '80px', 'ht': '80px',
-      'berat': '80px', 'wt': '80px',
-      'bmi': '80px',
-      'layak': '90px',
-      'tidak layak': '110px',
-      'tca voucher': '120px',
-      'remark': '200px',
-      'tca & staff': '220px',
-      'tindakan': '180px',
-      'wa report': '120px',
-      'buang': '100px',
-      'daftar': '120px'
-    };
-    return headers.map(h => map[normalize(h.innerText||h.textContent)] || 'auto');
-  }
-  function ensureColgroup(table){
-    if (!table || table.querySelector('colgroup')) return;
-    const thead = table.tHead || table.querySelector('thead');
-    if (!thead) return;
-    const thRow = thead.querySelector('tr:last-child') || thead.rows[thead.rows.length-1];
-    if (!thRow) return;
-    const ths = Array.from(thRow.cells).filter(c => c.tagName === 'TH');
-    const widths = computeWidths(ths);
-    const cg = document.createElement('colgroup');
-    widths.forEach(w => {
-      const col = document.createElement('col');
-      if (w !== 'auto') col.style.width = w;
-      cg.appendChild(col);
-    });
-    table.insertBefore(cg, table.firstChild);
-    // Enforce fixed layout
-    table.style.tableLayout = 'fixed';
-    table.style.width = '100%';
-  }
-
-  function init(){
-    const table = document.querySelector('#nadi table.nadi-table, .nadi-table') || document.querySelector('.nadi-table');
-    if (table) ensureColgroup(table);
-    // If header changes dynamically, watch and rebuild once
-    if (table){
-      const mo = new MutationObserver((muts)=>{
-        if (!table.querySelector('colgroup')) ensureColgroup(table);
-      });
-      mo.observe(table, {childList:true, subtree:true});
+  // ====== Sejarah Saringan ======
+  async function loadPrograms(){
+    const list = document.getElementById('programList');
+    if (!list) return;
+    list.innerHTML = '<div class="text-muted text-center p-3">Memuat program…</div>';
+    try{
+      const qs = new URLSearchParams({ action:'getNadiActivities', id_token: (window.ID_TOKEN||'') });
+      const res = await fetch(`${window.SCRIPT_URL}?${qs.toString()}`);
+      const j = await res.json();
+      if (!j || j.status!=='success') throw new Error(j && (j.message||j.code) || 'Gagal ambil program');
+      const data = Array.isArray(j.data) ? j.data : [];
+      list.innerHTML = data.map(item=>{
+        const title = (item.title || '(Tanpa tajuk)');
+        const date = (item.programDate || '');
+        const id = item.activityId || '';
+        const meta = `${title} — ${date}`;
+        return `<button class="list-group-item list-group-item-action" data-activity-id="${id}" data-meta="${meta.toLowerCase()}">
+          <div class="fw-semibold">${title}</div>
+          <div class="small text-muted">${date} &middot; ID: ${id}</div>
+        </button>`;
+      }).join('') || '<div class="text-muted text-center p-3">Tiada program.</div>';
+    }catch(e){
+      list.innerHTML = '<div class="text-danger text-center p-3">Gagal memuat program.</div>';
     }
   }
-  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', init);
-  else init();
+
+  async function loadProgramDetail(activityId){
+    const tbody = document.getElementById('sejarahTable');
+    const titleLabel = document.getElementById('programTitleLabel');
+    const dateLabel = document.getElementById('programDateLabel');
+    if (!tbody) return;
+    tbody.innerHTML = '<tr><td colspan="13" class="text-center text-muted">Memuat data…</td></tr>';
+    try{
+      const qs = new URLSearchParams({ action:'getNadiActivityDetail', id: activityId, id_token: (window.ID_TOKEN||'') });
+      const res = await fetch(`${window.SCRIPT_URL}?${qs.toString()}`);
+      const j = await res.json();
+      if (!j || j.status!=='success') throw new Error(j && (j.message||j.code) || 'Gagal ambil detail');
+      const rows = Array.isArray(j.data) ? j.data : [];
+      if (!rows.length){ tbody.innerHTML = '<tr><td colspan="13" class="text-center text-muted">Tiada data.</td></tr>'; return; }
+      // Set tajuk & tarikh (kita tak dapat terus; ambil dari butang terpilih)
+      const btn = document.querySelector(`[data-activity-id="${activityId}"]`);
+      if (btn){
+        titleLabel.textContent = btn.querySelector('.fw-semibold')?.textContent || 'Maklumat Program';
+        dateLabel.textContent = btn.querySelector('.small')?.textContent.split('·')[0].trim() || '';
+      }
+      const q = (document.getElementById('sejarahSearch')?.value || '').toLowerCase();
+      const filtered = rows.filter(r=>{
+        const s = ((r.nama||'') + ' ' + (r.noIC||'') + ' ' + (r.noTelefon||'')).toLowerCase();
+        return !q || s.includes(q);
+      });
+      tbody.innerHTML = filtered.map((r, i)=>`
+        <tr>
+          <td>${i+1}</td><td>${r.nama||''}</td><td>${r.noIC||''}</td><td>${r.noTelefon||''}</td><td>${r.alamat||''}</td>
+          <td>${r.status||''}</td><td>${r.bp||''}</td><td>${r.pr||''}</td><td>${r.dxt||''}</td><td>${r.bmi||''}</td>
+          <td>${r.tcaDate||''} ${r.tcaTime||''}</td><td>${r.tcaStaff||''}</td><td>${r.remark||''}</td>
+        </tr>
+      `).join('') || '<tr><td colspan="13" class="text-center text-muted">Tiada padanan carian.</td></tr>';
+    }catch(e){
+      tbody.innerHTML = '<tr><td colspan="13" class="text-center text-danger">Ralat memuat maklumat.</td></tr>';
+    }
+  }
+
+  document.addEventListener('click', (e)=>{
+    const btn = e.target.closest('#btnSejarahReload');
+    if (btn) loadPrograms();
+    const item = e.target.closest('#programList .list-group-item');
+    if (item) loadProgramDetail(item.getAttribute('data-activity-id'));
+  });
+  document.addEventListener('input', (e)=>{
+    if (e.target && e.target.id==='programFilter'){
+      const q = e.target.value.toLowerCase();
+      document.querySelectorAll('#programList .list-group-item').forEach(b=>{
+        const meta = b.getAttribute('data-meta') || '';
+        b.style.display = meta.includes(q) ? '' : 'none';
+      });
+    }
+    if (e.target && e.target.id==='sejarahSearch'){
+      const current = document.querySelector('#programList .list-group-item.active') || document.querySelector('#programList .list-group-item');
+      if (current) loadProgramDetail(current.getAttribute('data-activity-id'));
+    }
+  });
+
+  // Auto muat bila navigasi ke #sejarah
+  window.addEventListener('hashchange', ()=>{
+    if (location.hash === '#sejarah'){ loadPrograms(); }
+  });
+  // Jika default ke sejarah
+  if (location.hash === '#sejarah'){ loadPrograms(); }
 })();
+
 </script>
-
-
-<script>
-// === Voucher Save: push to TCA Call (without marking as Layak) ===
-function getRowBasic(recRow){
-  if (typeof extractRowPayload === 'function'){
-    return extractRowPayload(recRow);
-  }
-  const q = sel => recRow.querySelector(sel);
-  return {
-    nama: q('.nadi-nama')?.value?.trim() || '',
-    ic: q('.nadi-ic')?.value?.trim() || '',
-    telefon: q('.nadi-tel')?.value?.trim() || '',
-    alamat: q('.nadi-alamat')?.value?.trim() || '',
-    tcaDate: q('.nadi-tca-date')?.value || '',
-    tcaTime: q('.nadi-tca-time')?.value || '',
-    tcaStaff: q('.nadi-staff')?.value?.trim() || ''
-  };
-}
-window.nadiSaveVoucherRow = function(recRow){
-  const data = getRowBasic(recRow);
-  if (!data.tcaDate || !data.tcaTime || !data.tcaStaff){
-    try{ toast('Makluman','Sila lengkapkan Tarikh, Masa & Staff pada kolum "TCA & Staff".','warning'); }catch(_){}
-    return;
-  }
-  if (typeof pushToTcaCall === 'function'){
-    pushToTcaCall({ nama:data.nama, ic:data.ic, telefon:data.telefon, alamat:data.alamat, tcaDate:data.tcaDate, tcaTime:data.tcaTime });
-  }
-  try{ toast('Berjaya','Rekod dimasukkan ke senarai TCA Call. Sistem akan ingat untuk dihubungi 1 hari sebelum tarikh.','success'); }catch(_){}
-};
-window.saveRowToTCA = function(recRow){ return window.nadiSaveVoucherRow(recRow); };
-</script>
-
 </body>
 </html>
