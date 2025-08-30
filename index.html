@@ -510,33 +510,32 @@
   </div>
   <div>
     <label class="form-label mb-1">Tarikh Program</label>
-    <input id="nadiProgramDate"
-      <!-- Live Session Picker (baru) -->
-      <div class="row g-2 align-items-center mb-3" id="liveSessionPickerRow">
-        <div class="col-md-7">
-          <label class="form-label">Pilih Sesi (Live) — hari yang sama</label>
-          <div class="input-group">
-            <select id="nadiSessionSelect" class="form-select">
-              <option value="">(Memuat senarai sesi…)</option>
-            </select>
-            <button class="btn btn-outline-secondary" type="button" id="btnRefreshSessions"><i class="fa-solid fa-rotate-right"></i> Segar</button>
-            <button class="btn btn-primary" type="button" id="btnUseSession"><i class="fa-solid fa-link"></i> Guna</button>
-          </div>
-          <div class="form-text">Sesi ditentukan oleh <b>Tajuk Program</b> + <b>Tarikh</b>. Guna pilihan ini untuk kongsi jadual antara laptop A & B.</div>
-        </div>
-        <div class="col-md-5 text-md-end">
-          <div class="small text-muted">Sesi aktif: <span id="liveSessionLabel" class="fw-semibold">-</span></div>
-        </div>
+    <input id="nadiProgramDate" type="date" class="form-control form-control-sm">
+  </div>
+  <div class="w-100"></div>
+  <!-- Live Session Picker (baru) -->
+  <div class="row g-2 align-items-center mb-2 w-100" id="liveSessionPickerRow">
+    <div class="col-md-7">
+      <label class="form-label">Pilih Sesi (Live) — hari yang sama</label>
+      <div class="input-group">
+        <select id="nadiSessionSelect" class="form-select">
+          <option value="">(Memuat senarai sesi…)</option>
+        </select>
+        <button class="btn btn-outline-secondary" type="button" id="btnRefreshSessions"><i class="fa-solid fa-rotate-right"></i> Segar</button>
+        <button class="btn btn-primary" type="button" id="btnUseSession"><i class="fa-solid fa-link"></i> Guna</button>
       </div>
- type="date" class="form-control form-control-sm">
+      <div class="form-text">Sesi ditentukan oleh <b>Tajuk Program</b> + <b>Tarikh</b>. Guna pilihan ini untuk kongsi jadual antara laptop A & B.</div>
+    </div>
+    <div class="col-md-5 text-md-end">
+      <div class="small text-muted">Sesi aktif: <span id="liveSessionLabel" class="fw-semibold">-</span></div>
+    </div>
   </div>
   <div class="ms-auto d-flex gap-2">
     <button id="btnNadiSaveActivity" class="btn btn-sm btn-primary">
       <i class="bi bi-cloud-upload me-1"></i>Simpan Aktiviti (Semua)
     </button>
   </div>
-</div>
-      <div class="card">
+</div><div class="card">
         <div class="card-body">
           <div class="nadi-scroll-container">
             <table class="nadi-table">
@@ -2410,6 +2409,13 @@ function addNadiRow(){
     <td class="text-center">
       <input class="form-check-input nadi-taklayak" type="checkbox">
     </td>
+
+    <td class="text-center">
+      <input class="form-check-input nadi-voucher" type="checkbox">
+    </td>
+    <td>
+      <input type="date" class="form-control form-control-sm nadi-voucher-date" disabled>
+    </td>
     <!-- Kolum Remark baharu -->
     <td class="nadi-input-cell">
       <div class="view-mode" onclick="editNadiCell(this)"></div>
@@ -4183,6 +4189,22 @@ function useSelectedSession(){
   if (location.hash === '#sejarah'){ loadPrograms(); }
 })();
 
+</script>
+<script>
+// === NADI Voucher hook: toggle primary button & enable voucher date ===
+(function(){
+  const container = document.getElementById('nadiContainer');
+  if (!container) return;
+  container.addEventListener('change', function(e){
+    const el = e.target;
+    if (!el.classList.contains('nadi-voucher')) return;
+    const row = el.closest('tr');
+    const btn = row?.querySelector('.nadi-daftar');
+    const vDate = row?.querySelector('.nadi-voucher-date');
+    if (vDate) vDate.disabled = !el.checked;
+    if (btn) btn.textContent = el.checked ? 'Daftar TCA' : 'Daftar';
+  });
+})();
 </script>
 </body>
 </html>
