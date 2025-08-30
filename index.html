@@ -300,6 +300,12 @@
   .nadi-toolbar .btn { margin: 2px; }
 
 </style>
+<style>
+/* === NADI tidy === */
+.nadi-table td .form-check-input { width: 18px; height: 18px; }
+.nadi-table td.text-center, .nadi-table th.text-center { vertical-align: middle; }
+.nadi-table td:last-child .btn { margin: 2px 4px; white-space: nowrap; }
+</style>
 </head>
 <body>
   <!-- Global Loader -->
@@ -4204,6 +4210,136 @@ function useSelectedSession(){
     if (vDate) vDate.disabled = !el.checked;
     if (btn) btn.textContent = el.checked ? 'Daftar TCA' : 'Daftar';
   });
+})();
+</script>
+<script>
+// === NADI: Mutual exclusivity for Layak / Tidak Layak / TCA voucher + controls ===
+(function(){
+  const cont = document.getElementById('nadiContainer');
+  if (!cont) return;
+  function setEnabled(el, on){ if (el) { el.disabled = !on; } }
+  cont.addEventListener('change', function(e){
+    const t = e.target;
+    if (!t.closest('tr')) return;
+    if (!(t.classList.contains('nadi-layak') || t.classList.contains('nadi-taklayak') || t.classList.contains('nadi-voucher'))) return;
+    const row = t.closest('tr');
+
+    // Get checkboxes
+    const layak = row.querySelector('.nadi-layak');
+    const tak   = row.querySelector('.nadi-taklayak');
+    const vchr  = row.querySelector('.nadi-voucher');
+
+    // Enforce only one selected
+    if (t === layak && layak && layak.checked){ if (tak) tak.checked = false; if (vchr) vchr.checked = false; }
+    if (t === tak   && tak   && tak.checked)  { if (layak) layak.checked = false; if (vchr) vchr.checked = false; }
+    if (t === vchr  && vchr  && vchr.checked) { if (layak) layak.checked = false; if (tak)   tak.checked = false; }
+
+    // Enable/disable TCA & Staff and Voucher Date
+    const tcaDate  = row.querySelector('.nadi-tca-date');
+    const tcaTime  = row.querySelector('.nadi-tca-time');
+    const tcaStaff = row.querySelector('.nadi-staff');
+    const vDate    = row.querySelector('.nadi-voucher-date');
+
+    const onTCA = !!( (layak && layak.checked) || (vchr && vchr.checked) );
+    setEnabled(tcaDate, onTCA);
+    setEnabled(tcaTime, onTCA);
+    setEnabled(tcaStaff, onTCA);
+    setEnabled(vDate, vchr && vchr.checked);
+
+    // Update main button label
+    const btn = row.querySelector('.nadi-daftar');
+    if (btn){
+      if (vchr && vchr.checked) btn.textContent = 'Daftar TCA';
+      else btn.textContent = 'Daftar';
+    }
+  }, true);
+})();
+</script>
+<script>
+// === NADI Indicators (BP/PR/DXT/BMI) ===
+(function(){
+  function applyIndicator(elView, kind, raw, arg){
+    if (!elView) return;
+    const v = String(raw||'').trim();
+    elView.classList.remove('text-success','text-danger','text-warning','fw-semibold');
+    if (!v){ elView.textContent = ''; return; }
+    function mark(level){
+      if (level==='ok') elView.classList.add('text-success','fw-semibold');
+      else if (level==='warn') elView.classList.add('text-warning','fw-semibold');
+      else if (level==='high') elView.classList.add('text-danger','fw-semibold');
+    }
+    if (kind==='bp'){
+      const m = v.match(/(\d{2,3})\s*[\/\-]\s*(\d{2,3})/);
+      if (!m){ elView.textContent = v; return; }
+      const sys = parseInt(m[1],10), dia = parseInt(m[2],10);
+      const level = (sys>=140 || dia>=90) ? 'high' : ((sys<120 && dia<80)?'ok':'warn');
+      mark(level); elView.textContent = `${sys}/${dia}`; return;
+    }
+    if (kind==='pr'){
+      const n = parseInt(v,10);
+      const level = (!isFinite(n) ? '' : (n<60 || n>100) ? 'high' : 'ok');
+      if (level) mark(level);
+      elView.textContent = v; return;
+    }
+    if (kind==='dxt'){
+      const n = parseFloat(v.replace(',', '.'));
+      const mode = String(arg||'Fasting').toLowerCase();
+      let level=''; if (isFinite(n)){
+        if (mode==='fasting'){ level = (n>=7.0?'high': (n>=5.6?'warn':'ok')); }
+        else { level = (n>=11.1?'high': (n>=7.8?'warn':'ok')); }
+      }
+      if (level) mark(level);
+      elView.textContent = v; return;
+    }
+    if (kind==='bmi'){
+      const n = parseFloat(v);
+      let level=''; if (isFinite(n)){
+        if (n<18.5) level='warn'; else if (n<25) level='ok'; else if (n<30) level='warn'; else level='high';
+      }
+      if (level) mark(level);
+      elView.textContent = v; return;
+    }
+  }
+
+  // Recolor on blur/save (generic)
+  const cont = document.getElementById('nadiContainer');
+  if (!cont) return;
+
+  function handle(el){
+    const cell = el.closest('.nadi-input-cell') || el.parentElement;
+    const view = cell ? cell.querySelector('.view-mode') : null;
+    if (el.classList.contains('nadi-bp'))  return applyIndicator(view,'bp',  el.value);
+    if (el.classList.contains('nadi-pr'))  return applyIndicator(view,'pr',  el.value);
+    if (el.classList.contains('nadi-dxt')) {
+      const row = el.closest('tr');
+      const typ = row?.querySelector('.nadi-dxt-type')?.value || 'Fasting';
+      return applyIndicator(view,'dxt', el.value, typ);
+    }
+    if (el.classList.contains('nadi-bmi')) return applyIndicator(view,'bmi', el.value);
+  }
+
+  cont.addEventListener('blur', (e)=>{ if (e.target && e.target.tagName==='INPUT') handle(e.target); }, true);
+  cont.addEventListener('input', (e)=>{
+    if (!e.target || e.target.tagName!=='INPUT') return;
+    if (e.target.classList.contains('nadi-dxt')) handle(e.target);
+  }, true);
+
+  // Also recolor when DXT type changes (dropdown menu)
+  document.addEventListener('click', (e)=>{
+    const item = e.target.closest('.dropdown-menu .dropdown-item');
+    if (!item) return;
+    const menu = item.closest('.dropdown-menu');
+    const row = item.closest('tr');
+    const btn = menu?.previousElementSibling;
+    const input = row?.querySelector('.nadi-dxt');
+    const hidden = row?.querySelector('.nadi-dxt-type');
+    if (hidden) hidden.value = item.getAttribute('data-value') || 'Fasting';
+    if (btn) btn.textContent = hidden.value;
+    if (input) handle(input);
+  }, true);
+
+  // Initial sweep (if any prefilled rows)
+  cont.querySelectorAll('input').forEach(handle);
 })();
 </script>
 </body>
