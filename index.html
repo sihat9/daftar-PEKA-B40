@@ -3050,14 +3050,20 @@ function mergeLiveRowsIntoUI(items){
       const el = row.querySelector(sel);
       if (!el) return;
       if (document.activeElement === el) return; // biar user habis menaip
+
+      // Hanya set apabila nilai baharu benar-benar wujud (elak overwrite dengan ''/undefined)
+      const hasValue = !(val === undefined || val === null || val === '');
+
       if (el.tagName==='INPUT' || el.tagName==='TEXTAREA'){
         if (el.type==='checkbox'){
-          el.checked = !!val;
+          if (val !== undefined && val !== null) el.checked = !!val;
         } else {
-          el.value = val || '';
-          // jika ada view-mode (inline edit), pantulkan
-          if (el.previousElementSibling && el.previousElementSibling.classList.contains('view-mode')){
-            el.previousElementSibling.textContent = el.value || '';
+          if (hasValue) {
+            el.value = val;
+            // jika ada view-mode (inline edit), pantulkan
+            if (el.previousElementSibling && el.previousElementSibling.classList.contains('view-mode')){
+              el.previousElementSibling.textContent = el.value || '';
+            }
           }
         }
       }
@@ -4038,8 +4044,8 @@ function useSelectedSession(){
         alamat: tr.querySelector('input[name="alamat"]')?.value || '',
         voucherDate: tr.querySelector('input[name="voucherDate"]')?.value || ''
       };
-      if (row.nama || row.ic || row.telefon) voucherRows.append if exists
-      voucherRows.push(row);
+      if (row.nama || row.ic || row.telefon) { voucherRows.push(row); }
+      // pushed above only when any key field exists
     });
 
     if (voucherRows.length){
