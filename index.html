@@ -3047,23 +3047,25 @@ function mergeLiveRowsIntoUI(items){
 
     // Jangan override jika user sedang menaip pada medan itu
     const safeSet = (sel, val) => {
-  const el = row.querySelector(sel);
-  if (!el) return;
-  if (document.activeElement === el) return; // biar user habis menaip
-  if (el.tagName==='INPUT' || el.tagName==='TEXTAREA'){
-    if (el.type==='checkbox'){
-      if (val !== undefined && val !== null) el.checked = !!val;
-    } else {
-      if (val !== undefined && val !== null && val !== '') {
-        el.value = String(val);
-        // jika ada view-mode (inline edit), pantulkan
-        if (el.previousElementSibling && el.previousElementSibling.classList.contains('view-mode')){
-          el.previousElementSibling.textContent = el.value;
+      const el = row.querySelector(sel);
+      if (!el) return;
+      if (document.activeElement === el) return; // biar user habis menaip
+      if (el.tagName === 'INPUT' || el.tagName === 'TEXTAREA'){
+        if (el.type === 'checkbox'){
+          // Hanya kemas kini jika server kirim nilai boolean yang nyata
+          if (typeof val === 'boolean') el.checked = val;
+        } else {
+          // Jangan kosongkan input sedia ada jika server hantar '', null atau undefined
+          if (val !== undefined && val !== null && !(typeof val === 'string' && val.trim() === '')) {
+            el.value = val;
+            // jika ada view-mode (inline edit), pantulkan
+            if (el.previousElementSibling && el.previousElementSibling.classList.contains('view-mode')){
+              el.previousElementSibling.textContent = el.value || '';
+            }
+          }
         }
       }
-    }
-  }
-};;
+    };
 
     safeSet('.nadi-nama', it.nama);
     safeSet('.nadi-ic', it.ic);
@@ -3931,11 +3933,6 @@ function useSelectedSession(){
     });
     localStorage.setItem(NADI_KEY, JSON.stringify(rows));
   }
-function saveNadiStateDebounced(){
-  clearTimeout(window.__saveNadiT);
-  window.__saveNadiT = setTimeout(saveNadiState, 400);
-}
-
   const saveNadiStateDebounced = debounce(saveNadiState, 400);
 
   function restoreNadiState(){
@@ -4045,10 +4042,9 @@ function saveNadiStateDebounced(){
         alamat: tr.querySelector('input[name="alamat"]')?.value || '',
         voucherDate: tr.querySelector('input[name="voucherDate"]')?.value || ''
       };
-      if (row.nama || row.ic || row.telefon) {
-        voucherRows.push(row);
-      }
-});
+      if (row.nama || row.ic || row.telefon || row.alamat || row.voucherDate) { voucherRows.push(row); }
+      
+    });
 
     if (voucherRows.length){
       // Validasi tarikh voucher <= 30 hari dari tarikh program
@@ -4228,6 +4224,7 @@ function saveNadiStateDebounced(){
   cont.addEventListener('change', function(e){
     const t = e.target;
     if (!t.closest('tr')) return;
+    // hanya proses jika klik pada checkbox layak/taklayak/voucher
     if (!(t.classList.contains('nadi-layak') || t.classList.contains('nadi-taklayak') || t.classList.contains('nadi-voucher'))) return;
     const row = t.closest('tr');
 
@@ -4238,6 +4235,30 @@ function saveNadiStateDebounced(){
 
     // Enforce only one selected
     if (t === layak && layak && layak.checked){ if (tak) tak.checked = false; if (vchr) vchr.checked = false; }
+    if (t === tak   && tak   && tak.checked)  { if (layak) layak.checked = false; if (vchr) vchr.checked = false; }
+    if (t === vchr  && vchr  && vchr.checked) { if (layak) layak.checked = false; if (tak)   tak.checked = false; }
+
+    // Enable/disable TCA & Staff and Voucher Date
+    const tcaDate  = row.querySelector('.nadi-tca-date');
+    const tcaTime  = row.querySelector('.nadi-tca-time');
+    const tcaStaff = row.querySelector('.nadi-staff');
+    const vDate    = row.querySelector('.nadi-voucher-date');
+
+    const onTCA = !!(layak && layak.checked);
+    setEnabled(tcaDate, onTCA);
+    setEnabled(tcaTime, onTCA);
+    setEnabled(tcaStaff, onTCA);
+    setEnabled(vDate, vchr && vchr.checked);
+
+    // Update main button label
+    const btn = row.querySelector('.nadi-daftar');
+    if (btn) {
+      btn.disabled = !(layak && layak.checked);
+      if (vchr && vchr.checked) btn.textContent = 'Daftar TCA';
+      else btn.textContent = 'Daftar';
+    }
+  }, true);
+})();
     if (t === tak   && tak   && tak.checked)  { if (layak) layak.checked = false; if (vchr) vchr.checked = false; }
     if (t === vchr  && vchr  && vchr.checked) { if (layak) layak.checked = false; if (tak)   tak.checked = false; }
 
