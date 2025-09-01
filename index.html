@@ -2512,7 +2512,6 @@ function addNadiRow(){
       tcaTime.disabled = true;
       staff.disabled = true;
       const voucher = row.querySelector('input[name="voucher"]');
-      // Jika TCA voucher dicentang, benarkan 'Daftar' (guna laluan voucher)
       btnDaftar.disabled = (voucher && voucher.checked) ? false : true;
     }
     updateNadiSummary();
@@ -2527,13 +2526,14 @@ function addNadiRow(){
     const date = tcaDate.value;
     const time = tcaTime.value;
     const staffName = staff.value.trim();
-    const voucherEl = row.querySelector('input[name="voucher"]');
-    const voucherDate = row.querySelector('input[name="voucherDate"]');
-    const isVoucher = !!(voucherEl && voucherEl.checked);
 
-    // Validasi mengikut mod:
-    if (isVoucher) {
-      const vDate = (voucherDate && voucherDate.value) || '';
+    
+    // --- Voucher mode: daftar terus ke Senarai TCA Call mengikut tarikh voucher ---
+    const voucherEl = row.querySelector('input[name="voucher"]');
+    const voucherDateEl = row.querySelector('input[name="voucherDate"]');
+    if (voucherEl && voucherEl.checked) {
+      const vDateRaw = voucherDateEl && voucherDateEl.value ? voucherDateEl.value : '';
+      const vDate = __fmtDDMMYYYY(vDateRaw);
       if (!nama || (!ic && !tel)) { toast('Ralat', 'Isi sekurang-kurangnya Nama dan IC/Telefon', 'danger'); return; }
       if (!vDate) { toast('Ralat', 'Sila pilih Tarikh TCA (Voucher)', 'danger'); return; }
       const masa = '09:00';
@@ -2553,15 +2553,18 @@ function addNadiRow(){
         if (res.status === 'success') {
           toast('Berjaya', 'Pesakit (voucher) berjaya didaftarkan', 'success');
           updateNadiRowData(row);
+          try {
+            const r = await getJSON({ action:'getTCACall', all:1 });
+            window.TCA_ALL = (r.status==='success') ? (r.data||[]) : [];
+            const active = document.querySelector('#tcaFilter .active')?.dataset.filter || 'all';
+            if (typeof renderTcaList==='function') renderTcaList(active);
+          } catch(e) { /* senyap */ }
         } else { throw new Error(res.message || 'Gagal mendaftar pesakit (voucher)'); }
-      } catch(e) {
-        toast('Ralat', e.message, 'danger');
-      }
+      } catch(e) { toast('Ralat', e.message, 'danger'); }
       return;
     }
 
-    // Mod biasa (Layak): perlukan tarikh/masa/staff
-    if (!nama || !ic || !tel || !date || !time || !staffName) {
+if (!nama || !ic || !tel || !date || !time || !staffName) {
       toast('Ralat', 'Sila isi semua maklumat', 'danger');
       return;
     }
@@ -2588,7 +2591,8 @@ function addNadiRow(){
       toast('Ralat', e.message, 'danger');
     }
   });
-// WA report (preview) — perhatikan: pembolehubah `data` DITAKRIF di dalam handler
+
+  // WA report (preview) — perhatikan: pembolehubah `data` DITAKRIF di dalam handler
   row.querySelector('.nadi-wa').addEventListener('click', async () => {
     try {
       const data = {
@@ -4045,11 +4049,8 @@ function saveNadiStateDebounced(){
       if (el.checked && tak) tak.checked = true;
       const btn = tr?.querySelector('.nadi-daftar');
       if (btn) {
-        if (el.checked) {
-          // Benarkan klik 'Daftar' untuk laluan voucher walaupun TCA & Staff disabled
-          btn.disabled = false;
-        } else {
-          // Kembalikan logik asal: enable hanya jika 'Layak' ditanda
+        if (el.checked) { btn.disabled = false; }
+        else {
           const ly = tr?.querySelector('.nadi-layak');
           btn.disabled = !(ly && ly.checked);
         }
@@ -4059,11 +4060,8 @@ function saveNadiStateDebounced(){
     if (el && (el.matches('#nadiContainer input, #nadiContainer textarea'))) {
       const btn = tr?.querySelector('.nadi-daftar');
       if (btn) {
-        if (el.checked) {
-          // Benarkan klik 'Daftar' untuk laluan voucher walaupun TCA & Staff disabled
-          btn.disabled = false;
-        } else {
-          // Kembalikan logik asal: enable hanya jika 'Layak' ditanda
+        if (el.checked) { btn.disabled = false; }
+        else {
           const ly = tr?.querySelector('.nadi-layak');
           btn.disabled = !(ly && ly.checked);
         }
