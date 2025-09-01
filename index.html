@@ -2517,19 +2517,20 @@ function addNadiRow(){
   });
 
   // Daftar
-  btnDaftar.addEventListener('click', async () => {
-    const nama = row.querySelector('.nadi-nama').value.trim();
-    const ic = row.querySelector('.nadi-ic').value.trim();
-    const tel = row.querySelector('.nadi-tel').value.trim();
-    const alamat = row.querySelector('.nadi-alamat').value.trim();
-    const date = tcaDate.value;
-    const time = tcaTime.value;
-    const staffName = staff.value.trim();
+  
+btnDaftar.addEventListener('click', async () => {
+  const nama = row.querySelector('.nadi-nama').value.trim();
+  const ic = row.querySelector('.nadi-ic').value.trim();
+  const tel = row.querySelector('.nadi-tel').value.trim();
+  const alamat = row.querySelector('.nadi-alamat').value.trim();
 
-    if (!nama || !ic || !tel || !date || !time || !staffName) {
-      toast('Ralat', 'Sila isi semua maklumat', 'danger');
-      return;
-    }
+  const vchr  = row.querySelector('.nadi-voucher');
+  const vDate = row.querySelector('.nadi-voucher-date');
+
+  // Laluan VOUCHER
+  if (vchr && vchr.checked) {
+    if (!nama || !ic || !tel) { toast('Ralat', 'Sila isi Nama, IC & Telefon', 'danger'); return; }
+    if (!vDate || !vDate.value) { toast('Ralat', 'Sila isi Tarikh TCA (Voucher)', 'danger'); return; }
 
     try {
       const res = await postForm({
@@ -2538,21 +2539,57 @@ function addNadiRow(){
         noIC: ic,
         noTelefon: tel,
         alamat: alamat,
-        tarikhTCA: date,
-        masaTCA: time,
-        namaStaff: staffName
-      }, { msg: 'Mendaftar pesakit...' });
-
+        tarikhTCA: vDate.value,
+        masaTCA: '09:00',
+        namaStaff: (typeof STAFF_EMAIL !== 'undefined' && STAFF_EMAIL) ? STAFF_EMAIL : 'SYSTEM'
+      }, { msg: 'Mendaftar pesakit (voucher)…' });
       if (res.status === 'success') {
-        toast('Berjaya', 'Pesakit berjaya didaftarkan', 'success');
+        toast('Berjaya', 'Pesakit berjaya didaftarkan (voucher)', 'success');
         updateNadiRowData(row);
       } else {
-        throw new Error(res.message || 'Gagal mendaftar pesakit');
+        throw new Error(res.message || 'Gagal mendaftar pesakit (voucher)');
       }
     } catch (e) {
       toast('Ralat', e.message, 'danger');
     }
-  });
+    return;
+  }
+
+  // Laluan BIASA
+  const tcaDate = row.querySelector('.nadi-tca-date');
+  const tcaTime = row.querySelector('.nadi-tca-time');
+  const staff = row.querySelector('.nadi-staff');
+  const date = tcaDate.value;
+  const time = tcaTime.value;
+  const staffName = staff.value.trim();
+
+  if (!nama || !ic || !tel || !date || !time || !staffName) {
+    toast('Ralat', 'Sila isi semua maklumat', 'danger');
+    return;
+  }
+
+  try {
+    const res = await postForm({
+      action: 'daftarPesakit',
+      namaPesakit: nama,
+      noIC: ic,
+      noTelefon: tel,
+      alamat: alamat,
+      tarikhTCA: date,
+      masaTCA: time,
+      namaStaff: staffName
+    }, { msg: 'Mendaftar pesakit...' });
+    if (res.status === 'success') {
+      toast('Berjaya', 'Pesakit berjaya didaftarkan', 'success');
+      updateNadiRowData(row);
+    } else {
+      throw new Error(res.message || 'Gagal mendaftar pesakit');
+    }
+  } catch (e) {
+    toast('Ralat', e.message, 'danger');
+  }
+});
+
 
   // WA report (preview) — perhatikan: pembolehubah `data` DITAKRIF di dalam handler
   row.querySelector('.nadi-wa').addEventListener('click', async () => {
@@ -3931,12 +3968,12 @@ function useSelectedSession(){
     });
     localStorage.setItem(NADI_KEY, JSON.stringify(rows));
   }
-function saveNadiStateDebounced(){
+window.saveNadiStateDebounced = window.saveNadiStateDebounced || function(){
   clearTimeout(window.__saveNadiT);
   window.__saveNadiT = setTimeout(saveNadiState, 400);
 }
 
-  const saveNadiStateDebounced = debounce(saveNadiState, 400);
+  window.saveNadiStateDebounced = window.saveNadiStateDebounced || debounce(saveNadiState, 400);
 
   function restoreNadiState(){
     try{
@@ -4228,7 +4265,7 @@ function saveNadiStateDebounced(){
   cont.addEventListener('change', function(e){
     const t = e.target;
     if (!t.closest('tr')) return;
-    if (!(t.classList.contains('nadi-layak') || t.classList.contains('nadi-taklayak') || t.classList.contains('nadi-voucher'))) return;
+    if (!((t.classList.contains('nadi-layak') || t.classList.contains('nadi-taklayak') || t.classList.contains('nadi-voucher') || t.classList.contains('nadi-voucher-date')))) return;
     const row = t.closest('tr');
 
     // Get checkboxes
@@ -4256,7 +4293,7 @@ function saveNadiStateDebounced(){
     // Update main button label
     const btn = row.querySelector('.nadi-daftar');
     if (btn) {
-      btn.disabled = !(layak && layak.checked);
+      btn.disabled = !((layak && layak.checked) || (vchr && vchr.checked && vDate && vDate.value));
       if (vchr && vchr.checked) btn.textContent = 'Daftar TCA';
       else btn.textContent = 'Daftar';
     }
