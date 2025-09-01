@@ -2218,7 +2218,7 @@ function toggleLayak(rowId, isLayak){
   const staff = tr.querySelector('.tca-staff');
   const btn   = tr.querySelector('button');
   if (isLayak && checks[0].checked) {
-    date.disabled = false; time.disabled = false; staff.disabled=false; btn.disabled = false;
+    date.disabled = false; time.disabled = false; staff.disabled=false; btn.disabled = false; btn.removeAttribute('disabled');
   } else {
     date.disabled = true;  time.disabled = true; staff.disabled=true;  btn.disabled = true;
   }
@@ -2495,7 +2495,7 @@ function addNadiRow(){
       tcaDate.disabled = false;
       tcaTime.disabled = false;
       staff.disabled = false;
-      btnDaftar.disabled = false;
+      btnDaftar.disabled = false; btnDaftar.removeAttribute('disabled');
     } else {
       tcaDate.disabled = true;
       tcaTime.disabled = true;
@@ -3139,7 +3139,7 @@ function mergeLiveRowsIntoUI(items){
     if (layak && takLayak && tcaDate && tcaTime && staff && btnDaftar){
       if (layak.checked){
         takLayak.checked = false;
-        tcaDate.disabled = false; tcaTime.disabled = false; staff.disabled = false; btnDaftar.disabled = false;
+        tcaDate.disabled = false; tcaTime.disabled = false; staff.disabled = false; btnDaftar.disabled = false; btnDaftar.removeAttribute('disabled');
       } else if (takLayak.checked){
         layak.checked = false;
         tcaDate.disabled = true;  tcaTime.disabled = true;  staff.disabled = true;  const voucher = row.querySelector('input[name="voucher"]');
@@ -4049,7 +4049,7 @@ function saveNadiStateDebounced(){
       if (el.checked && tak) tak.checked = true;
       const btn = tr?.querySelector('.nadi-daftar');
       if (btn) {
-        if (el.checked) { btn.disabled = false; }
+        if (el.checked) { btn.disabled = false; btn.removeAttribute('disabled'); }
         else {
           const ly = tr?.querySelector('.nadi-layak');
           btn.disabled = !(ly && ly.checked);
@@ -4058,14 +4058,8 @@ function saveNadiStateDebounced(){
       saveNadiStateDebounced();
     }
     if (el && (el.matches('#nadiContainer input, #nadiContainer textarea'))) {
-      const btn = tr?.querySelector('.nadi-daftar');
-      if (btn) {
-        if (el.checked) { btn.disabled = false; }
-        else {
-          const ly = tr?.querySelector('.nadi-layak');
-          btn.disabled = !(ly && ly.checked);
-        }
-      }
+      saveNadiStateDebounced();
+
       saveNadiStateDebounced();
     }
   }, true);
