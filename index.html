@@ -4060,50 +4060,30 @@ function saveNadiStateDebounced(){
   }
 
   // Toggle enable/disable tarikh voucher ikut checkbox
-  document.addEventListener('change', function(e){
-    const el = e.target;
-    if (el && el.name === 'voucher') {
-      const tr = el.closest('tr');
-      const dateInput = tr?.querySelector('input[name="voucherDate"]');
-      if (dateInput) dateInput.disabled = !el.checked;
-      const tak = tr?.querySelector('input[name="takLayak"]');
-      if (el.checked && tak) tak.checked = true;
-      // Enable/disable the Daftar TCA button accordingly
-      const btn = tr?.querySelector('.nadi-daftar');
-      if (btn) {
-        if (el.checked) { btn.disabled = false; btn.removeAttribute('disabled'); btn.removeAttribute('disabled'); }
-        else {
-          const ly = tr?.querySelector('.nadi-layak');
-          btn.disabled = !(ly && ly.checked);
-        }
+document.addEventListener('change', function(e){
+  const el = e.target;
+  if (el && el.name === 'voucher') {
+    const tr = el.closest('tr');
+    const dateInput = tr?.querySelector('input[name="voucherDate"]');
+    if (dateInput) dateInput.disabled = !el.checked;
+    // Jika voucher dicentang, set takLayak true supaya tidak disimpan sebagai "layak"
+    const tak = tr?.querySelector('input[name="takLayak"]');
+    if (el.checked && tak) tak.checked = true;
+    // Enable/disable the Daftar TCA button accordingly
+    const btn = tr?.querySelector('.nadi-daftar');
+    if (btn) {
+      if (el.checked) { btn.disabled = false; btn.removeAttribute('disabled'); }
+      else {
+        const ly = tr?.querySelector('.nadi-layak');
+        btn.disabled = !(ly && ly.checked);
       }
-    
-      const tr = el.closest('tr');
-      const dateInput = tr?.querySelector('input[name="voucherDate"]');
-      if (dateInput) dateInput.disabled = !el.checked;
-      const tak = tr?.querySelector('input[name="takLayak"]');
-      if (el.checked && tak) tak.checked = true;
-      const btn = tr?.querySelector('.nadi-daftar');
-      if (btn) {
-        if (el.checked) { btn.disabled = false; btn.removeAttribute('disabled'); btn.removeAttribute('disabled'); btn.removeAttribute('disabled'); }
-        else {
-          const ly = tr?.querySelector('.nadi-layak');
-          btn.disabled = !(ly && ly.checked);
-        }
-      }
-      
-      const tr = el.closest('tr');
-      const dateInput = tr?.querySelector('input[name="voucherDate"]');
-      if (dateInput) dateInput.disabled = !el.checked;
-      // Jika voucher dicentang, set takLayak true supaya tidak disimpan sebagai "layak"
-      const tak = tr?.querySelector('input[name="takLayak"]');
-      if (el.checked && tak) tak.checked = true;
-      saveNadiStateDebounced();
     }
-    if (el && (el.matches('#nadiContainer input, #nadiContainer textarea'))) {
-      saveNadiStateDebounced();
-saveNadiStateDebounced();
-  }, true);
+    saveNadiStateDebounced();
+  }
+  if (el && (el.matches('#nadiContainer input, #nadiContainer textarea'))) {
+    saveNadiStateDebounced();
+  }
+}, true);
 
   // Panggil ensureVoucherColumns apabila baris ditambah (mutasi DOM)
   const nadiContainer = document.getElementById('nadiContainer');
