@@ -2252,70 +2252,7 @@ let nadiRowCounter = 0;
 let nadiRows = []; // Array to store all NADI rows data
 
 function setupNADI(){
-
-
-// === Voucher state controller (hardened v2) ===
-(function(){
-  try {
-    const container = document.getElementById('nadiContainer') || document;
-    function applyRowState(row){
-      if (!row) return;
-      const voucher = row.querySelector('input[name="voucher"], input.voucher, input[name*="voucher"]');
-      const voucherDate = row.querySelector('input[name="voucherDate"], input.voucher-date, input[name*="voucherDate"]');
-      // Try common button selectors
-      let btn = row.querySelector('.nadi-daftar, .btn-daftar, [data-action="daftar"], button[id*="daftar"]');
-      if (!btn) {
-        // fallback: last button in row
-        const buttons = row.querySelectorAll('button');
-        btn = buttons[buttons.length-1] || null;
-      }
-      const tcaDateInput = row.querySelector('.nadi-tca-date, input[name="tcaDate"], input.tca-date');
-      const tcaTimeInput = row.querySelector('.nadi-tca-time, input[name="tcaTime"], input.tca-time');
-      const staffInput   = row.querySelector('.nadi-staff, input[name="staff"], input.staff');
-      const layak        = row.querySelector('.nadi-layak, input[name="layak"]');
-      if (!btn || !voucher) return;
-
-      const isVoucher = !!voucher.checked;
-      if (isVoucher){
-        btn.textContent = 'Daftar TCA';
-        if (tcaDateInput) tcaDateInput.disabled = true;
-        if (tcaTimeInput) tcaTimeInput.disabled = true;
-        if (staffInput)   staffInput.disabled   = true;
-        const hasVoucherDate = !!(voucherDate && voucherDate.value);
-        btn.disabled = !hasVoucherDate;
-      } else {
-        btn.textContent = (btn.dataset?.action === 'daftar' || /daftar/i.test(btn.textContent)) ? 'Daftar' : btn.textContent;
-        const ok = !!(layak && (layak.checked || layak.value === 'true' || layak.value === '1'));
-        if (tcaDateInput) tcaDateInput.disabled = !ok;
-        if (tcaTimeInput) tcaTimeInput.disabled = !ok;
-        if (staffInput)   staffInput.disabled   = !ok;
-        btn.disabled = !ok;
-      }
-    }
-
-    function applyAll(){
-      const rows = (document.querySelectorAll('#nadiContainer tr')) || [];
-      rows.forEach(r => applyRowState(r));
-    }
-
-    // Observe changes to rows to re-apply state
-    const observer = new MutationObserver(() => applyAll());
-    observer.observe(container, { childList: true, subtree: true });
-
-    // Wire listeners via event delegation
-    container.addEventListener('change', (e) => {
-      const el = e.target;
-      if (el && (el.matches('input[name="voucher"], input.voucher, input[name*="voucher"]') || el.matches('input[name="voucherDate"], input.voucher-date, input[name*="voucherDate"]'))) {
-        const row = el.closest('tr');
-        applyRowState(row);
-      }
-    });
-
-    // Initial sync
-    applyAll();
-  } catch(e) { /* ignore */ }
-})();
-const container = document.getElementById('nadiContainer');
+  const container = document.getElementById('nadiContainer');
   container.innerHTML = '';
   addNadiRow();
   document.getElementById('btnNadiExportCsv').addEventListener('click', exportNadiCSV);
@@ -2580,26 +2517,20 @@ function addNadiRow(){
   });
 
   // Daftar
-  
-btnDaftar.addEventListener('click', async () => {
-  const nama   = row.querySelector('.nadi-nama').value.trim();
-  const ic     = row.querySelector('.nadi-ic').value.trim();
-  const tel    = row.querySelector('.nadi-tel').value.trim();
-  const alamat = row.querySelector('.nadi-alamat').value.trim();
+  btnDaftar.addEventListener('click', async () => {
+    const nama = row.querySelector('.nadi-nama').value.trim();
+    const ic = row.querySelector('.nadi-ic').value.trim();
+    const tel = row.querySelector('.nadi-tel').value.trim();
+    const alamat = row.querySelector('.nadi-alamat').value.trim();
+    const date = tcaDate.value;
+    const time = tcaTime.value;
+    const staffName = staff.value.trim();
 
-  const isVoucher   = !!(row.querySelector('input[name="voucher"]')?.checked);
-  const voucherDate = row.querySelector('input[name="voucherDate"]')?.value || '';
-
-  if (!nama || !ic || !tel) {
-    toast('Ralat', 'Sila isi Nama, IC dan Telefon', 'danger');
-    return;
-  }
-
-  if (isVoucher) {
-    if (!voucherDate) {
-      toast('Ralat', 'Sila isi Tarikh TCA (Voucher)', 'danger');
+    if (!nama || !ic || !tel || !date || !time || !staffName) {
+      toast('Ralat', 'Sila isi semua maklumat', 'danger');
       return;
     }
+
     try {
       const res = await postForm({
         action: 'daftarPesakit',
@@ -2607,58 +2538,21 @@ btnDaftar.addEventListener('click', async () => {
         noIC: ic,
         noTelefon: tel,
         alamat: alamat,
-        tarikhTCA: voucherDate,
-        masaTCA: '09:00',
-        namaStaff: (typeof STAFF_EMAIL !== 'undefined' && STAFF_EMAIL) ? STAFF_EMAIL : 'SYSTEM'
-      }, { msg: 'Mendaftar pesakit (voucher)…' });
+        tarikhTCA: date,
+        masaTCA: time,
+        namaStaff: staffName
+      }, { msg: 'Mendaftar pesakit...' });
 
       if (res.status === 'success') {
-        toast('Berjaya', 'Pesakit berjaya didaftarkan (voucher)', 'success');
+        toast('Berjaya', 'Pesakit berjaya didaftarkan', 'success');
         updateNadiRowData(row);
       } else {
-        throw new Error(res.message || 'Gagal mendaftar pesakit (voucher)');
+        throw new Error(res.message || 'Gagal mendaftar pesakit');
       }
     } catch (e) {
       toast('Ralat', e.message, 'danger');
     }
-    return;
-  }
-
-  const tcaDate = row.querySelector('.nadi-tca-date');
-  const tcaTime = row.querySelector('.nadi-tca-time');
-  const staff   = row.querySelector('.nadi-staff');
-  const date    = tcaDate?.value || '';
-  const time    = tcaTime?.value || '';
-  const staffName = (staff?.value || '').trim();
-
-  if (!date || !time || !staffName) {
-    toast('Ralat', 'Sila isi tarikh, masa & nama staff', 'danger');
-    return;
-  }
-
-  try {
-    const res = await postForm({
-      action: 'daftarPesakit',
-      namaPesakit: nama,
-      noIC: ic,
-      noTelefon: tel,
-      alamat: alamat,
-      tarikhTCA: date,
-      masaTCA: time,
-      namaStaff: staffName
-    }, { msg: 'Mendaftar pesakit...' });
-
-    if (res.status === 'success') {
-      toast('Berjaya', 'Pesakit berjaya didaftarkan', 'success');
-      updateNadiRowData(row);
-    } else {
-      throw new Error(res.message || 'Gagal mendaftar pesakit');
-    }
-  } catch (e) {
-    toast('Ralat', e.message, 'danger');
-  }
-});
-
+  });
 
   // WA report (preview) — perhatikan: pembolehubah `data` DITAKRIF di dalam handler
   row.querySelector('.nadi-wa').addEventListener('click', async () => {
@@ -4037,12 +3931,12 @@ function useSelectedSession(){
     });
     localStorage.setItem(NADI_KEY, JSON.stringify(rows));
   }
-window.saveNadiStateDebounced = window.saveNadiStateDebounced || function(){
+function saveNadiStateDebounced(){
   clearTimeout(window.__saveNadiT);
   window.__saveNadiT = setTimeout(saveNadiState, 400);
 }
 
-/* DUPLICATE REMOVED:   window.saveNadiStateDebounced = window.saveNadiStateDebounced || debounce(saveNadiState, 400); */
+  const saveNadiStateDebounced = debounce(saveNadiState, 400);
 
   function restoreNadiState(){
     try{
@@ -4456,90 +4350,5 @@ window.saveNadiStateDebounced = window.saveNadiStateDebounced || function(){
   cont.querySelectorAll('input').forEach(handle);
 })();
 </script>
-
-
-// === Delegated click handler for Daftar / Daftar TCA (hardened v2) ===
-document.addEventListener('click', async (e) => {
-  const target = e.target;
-  if (!target || !(target.matches('.nadi-daftar, .btn-daftar, [data-action="daftar"], button[id*="daftar"]'))) return;
-  const row = target.closest('tr');
-  if (!row) return;
-
-  const nama   = (row.querySelector('.nadi-nama, input[name="nama"], input.nama') || {}).value?.trim?.() || '';
-  const ic     = (row.querySelector('.nadi-ic, input[name="ic"], input.ic') || {}).value?.trim?.() || '';
-  const tel    = (row.querySelector('.nadi-tel, input[name="tel"], input.tel, input[name="telefon"]') || {}).value?.trim?.() || '';
-  const alamat = (row.querySelector('.nadi-alamat, input[name="alamat"], input.alamat') || {}).value?.trim?.() || '';
-
-  const voucherEl    = row.querySelector('input[name="voucher"], input.voucher, input[name*="voucher"]');
-  const voucherDateE = row.querySelector('input[name="voucherDate"], input.voucher-date, input[name*="voucherDate"]');
-  const isVoucher    = !!(voucherEl && voucherEl.checked);
-  const voucherDate  = voucherDateE ? (voucherDateE.value || '') : '';
-
-  if (!nama || !ic || !tel) {
-    try { toast('Ralat', 'Sila isi Nama, IC dan Telefon', 'danger'); } catch(_) {}
-    return;
-  }
-
-  if (isVoucher) {
-    if (!voucherDate) {
-      try { toast('Ralat', 'Sila isi Tarikh TCA (Voucher)', 'danger'); } catch(_) {}
-      return;
-    }
-    try {
-      const payload = {
-        action: 'daftarPesakit',
-        namaPesakit: nama,
-        noIC: ic,
-        noTelefon: tel,
-        alamat: alamat,
-        tarikhTCA: voucherDate,
-        masaTCA: '09:00',
-        namaStaff: (typeof STAFF_EMAIL !== 'undefined' && STAFF_EMAIL) ? STAFF_EMAIL : 'SYSTEM'
-      };
-      const res = await postForm(payload, { msg: 'Mendaftar pesakit (voucher)…' });
-      if (res.status === 'success') {
-        try { toast('Berjaya', 'Pesakit berjaya didaftarkan (voucher)', 'success'); } catch(_) {}
-        try { updateNadiRowData(row); } catch(_) {}
-      } else throw new Error(res.message || 'Gagal mendaftar pesakit (voucher)');
-    } catch (err) {
-      try { toast('Ralat', String(err.message || err), 'danger'); } catch(_) {}
-    }
-    return;
-  }
-
-  // Normal path
-  const tcaDate = row.querySelector('.nadi-tca-date, input[name="tcaDate"], input.tca-date');
-  const tcaTime = row.querySelector('.nadi-tca-time, input[name="tcaTime"], input.tca-time');
-  const staff   = row.querySelector('.nadi-staff, input[name="staff"], input.staff');
-  const date    = tcaDate ? tcaDate.value : '';
-  const time    = tcaTime ? tcaTime.value : '';
-  const staffName = staff ? (staff.value || '').trim() : '';
-
-  if (!date || !time || !staffName) {
-    try { toast('Ralat', 'Sila isi tarikh, masa & nama staff', 'danger'); } catch(_) {}
-    return;
-  }
-
-  try {
-    const payload = {
-      action: 'daftarPesakit',
-      namaPesakit: nama,
-      noIC: ic,
-      noTelefon: tel,
-      alamat: alamat,
-      tarikhTCA: date,
-      masaTCA: time,
-      namaStaff: staffName
-    };
-    const res = await postForm(payload, { msg: 'Mendaftar pesakit...' });
-    if (res.status === 'success') {
-      try { toast('Berjaya', 'Pesakit berjaya didaftarkan', 'success'); } catch(_) {}
-      try { updateNadiRowData(row); } catch(_) {}
-    } else throw new Error(res.message || 'Gagal mendaftar pesakit');
-  } catch (err) {
-    try { toast('Ralat', String(err.message || err), 'danger'); } catch(_) {}
-  }
-});
-
 </body>
 </html>
