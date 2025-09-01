@@ -2218,7 +2218,7 @@ function toggleLayak(rowId, isLayak){
   const staff = tr.querySelector('.tca-staff');
   const btn   = tr.querySelector('button');
   if (isLayak && checks[0].checked) {
-    date.disabled = false; time.disabled = false; staff.disabled=false; btn.disabled = false; btn.removeAttribute('disabled');
+    date.disabled = false; time.disabled = false; staff.disabled=false; btn.disabled = false; btn.removeAttribute('disabled'); btn.removeAttribute('disabled');
   } else {
     date.disabled = true;  time.disabled = true; staff.disabled=true;  btn.disabled = true;
   }
@@ -2495,7 +2495,7 @@ function addNadiRow(){
       tcaDate.disabled = false;
       tcaTime.disabled = false;
       staff.disabled = false;
-      btnDaftar.disabled = false; btnDaftar.removeAttribute('disabled');
+      btnDaftar.disabled = false; btnDaftar.removeAttribute('disabled'); btnDaftar.removeAttribute('disabled');
     } else {
       tcaDate.disabled = true;
       tcaTime.disabled = true;
@@ -2512,7 +2512,7 @@ function addNadiRow(){
       tcaTime.disabled = true;
       staff.disabled = true;
       const voucher = row.querySelector('input[name="voucher"]');
-      btnDaftar.disabled = (voucher && voucher.checked) ? false : true;
+      if (voucher && voucher.checked) { btnDaftar.disabled = false; btnDaftar.removeAttribute('disabled'); } else { btnDaftar.disabled = true; }
     }
     updateNadiSummary();
   });
@@ -3139,15 +3139,15 @@ function mergeLiveRowsIntoUI(items){
     if (layak && takLayak && tcaDate && tcaTime && staff && btnDaftar){
       if (layak.checked){
         takLayak.checked = false;
-        tcaDate.disabled = false; tcaTime.disabled = false; staff.disabled = false; btnDaftar.disabled = false; btnDaftar.removeAttribute('disabled');
+        tcaDate.disabled = false; tcaTime.disabled = false; staff.disabled = false; btnDaftar.disabled = false; btnDaftar.removeAttribute('disabled'); btnDaftar.removeAttribute('disabled');
       } else if (takLayak.checked){
         layak.checked = false;
         tcaDate.disabled = true;  tcaTime.disabled = true;  staff.disabled = true;  const voucher = row.querySelector('input[name="voucher"]');
-        btnDaftar.disabled = (voucher && voucher.checked) ? false : true;
+        if (voucher && voucher.checked) { btnDaftar.disabled = false; btnDaftar.removeAttribute('disabled'); } else { btnDaftar.disabled = true; }
       } else {
         // tiada pilihan → disable TCA
         tcaDate.disabled = true;  tcaTime.disabled = true;  staff.disabled = true;  const voucher = row.querySelector('input[name="voucher"]');
-        btnDaftar.disabled = (voucher && voucher.checked) ? false : true;
+        if (voucher && voucher.checked) { btnDaftar.disabled = false; btnDaftar.removeAttribute('disabled'); } else { btnDaftar.disabled = true; }
       }
     }
   });
@@ -3975,9 +3975,6 @@ function saveNadiStateDebounced(){
   clearTimeout(window.__saveNadiT);
   window.__saveNadiT = setTimeout(saveNadiState, 400);
 }
-
-  const saveNadiStateDebounced = debounce(saveNadiState, 400);
-
   function restoreNadiState(){
     try{
       const raw = localStorage.getItem(NADI_KEY);
@@ -4049,7 +4046,7 @@ function saveNadiStateDebounced(){
       if (el.checked && tak) tak.checked = true;
       const btn = tr?.querySelector('.nadi-daftar');
       if (btn) {
-        if (el.checked) { btn.disabled = false; btn.removeAttribute('disabled'); }
+        if (el.checked) { btn.disabled = false; btn.removeAttribute('disabled'); btn.removeAttribute('disabled'); }
         else {
           const ly = tr?.querySelector('.nadi-layak');
           btn.disabled = !(ly && ly.checked);
