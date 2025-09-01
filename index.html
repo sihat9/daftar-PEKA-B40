@@ -2518,10 +2518,11 @@ function addNadiRow(){
 
   // Daftar
   
+
 btnDaftar.addEventListener('click', async () => {
   const nama = row.querySelector('.nadi-nama').value.trim();
-  const ic = row.querySelector('.nadi-ic').value.trim();
-  const tel = row.querySelector('.nadi-tel').value.trim();
+  const ic   = row.querySelector('.nadi-ic').value.trim();
+  const tel  = row.querySelector('.nadi-tel').value.trim();
   const alamat = row.querySelector('.nadi-alamat').value.trim();
 
   const vchr  = row.querySelector('.nadi-voucher');
@@ -2529,9 +2530,8 @@ btnDaftar.addEventListener('click', async () => {
 
   // Laluan VOUCHER
   if (vchr && vchr.checked) {
-    if (!nama || !ic || !tel) { toast('Ralat', 'Sila isi Nama, IC & Telefon', 'danger'); return; }
-    if (!vDate || !vDate.value) { toast('Ralat', 'Sila isi Tarikh TCA (Voucher)', 'danger'); return; }
-
+    if (!nama || !ic || !tel) { toast('Ralat','Sila isi Nama, IC & Telefon','danger'); return; }
+    if (!vDate || !vDate.value) { toast('Ralat','Sila isi Tarikh TCA (Voucher)','danger'); return; }
     try {
       const res = await postForm({
         action: 'daftarPesakit',
@@ -2555,10 +2555,7 @@ btnDaftar.addEventListener('click', async () => {
     return;
   }
 
-  // Laluan BIASA
-  const tcaDate = row.querySelector('.nadi-tca-date');
-  const tcaTime = row.querySelector('.nadi-tca-time');
-  const staff = row.querySelector('.nadi-staff');
+  // Laluan BIASA (Layak)
   const date = tcaDate.value;
   const time = tcaTime.value;
   const staffName = staff.value.trim();
@@ -2579,6 +2576,7 @@ btnDaftar.addEventListener('click', async () => {
       masaTCA: time,
       namaStaff: staffName
     }, { msg: 'Mendaftar pesakit...' });
+
     if (res.status === 'success') {
       toast('Berjaya', 'Pesakit berjaya didaftarkan', 'success');
       updateNadiRowData(row);
@@ -2589,6 +2587,7 @@ btnDaftar.addEventListener('click', async () => {
     toast('Ralat', e.message, 'danger');
   }
 });
+
 
 
   // WA report (preview) — perhatikan: pembolehubah `data` DITAKRIF di dalam handler
