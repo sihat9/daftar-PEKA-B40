@@ -4037,8 +4037,8 @@ function saveNadiStateDebounced(){
   // Toggle enable/disable tarikh voucher ikut checkbox
   document.addEventListener('change', function(e){
     const el = e.target;
-    const row = el.closest('tr'); const btn = row?.querySelector('.nadi-daftar'); const dateInput = row?.querySelector('input[name=\"voucherDate\"]');
-if (el && el.name === 'voucher') {
+    if (!el) return;
+    if (el.name === 'voucher') {
       const row = el.closest('tr');
       const dateInput = row?.querySelector('input[name="voucherDate"]');
       if (dateInput) dateInput.disabled = !el.checked;
@@ -4046,24 +4046,18 @@ if (el && el.name === 'voucher') {
       if (el.checked && tak) tak.checked = true;
       const btn = row?.querySelector('.nadi-daftar');
       if (btn) {
-        if (el.checked) { btn.disabled = false; btn.removeAttribute('disabled'); }
-        else {
-          const ly = row?.querySelector('.nadi-layak');
-          btn.disabled = !(ly && ly.checked);
-        }
+        const layak = row?.querySelector('input[name="layak"]');
+        const enabled = !!(el.checked || (layak && layak.checked));
+        btn.disabled = !enabled;
+        btn.textContent = el.checked ? 'Daftar TCA' : 'Daftar';
+        if (enabled) btn.removeAttribute('disabled');
       }
-      
-      const row = el.closest('tr');
-      const dateInput = row?.querySelector('input[name="voucherDate"]');
-      if (dateInput) dateInput.disabled = !el.checked;
-      // Jika voucher dicentang, set takLayak true supaya tidak disimpan sebagai "layak"
-      const tak = row?.querySelector('input[name="takLayak"]');
-      if (el.checked && tak) tak.checked = true;
       saveNadiStateDebounced();
     }
-    if (el && (el.matches('#nadiContainer input, #nadiContainer textarea'))) {
+    if (el.matches('#nadiContainer input, #nadiContainer textarea')) {
       saveNadiStateDebounced();
-}, true);
+    }
+  }, true);
 
   // Panggil ensureVoucherColumns apabila baris ditambah (mutasi DOM)
   const nadiContainer = document.getElementById('nadiContainer');
