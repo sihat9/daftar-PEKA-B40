@@ -2409,10 +2409,10 @@ function addNadiRow(){
       <input class="form-control form-control-sm nadi-bmi" placeholder="BMI" disabled style="display:none" onblur="saveNadiCell(this)" />
     </td>
     <td class="text-center">
-      <input class="form-check-input nadi-layak" type="checkbox">
+      <input class="form-check-input nadi-layak" type="checkbox" name="layak">
     </td>
     <td class="text-center">
-      <input class="form-check-input nadi-taklayak" type="checkbox">
+      <input class="form-check-input nadi-taklayak" type="checkbox" name="takLayak">
     </td>
 
     <td class="text-center">
@@ -4300,9 +4300,9 @@ saveNadiStateDebounced();
     // Update main button label
     const btn = row.querySelector('.nadi-daftar');
     if (btn) {
-      btn.disabled = !(layak && layak.checked);
-      if (vchr && vchr.checked) btn.textContent = 'Daftar TCA';
-      else btn.textContent = 'Daftar';
+      const __enabled = !!((vchr && vchr.checked) || (layak && layak.checked));
+btn.disabled = !__enabled;
+btn.textContent = (vchr && vchr.checked) ? \'Daftar TCA\' : \'Daftar\';
     }
   }, true);
 })();
