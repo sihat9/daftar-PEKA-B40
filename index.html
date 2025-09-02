@@ -1455,21 +1455,6 @@ const LOGO_URL = 'data:image/jpeg;base64,/9j/4AAQSkZJRgABAQAAAQABAAD/4gHYSUNDX1B
 let ID_TOKEN = '';      // diisi selepas login
 let STAFF_EMAIL = '';   // email sebenar (server akan sahkan juga)
 
-
-// === JSONP loader (to bypass CORS for Apps Script) ===
-function loadJSONP(url, callbackName, onTimeout){
-  const s = document.createElement('script');
-  s.src = url;
-  s.async = true;
-  s.onerror = function(){ try{ onTimeout && onTimeout(); }catch(_){}; s.remove(); };
-  document.head.appendChild(s);
-  // Safety timeout (5s)
-  setTimeout(function(){
-    if (window[callbackName]){ return; } // callback not yet called but still defined; let it continue
-    try{ onTimeout && onTimeout(); }catch(_){}
-    try{ document.head.removeChild(s); }catch(_){}
-  }, 5000);
-}
 function initGoogleSignIn(){
   google.accounts.id.initialize({
     client_id: GOOGLE_CLIENT_ID,
@@ -1490,30 +1475,26 @@ function initGoogleSignIn(){
 async function handleCredentialResponse(resp){
   try{
     ID_TOKEN = resp.credential;
-    // Use JSONP to bypass CORS: SCRIPT_URL must support action=whoami&callback=cb
-    const cb = 'whoamiCb_' + Date.now();
-    window[cb] = function(j){
-      try{
-        if (j && j.status === 'success'){
-          STAFF_EMAIL = j.email || '';
-          document.getElementById('staffBadge').classList.remove('d-none');
-          document.getElementById('staffEmail').textContent = STAFF_EMAIL || '(Unknown)';
-        } else {
-          STAFF_EMAIL = '';
-          document.getElementById('staffBadge').classList.remove('d-none');
-          document.getElementById('staffEmail').textContent = '(Limited)';
-        }
-      } finally {
-        try{ delete window[cb]; }catch(_){}
-      }
-    };
-    const url = SCRIPT_URL + '?action=whoami&id_token=' + encodeURIComponent(ID_TOKEN) + '&callback=' + cb;
-    loadJSONP(url, cb, function(){
-      // timeout / error -> limited
-      STAFF_EMAIL = '';
-      document.getElementById('staffBadge').classList.remove('d-none');
-      document.getElementById('staffEmail').textContent = '(Limited)';
+    const r = await fetch(SCRIPT_URL, {
+      method:'POST',
+      mode:'no-cors',
+      headers:{ 'Content-Type':'application/x-www-form-urlencoded' },
+      body: new URLSearchParams({ action:'whoami', id_token: ID_TOKEN })
     });
+    if (r && r.type !== 'opaque') {
+      let j = {};
+      try { j = await r.json(); } catch(_){}
+      if (j.status === 'success'){
+        STAFF_EMAIL = j.email || '';
+        document.getElementById('staffBadge').classList.remove('d-none');
+        document.getElementById('staffEmail').textContent = STAFF_EMAIL;
+        return;
+      }
+    }
+    // Limited mode (opaque/no response): show badge without email
+    STAFF_EMAIL = '';
+    document.getElementById('staffBadge').classList.remove('d-none');
+    document.getElementById('staffEmail').textContent = '(Limited)';
   }catch(e){
     console.warn('handleCredentialResponse failed; limited mode.', e);
     STAFF_EMAIL = '';
