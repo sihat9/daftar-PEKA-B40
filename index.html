@@ -2531,35 +2531,7 @@ function addNadiRow(){
     const staffName = staff.value.trim();
 
     
-    
-    // VOUCHER MODE: gunakan Tarikh TCA (Voucher) dan benarkan klik walaupun TCA fields disabled
-    const voucherEl = row.querySelector('input[name="voucher"]');
-    const voucherDateEl = row.querySelector('input[name="voucherDate"]');
-    if (voucherEl && voucherEl.checked) {
-      const raw = voucherDateEl && voucherDateEl.value ? voucherDateEl.value : '';
-      const __fmtDDMMYYYY = (v)=>{ const m=/^(\d{4})-(\d{2})-(\d{2})$/.exec(v||''); return m?`${m[3]}/${m[2]}/${m[1]}`:v; };
-      const vDate = __fmtDDMMYYYY(raw);
-      if (!nama || (!ic && !tel)) { toast('Ralat','Isi sekurang-kurangnya Nama dan IC/Telefon','danger'); return; }
-      if (!vDate) { toast('Ralat','Sila pilih Tarikh TCA (Voucher)','danger'); return; }
-      const masa = '09:00';
-      const staffAuto = (window.STAFF_EMAIL || staffName || '').trim();
-      const alamatWithRemark = (alamat ? alamat + ' — ' : '') + 'Saringan kesihatan voucher';
-      try {
-        const res = await postForm({ action:'daftarPesakit', namaPesakit:(nama||'Pesakit Voucher'), noIC:(ic||''), noTelefon:(tel||''), alamat:alamatWithRemark, tarikhTCA:vDate, masaTCA:masa, namaStaff:staffAuto }, { msg:'Mendaftar pesakit (voucher)...' });
-        if (res.status === 'success') {
-          toast('Berjaya','Pesakit (voucher) berjaya didaftarkan','success');
-          updateNadiRowData(row);
-          try {
-            const r = await getJSON({ action:'getTCACall', all:1 });
-            window.TCA_ALL = (r.status==='success') ? (r.data||[]) : [];
-            const active = document.querySelector('#tcaFilter .active')?.dataset.filter || 'all';
-            if (typeof renderTcaList==='function') renderTcaList(active);
-          } catch(e){ /* senyap */ }
-        } else { throw new Error(res.message || 'Gagal mendaftar pesakit (voucher)'); }
-      } catch(e){ toast('Ralat', e.message, 'danger'); }
-      return;
-    }
-// Mod voucher: daftar menggunakan Tarikh TCA (Voucher)
+    // Mod voucher: daftar menggunakan Tarikh TCA (Voucher)
     const voucherEl = row.querySelector('input[name="voucher"]');
     const voucherDateEl = row.querySelector('input[name="voucherDate"]');
     if (voucherEl && voucherEl.checked) {
@@ -3166,7 +3138,7 @@ function mergeLiveRowsIntoUI(items){
         layak.checked = false;
         tcaDate.disabled = true;  tcaTime.disabled = true;  staff.disabled = true;  const voucher = row.querySelector('input[name="voucher"]');
         if (voucher && voucher.checked) { btnDaftar.disabled = false; btnDaftar.removeAttribute('disabled'); btnDaftar.removeAttribute('disabled'); btnDaftar.removeAttribute('disabled'); }
-        else { const voucher = row.querySelector('input[name="voucher"]');
+        else { const voucher = row.querySelector('input[name=\"voucher\"]');
         if (voucher && voucher.checked) { btnDaftar.disabled = false; btnDaftar.removeAttribute('disabled'); btnDaftar.removeAttribute('disabled'); }
         else { btnDaftar.disabled = true; } }
       } else {
@@ -4060,30 +4032,36 @@ function saveNadiStateDebounced(){
   }
 
   // Toggle enable/disable tarikh voucher ikut checkbox
-document.addEventListener('change', function(e){
-  const el = e.target;
-  if (el && el.name === 'voucher') {
-    const tr = el.closest('tr');
-    const dateInput = tr?.querySelector('input[name="voucherDate"]');
-    if (dateInput) dateInput.disabled = !el.checked;
-    // Jika voucher dicentang, set takLayak true supaya tidak disimpan sebagai "layak"
-    const tak = tr?.querySelector('input[name="takLayak"]');
-    if (el.checked && tak) tak.checked = true;
-    // Enable/disable the Daftar TCA button accordingly
-    const btn = tr?.querySelector('.nadi-daftar');
-    if (btn) {
-      if (el.checked) { btn.disabled = false; btn.removeAttribute('disabled'); }
-      else {
-        const ly = tr?.querySelector('.nadi-layak');
-        btn.disabled = !(ly && ly.checked);
+  document.addEventListener('change', function(e){
+    const el = e.target;
+    const tr = el.closest('tr'); const btn = tr?.querySelector('.nadi-daftar'); const dateInput = tr?.querySelector('input[name=\"voucherDate\"]');
+if (el && el.name === 'voucher') {
+      const tr = el.closest('tr');
+      const dateInput = tr?.querySelector('input[name="voucherDate"]');
+      if (dateInput) dateInput.disabled = !el.checked;
+      const tak = tr?.querySelector('input[name="takLayak"]');
+      if (el.checked && tak) tak.checked = true;
+      const btn = tr?.querySelector('.nadi-daftar');
+      if (btn) {
+        if (el.checked) { btn.disabled = false; btn.removeAttribute('disabled'); btn.removeAttribute('disabled'); btn.removeAttribute('disabled'); }
+        else {
+          const ly = tr?.querySelector('.nadi-layak');
+          btn.disabled = !(ly && ly.checked);
+        }
       }
+      
+      const tr = el.closest('tr');
+      const dateInput = tr?.querySelector('input[name="voucherDate"]');
+      if (dateInput) dateInput.disabled = !el.checked;
+      // Jika voucher dicentang, set takLayak true supaya tidak disimpan sebagai "layak"
+      const tak = tr?.querySelector('input[name="takLayak"]');
+      if (el.checked && tak) tak.checked = true;
+      saveNadiStateDebounced();
     }
-    saveNadiStateDebounced();
-  }
-  if (el && (el.matches('#nadiContainer input, #nadiContainer textarea'))) {
-    saveNadiStateDebounced();
-  }
-}, true);
+    if (el && (el.matches('#nadiContainer input, #nadiContainer textarea'))) {
+      saveNadiStateDebounced();
+saveNadiStateDebounced();
+  }, true);
 
   // Panggil ensureVoucherColumns apabila baris ditambah (mutasi DOM)
   const nadiContainer = document.getElementById('nadiContainer');
