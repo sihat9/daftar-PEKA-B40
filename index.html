@@ -2976,12 +2976,14 @@ function extractRowPayload(row){
   const tcaTime = row.querySelector('.nadi-tca-time')?.value || '';
   const tcaStaff= row.querySelector('.nadi-staff')?.value.trim() || '';
   const remark  = row.querySelector('.nadi-remark')?.value.trim() || '';
+  const sessionId = row.dataset.sessionId || window.NADI_LIVE_SESSION_ID || '';
+
 
   return {
     id, nama, ic, tel, alamat,
     bp, pr, dxtType, dxt, tinggi, berat, bmi,
     layak, takLayak, tcaDate, tcaTime, tcaStaff,
-    remark
+    remark, sessionId
   };
 }
 
