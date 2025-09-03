@@ -1183,7 +1183,7 @@ async function loadMonitor(dateStr) {
 
   // Util kecil: pembantu fetch + parse JSON dengan mesej ralat yang jelas
   async function fetchJSON(url) {
-    const res = await fetch(url, { method: 'GET', credentials: 'omit' , mode:'no-cors' });
+    const res = await fetch(url, { method: 'GET', credentials: 'omit' });
     const text = await res.text();
     let json;
     try {
@@ -1455,21 +1455,6 @@ const LOGO_URL = 'data:image/jpeg;base64,/9j/4AAQSkZJRgABAQAAAQABAAD/4gHYSUNDX1B
 let ID_TOKEN = '';      // diisi selepas login
 let STAFF_EMAIL = '';   // email sebenar (server akan sahkan juga)
 
-
-// === JSONP loader (to bypass CORS for Apps Script) ===
-function loadJSONP(url, callbackName, onTimeout){
-  const s = document.createElement('script');
-  s.src = url;
-  s.async = true;
-  s.onerror = function(){ try{ onTimeout && onTimeout(); }catch(_){}; s.remove(); };
-  document.head.appendChild(s);
-  // Safety timeout (5s)
-  setTimeout(function(){
-    if (window[callbackName]){ return; } // callback not yet called but still defined; let it continue
-    try{ onTimeout && onTimeout(); }catch(_){}
-    try{ document.head.removeChild(s); }catch(_){}
-  }, 5000);
-}
 function initGoogleSignIn(){
   google.accounts.id.initialize({
     client_id: GOOGLE_CLIENT_ID,
@@ -1488,37 +1473,30 @@ function initGoogleSignIn(){
 }
 
 async function handleCredentialResponse(resp){
-  try{
-    ID_TOKEN = resp.credential;
-    // Use JSONP to bypass CORS: SCRIPT_URL must support action=whoami&callback=cb
-    const cb = 'whoamiCb_' + Date.now();
-    window[cb] = function(j){
-      try{
-        if (j && j.status === 'success'){
-          STAFF_EMAIL = j.email || '';
-          document.getElementById('staffBadge').classList.remove('d-none');
-          document.getElementById('staffEmail').textContent = STAFF_EMAIL || '(Unknown)';
-        } else {
-          STAFF_EMAIL = '';
-          document.getElementById('staffBadge').classList.remove('d-none');
-          document.getElementById('staffEmail').textContent = '(Limited)';
-        }
-      } finally {
-        try{ delete window[cb]; }catch(_){}
-      }
-    };
-    const url = SCRIPT_URL + '?action=whoami&id_token=' + encodeURIComponent(ID_TOKEN) + '&callback=' + cb;
-    loadJSONP(url, cb, function(){
-      // timeout / error -> limited
-      STAFF_EMAIL = '';
-      document.getElementById('staffBadge').classList.remove('d-none');
-      document.getElementById('staffEmail').textContent = '(Limited)';
-    });
-  }catch(e){
-    console.warn('handleCredentialResponse failed; limited mode.', e);
-    STAFF_EMAIL = '';
+  ID_TOKEN = resp.credential;
+  const r = await fetch(SCRIPT_URL, {
+    method:'POST',
+    headers:{ 'Content-Type':'application/x-www-form-urlencoded' },
+    body: new URLSearchParams({ action:'whoami', id_token: ID_TOKEN })
+  });
+  const j = await r.json();
+  if (j.status === 'success'){
+    STAFF_EMAIL = j.email || '';
     document.getElementById('staffBadge').classList.remove('d-none');
-    document.getElementById('staffEmail').textContent = '(Limited)';
+    document.getElementById('staffEmail').textContent = STAFF_EMAIL;
+    document.getElementById('signinArea').innerHTML = '';
+    document.getElementById('signinAreaDesktop').innerHTML = '';
+
+    bootstrapApp(); // muat data awal
+
+    // Tambah 3 baris ini
+    location.hash = '#dashboard';
+    const dashLink = document.querySelector('.nav-link[href="#dashboard"]');
+    if (dashLink) dashLink.click();
+
+  } else {
+    toast('Akses Ditolak', j.message || 'Sila hubungi admin untuk allowlist.', 'danger');
+    ID_TOKEN = ''; STAFF_EMAIL = '';
   }
 }
 
@@ -1544,7 +1522,7 @@ async function getJSON(params={}, {silent=false, msg='Memuat data…'}={}){
   if (!silent) showLoader(msg);
   try{
     const r = await Promise.race([
-      fetch(url, { method:'GET' , mode:'no-cors' }),
+      fetch(url, { method:'GET' }),
       new Promise((_,rej)=> setTimeout(()=>rej(new Error('Timeout')), 12000))
     ]);
     return await r.json();
@@ -1556,7 +1534,7 @@ async function postForm(params={}, {silent=false, msg='Menyimpan data…'}={}){
   if (!silent) showLoader(msg);
   try{
     const r = await Promise.race([
-      fetch(SCRIPT_URL, { mode:'no-cors', 
+      fetch(SCRIPT_URL, {
         method:'POST',
         headers:{ 'Content-Type':'application/x-www-form-urlencoded' },
         body: new URLSearchParams({ ...params, id_token: ID_TOKEN })
@@ -2431,17 +2409,17 @@ function addNadiRow(){
       <input class="form-control form-control-sm nadi-bmi" placeholder="BMI" disabled style="display:none" onblur="saveNadiCell(this)" />
     </td>
     <td class="text-center">
-      <input class="form-check-input nadi-layak" type="checkbox" name="layak">
+      <input class="form-check-input nadi-layak" type="checkbox">
     </td>
     <td class="text-center">
-      <input class="form-check-input nadi-taklayak" type="checkbox" name="takLayak">
+      <input class="form-check-input nadi-taklayak" type="checkbox">
     </td>
 
     <td class="text-center">
-      <input class="form-check-input nadi-voucher" type="checkbox" name="voucher">
+      <input class="form-check-input nadi-voucher" type="checkbox">
     </td>
     <td>
-      <input type="date" class="form-control form-control-sm nadi-voucher-date" disabled name="voucherDate">
+      <input type="date" class="form-control form-control-sm nadi-voucher-date" disabled>
     </td>
     <!-- Kolum Remark baharu -->
     <td class="nadi-input-cell">
@@ -2517,7 +2495,7 @@ function addNadiRow(){
       tcaDate.disabled = false;
       tcaTime.disabled = false;
       staff.disabled = false;
-      btnDaftar.disabled = false; btnDaftar.removeAttribute('disabled'); btnDaftar.removeAttribute('disabled');
+      btnDaftar.disabled = false; btnDaftar.removeAttribute('disabled');
     } else {
       tcaDate.disabled = true;
       tcaTime.disabled = true;
@@ -2534,10 +2512,8 @@ function addNadiRow(){
       tcaTime.disabled = true;
       staff.disabled = true;
       const voucher = row.querySelector('input[name="voucher"]');
-      if (voucher && voucher.checked) { btnDaftar.disabled = false; btnDaftar.removeAttribute('disabled'); btnDaftar.removeAttribute('disabled'); btnDaftar.removeAttribute('disabled'); }
-      else { const voucher = row.querySelector('input[name="voucher"]');
       if (voucher && voucher.checked) { btnDaftar.disabled = false; btnDaftar.removeAttribute('disabled'); btnDaftar.removeAttribute('disabled'); }
-      else { btnDaftar.disabled = true; } }
+      else { btnDaftar.disabled = true; }
     }
     updateNadiSummary();
   });
@@ -3155,14 +3131,12 @@ function mergeLiveRowsIntoUI(items){
     if (layak && takLayak && tcaDate && tcaTime && staff && btnDaftar){
       if (layak.checked){
         takLayak.checked = false;
-        tcaDate.disabled = false; tcaTime.disabled = false; staff.disabled = false; btnDaftar.disabled = false; btnDaftar.removeAttribute('disabled'); btnDaftar.removeAttribute('disabled');
+        tcaDate.disabled = false; tcaTime.disabled = false; staff.disabled = false; btnDaftar.disabled = false; btnDaftar.removeAttribute('disabled');
       } else if (takLayak.checked){
         layak.checked = false;
         tcaDate.disabled = true;  tcaTime.disabled = true;  staff.disabled = true;  const voucher = row.querySelector('input[name="voucher"]');
-        if (voucher && voucher.checked) { btnDaftar.disabled = false; btnDaftar.removeAttribute('disabled'); btnDaftar.removeAttribute('disabled'); btnDaftar.removeAttribute('disabled'); }
-        else { const voucher = row.querySelector('input[name=\"voucher\"]');
         if (voucher && voucher.checked) { btnDaftar.disabled = false; btnDaftar.removeAttribute('disabled'); btnDaftar.removeAttribute('disabled'); }
-        else { btnDaftar.disabled = true; } }
+        else { btnDaftar.disabled = true; }
       } else {
         // tiada pilihan → disable TCA
         tcaDate.disabled = true;  tcaTime.disabled = true;  staff.disabled = true;  btnDaftar.disabled = true;
@@ -3676,7 +3650,7 @@ async function uploadPDPA(){
   showLoader('Memuat naik PDPA…');
   try{
     const base64 = await fileToBase64(file); const pure64 = base64.split(',').pop();
-    const res = await fetch(SCRIPT_URL, { mode:'no-cors', 
+    const res = await fetch(SCRIPT_URL, {
       method: 'POST',
       headers: { 'Content-Type':'application/x-www-form-urlencoded' },
       body: new URLSearchParams({
@@ -4056,26 +4030,32 @@ function saveNadiStateDebounced(){
   // Toggle enable/disable tarikh voucher ikut checkbox
   document.addEventListener('change', function(e){
     const el = e.target;
-    if (!el) return;
-    if (el.name === 'voucher') {
-      const row = el.closest('tr');
-      const dateInput = row?.querySelector('input[name="voucherDate"]');
+    if (el && el.name === 'voucher') {
+      const tr = el.closest('tr');
+      const dateInput = tr?.querySelector('input[name="voucherDate"]');
       if (dateInput) dateInput.disabled = !el.checked;
-      const tak = row?.querySelector('input[name="takLayak"]');
+      const tak = tr?.querySelector('input[name="takLayak"]');
       if (el.checked && tak) tak.checked = true;
-      const btn = row?.querySelector('.nadi-daftar');
+      const btn = tr?.querySelector('.nadi-daftar');
       if (btn) {
-        const layak = row?.querySelector('input[name="layak"]');
-        const enabled = !!(el.checked || (layak && layak.checked));
-        btn.disabled = !enabled;
-        btn.textContent = el.checked ? 'Daftar TCA' : 'Daftar';
-        if (enabled) btn.removeAttribute('disabled');
+        if (el.checked) { btn.disabled = false; btn.removeAttribute('disabled'); btn.removeAttribute('disabled'); }
+        else {
+          const ly = tr?.querySelector('.nadi-layak');
+          btn.disabled = !(ly && ly.checked);
+        }
       }
+      
+      const tr = el.closest('tr');
+      const dateInput = tr?.querySelector('input[name="voucherDate"]');
+      if (dateInput) dateInput.disabled = !el.checked;
+      // Jika voucher dicentang, set takLayak true supaya tidak disimpan sebagai "layak"
+      const tak = tr?.querySelector('input[name="takLayak"]');
+      if (el.checked && tak) tak.checked = true;
       saveNadiStateDebounced();
     }
-    if (el.matches('#nadiContainer input, #nadiContainer textarea')) {
+    if (el && (el.matches('#nadiContainer input, #nadiContainer textarea'))) {
       saveNadiStateDebounced();
-    }
+saveNadiStateDebounced();
   }, true);
 
   // Panggil ensureVoucherColumns apabila baris ditambah (mutasi DOM)
@@ -4144,7 +4124,7 @@ function saveNadiStateDebounced(){
           form.set('namaStaff', staff || 'SYSTEM');
           form.set('tarikhTCA', r.voucherDate || programDate || '');
           form.set('masaTCA', masa);
-          const res = await fetch(SCRIPT_URL, { method:'POST', body: form , mode:'no-cors' });
+          const res = await fetch(SCRIPT_URL, { method:'POST', body: form });
           const j = await res.json().catch(()=>({}));
           if (j && j.status === 'success') {
             if (typeof toast === 'function') toast('Berjaya', `Voucher TCA didaftarkan untuk ${r.nama || r.ic}`, 'success');
@@ -4315,9 +4295,9 @@ function saveNadiStateDebounced(){
     // Update main button label
     const btn = row.querySelector('.nadi-daftar');
     if (btn) {
-      const __enabled = !!((vchr && vchr.checked) || (layak && layak.checked));
-btn.disabled = !__enabled;
-btn.textContent = (vchr && vchr.checked) ? 'Daftar TCA' : 'Daftar';
+      btn.disabled = !(layak && layak.checked);
+      if (vchr && vchr.checked) btn.textContent = 'Daftar TCA';
+      else btn.textContent = 'Daftar';
     }
   }, true);
 })();
