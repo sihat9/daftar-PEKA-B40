@@ -3051,14 +3051,16 @@ function startNadiLiveSync(){
   stopNadiLiveSync();
   if (!NADI_LIVE_SESSION_ID) return;
 
-  const FAST_MS = 1500;  // lebih laju bila halaman aktif
-  const SLOW_MS = 6000;  // jimat bila halaman tidak aktif
-
-  pullNadiLiveOnce(); // tarik sekali segera
-
+  const FAST_MS = 1500;
+  const SLOW_MS = 6000;
+  pullNadiLiveOnce();
   const ms = (document.visibilityState === 'visible') ? FAST_MS : SLOW_MS;
   nadiLiveTimer = setInterval(pullNadiLiveOnce, ms);
 }
+// Tindak apabila tab aktif/tersembunyi
+document.addEventListener('visibilitychange', ()=>{ if (NADI_LIVE_SESSION_ID) startNadiLiveSync(); });
+// Tarik segera bila fokus kembali
+window.addEventListener('focus', ()=>{ if (NADI_LIVE_SESSION_ID) pullNadiLiveOnce(); });
 
 // Tukar tempo ikut visibility (aktif/tersembunyi)
 document.addEventListener('visibilitychange', ()=>{
