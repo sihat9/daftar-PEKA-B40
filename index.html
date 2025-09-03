@@ -2527,44 +2527,62 @@ btnDaftar.addEventListener('click', async () => {
   const vchr  = row.querySelector('.nadi-voucher');
   const vDate = row.querySelector('.nadi-voucher-date');
 
-  // Laluan VOUCHER
- // Laluan VOUCHER (benarkan tanpa tarikh; fallback tarikh program / hari ini)
-if (vchr && vchr.checked) {
-  if (!nama || !ic || !tel) {
-    toast('Ralat', 'Sila isi Nama, IC & Telefon', 'danger');
+  // Laluan VOUCHER (benarkan tanpa tarikh; fallback tarikh program / hari ini)
+  if (vchr && vchr.checked) {
+    if (!nama || !ic || !tel) { toast('Ralat', 'Sila isi Nama, IC & Telefon', 'danger'); return; }
+
+    const programDate = document.getElementById('nadiProgramDate')?.value
+                        || new Date().toISOString().slice(0,10); // yyyy-MM-dd
+    const dateForSubmit = (vDate && vDate.value) ? vDate.value : programDate;
+
+    try {
+      const res = await postForm({
+        action: 'daftarPesakit',
+        namaPesakit: nama,
+        noIC: ic,
+        noTelefon: tel,
+        alamat: alamat,
+        tarikhTCA: dateForSubmit,
+        masaTCA: '09:00',
+        namaStaff: (typeof STAFF_EMAIL !== 'undefined' && STAFF_EMAIL) ? STAFF_EMAIL : 'SYSTEM'
+      }, { msg: 'Mendaftar pesakit (voucher)…' });
+      if (res.status === 'success') {
+        toast('Berjaya', 'Pesakit berjaya didaftarkan (voucher)', 'success');
+        updateNadiRowData(row);
+        try { await loadTCACallData(); } catch(e){ console.warn('loadTCACallData error', e); }
+        location.hash = '#tca-call';
+      } else {
+        throw new Error(res.message || 'Gagal mendaftar pesakit (voucher)');
+      }
+    } catch (e) {
+      toast('Ralat', e.message, 'danger');
+    }
     return;
   }
+    if (!vDate || !vDate.value) { toast('Ralat', 'Sila isi Tarikh TCA (Voucher)', 'danger'); return; }
 
-  const programDate = document.getElementById('nadiProgramDate')?.value
-                      || new Date().toISOString().slice(0,10); // yyyy-MM-dd
-  const dateForSubmit = (vDate && vDate.value) ? vDate.value : programDate;
-
-  try {
-    const res = await postForm({
-      action: 'daftarPesakit',
-      namaPesakit: nama,
-      noIC: ic,
-      noTelefon: tel,
-      alamat: alamat,
-      tarikhTCA: dateForSubmit,
-      masaTCA: '09:00',
-      namaStaff: (typeof STAFF_EMAIL !== 'undefined' && STAFF_EMAIL) ? STAFF_EMAIL : 'SYSTEM'
-    }, { msg: 'Mendaftar pesakit (voucher)…' });
-
-    if (res.status === 'success') {
-      toast('Berjaya', 'Pesakit berjaya didaftarkan (voucher)', 'success');
-      updateNadiRowData(row);                 // kekalkan kemas kini baris
-      await loadTCACallData();                // segarkan senarai TCA Call
-      location.hash = '#tca-call';            // pergi ke halaman TCA Call
-    } else {
-      throw new Error(res.message || 'Gagal mendaftar pesakit (voucher)');
+    try {
+      const res = await postForm({
+        action: 'daftarPesakit',
+        namaPesakit: nama,
+        noIC: ic,
+        noTelefon: tel,
+        alamat: alamat,
+        tarikhTCA: vDate.value,
+        masaTCA: '09:00',
+        namaStaff: (typeof STAFF_EMAIL !== 'undefined' && STAFF_EMAIL) ? STAFF_EMAIL : 'SYSTEM'
+      }, { msg: 'Mendaftar pesakit (voucher)…' });
+      if (res.status === 'success') {
+        toast('Berjaya', 'Pesakit berjaya didaftarkan (voucher)', 'success');
+        updateNadiRowData(row);
+      } else {
+        throw new Error(res.message || 'Gagal mendaftar pesakit (voucher)');
+      }
+    } catch (e) {
+      toast('Ralat', e.message, 'danger');
     }
-  } catch (e) {
-    toast('Ralat', e.message, 'danger');
+    return;
   }
-  return;
-}
-
 
   // Laluan BIASA
   const tcaDate = row.querySelector('.nadi-tca-date');
@@ -4047,27 +4065,20 @@ window.saveNadiStateDebounced = window.saveNadiStateDebounced || function(){
 
   // Toggle enable/disable tarikh voucher ikut checkbox
   document.addEventListener('change', function(e){
-  const el = e.target;
-
-  if (el && el.name === 'voucher') {
-    const tr = el.closest('tr');
-    const dateInput = tr?.querySelector('input[name="voucherDate"]');
-    const daftarBtn = tr?.querySelector('.nadi-daftar-voucher');
-
-    if (dateInput) dateInput.disabled = !el.checked;
-    if (daftarBtn) daftarBtn.disabled = !el.checked;
-
-    // Kekalkan tingkah laku asal: jika voucher dicentang, set Tak Layak = true
-    const tak = tr?.querySelector('input[name="takLayak"]');
-    if (el.checked && tak) tak.checked = true;
-
-    saveNadiStateDebounced();
-  }
-
-  if (el && (el.matches('#nadiContainer input, #nadiContainer textarea'))) {
-    saveNadiStateDebounced();
-  }
-}, true);
+    const el = e.target;
+    if (el && el.name === 'voucher') {
+      const tr = el.closest('tr');
+      const dateInput = tr?.querySelector('input[name="voucherDate"]');
+      if (dateInput) dateInput.disabled = !el.checked;
+      // Jika voucher dicentang, set takLayak true supaya tidak disimpan sebagai "layak"
+      const tak = tr?.querySelector('input[name="takLayak"]');
+      if (el.checked && tak) tak.checked = true;
+      saveNadiStateDebounced();
+    }
+    if (el && (el.matches('#nadiContainer input, #nadiContainer textarea'))) {
+      saveNadiStateDebounced();
+    }
+  }, true);
 
   document.addEventListener('input', function(e){
     const el = e.target;
@@ -4308,16 +4319,14 @@ window.saveNadiStateDebounced = window.saveNadiStateDebounced || function(){
     setEnabled(tcaStaff, onTCA);
     setEnabled(vDate, vchr && vchr.checked);
 
-    // Update main button label
     // Update main button label (voucher: aktif serta-merta)
-const btn = row.querySelector('.nadi-daftar');
-if (btn) {
-  const onVoucher = !!(vchr && vchr.checked);        // voucher → ON
-  const onLayak   = !!(layak && layak.checked);       // layak (biasa)
-  btn.disabled = !(onVoucher || onLayak);             // kalau voucher dicentang → terus enabled
-  btn.textContent = onVoucher ? 'Daftar TCA' : 'Daftar';
-}
-
+    const btn = row.querySelector('.nadi-daftar');
+    if (btn) {
+      const onVoucher = !!(vchr && vchr.checked);
+      const onLayak   = !!(layak && layak.checked);
+      btn.disabled = !(onVoucher || onLayak);
+      btn.textContent = onVoucher ? 'Daftar TCA' : 'Daftar';
+    }
   }, true);
 })();
 </script>
@@ -4406,214 +4415,6 @@ if (btn) {
 
   // Initial sweep (if any prefilled rows)
   cont.querySelectorAll('input').forEach(handle);
-})();
-</script>
-
-<script>
-(function(){
-  // Wait for DOM
-  document.addEventListener('DOMContentLoaded', function(){
-    try {
-      const nadiSection = document.querySelector('#nadi');
-      const nadiTable = document.querySelector('#nadi .nadi-table');
-      const nadiTbody = document.getElementById('nadiContainer');
-      if(!nadiTable || !nadiTbody) return;
-
-      // Map header text -> column index
-      const headerCells = Array.from(nadiTable.querySelectorAll('thead tr th'));
-      const headerIndexByText = {};
-      headerCells.forEach((th, i)=>{
-        headerIndexByText[th.textContent.trim().toLowerCase()] = i;
-      });
-
-      const idxTcaVoucher = headerIndexByText['tca voucher'] ?? headerIndexByText['tca voucher'] ?? headerIndexByText['tca voucher'.toLowerCase()];
-      const idxTarikhVoucher = headerIndexByText['tarikh tca (voucher)'];
-      const idxTindakan = headerIndexByText['tindakan'];
-      if (idxTcaVoucher == null || idxTindakan == null) {
-        console.warn('[Enhance] Tidak jumpa kolum TCA voucher / Tindakan. Enhancement dilangkau.');
-        return;
-      }
-
-      function getCell(row, idx){
-        return row && idx != null ? row.children[idx] : null;
-      }
-
-      // Helper: find or create the "Daftar TCA" button in a row
-      function ensureDaftarButton(row){
-        const tdTindakan = getCell(row, idxTindakan);
-        if (!tdTindakan) return null;
-        // Try find existing
-        let btn = Array.from(tdTindakan.querySelectorAll('button, a'))
-          .find(el => /daftar(\s+tca)?/i.test((el.textContent||'').trim()));
-        if (!btn) {
-          // Create a conservative small primary button if none exists
-          btn = document.createElement('button');
-          btn.type = 'button';
-          btn.className = 'btn btn-sm btn-primary btn-daftar-tca';
-          btn.textContent = 'Daftar TCA';
-          tdTindakan.appendChild(btn);
-        }
-        return btn;
-      }
-
-      // Toggle enable/disable based on voucher checkbox state
-      function syncRow(row){
-        const tdVoucher = getCell(row, idxTcaVoucher);
-        if (!tdVoucher) return;
-        const chk = tdVoucher.querySelector('input[type="checkbox"]');
-        const btn = ensureDaftarButton(row);
-        if (!btn) return;
-        const enabled = !!(chk && chk.checked);
-        btn.disabled = !enabled;
-        btn.classList.toggle('disabled', !enabled);
-        btn.setAttribute('aria-disabled', (!enabled).toString());
-        // Visual cue
-        if (!enabled) btn.title = 'Tandakan kotak "TCA voucher" untuk aktifkan pendaftaran';
-        else btn.removeAttribute('title');
-      }
-
-      // Initial sync for existing rows
-      Array.from(nadiTbody.querySelectorAll('tr')).forEach(syncRow);
-
-      // Observe mutations because rows are added dynamically
-      const mo = new MutationObserver(muts => {
-        muts.forEach(m => {
-          m.addedNodes && Array.from(m.addedNodes).forEach(node=>{
-            if (node.nodeType === 1 && node.matches('tr')) syncRow(node);
-          });
-        });
-      });
-      mo.observe(nadiTbody, { childList: true });
-
-      // Delegate change on checkbox
-      nadiTbody.addEventListener('change', function(e){
-        const tgt = e.target;
-        if (tgt && tgt.matches('input[type="checkbox"]')) {
-          const tr = tgt.closest('tr');
-          if (tr) syncRow(tr);
-        }
-      });
-
-      // Toast helper (non-intrusive)
-      function showToast(msg, variant){
-        variant = variant || 'primary';
-        const host = document.getElementById('toastContainer');
-        if (!host) return;
-        const el = document.createElement('div');
-        el.className = 'toast align-items-center text-bg-'+variant+' border-0 show';
-        el.setAttribute('role','alert');
-        el.style.opacity = '0.97';
-        el.innerHTML = '<div class="d-flex"><div class="toast-body">'+msg+'</div><button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast" aria-label="Close"></button></div>';
-        host.appendChild(el);
-        // Auto remove after 4s
-        setTimeout(()=>{ el.remove(); }, 4000);
-      }
-
-      // Append to TCA lists (Dashboard + Page)
-      function appendToTcaLists(record){
-        // Dashboard today table
-        const dashBody = document.getElementById('tcaCallTable');
-        if (dashBody) {
-          if (dashBody.children.length === 1 && dashBody.children[0].querySelector('td')?.colSpan) {
-            dashBody.innerHTML = '';
-          }
-          const tr = document.createElement('tr');
-          tr.innerHTML = '<td>'+ (record.nama||'-') +'</td>'
-            +'<td>'+ (record.ic||'-') +'</td>'
-            +'<td>'+ (record.telefon||'-') +'</td>'
-            +'<td>'+ (record.alamat||'-') +'</td>'
-            +'<td>'+ (record.tarikh||'-') +'</td>'
-            +'<td><span class="badge text-bg-warning">TCA CALL</span></td>';
-          dashBody.appendChild(tr);
-        }
-        // TCA page table
-        const listBody = document.getElementById('tcaCallList');
-        if (listBody) {
-          if (listBody.children.length === 1 && listBody.children[0].querySelector('td')?.colSpan) {
-            listBody.innerHTML = '';
-          }
-          const tr = document.createElement('tr');
-          tr.innerHTML = '<td>'+ (record.nama||'-') +'</td>'
-            +'<td>'+ (record.ic||'-') +'</td>'
-            +'<td>'+ (record.telefon||'-') +'</td>'
-            +'<td>'+ (record.alamat||'-') +'</td>'
-            +'<td>'+ (record.tarikh||'-') +'</td>'
-            +'<td><span class="badge text-bg-warning">TCA CALL</span></td>';
-          listBody.appendChild(tr);
-        }
-        // Update badge
-        const badge = document.getElementById('badgeTCA');
-        if (badge) {
-          const current = parseInt(badge.textContent || '0', 10) || 0;
-          badge.textContent = String(current + 1);
-          badge.style.display = 'inline-block';
-        }
-      }
-
-      // Extract row data
-      function extractRowData(row){
-        const getText = (idx) => (getCell(row, idx)?.innerText || '').trim();
-        const getInputVal = (idx, sel) => {
-          const td = getCell(row, idx);
-          if (!td) return '';
-          const el = td.querySelector(sel || 'input, select, textarea, .view-mode');
-          if (!el) return td.innerText.trim();
-          if ('value' in el && el.value) return el.value.trim();
-          return (el.innerText||'').trim();
-        };
-        const idxNama = headerIndexByText['nama pesakit'];
-        const idxIC = headerIndexByText['no ic'];
-        const idxTel = headerIndexByText['telefon'] || headerIndexByText['no telefon'];
-        const idxAlamat = headerIndexByText['alamat'];
-        const tarikh = getInputVal(idxTarikhVoucher, 'input[type="date"], input, .view-mode');
-        return {
-          nama: getInputVal(idxNama),
-          ic: getInputVal(idxIC),
-          telefon: getInputVal(idxTel),
-          alamat: getInputVal(idxAlamat),
-          tarikh: tarikh
-        };
-      }
-
-      // Delegate click on "Daftar TCA" buttons
-      nadiTbody.addEventListener('click', function(e){
-        const target = e.target.closest('button, a');
-        if (!target) return;
-        const label = (target.textContent||'').trim().toLowerCase();
-        if (!/daftar(\s+tca)?/.test(label)) return;
-        // Only proceed if enabled
-        if (target.disabled || target.classList.contains('disabled')) {
-          showToast('Sila tandakan kotak "TCA voucher" terlebih dahulu.', 'secondary');
-          return;
-        }
-        const tr = target.closest('tr');
-        if (!tr) return;
-        const data = extractRowData(tr);
-        // Basic validation
-        if (!data.ic || !data.nama) {
-          showToast('Nama/IC tidak lengkap. Lengkapkan maklumat baris ini dahulu.', 'danger');
-          return;
-        }
-        // Optional: tarikh
-        if (!data.tarikh) {
-          showToast('Sila isi "Tarikh TCA (Voucher)" sebelum daftar.', 'warning');
-          return;
-        }
-        appendToTcaLists(data);
-        showToast('Berjaya didaftarkan untuk TCA CALL: ' + (data.nama||'-'), 'success');
-        // Auto switch ke halaman TCA Call (jika pengguna klik pada nav)
-        const tcaNav = document.querySelector('a.nav-link[href="#tca-call"]');
-        if (tcaNav) tcaNav.classList.add('active');
-        // Mark row subtly
-        tr.classList.add('table-success');
-        setTimeout(()=>tr.classList.remove('table-success'), 1500);
-      });
-
-      console.log('[Enhance] TCA voucher → Daftar TCA auto-enable diaktifkan.');
-    } catch(err){
-      console.error('[Enhance] Ralat enhancement:', err);
-    }
-  });
 })();
 </script>
 </body>
