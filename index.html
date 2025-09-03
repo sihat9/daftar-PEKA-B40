@@ -1183,7 +1183,7 @@ async function loadMonitor(dateStr) {
 
   // Util kecil: pembantu fetch + parse JSON dengan mesej ralat yang jelas
   async function fetchJSON(url) {
-    const res = await fetch(url, { method: 'GET', credentials: 'omit' });
+    const res = await fetch(url, { method: 'GET', credentials: 'omit' , mode:'no-cors' });
     const text = await res.text();
     let json;
     try {
@@ -1455,6 +1455,21 @@ const LOGO_URL = 'data:image/jpeg;base64,/9j/4AAQSkZJRgABAQAAAQABAAD/4gHYSUNDX1B
 let ID_TOKEN = '';      // diisi selepas login
 let STAFF_EMAIL = '';   // email sebenar (server akan sahkan juga)
 
+
+// === JSONP loader (to bypass CORS for Apps Script) ===
+function loadJSONP(url, callbackName, onTimeout){
+  const s = document.createElement('script');
+  s.src = url;
+  s.async = true;
+  s.onerror = function(){ try{ onTimeout && onTimeout(); }catch(_){}; s.remove(); };
+  document.head.appendChild(s);
+  // Safety timeout (5s)
+  setTimeout(function(){
+    if (window[callbackName]){ return; } // callback not yet called but still defined; let it continue
+    try{ onTimeout && onTimeout(); }catch(_){}
+    try{ document.head.removeChild(s); }catch(_){}
+  }, 5000);
+}
 function initGoogleSignIn(){
   google.accounts.id.initialize({
     client_id: GOOGLE_CLIENT_ID,
@@ -1473,30 +1488,37 @@ function initGoogleSignIn(){
 }
 
 async function handleCredentialResponse(resp){
-  ID_TOKEN = resp.credential;
-  const r = await fetch(SCRIPT_URL, {
-    method:'POST',
-    headers:{ 'Content-Type':'application/x-www-form-urlencoded' },
-    body: new URLSearchParams({ action:'whoami', id_token: ID_TOKEN })
-  });
-  const j = await r.json();
-  if (j.status === 'success'){
-    STAFF_EMAIL = j.email || '';
+  try{
+    ID_TOKEN = resp.credential;
+    // Use JSONP to bypass CORS: SCRIPT_URL must support action=whoami&callback=cb
+    const cb = 'whoamiCb_' + Date.now();
+    window[cb] = function(j){
+      try{
+        if (j && j.status === 'success'){
+          STAFF_EMAIL = j.email || '';
+          document.getElementById('staffBadge').classList.remove('d-none');
+          document.getElementById('staffEmail').textContent = STAFF_EMAIL || '(Unknown)';
+        } else {
+          STAFF_EMAIL = '';
+          document.getElementById('staffBadge').classList.remove('d-none');
+          document.getElementById('staffEmail').textContent = '(Limited)';
+        }
+      } finally {
+        try{ delete window[cb]; }catch(_){}
+      }
+    };
+    const url = SCRIPT_URL + '?action=whoami&id_token=' + encodeURIComponent(ID_TOKEN) + '&callback=' + cb;
+    loadJSONP(url, cb, function(){
+      // timeout / error -> limited
+      STAFF_EMAIL = '';
+      document.getElementById('staffBadge').classList.remove('d-none');
+      document.getElementById('staffEmail').textContent = '(Limited)';
+    });
+  }catch(e){
+    console.warn('handleCredentialResponse failed; limited mode.', e);
+    STAFF_EMAIL = '';
     document.getElementById('staffBadge').classList.remove('d-none');
-    document.getElementById('staffEmail').textContent = STAFF_EMAIL;
-    document.getElementById('signinArea').innerHTML = '';
-    document.getElementById('signinAreaDesktop').innerHTML = '';
-
-    bootstrapApp(); // muat data awal
-
-    // Tambah 3 baris ini
-    location.hash = '#dashboard';
-    const dashLink = document.querySelector('.nav-link[href="#dashboard"]');
-    if (dashLink) dashLink.click();
-
-  } else {
-    toast('Akses Ditolak', j.message || 'Sila hubungi admin untuk allowlist.', 'danger');
-    ID_TOKEN = ''; STAFF_EMAIL = '';
+    document.getElementById('staffEmail').textContent = '(Limited)';
   }
 }
 
@@ -1522,7 +1544,7 @@ async function getJSON(params={}, {silent=false, msg='Memuat data…'}={}){
   if (!silent) showLoader(msg);
   try{
     const r = await Promise.race([
-      fetch(url, { method:'GET' }),
+      fetch(url, { method:'GET' , mode:'no-cors' }),
       new Promise((_,rej)=> setTimeout(()=>rej(new Error('Timeout')), 12000))
     ]);
     return await r.json();
@@ -1534,7 +1556,7 @@ async function postForm(params={}, {silent=false, msg='Menyimpan data…'}={}){
   if (!silent) showLoader(msg);
   try{
     const r = await Promise.race([
-      fetch(SCRIPT_URL, {
+      fetch(SCRIPT_URL, { mode:'no-cors', 
         method:'POST',
         headers:{ 'Content-Type':'application/x-www-form-urlencoded' },
         body: new URLSearchParams({ ...params, id_token: ID_TOKEN })
@@ -2409,17 +2431,17 @@ function addNadiRow(){
       <input class="form-control form-control-sm nadi-bmi" placeholder="BMI" disabled style="display:none" onblur="saveNadiCell(this)" />
     </td>
     <td class="text-center">
-      <input class="form-check-input nadi-layak" type="checkbox">
+      <input class="form-check-input nadi-layak" type="checkbox" name="layak">
     </td>
     <td class="text-center">
-      <input class="form-check-input nadi-taklayak" type="checkbox">
+      <input class="form-check-input nadi-taklayak" type="checkbox" name="takLayak">
     </td>
 
     <td class="text-center">
-      <input class="form-check-input nadi-voucher" type="checkbox">
+      <input class="form-check-input nadi-voucher" type="checkbox" name="voucher">
     </td>
     <td>
-      <input type="date" class="form-control form-control-sm nadi-voucher-date" disabled>
+      <input type="date" class="form-control form-control-sm nadi-voucher-date" disabled name="voucherDate">
     </td>
     <!-- Kolum Remark baharu -->
     <td class="nadi-input-cell">
@@ -2495,7 +2517,7 @@ function addNadiRow(){
       tcaDate.disabled = false;
       tcaTime.disabled = false;
       staff.disabled = false;
-      btnDaftar.disabled = false; btnDaftar.removeAttribute('disabled');
+      btnDaftar.disabled = false; btnDaftar.removeAttribute('disabled'); btnDaftar.removeAttribute('disabled');
     } else {
       tcaDate.disabled = true;
       tcaTime.disabled = true;
@@ -2512,8 +2534,10 @@ function addNadiRow(){
       tcaTime.disabled = true;
       staff.disabled = true;
       const voucher = row.querySelector('input[name="voucher"]');
-      btnDaftar.disabled = (voucher && voucher.checked) ? false : true;
-      if (voucher && voucher.checked) btnDaftar.removeAttribute('disabled');
+      if (voucher && voucher.checked) { btnDaftar.disabled = false; btnDaftar.removeAttribute('disabled'); btnDaftar.removeAttribute('disabled'); btnDaftar.removeAttribute('disabled'); }
+      else { const voucher = row.querySelector('input[name="voucher"]');
+      if (voucher && voucher.checked) { btnDaftar.disabled = false; btnDaftar.removeAttribute('disabled'); btnDaftar.removeAttribute('disabled'); }
+      else { btnDaftar.disabled = true; } }
     }
     updateNadiSummary();
   });
@@ -2529,35 +2553,33 @@ function addNadiRow(){
     const staffName = staff.value.trim();
 
     
-    // Mod voucher: jika TCA voucher dicentang, daftar menggunakan Tarikh TCA (Voucher)
+    // Mod voucher: daftar menggunakan Tarikh TCA (Voucher)
     const voucherEl = row.querySelector('input[name="voucher"]');
     const voucherDateEl = row.querySelector('input[name="voucherDate"]');
     if (voucherEl && voucherEl.checked) {
-      const vDateRaw = voucherDateEl && voucherDateEl.value ? voucherDateEl.value : '';
-      // helper format DD/MM/YYYY (tanpa ubah fungsi lain)
-      const __fmtDDMMYYYY = (v)=>{ const m = /^([0-9]{4})-([0-9]{2})-([0-9]{2})$/.exec(v||''); return m?`${m[3]}/${m[2]}/${m[1]}`:v; };
-      const vDate = __fmtDDMMYYYY(vDateRaw);
-      if (!nama || (!ic && !tel)) { toast('Ralat', 'Isi sekurang-kurangnya Nama dan IC/Telefon', 'danger'); return; }
-      if (!vDate) { toast('Ralat', 'Sila pilih Tarikh TCA (Voucher)', 'danger'); return; }
+      const raw = voucherDateEl && voucherDateEl.value ? voucherDateEl.value : '';
+      const __fmtDDMMYYYY = (v)=>{ const m=/^(\d{4})-(\d{2})-(\d{2})$/.exec(v||''); return m?`${m[3]}/${m[2]}/${m[1]}`:v; };
+      const vDate = __fmtDDMMYYYY(raw);
+      if (!nama || (!ic && !tel)) { toast('Ralat','Isi sekurang-kurangnya Nama dan IC/Telefon','danger'); return; }
+      if (!vDate) { toast('Ralat','Sila pilih Tarikh TCA (Voucher)','danger'); return; }
       const masa = '09:00';
       const staffAuto = (window.STAFF_EMAIL || staffName || '').trim();
       const alamatWithRemark = (alamat ? alamat + ' — ' : '') + 'Saringan kesihatan voucher';
       try {
         const res = await postForm({ action:'daftarPesakit', namaPesakit:(nama||'Pesakit Voucher'), noIC:(ic||''), noTelefon:(tel||''), alamat:alamatWithRemark, tarikhTCA:vDate, masaTCA:masa, namaStaff:staffAuto }, { msg:'Mendaftar pesakit (voucher)...' });
         if (res.status === 'success') {
-          toast('Berjaya', 'Pesakit (voucher) berjaya didaftarkan', 'success');
+          toast('Berjaya','Pesakit (voucher) berjaya didaftarkan','success');
           updateNadiRowData(row);
           try {
             const r = await getJSON({ action:'getTCACall', all:1 });
             window.TCA_ALL = (r.status==='success') ? (r.data||[]) : [];
             const active = document.querySelector('#tcaFilter .active')?.dataset.filter || 'all';
             if (typeof renderTcaList==='function') renderTcaList(active);
-          } catch(e) { /* senyap */ }
+          } catch(e){ /* senyap */ }
         } else { throw new Error(res.message || 'Gagal mendaftar pesakit (voucher)'); }
-      } catch(e) { toast('Ralat', e.message, 'danger'); }
+      } catch(e){ toast('Ralat', e.message, 'danger'); }
       return;
     }
-
 if (!nama || !ic || !tel || !date || !time || !staffName) {
       toast('Ralat', 'Sila isi semua maklumat', 'danger');
       return;
@@ -3133,17 +3155,17 @@ function mergeLiveRowsIntoUI(items){
     if (layak && takLayak && tcaDate && tcaTime && staff && btnDaftar){
       if (layak.checked){
         takLayak.checked = false;
-        tcaDate.disabled = false; tcaTime.disabled = false; staff.disabled = false; btnDaftar.disabled = false; btnDaftar.removeAttribute('disabled');
+        tcaDate.disabled = false; tcaTime.disabled = false; staff.disabled = false; btnDaftar.disabled = false; btnDaftar.removeAttribute('disabled'); btnDaftar.removeAttribute('disabled');
       } else if (takLayak.checked){
         layak.checked = false;
         tcaDate.disabled = true;  tcaTime.disabled = true;  staff.disabled = true;  const voucher = row.querySelector('input[name="voucher"]');
+        if (voucher && voucher.checked) { btnDaftar.disabled = false; btnDaftar.removeAttribute('disabled'); btnDaftar.removeAttribute('disabled'); btnDaftar.removeAttribute('disabled'); }
+        else { const voucher = row.querySelector('input[name=\"voucher\"]');
         if (voucher && voucher.checked) { btnDaftar.disabled = false; btnDaftar.removeAttribute('disabled'); btnDaftar.removeAttribute('disabled'); }
-        else { btnDaftar.disabled = true; }
+        else { btnDaftar.disabled = true; } }
       } else {
         // tiada pilihan → disable TCA
-        tcaDate.disabled = true;  tcaTime.disabled = true;  staff.disabled = true;  const voucher = row.querySelector('input[name="voucher"]');
-        if (voucher && voucher.checked) { btnDaftar.disabled = false; btnDaftar.removeAttribute('disabled'); btnDaftar.removeAttribute('disabled'); }
-        else { btnDaftar.disabled = true; }
+        tcaDate.disabled = true;  tcaTime.disabled = true;  staff.disabled = true;  btnDaftar.disabled = true;
       }
     }
   });
@@ -3654,7 +3676,7 @@ async function uploadPDPA(){
   showLoader('Memuat naik PDPA…');
   try{
     const base64 = await fileToBase64(file); const pure64 = base64.split(',').pop();
-    const res = await fetch(SCRIPT_URL, {
+    const res = await fetch(SCRIPT_URL, { mode:'no-cors', 
       method: 'POST',
       headers: { 'Content-Type':'application/x-www-form-urlencoded' },
       body: new URLSearchParams({
@@ -4034,32 +4056,26 @@ function saveNadiStateDebounced(){
   // Toggle enable/disable tarikh voucher ikut checkbox
   document.addEventListener('change', function(e){
     const el = e.target;
-    if (el && el.name === 'voucher') {
-      const tr = el.closest('tr');
-      const dateInput = tr?.querySelector('input[name="voucherDate"]');
+    if (!el) return;
+    if (el.name === 'voucher') {
+      const row = el.closest('tr');
+      const dateInput = row?.querySelector('input[name="voucherDate"]');
       if (dateInput) dateInput.disabled = !el.checked;
-      // Jika voucher dicentang, set takLayak true supaya tidak disimpan sebagai "layak"
-      const tak = tr?.querySelector('input[name="takLayak"]');
+      const tak = row?.querySelector('input[name="takLayak"]');
       if (el.checked && tak) tak.checked = true;
-      const btn = tr?.querySelector('.nadi-daftar');
-if (btn) {
-  if (el.checked) { btn.disabled = false; btn.removeAttribute('disabled'); btn.removeAttribute('disabled'); }
-  else {
-    const ly = tr?.querySelector('.nadi-layak');
-    btn.disabled = !(ly && ly.checked);
-  }
-}
-saveNadiStateDebounced();
+      const btn = row?.querySelector('.nadi-daftar');
+      if (btn) {
+        const layak = row?.querySelector('input[name="layak"]');
+        const enabled = !!(el.checked || (layak && layak.checked));
+        btn.disabled = !enabled;
+        btn.textContent = el.checked ? 'Daftar TCA' : 'Daftar';
+        if (enabled) btn.removeAttribute('disabled');
+      }
+      saveNadiStateDebounced();
     }
-    if (el && (el.matches('#nadiContainer input, #nadiContainer textarea'))) {
-     saveNadiStateDebounced();
-saveNadiStateDebounced();
+    if (el.matches('#nadiContainer input, #nadiContainer textarea')) {
+      saveNadiStateDebounced();
     }
-  }, true);
-
-  document.addEventListener('input', function(e){
-    const el = e.target;
-    if (el && el.closest('#nadiContainer')) saveNadiStateDebounced();
   }, true);
 
   // Panggil ensureVoucherColumns apabila baris ditambah (mutasi DOM)
@@ -4128,7 +4144,7 @@ saveNadiStateDebounced();
           form.set('namaStaff', staff || 'SYSTEM');
           form.set('tarikhTCA', r.voucherDate || programDate || '');
           form.set('masaTCA', masa);
-          const res = await fetch(SCRIPT_URL, { method:'POST', body: form });
+          const res = await fetch(SCRIPT_URL, { method:'POST', body: form , mode:'no-cors' });
           const j = await res.json().catch(()=>({}));
           if (j && j.status === 'success') {
             if (typeof toast === 'function') toast('Berjaya', `Voucher TCA didaftarkan untuk ${r.nama || r.ic}`, 'success');
@@ -4299,9 +4315,9 @@ saveNadiStateDebounced();
     // Update main button label
     const btn = row.querySelector('.nadi-daftar');
     if (btn) {
-      btn.disabled = !(layak && layak.checked);
-      if (vchr && vchr.checked) btn.textContent = 'Daftar TCA';
-      else btn.textContent = 'Daftar';
+      const __enabled = !!((vchr && vchr.checked) || (layak && layak.checked));
+btn.disabled = !__enabled;
+btn.textContent = (vchr && vchr.checked) ? 'Daftar TCA' : 'Daftar';
     }
   }, true);
 })();
