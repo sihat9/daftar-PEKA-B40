@@ -1846,7 +1846,7 @@ function bootstrapApp(){
 /* =======================
    NAV & UI
    ======================= */
-function setupNavigation(){
+async function setupNavigation(){
   document.querySelectorAll('.nav-link').forEach(a=>{
     a.addEventListener('click',(e)=>{
       e.preventDefault();
@@ -1878,7 +1878,7 @@ function setupNavigation(){
     });
   });
 
-  document.getElementById('btnDaftarPesakit').addEventListener('click', async (e)=>{
+  document.getElementById('btnDaftarPesakit').addEventListenerasync ('click', async (e)=>{
     e.preventDefault();
     await daftarPesakit();
   });
@@ -1887,7 +1887,7 @@ function setupNavigation(){
   document.getElementById('statPeriodCompleted').addEventListener('change', function(){ loadCompletedStatistics(this.value); });
 }
 
-function setupModals(){
+async function setupModals(){
   retcaModal = new bootstrap.Modal(document.getElementById('retcaModal'));
   document.getElementById('btnSubmitRetca').addEventListener('click', submitRetca);
 
@@ -1901,7 +1901,7 @@ function setupModals(){
   // Kekalkan fungsi lama (hantar teks)
   document.getElementById('btnSendWhatsApp').addEventListener('click', sendWhatsAppReport);
   // Butang baharu: hantar gambar + auto buka chat
-  document.getElementById('btnSendWhatsAppImage').addEventListener('click', async ()=>{
+  document.getElementById('btnSendWhatsAppImage').addEventListenerasync ('click', async ()=>{
     if (!CURRENT_WA_MSISDN){
       toast('Ralat','Nombor telefon tidak ditemui pada baris NADI','danger'); return;
     }
@@ -2048,11 +2048,11 @@ function parseCSVText(text){
   return rows;
 }
 
-function setupExcel(){
+async function setupExcel(){
   const input = document.getElementById('excelFile');
   const tbody = document.getElementById('kelayakanTable');
 
-  input.addEventListener('change', async (e)=>{
+  input.addEventListenerasync ('change', async (e)=>{
     const file = e.target.files[0];
     if (!file) return;
 
@@ -2345,7 +2345,7 @@ function updateNadiSummary() {
   document.getElementById('nadiTakLayakCount').textContent = takLayakCount;
 }
 
-function addNadiRow(){
+async function addNadiRow(){
   const container = document.getElementById('nadiContainer');
   const id = 'n'+Date.now()+Math.random().toString(36).slice(2,6);
   const row = document.createElement('tr');
@@ -2517,7 +2517,7 @@ function addNadiRow(){
   });
 
   // Daftar
-  btnDaftar.addEventListener('click', async () => {
+  btnDaftar.addEventListenerasync ('click', async () => {
     const nama = row.querySelector('.nadi-nama').value.trim();
     const ic = row.querySelector('.nadi-ic').value.trim();
     const tel = row.querySelector('.nadi-tel').value.trim();
@@ -2989,7 +2989,7 @@ function extractRowPayload(row){
 
 // Queue save (debounce per baris)
 // Queue save (debounce per baris) + immediate flush bila urgent
-function queueSaveNadiLive(row, opts = {}) {
+async function queueSaveNadiLive(row, opts = {}) {
   if (!NADI_LIVE_SESSION_ID) return; // tiada sesi
 
   const urgent = !!opts.urgent;
@@ -4027,6 +4027,9 @@ function saveNadiStateDebounced(){
   clearTimeout(window.__saveNadiT);
   window.__saveNadiT = setTimeout(saveNadiState, 400);
 }
+
+window.saveNadiStateDebounced = window.saveNadiStateDebounced || saveNadiStateDebounced;
+
 
   function restoreNadiState(){
     try{
