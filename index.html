@@ -3032,12 +3032,37 @@ function queueSaveNadiLive(row, opts = {}) {
 // Mula tarik data berkala
 function startNadiLiveSync(){
   stopNadiLiveSync();
-  if (!NADI_LIVE_SESSION_ID) return; // tajuk belum diisi
-  // Tarik sekali segera
-  pullNadiLiveOnce();
-  // Kemudian setiap 6s
-  nadiLiveTimer = setInterval(pullNadiLiveOnce, 6000);
+  if (!NADI_LIVE_SESSION_ID) return;
+
+  const FAST_MS = 1500;  // lebih laju bila halaman aktif
+  const SLOW_MS = 6000;  // jimat bila halaman tidak aktif
+
+  pullNadiLiveOnce(); // tarik sekali segera
+
+  const ms = (document.visibilityState === 'visible') ? FAST_MS : SLOW_MS;
+  nadiLiveTimer = setInterval(pullNadiLiveOnce, ms);
 }
+
+// Tukar tempo ikut visibility (aktif/tersembunyi)
+document.addEventListener('visibilitychange', ()=>{
+  if (!NADI_LIVE_SESSION_ID) return;
+  startNadiLiveSync();
+});
+
+// Tarik segera bila fokus kembali ke tab ini
+window.addEventListener('focus', ()=>{
+  if (!NADI_LIVE_SESSION_ID) return;
+  pullNadiLiveOnce();
+});
+
+// Di tab lain pada domain sama, bila detect “tick” → tarik segera
+window.addEventListener('storage', (e)=>{
+  if (e.key === 'NADI_LIVE_TICK') {
+    if (!NADI_LIVE_SESSION_ID) return;
+    pullNadiLiveOnce();
+  }
+});
+
 function stopNadiLiveSync(){
   if (nadiLiveTimer){ clearInterval(nadiLiveTimer); nadiLiveTimer = null; }
 }
