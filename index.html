@@ -4036,20 +4036,27 @@ window.saveNadiStateDebounced = window.saveNadiStateDebounced || function(){
 
   // Toggle enable/disable tarikh voucher ikut checkbox
   document.addEventListener('change', function(e){
-    const el = e.target;
-    if (el && el.name === 'voucher') {
-      const tr = el.closest('tr');
-      const dateInput = tr?.querySelector('input[name="voucherDate"]');
-      if (dateInput) dateInput.disabled = !el.checked;
-      // Jika voucher dicentang, set takLayak true supaya tidak disimpan sebagai "layak"
-      const tak = tr?.querySelector('input[name="takLayak"]');
-      if (el.checked && tak) tak.checked = true;
-      saveNadiStateDebounced();
-    }
-    if (el && (el.matches('#nadiContainer input, #nadiContainer textarea'))) {
-      saveNadiStateDebounced();
-    }
-  }, true);
+  const el = e.target;
+
+  if (el && el.name === 'voucher') {
+    const tr = el.closest('tr');
+    const dateInput = tr?.querySelector('input[name="voucherDate"]');
+    const daftarBtn = tr?.querySelector('.nadi-daftar-voucher');
+
+    if (dateInput) dateInput.disabled = !el.checked;
+    if (daftarBtn) daftarBtn.disabled = !el.checked;
+
+    // Kekalkan tingkah laku asal: jika voucher dicentang, set Tak Layak = true
+    const tak = tr?.querySelector('input[name="takLayak"]');
+    if (el.checked && tak) tak.checked = true;
+
+    saveNadiStateDebounced();
+  }
+
+  if (el && (el.matches('#nadiContainer input, #nadiContainer textarea'))) {
+    saveNadiStateDebounced();
+  }
+}, true);
 
   document.addEventListener('input', function(e){
     const el = e.target;
