@@ -3282,6 +3282,42 @@ async function loadTCACallData(){
     }
   }catch(e){ /* senyap */ }
 }
+// Laluan VOUCHER (benarkan tanpa tarikh; fallback tarikh program / hari ini)
+if (vchr && vchr.checked) {
+  if (!nama || !ic || !tel) {
+    toast('Ralat', 'Sila isi Nama, IC & Telefon', 'danger');
+    return;
+  }
+
+  const programDate = document.getElementById('nadiProgramDate')?.value
+                      || new Date().toISOString().slice(0,10); // yyyy-MM-dd
+  const dateForSubmit = (vDate && vDate.value) ? vDate.value : programDate;
+
+  try {
+    const res = await postForm({
+      action: 'daftarPesakit',
+      namaPesakit: nama,
+      noIC: ic,
+      noTelefon: tel,
+      alamat: alamat,
+      tarikhTCA: dateForSubmit,
+      masaTCA: '09:00',
+      namaStaff: (typeof STAFF_EMAIL !== 'undefined' && STAFF_EMAIL) ? STAFF_EMAIL : 'SYSTEM'
+    }, { msg: 'Mendaftar pesakit (voucher)…' });
+
+    if (res.status === 'success') {
+      toast('Berjaya', 'Pesakit berjaya didaftarkan (voucher)', 'success');
+      updateNadiRowData(row);                 // kekalkan kemas kini baris
+      await loadTCACallData();                // segarkan senarai TCA Call
+      location.hash = '#tca-call';            // pergi ke halaman TCA Call
+    } else {
+      throw new Error(res.message || 'Gagal mendaftar pesakit (voucher)');
+    }
+  } catch (e) {
+    toast('Ralat', e.message, 'danger');
+  }
+  return;
+}
 
 /* === TCA PAGE (rekod; tiada tanda selesai manual) === */
 let TCA_ALL = [];
