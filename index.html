@@ -2609,6 +2609,9 @@ takLayak.addEventListener('change', ()=> queueSaveNadiLive(row));
 
 // set rowId mantap (guna id baris)
 row.dataset.rowId = row.id;
+  // Cap jari sesi semasa (digunakan untuk tapis paparan)
+row.dataset.sessionId = (window.NADI_LIVE_SESSION_ID || (typeof computeNadiSessionId==='function' ? computeNadiSessionId() : '')) || '';
+
 }
 
 function updateNadiRowData(row) {
