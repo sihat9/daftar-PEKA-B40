@@ -2601,6 +2601,7 @@ inputsToWatch.forEach(sel=>{
   if (el){
     el.addEventListener('input', ()=> queueSaveNadiLive(row));
     el.addEventListener('change', ()=> queueSaveNadiLive(row));
+    el.addEventListener('blur',  ()=> queueSaveNadiLive(row, { urgent:true }));
   }
 });
 layak.addEventListener('change', ()=> queueSaveNadiLive(row));
