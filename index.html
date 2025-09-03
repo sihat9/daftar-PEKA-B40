@@ -2983,27 +2983,51 @@ function extractRowPayload(row){
 }
 
 // Queue save (debounce per baris)
-function queueSaveNadiLive(row){
-  if (!NADI_LIVE_SESSION_ID) return;           // tiada sesi (tajuk kosong)
+// Queue save (debounce per baris) + immediate flush bila urgent
+function queueSaveNadiLive(row, opts = {}) {
+  if (!NADI_LIVE_SESSION_ID) return; // tiada sesi
+
+  const urgent = !!opts.urgent;
   const payload = extractRowPayload(row);
   nadiLiveSaveQueue.set(payload.id, payload);
-  // Debounce global
-  if (!nadiLiveSaving){
+
+  // Helper untuk flush sekarang
+  async function flushNow() {
+    if (nadiLiveSaving) return;
     nadiLiveSaving = true;
-    setTimeout(async ()=>{
-      try{
-        const items = Array.from(nadiLiveSaveQueue.values());
-        nadiLiveSaveQueue.clear();
-        await postForm({
-          action: 'saveNadiLive',
-          sessionId: NADI_LIVE_SESSION_ID,
-          items: JSON.stringify(items)
-        }, { silent:true });
-      }catch(e){ /* senyap */ }
-      finally{ nadiLiveSaving = false; }
-    }, 400);
+    try {
+      const items = Array.from(nadiLiveSaveQueue.values());
+      if (!items.length) return;
+      nadiLiveSaveQueue.clear();
+
+      await postForm({
+        action: 'saveNadiLive',
+        sessionId: NADI_LIVE_SESSION_ID,
+        items: JSON.stringify(items)
+      }, { silent:true });
+
+      // Ping tab/tingkap lain pada domain sama (segera tarik)
+      try { localStorage.setItem('NADI_LIVE_TICK', String(Date.now())); } catch(_) {}
+
+      // Tarik semula lepas simpan untuk pastikan UI “on-time”
+      try { await pullNadiLiveOnce(); } catch(_) {}
+    } finally {
+      nadiLiveSaving = false;
+    }
+  }
+
+  if (urgent) {
+    // blur → flush segera
+    flushNow();
+  } else {
+    // laluan biasa → debounce 400ms (asal)
+    if (!nadiLiveSaving) {
+      nadiLiveSaving = true;
+      setTimeout(flushNow, 400);
+    }
   }
 }
+
 
 // Mula tarik data berkala
 function startNadiLiveSync(){
