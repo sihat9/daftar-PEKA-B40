@@ -4028,8 +4028,6 @@ function saveNadiStateDebounced(){
   window.__saveNadiT = setTimeout(saveNadiState, 400);
 }
 
-  const saveNadiStateDebounced = debounce(saveNadiState, 400);
-
   function restoreNadiState(){
     try{
       const raw = localStorage.getItem(NADI_KEY);
