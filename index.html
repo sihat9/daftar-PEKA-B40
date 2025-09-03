@@ -3971,6 +3971,14 @@ function useSelectedSession(){
   updateLiveSessionBadge();
   startNadiLiveSync();
   toast('Sesi dipilih', 'Sesi live ditetapkan: ' + NADI_LIVE_SESSION_ID, 'success');
+  // Bila tukar sesi, kosongkan jadual & tarik data sesi baharu
+(function clearForNewSession(){
+  const cont = document.getElementById('nadiContainer');
+  if (cont) cont.innerHTML = '';     // kosongkan supaya hanya data sesi baharu dipaparkan
+})();
+updateLiveSessionBadge?.();
+startNadiLiveSync?.();               // akan panggil pullNadiLiveOnce() awal
+
 }
 
 </script>
