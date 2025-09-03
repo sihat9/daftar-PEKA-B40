@@ -2994,6 +2994,11 @@ function queueSaveNadiLive(row, opts = {}) {
 
   const urgent = !!opts.urgent;
   const payload = extractRowPayload(row);
+  if ((payload.sessionId || '') !== (NADI_LIVE_SESSION_ID || '')) {
+    // Pastikan baris cap dengan sesi semasa (jika belum)
+    row.dataset.sessionId = NADI_LIVE_SESSION_ID || '';
+    payload.sessionId = row.dataset.sessionId;
+  }
   nadiLiveSaveQueue.set(payload.id, payload);
   const items = Array.from(nadiLiveSaveQueue.values());
       nadiLiveSaveQueue.clear();
