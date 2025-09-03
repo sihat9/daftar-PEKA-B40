@@ -2527,38 +2527,9 @@ btnDaftar.addEventListener('click', async () => {
   const vchr  = row.querySelector('.nadi-voucher');
   const vDate = row.querySelector('.nadi-voucher-date');
 
-  // Laluan VOUCHER (benarkan tanpa tarikh; fallback tarikh program / hari ini)
+  // Laluan VOUCHER
   if (vchr && vchr.checked) {
     if (!nama || !ic || !tel) { toast('Ralat', 'Sila isi Nama, IC & Telefon', 'danger'); return; }
-
-    const programDate = document.getElementById('nadiProgramDate')?.value
-                        || new Date().toISOString().slice(0,10); // yyyy-MM-dd
-    const dateForSubmit = (vDate && vDate.value) ? vDate.value : programDate;
-
-    try {
-      const res = await postForm({
-        action: 'daftarPesakit',
-        namaPesakit: nama,
-        noIC: ic,
-        noTelefon: tel,
-        alamat: alamat,
-        tarikhTCA: dateForSubmit,
-        masaTCA: '09:00',
-        namaStaff: (typeof STAFF_EMAIL !== 'undefined' && STAFF_EMAIL) ? STAFF_EMAIL : 'SYSTEM'
-      }, { msg: 'Mendaftar pesakit (voucher)…' });
-      if (res.status === 'success') {
-        toast('Berjaya', 'Pesakit berjaya didaftarkan (voucher)', 'success');
-        updateNadiRowData(row);
-        try { await loadTCACallData(); } catch(e){ console.warn('loadTCACallData error', e); }
-        location.hash = '#tca-call';
-      } else {
-        throw new Error(res.message || 'Gagal mendaftar pesakit (voucher)');
-      }
-    } catch (e) {
-      toast('Ralat', e.message, 'danger');
-    }
-    return;
-  }
     if (!vDate || !vDate.value) { toast('Ralat', 'Sila isi Tarikh TCA (Voucher)', 'danger'); return; }
 
     try {
@@ -4319,13 +4290,12 @@ window.saveNadiStateDebounced = window.saveNadiStateDebounced || function(){
     setEnabled(tcaStaff, onTCA);
     setEnabled(vDate, vchr && vchr.checked);
 
-    // Update main button label (voucher: aktif serta-merta)
+    // Update main button label
     const btn = row.querySelector('.nadi-daftar');
     if (btn) {
-      const onVoucher = !!(vchr && vchr.checked);
-      const onLayak   = !!(layak && layak.checked);
-      btn.disabled = !(onVoucher || onLayak);
-      btn.textContent = onVoucher ? 'Daftar TCA' : 'Daftar';
+      btn.disabled = !((layak && layak.checked) || (vchr && vchr.checked && vDate && vDate.value));
+      if (vchr && vchr.checked) btn.textContent = 'Daftar TCA';
+      else btn.textContent = 'Daftar';
     }
   }, true);
 })();
