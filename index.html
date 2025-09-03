@@ -4254,12 +4254,15 @@ function saveNadiStateDebounced(){
     setEnabled(vDate, vchr && vchr.checked);
 
     // Update main button label
-    const btn = row.querySelector('.nadi-daftar');
-    if (btn) {
-      btn.disabled = !(layak && layak.checked);
-      if (vchr && vchr.checked) btn.textContent = 'Daftar TCA';
-      else btn.textContent = 'Daftar';
-    }
+    // Update main button label (voucher: aktif serta-merta)
+const btn = row.querySelector('.nadi-daftar');
+if (btn) {
+  const onVoucher = !!(vchr && vchr.checked);        // voucher → ON
+  const onLayak   = !!(layak && layak.checked);       // layak (biasa)
+  btn.disabled = !(onVoucher || onLayak);             // kalau voucher dicentang → terus enabled
+  btn.textContent = onVoucher ? 'Daftar TCA' : 'Daftar';
+}
+
   }, true);
 })();
 </script>
