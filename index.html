@@ -3092,10 +3092,22 @@ async function pullNadiLiveOnce(){
       sessionId: NADI_LIVE_SESSION_ID
     }, { silent:true });
     if (res.status==='success' && Array.isArray(res.items)){
-      mergeLiveRowsIntoUI(res.items);
+      // Tapis selamat ikut sesi aktif (jika server pulangkan bercampur)
+      const active = NADI_LIVE_SESSION_ID || '';
+      const items = res.items.filter(it => (it.sessionId || active) === active);
+
+      // Buang/bersihkan paparan baris yang bukan sesi aktif
+      const cont = document.getElementById('nadiContainer');
+      if (cont){
+        cont.querySelectorAll('tr').forEach(tr=>{
+          const sid = tr.dataset.sessionId || '';
+          if (sid && sid !== active) tr.remove();     // hilangkan dari jadual
+        });
+      }
+
+      // Gabung & paparkan hanya item untuk sesi aktif
+      mergeLiveRowsIntoUI(items);
     }
-  }catch(e){ /* senyap */ }
-}
 
 // Gabung rekod masuk ke UI (tanpa kacau input sedang fokus)
 function mergeLiveRowsIntoUI(items){
