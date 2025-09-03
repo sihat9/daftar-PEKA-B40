@@ -2995,6 +2995,13 @@ function queueSaveNadiLive(row, opts = {}) {
   const urgent = !!opts.urgent;
   const payload = extractRowPayload(row);
   nadiLiveSaveQueue.set(payload.id, payload);
+  const items = Array.from(nadiLiveSaveQueue.values());
+      nadiLiveSaveQueue.clear();
+      await postForm({
+        action: 'saveNadiLive',
+        sessionId: NADI_LIVE_SESSION_ID,
+        items: JSON.stringify(items)
+      }, { silent:true });
 
   // Helper untuk flush sekarang
   async function flushNow() {
