@@ -3282,42 +3282,6 @@ async function loadTCACallData(){
     }
   }catch(e){ /* senyap */ }
 }
-// Laluan VOUCHER (benarkan tanpa tarikh; fallback tarikh program / hari ini)
-if (vchr && vchr.checked) {
-  if (!nama || !ic || !tel) {
-    toast('Ralat', 'Sila isi Nama, IC & Telefon', 'danger');
-    return;
-  }
-
-  const programDate = document.getElementById('nadiProgramDate')?.value
-                      || new Date().toISOString().slice(0,10); // yyyy-MM-dd
-  const dateForSubmit = (vDate && vDate.value) ? vDate.value : programDate;
-
-  try {
-    const res = await postForm({
-      action: 'daftarPesakit',
-      namaPesakit: nama,
-      noIC: ic,
-      noTelefon: tel,
-      alamat: alamat,
-      tarikhTCA: dateForSubmit,
-      masaTCA: '09:00',
-      namaStaff: (typeof STAFF_EMAIL !== 'undefined' && STAFF_EMAIL) ? STAFF_EMAIL : 'SYSTEM'
-    }, { msg: 'Mendaftar pesakit (voucher)…' });
-
-    if (res.status === 'success') {
-      toast('Berjaya', 'Pesakit berjaya didaftarkan (voucher)', 'success');
-      updateNadiRowData(row);                 // kekalkan kemas kini baris
-      await loadTCACallData();                // segarkan senarai TCA Call
-      location.hash = '#tca-call';            // pergi ke halaman TCA Call
-    } else {
-      throw new Error(res.message || 'Gagal mendaftar pesakit (voucher)');
-    }
-  } catch (e) {
-    toast('Ralat', e.message, 'danger');
-  }
-  return;
-}
 
 /* === TCA PAGE (rekod; tiada tanda selesai manual) === */
 let TCA_ALL = [];
@@ -4290,15 +4254,12 @@ function saveNadiStateDebounced(){
     setEnabled(vDate, vchr && vchr.checked);
 
     // Update main button label
-  // Update main button label (voucher: aktif serta-merta)
-const btn = row.querySelector('.nadi-daftar');
-if (btn) {
-  const onVoucher = !!(vchr && vchr.checked);        // voucher → ON
-  const onLayak   = !!(layak && layak.checked);       // layak (biasa)
-  btn.disabled = !(onVoucher || onLayak);             // kalau voucher dicentang → terus enabled
-  btn.textContent = onVoucher ? 'Daftar TCA' : 'Daftar';
-}
-
+    const btn = row.querySelector('.nadi-daftar');
+    if (btn) {
+      btn.disabled = !(layak && layak.checked);
+      if (vchr && vchr.checked) btn.textContent = 'Daftar TCA';
+      else btn.textContent = 'Daftar';
+    }
   }, true);
 })();
 </script>
@@ -4389,5 +4350,97 @@ if (btn) {
   cont.querySelectorAll('input').forEach(handle);
 })();
 </script>
+<!-- ==== PATCH: Robust Google Sign-In init & NADI voucher/Live helpers (safe to add) ==== -->
+<script>
+(function(){
+  // ---------- Google Sign-In: call initGoogleSignIn() once GIS is ready ----------
+  function gsiReady(){ return !!(window.google && google.accounts && google.accounts.id); }
+  function callInit(){
+    if (window.__gsiInitCalled) return;
+    window.__gsiInitCalled = true;
+    try {
+      if (typeof initGoogleSignIn === 'function') initGoogleSignIn();
+    } catch (e) { console.warn('initGoogleSignIn failed:', e); }
+  }
+  if (gsiReady()) { callInit(); }
+  else {
+    var _chk = setInterval(function(){
+      if (gsiReady()){ clearInterval(_chk); callInit(); }
+    }, 300);
+    window.addEventListener('pageshow', function(){ if (gsiReady()) callInit(); }, { once:true });
+  }
+
+  // ---------- NADI: Enable/label "Daftar" button when voucher is checked ----------
+  document.addEventListener('change', function(e){
+    const el = e.target;
+    if (!el || el.tagName !== 'INPUT') return;
+    if (el.matches('#nadiContainer input[name="voucher"], #nadiContainer .nadi-voucher')) {
+      const tr = el.closest('tr');
+      if (!tr) return;
+      const btn = tr.querySelector('.nadi-daftar');
+      const layak = tr.querySelector('.nadi-layak');
+      if (btn){
+        const enabled = (el.checked === true) || (layak && layak.checked);
+        btn.disabled = !enabled;
+        try { btn.textContent = el.checked ? 'Daftar TCA' : (btn.textContent || 'Daftar'); } catch(_){}
+      }
+      const dateInput = tr.querySelector('input[name="voucherDate"], .nadi-voucher-date');
+      if (dateInput) dateInput.disabled = !el.checked;
+    }
+  }, true);
+
+  // ---------- NADI: Intercept per-row Daftar click when voucher is ticked ----------
+  document.addEventListener('click', async function(e){
+    const btn = e.target && e.target.closest('.nadi-daftar');
+    if (!btn) return;
+    const row = btn.closest('tr');
+    const vchr = row && (row.querySelector('input[name="voucher"]') || row.querySelector('.nadi-voucher'));
+    if (!row || !vchr || !vchr.checked) return;
+
+    e.preventDefault(); e.stopImmediatePropagation();
+
+    const get = sel => (row.querySelector(sel)?.value || '').trim();
+    const nama   = get('.nadi-nama');
+    const ic     = get('.nadi-ic');
+    const rawTel = get('.nadi-tel');
+    const tel    = (typeof normalizeMsisdnMY === 'function') ? normalizeMsisdnMY(rawTel) : String(rawTel||'').replace(/\D/g,'');
+    const alamat = get('.nadi-alamat');
+
+    const vDateEl = row.querySelector('input[name="voucherDate"], .nadi-voucher-date');
+    const programDate = (document.getElementById('nadiProgramDate')?.value) || new Date().toISOString().slice(0,10);
+    const tarikhTCA = (vDateEl && vDateEl.value) ? vDateEl.value : programDate;
+
+    if (!nama || !ic || !tel){
+      if (typeof toast === 'function') toast('Ralat', 'Sila isi Nama, IC & Telefon', 'danger');
+      return;
+    }
+
+    try{
+      const res = await (typeof postForm === 'function'
+        ? postForm({
+            action: 'daftarPesakit',
+            namaPesakit: nama,
+            noIC: ic,
+            noTelefon: tel,
+            alamat: alamat,
+            tarikhTCA: tarikhTCA,
+            masaTCA: '09:00',
+            namaStaff: (window.STAFF_EMAIL || 'SYSTEM')
+          }, { msg: 'Mendaftar pesakit (voucher)…' })
+        : Promise.resolve({ status:'error', message:'postForm tidak tersedia' }));
+
+      if (res && res.status === 'success') {
+        if (typeof toast === 'function') toast('Berjaya', 'Pesakit berjaya didaftarkan (voucher)', 'success');
+        if (typeof updateNadiRowData === 'function') updateNadiRowData(row);
+      } else {
+        throw new Error(res?.message || 'Gagal mendaftar pesakit (voucher)');
+      }
+    }catch(err){
+      if (typeof toast === 'function') toast('Ralat', err.message || 'Gagal mendaftar pesakit (voucher)', 'danger');
+    }
+  }, true);
+})();
+</script>
+<!-- ==== /PATCH ==== -->
 </body>
 </html>
