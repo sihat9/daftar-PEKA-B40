@@ -1475,10 +1475,10 @@ function initGoogleSignIn(){
 async function handleCredentialResponse(resp){
   ID_TOKEN = resp.credential;
   const r = await fetch(SCRIPT_URL, {
-  method:'POST',
-  headers:{ 'Content-Type':'application/x-www-form-urlencoded' },
-  body: new URLSearchParams({ action:'whoami', id_token: ID_TOKEN })
-});
+    method:'POST',
+    headers:{ 'Content-Type':'application/x-www-form-urlencoded' },
+    body: new URLSearchParams({ action:'whoami', id_token: ID_TOKEN })
+  });
   const j = await r.json();
   if (j.status === 'success'){
     STAFF_EMAIL = j.email || '';
@@ -2999,20 +2999,14 @@ function queueSaveNadiLive(row, opts = {}) {
     row.dataset.sessionId = NADI_LIVE_SESSION_ID || '';
     payload.sessionId = row.dataset.sessionId;
   }
- nadiLiveSaveQueue.set(payload.id, payload);
-const items = Array.from(nadiLiveSaveQueue.values());
-nadiLiveSaveQueue.clear();
-
-// Pindahkan await ke dalam fungsi async
-async function saveNadiData() {
-  await postForm({
-    action: 'saveNadiLive',
-    sessionId: NADI_LIVE_SESSION_ID,
-    items: JSON.stringify(items)
-  }, { silent:true });
-}
-
-saveNadiData();
+  nadiLiveSaveQueue.set(payload.id, payload);
+  const items = Array.from(nadiLiveSaveQueue.values());
+      nadiLiveSaveQueue.clear();
+      await postForm({
+        action: 'saveNadiLive',
+        sessionId: NADI_LIVE_SESSION_ID,
+        items: JSON.stringify(items)
+      }, { silent:true });
 
   // Helper untuk flush sekarang
   async function flushNow() {
@@ -3877,7 +3871,9 @@ function activateFromHash(){
   const link = document.querySelector(`.nav-link[href="${hash}"]`);
   if (link){ link.click(); }
 }
+</script>
 
+  <script>
   (function(){
     // === Auto-refresh (gentle) ===
     // Refresh every REFRESH_MS if the user is idle for IDLE_MS, page visible, and tiada modal terbuka.
@@ -3987,6 +3983,10 @@ startNadiLiveSync?.();               // akan panggil pullNadiLiveOnce() awal
 
 }
 
+</script>
+
+<script>
+
 // === Tambahan: Autosave, TCA voucher, dan Sejarah Saringan ===
 (function(){
   const NADI_KEY = 'nadi_autosave_v1';
@@ -4028,7 +4028,7 @@ function saveNadiStateDebounced(){
   window.__saveNadiT = setTimeout(saveNadiState, 400);
 }
 
-  saveNadiStateDebounced = debounce(saveNadiState, 400);
+  const saveNadiStateDebounced = debounce(saveNadiState, 400);
 
   function restoreNadiState(){
     try{
@@ -4294,6 +4294,8 @@ function saveNadiStateDebounced(){
   if (location.hash === '#sejarah'){ loadPrograms(); }
 })();
 
+</script>
+<script>
 // === NADI Voucher hook: toggle primary button & enable voucher date ===
 (function(){
   const container = document.getElementById('nadiContainer');
@@ -4308,6 +4310,8 @@ function saveNadiStateDebounced(){
     if (btn) btn.textContent = el.checked ? 'Daftar TCA' : 'Daftar';
   });
 })();
+</script>
+<script>
 // === NADI: Mutual exclusivity for Layak / Tidak Layak / TCA voucher + controls ===
 (function(){
   const cont = document.getElementById('nadiContainer');
@@ -4351,6 +4355,8 @@ if (btn) {
 }
   }, true);
 })();
+</script>
+<script>
 // === NADI Indicators (BP/PR/DXT/BMI) ===
 (function(){
   function applyIndicator(elView, kind, raw, arg){
@@ -4436,7 +4442,8 @@ if (btn) {
   // Initial sweep (if any prefilled rows)
   (document.getElementById('nadiContainer')?.querySelectorAll('input') || []).forEach(handle);
 })();
-
+</script>
+<script>
 (function waitGIS(){
   if (window.google?.accounts?.id) {
     try { if (typeof initGoogleSignIn === 'function') initGoogleSignIn(); } catch(e){ console.warn(e); }
@@ -4444,7 +4451,7 @@ if (btn) {
     setTimeout(waitGIS, 300);
   }
 })();
-
+</script><script>
 // === Patch helpers: Voucher enable & click intercept (non-intrusive) ===
 (function(){
   // Enable button & relabel when voucher toggled
@@ -4475,8 +4482,7 @@ if (btn) {
     const vchr = row && (row.querySelector('input[name="voucher"]') || row.querySelector('.nadi-voucher'));
     if (!row || !vchr || !vchr.checked) return; // not voucher flow
 
-    e.preventDefault(); 
-    e.stopImmediatePropagation();
+    e.preventDefault(); e.stopImmediatePropagation();
 
     const qv = sel => (row.querySelector(sel)?.value || '').trim();
     const nama   = qv('.nadi-nama');
@@ -4493,7 +4499,7 @@ if (btn) {
       return;
     }
 
-    try {
+    try{
       const res = await (typeof postForm === 'function' ? postForm({
         action: 'daftarPesakit',
         namaPesakit: nama,
@@ -4508,26 +4514,15 @@ if (btn) {
       if (res && res.status === 'success'){
         if (typeof toast === 'function') toast('Berjaya','Pesakit berjaya didaftarkan (voucher)','success');
         try { updateNadiRowData?.(row); } catch(_){}
-        try { 
-          // Gunakan IIFE async untuk handle await
-          (async () => {
-            try {
-              await loadTCACallData?.();
-            } catch (err) {
-              console.error('Error loading TCA data:', err);
-            }
-          })();
-        } catch(_){}
+        try { await loadTCACallData?.(); } catch(_){}
         location.hash = '#tca-call';
       } else {
         throw new Error(res?.message || 'Gagal mendaftar pesakit (voucher)');
       }
-    } catch (error) {
-      console.error('Unexpected error:', error);
-      if (typeof toast === 'function') toast('Ralat', error.message || 'Terjadi kesalahan tidak terduga', 'danger');
+    }catch(err){
+      if (typeof toast === 'function') toast('Ralat', err.message || 'Gagal mendaftar pesakit (voucher)', 'danger');
     }
-  }, true); // <-- PENUTUP YANG TEPAT UNTUK addEventListener
-})(); // <-- PENUTUP YANG TEPAT UNTUK IIFE
-</script>
-</body>
+  }, true);
+})();
+</script></body>
 </html>
