@@ -4422,5 +4422,66 @@ if (btn) {
     }
   }, true);
 })();
-</script></body>
+</script>
+<script>
+(() => {
+  function ensureNadiVoucherCellsForRow(tr){
+    if (!tr || tr.querySelector('th')) return;
+    const hasVoucher = tr.querySelector('input[name="voucher"]');
+    const hasVoucherDate = tr.querySelector('input[name="voucherDate"]');
+    // Find the cell after which voucher columns should be placed: after 'takLayak'
+    const takLayakInput = tr.querySelector('input[name="takLayak"]');
+    const takLayakCell = takLayakInput ? takLayakInput.closest('td') : null;
+    // Fallback: insert near the end if we can't find a good anchor
+    let insertAfter = takLayakCell || tr.querySelector('td:last-child');
+
+    const createCell = (html) => {
+      const td = document.createElement('td');
+      td.innerHTML = html;
+      return td;
+    };
+
+    // Insert "Voucher" checkbox cell if missing
+    if (!hasVoucher){
+      const tdVoucher = createCell('<div class="form-check d-flex justify-content-center"><input type="checkbox" class="form-check-input" name="voucher"></div>');
+      if (insertAfter && insertAfter.parentElement === tr) {
+        insertAfter.after(tdVoucher);
+        insertAfter = tdVoucher;
+      } else {
+        tr.appendChild(tdVoucher);
+        insertAfter = tdVoucher;
+      }
+    }
+
+    // Insert "Tarikh Voucher" date cell if missing
+    if (!hasVoucherDate){
+      const tdDate = createCell('<input type="date" class="form-control form-control-sm" name="voucherDate">');
+      if (insertAfter && insertAfter.parentElement === tr) {
+        insertAfter.after(tdDate);
+      } else {
+        tr.appendChild(tdDate);
+      }
+    }
+  }
+
+  function ensureNadiTableIntegrity(){
+    const rows = document.querySelectorAll('#nadiContainer tr');
+    rows.forEach(ensureNadiVoucherCellsForRow);
+  }
+
+  // Run once on DOM ready and also observe new rows
+  document.addEventListener('DOMContentLoaded', () => {
+    try { ensureNadiTableIntegrity(); } catch(e){ console.warn('ensureNadiTableIntegrity failed:', e); }
+    const container = document.querySelector('#nadiContainer');
+    if (container){
+      const mo = new MutationObserver((muts) => {
+        try { ensureNadiTableIntegrity(); } catch(e){ /* no-op */ }
+      });
+      mo.observe(container, { childList: true, subtree: false });
+      window.__nadiIntegrityMO = mo;
+    }
+  });
+})();
+</script>
+</body>
 </html>
