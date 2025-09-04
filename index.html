@@ -3878,7 +3878,6 @@ function activateFromHash(){
   if (link){ link.click(); }
 }
 
-  <script>
   (function(){
     // === Auto-refresh (gentle) ===
     // Refresh every REFRESH_MS if the user is idle for IDLE_MS, page visible, and tiada modal terbuka.
@@ -3987,10 +3986,6 @@ updateLiveSessionBadge?.();
 startNadiLiveSync?.();               // akan panggil pullNadiLiveOnce() awal
 
 }
-
-</script>
-
-<script>
 
 // === Tambahan: Autosave, TCA voucher, dan Sejarah Saringan ===
 (function(){
@@ -4299,8 +4294,6 @@ function saveNadiStateDebounced(){
   if (location.hash === '#sejarah'){ loadPrograms(); }
 })();
 
-</script>
-<script>
 // === NADI Voucher hook: toggle primary button & enable voucher date ===
 (function(){
   const container = document.getElementById('nadiContainer');
@@ -4315,8 +4308,6 @@ function saveNadiStateDebounced(){
     if (btn) btn.textContent = el.checked ? 'Daftar TCA' : 'Daftar';
   });
 })();
-</script>
-<script>
 // === NADI: Mutual exclusivity for Layak / Tidak Layak / TCA voucher + controls ===
 (function(){
   const cont = document.getElementById('nadiContainer');
@@ -4360,8 +4351,6 @@ if (btn) {
 }
   }, true);
 })();
-</script>
-<script>
 // === NADI Indicators (BP/PR/DXT/BMI) ===
 (function(){
   function applyIndicator(elView, kind, raw, arg){
@@ -4447,8 +4436,7 @@ if (btn) {
   // Initial sweep (if any prefilled rows)
   (document.getElementById('nadiContainer')?.querySelectorAll('input') || []).forEach(handle);
 })();
-</script>
-<script>
+
 (function waitGIS(){
   if (window.google?.accounts?.id) {
     try { if (typeof initGoogleSignIn === 'function') initGoogleSignIn(); } catch(e){ console.warn(e); }
@@ -4456,7 +4444,6 @@ if (btn) {
     setTimeout(waitGIS, 300);
   }
 })();
-</script><script>
 // === Patch helpers: Voucher enable & click intercept (non-intrusive) ===
 (function(){
   // Enable button & relabel when voucher toggled
@@ -4529,5 +4516,6 @@ if (btn) {
     }
   }, true);
 })();
-</script></body>
+</script>
+</body>
 </html>
