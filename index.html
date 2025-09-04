@@ -4616,5 +4616,91 @@ if (btn) {
 
 })(); 
 </script>
+
+
+<script>
+// === Live Session: robustness patch (row numbering, immediate pull, stable IDs) ===
+(function(){
+  // Renumber visible rows so the first is always "1"
+  function renumberNadiRows(){
+    const rows = document.querySelectorAll('#nadiContainer .nadi-row');
+    let i = 1;
+    rows.forEach(r => {
+      const c = r.querySelector('.nadi-counter');
+      if (c) c.textContent = i++;
+    });
+    if (typeof nadiRowCounter !== 'undefined') nadiRowCounter = rows.length;
+  }
+  window.renumberNadiRows = renumberNadiRows;
+
+  // After adding a row, renumber (monkey-patch addNadiRow to call renumber)
+  if (typeof window.addNadiRow === 'function'){
+    const __add = window.addNadiRow;
+    window.addNadiRow = function(){
+      const res = __add.apply(this, arguments);
+      try { renumberNadiRows(); } catch(e){}
+      return res;
+    };
+  }
+
+  // Ensure new items get a stable DOM id equal to its record id
+  if (typeof window.mergeLiveRowsIntoUI === 'function'){
+    const __merge = window.mergeLiveRowsIntoUI;
+    window.mergeLiveRowsIntoUI = function(items){
+      __merge(items);
+      try {
+        items.forEach(it => {
+          if (!it || !it.id) return;
+          const sel = `#nadiContainer .nadi-row[data-row-id="${it.id}"], #nadiContainer #${CSS.escape(it.id)}`;
+          const row = document.querySelector(sel);
+          if (row){
+            row.dataset.rowId = it.id;
+            if (row.id !== it.id) row.id = it.id; // stabilize
+          }
+        });
+        renumberNadiRows();
+      } catch(e){}
+    };
+  }
+
+  // After pushing a change, trigger a quick pull for faster cross-device reflection
+  if (typeof window.queueSaveNadiLive === 'function'){
+    const __queue = window.queueSaveNadiLive;
+    window.queueSaveNadiLive = function(row){
+      const ret = __queue.apply(this, arguments);
+      try { setTimeout(()=>{ try{ pullNadiLiveOnce(); }catch(e){} }, 250); } catch(e){}
+      return ret;
+    };
+  }
+
+  // When switching session snapshot is loaded, renumber again
+  if (typeof window.loadSessionSnapshot === 'function'){
+    const __snap = window.loadSessionSnapshot;
+    window.loadSessionSnapshot = async function(sessionId){
+      const r = await __snap.apply(this, arguments);
+      try { renumberNadiRows(); } catch(e){}
+      return r;
+    };
+  }
+})();
+</script>
+
+
+
+<script>
+(function(){
+  document.addEventListener('DOMContentLoaded', function(){
+    const sel = document.getElementById('nadiSessionSelect');
+    if (sel && !sel.dataset._autoHooked){
+      sel.addEventListener('change', function(){
+        // Auto-switch when a session is picked
+        try { useSelectedSession(); } catch(e){ /* no-op */ }
+      });
+      sel.dataset._autoHooked = '1';
+    }
+  });
+})();
+</script>
+
 </body>
 </html>
