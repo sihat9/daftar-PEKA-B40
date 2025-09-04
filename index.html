@@ -31,48 +31,46 @@
     // Jika dah ada, tak perlu apa-apa
     if (window.XLSX) return;
 
-    // Helper umum: muat 
-// Helpers: loadScriptOnce & ensureXLSXReady
-window.loadScriptOnce = window.loadScriptOnce || (function () {
-  const loaded = new Set();
-  return function loadScriptOnce(url) {
-    return new Promise((resolve, reject) => {
-      if (loaded.has(url)) return resolve();
-      const s = document.createElement('script');
-      s.src = url;
-      s.async = true;
-      s.onload = () => { loaded.add(url); resolve(); };
-      s.onerror = () => reject(new Error('Gagal muat: ' + url));
-      document.head.appendChild(s);
-    });
-  };
-})();
+    // Helper umum: muat <script> sekali
+    window.loadScriptOnce = window.loadScriptOnce || (function () {
+      const loaded = new Set();
+      return function loadScriptOnce(url) {
+        return new Promise((resolve, reject) => {
+          if (loaded.has(url)) return resolve();
+          const s = document.createElement('script');
+          s.src = url;
+          s.async = true;
+          s.onload = () => { loaded.add(url); resolve(); };
+          s.onerror = () => reject(new Error('Gagal muat: ' + url));
+          document.head.appendChild(s);
+        });
+      };
+    })();
 
-window.ensureXLSXReady = window.ensureXLSXReady || (function(){
-  const cdns = [
-    'https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js',
-    'https://unpkg.com/xlsx@0.18.5/dist/xlsx.full.min.js'
-  ];
-  return async function ensureXLSXReady(){
-    if (window.XLSX) return;
-    let lastErr = null;
-    for (const url of cdns) {
-      try {
-        await window.loadScriptOnce(url);
-        if (window.XLSX) {
-          console.log('[XLSX] Loaded from', url);
-          return;
+    // Override/definisi semula: pastikan XLSX wujud, cuba 3 CDN
+    window.ensureXLSXReady = async function ensureXLSXReady() {
+      if (window.XLSX) return;
+      const cdns = [
+        'https://cdn.jsdelivr.net/npm/xlsx@0.19.3/dist/xlsx.full.min.js',
+        'https://unpkg.com/xlsx@0.19.3/dist/xlsx.full.min.js',
+        'https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.19.3/xlsx.full.min.js'
+      ];
+      let lastErr;
+      for (const url of cdns) {
+        try {
+          await window.loadScriptOnce(url);
+          if (window.XLSX) {
+            console.log('[XLSX] Loaded from', url);
+            return;
+          }
+        } catch (e) {
+          lastErr = e;
         }
-      } catch (e) {
-        lastErr = e;
       }
-    }
-    console.error('[XLSX] Gagal dimuat dari semua CDN.', lastErr || '');
-    throw new Error('XLSX gagal dimuat.');
-  };
-})();
-
-})();
+      console.error('[XLSX] Gagal dimuat dari semua CDN.', lastErr || '');
+      throw new Error('XLSX gagal dimuat.');
+    };
+  })();
 </script>
 
   <!-- Google Identity Services (Sign-In) -->
@@ -992,22 +990,18 @@ window.ensureXLSXReady = window.ensureXLSXReady || (function(){
   }
 
   // ---------- File readers ----------
-// ---------- File readers ----------
   const readAsArrayBuffer = (file) => new Promise((res, rej) => {
     const fr = new FileReader();
-    fr.onload = e => res(e.target.rget.result);
+    fr.onload = e => res(e.target.result);
     fr.onerror = rej;
     fr.readAsArrayBuffer(file);
   });
-
   const readAsText = (file) => new Promise((res, rej) => {
     const fr = new FileReader();
-    fr.onload = e => res(e.target.rget.result);
+    fr.onload = e => res(e.target.result);
     fr.onerror = rej;
     fr.readAsText(file, 'utf-8');
   });
-
-
 
   // ---------- CSV helpers ----------
   const stripBOM = (s) => s && s.charCodeAt(0) === 0xFEFF ? s.slice(1) : s;
@@ -1409,12 +1403,12 @@ let MONITOR_LOADING = false;
 
   // ---------- Events ----------
   fileInput.addEventListener('change', e => {
-    const f = e.target.rget.files && e.target.rget.files[0];
+    const f = e.target.files && e.target.files[0];
     if (f) handleFile(f);
   });
 
   tableBody.addEventListener('click', e => {
-    const btn = e.target.rget.closest('.daftar-row');
+    const btn = e.target.closest('.daftar-row');
     if (!btn) return;
     const tr  = btn.closest('tr');
     const idx = Number(tr.dataset.idx);
@@ -1852,7 +1846,7 @@ function bootstrapApp(){
 /* =======================
    NAV & UI
    ======================= */
-async function setupNavigation(){
+function setupNavigation(){
   document.querySelectorAll('.nav-link').forEach(a=>{
     a.addEventListener('click',(e)=>{
       e.preventDefault();
@@ -1884,7 +1878,7 @@ async function setupNavigation(){
     });
   });
 
-  document.getElementById('btnDaftarPesakit').addEventListenerasync ('click', async (e)=>{
+  document.getElementById('btnDaftarPesakit').addEventListener('click', async (e)=>{
     e.preventDefault();
     await daftarPesakit();
   });
@@ -1893,7 +1887,7 @@ async function setupNavigation(){
   document.getElementById('statPeriodCompleted').addEventListener('change', function(){ loadCompletedStatistics(this.value); });
 }
 
-async function setupModals(){
+function setupModals(){
   retcaModal = new bootstrap.Modal(document.getElementById('retcaModal'));
   document.getElementById('btnSubmitRetca').addEventListener('click', submitRetca);
 
@@ -1907,7 +1901,7 @@ async function setupModals(){
   // Kekalkan fungsi lama (hantar teks)
   document.getElementById('btnSendWhatsApp').addEventListener('click', sendWhatsAppReport);
   // Butang baharu: hantar gambar + auto buka chat
-  document.getElementById('btnSendWhatsAppImage').addEventListenerasync ('click', async ()=>{
+  document.getElementById('btnSendWhatsAppImage').addEventListener('click', async ()=>{
     if (!CURRENT_WA_MSISDN){
       toast('Ralat','Nombor telefon tidak ditemui pada baris NADI','danger'); return;
     }
@@ -2054,12 +2048,12 @@ function parseCSVText(text){
   return rows;
 }
 
-async function setupExcel(){
+function setupExcel(){
   const input = document.getElementById('excelFile');
   const tbody = document.getElementById('kelayakanTable');
 
-  input.addEventListenerasync ('change', async (e)=>{
-    const file = e.target.rget.files[0];
+  input.addEventListener('change', async (e)=>{
+    const file = e.target.files[0];
     if (!file) return;
 
     const name = (file.name || '').toLowerCase();
@@ -2351,7 +2345,7 @@ function updateNadiSummary() {
   document.getElementById('nadiTakLayakCount').textContent = takLayakCount;
 }
 
-async function addNadiRow(){
+function addNadiRow(){
   const container = document.getElementById('nadiContainer');
   const id = 'n'+Date.now()+Math.random().toString(36).slice(2,6);
   const row = document.createElement('tr');
@@ -2523,7 +2517,7 @@ async function addNadiRow(){
   });
 
   // Daftar
-  btnDaftar.addEventListenerasync ('click', async () => {
+  btnDaftar.addEventListener('click', async () => {
     const nama = row.querySelector('.nadi-nama').value.trim();
     const ic = row.querySelector('.nadi-ic').value.trim();
     const tel = row.querySelector('.nadi-tel').value.trim();
@@ -2995,7 +2989,7 @@ function extractRowPayload(row){
 
 // Queue save (debounce per baris)
 // Queue save (debounce per baris) + immediate flush bila urgent
-async function queueSaveNadiLive(row, opts = {}) {
+function queueSaveNadiLive(row, opts = {}) {
   if (!NADI_LIVE_SESSION_ID) return; // tiada sesi
 
   const urgent = !!opts.urgent;
@@ -3116,9 +3110,6 @@ async function pullNadiLiveOnce(){
       // Gabung & paparkan hanya item untuk sesi aktif
       mergeLiveRowsIntoUI(items);
     }
-
-  } catch(e) { /* senyap */ }
-
 
 // Gabung rekod masuk ke UI (tanpa kacau input sedang fokus)
 function mergeLiveRowsIntoUI(items){
@@ -3871,7 +3862,6 @@ async function daftarPesakit(){
     try { initGoogleSignIn(); } catch(e) { console.error(e); }
   });
 
-
 /* =======================
    HASH ROUTING (BARU)
    ======================= */
@@ -3881,8 +3871,6 @@ function activateFromHash(){
   const link = document.querySelector(`.nav-link[href="${hash}"]`);
   if (link){ link.click(); }
 }
-
-})();
 </script>
 
   <script>
@@ -4040,8 +4028,7 @@ function saveNadiStateDebounced(){
   window.__saveNadiT = setTimeout(saveNadiState, 400);
 }
 
-window.saveNadiStateDebounced = window.saveNadiStateDebounced || saveNadiStateDebounced;
-
+  const saveNadiStateDebounced = debounce(saveNadiState, 400);
 
   function restoreNadiState(){
     try{
@@ -4104,7 +4091,7 @@ window.saveNadiStateDebounced = window.saveNadiStateDebounced || saveNadiStateDe
 
   // Toggle enable/disable tarikh voucher ikut checkbox
   document.addEventListener('change', function(e){
-    const el = e.target.rget;
+    const el = e.target;
     if (el && el.name === 'voucher') {
       const tr = el.closest('tr');
       const dateInput = tr?.querySelector('input[name="voucherDate"]');
@@ -4120,7 +4107,7 @@ window.saveNadiStateDebounced = window.saveNadiStateDebounced || saveNadiStateDe
   }, true);
 
   document.addEventListener('input', function(e){
-    const el = e.target.rget;
+    const el = e.target;
     if (el && el.closest('#nadiContainer')) saveNadiStateDebounced();
   }, true);
 
@@ -4133,7 +4120,7 @@ window.saveNadiStateDebounced = window.saveNadiStateDebounced || saveNadiStateDe
 
   // Intercept Simpan Aktiviti: proses baris voucher → daftar sebagai TCA CALL (remark "Saringan kesihatan voucher")
   document.addEventListener('click', async (e)=>{
-    const btn = e.target.rget.closest('#btnNadiSaveActivity');
+    const btn = e.target.closest('#btnNadiSaveActivity');
     if (!btn) return;
     // Kumpul baris voucher
     const programDate = document.getElementById('nadiProgramDate')?.value || '';
@@ -4280,20 +4267,20 @@ window.saveNadiStateDebounced = window.saveNadiStateDebounced || saveNadiStateDe
   }
 
   document.addEventListener('click', (e)=>{
-    const btn = e.target.rget.closest('#btnSejarahReload');
+    const btn = e.target.closest('#btnSejarahReload');
     if (btn) loadPrograms();
-    const item = e.target.rget.closest('#programList .list-group-item');
+    const item = e.target.closest('#programList .list-group-item');
     if (item) loadProgramDetail(item.getAttribute('data-activity-id'));
   });
   document.addEventListener('input', (e)=>{
-    if (e.target.rget && e.target.rget.id==='programFilter'){
-      const q = e.target.rget.value.toLowerCase();
+    if (e.target && e.target.id==='programFilter'){
+      const q = e.target.value.toLowerCase();
       document.querySelectorAll('#programList .list-group-item').forEach(b=>{
         const meta = b.getAttribute('data-meta') || '';
         b.style.display = meta.includes(q) ? '' : 'none';
       });
     }
-    if (e.target.rget && e.target.rget.id==='sejarahSearch'){
+    if (e.target && e.target.id==='sejarahSearch'){
       const current = document.querySelector('#programList .list-group-item.active') || document.querySelector('#programList .list-group-item');
       if (current) loadProgramDetail(current.getAttribute('data-activity-id'));
     }
@@ -4314,7 +4301,7 @@ window.saveNadiStateDebounced = window.saveNadiStateDebounced || saveNadiStateDe
   const container = document.getElementById('nadiContainer');
   if (!container) return;
   container.addEventListener('change', function(e){
-    const el = e.target.rget;
+    const el = e.target;
     if (!el.classList.contains('nadi-voucher')) return;
     const row = el.closest('tr');
     const btn = row?.querySelector('.nadi-daftar');
@@ -4331,7 +4318,7 @@ window.saveNadiStateDebounced = window.saveNadiStateDebounced || saveNadiStateDe
   if (!cont) return;
   function setEnabled(el, on){ if (el) { el.disabled = !on; } }
   cont.addEventListener('change', function(e){
-    const t = e.target.rget;
+    const t = e.target;
     if (!t.closest('tr')) return;
     if (!(t.classList.contains('nadi-layak') || t.classList.contains('nadi-taklayak') || t.classList.contains('nadi-voucher'))) return;
     const row = t.closest('tr');
@@ -4432,15 +4419,15 @@ if (btn) {
     if (el.classList.contains('nadi-bmi')) return applyIndicator(view,'bmi', el.value);
   }
 
-  cont.addEventListener('blur', (e)=>{ if (e.target.rget && e.target.rget.tagName==='INPUT') handle(e.target.rget); }, true);
+  cont.addEventListener('blur', (e)=>{ if (e.target && e.target.tagName==='INPUT') handle(e.target); }, true);
   cont.addEventListener('input', (e)=>{
-    if (!e.target.rget || e.target.rget.tagName!=='INPUT') return;
-    if (e.target.rget.classList.contains('nadi-dxt')) handle(e.target.rget);
+    if (!e.target || e.target.tagName!=='INPUT') return;
+    if (e.target.classList.contains('nadi-dxt')) handle(e.target);
   }, true);
 
   // Also recolor when DXT type changes (dropdown menu)
   document.addEventListener('click', (e)=>{
-    const item = e.target.rget.closest('.dropdown-menu .dropdown-item');
+    const item = e.target.closest('.dropdown-menu .dropdown-item');
     if (!item) return;
     const menu = item.closest('.dropdown-menu');
     const row = item.closest('tr');
@@ -4469,7 +4456,7 @@ if (btn) {
 (function(){
   // Enable button & relabel when voucher toggled
   document.addEventListener('change', function(e){
-    const el = e.target.rget;
+    const el = e.target;
     if (!el || el.tagName !== 'INPUT') return;
     if (!el.closest('#nadiContainer')) return;
     if (!(el.matches('input[name="voucher"]') || el.classList.contains('nadi-voucher'))) return;
@@ -4489,7 +4476,7 @@ if (btn) {
 
   // Intercept click to perform voucher registration with fallback date
   document.addEventListener('click', async function(e){
-    const btn = e.target.rget && e.target.rget.closest('.nadi-daftar');
+    const btn = e.target && e.target.closest('.nadi-daftar');
     if (!btn) return;
     const row = btn.closest('tr');
     const vchr = row && (row.querySelector('input[name="voucher"]') || row.querySelector('.nadi-voucher'));
