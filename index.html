@@ -27,7 +27,7 @@
   <!-- SheetJS (Excel) via CDN -->
 <!-- XLSX robust loader + override (SIAP TAMPAL DI <head>) -->
 <script>
-  (async function(){
+  (function () {
     // Jika dah ada, tak perlu apa-apa
     if (window.XLSX) return;
 
@@ -74,7 +74,7 @@
 </script>
 
   <!-- Google Identity Services (Sign-In) -->
-  <script src="https://accounts.google.com/gsi/client" async defer onload="console.log('[GIS] client loaded')"></script>
+  <script src="https://accounts.google.com/gsi/client" async defer></script>
 
   <!-- html2canvas untuk tangkap preview → imej (BARU) -->
   <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
@@ -308,6 +308,40 @@
 </style>
 </head>
 <body>
+
+<!-- EARLY GIS BOOTSTRAP (non-intrusive) -->
+<script>
+(function(){ 
+  var CID = '863564124015-838ksbuk27f0kkomm16hnc3bu608pbrr.apps.googleusercontent.com';
+  function ready(fn) {
+    if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', fn, {once:true});
+    else fn();
+  }
+  function ensureScript(cb) {
+    if (window.google && google.accounts && google.accounts.id) return cb();
+    var s = document.createElement('script');
+    s.src = 'https://accounts.google.com/gsi/client';
+    s.async = true; s.defer = true; 
+    s.onload = cb; s.onerror = function(){ console.warn('[GIS early] load failed'); };
+    document.head.appendChild(s);
+  }
+  function render(){ 
+    if (!(window.google && google.accounts && google.accounts.id)) return;
+    var desktop = document.getElementById('signinAreaDesktop');
+    var mobile  = document.getElementById('signinArea');
+    var t = desktop && getComputedStyle(desktop).display!=='none' ? desktop : mobile;
+    if (!t) return;
+    try { 
+      google.accounts.id.initialize({ client_id: CID, callback: (window.handleCredentialResponse||function(){}) });
+      t.innerHTML = '';
+      google.accounts.id.renderButton(t, { theme:'outline', size:'medium', text:'signin_with' });
+      console.log('[GIS early] button rendered');
+    } catch(e) { console.warn('[GIS early] render error', e); }
+  }
+  ready(function(){ ensureScript(render); });
+})();
+</script>
+
   <!-- Global Loader -->
   <div id="appLoader" aria-hidden="true">
     <div class="loader-card">
@@ -343,8 +377,7 @@
       </a>
 
       <!-- Google Sign-in button placeholder -->
-      <div id="signinArea" class="d-lg-none me-2"><div id="g_id_onload" data-client_id="863564124015-838ksbuk27f0kkomm16hnc3bu608pbrr.apps.googleusercontent.com" data-callback="handleCredentialResponse" data-auto_select="false" data-cancel_on_tap_outside="true"></div>
-  <div class="g_id_signin" data-type="standard" data-size="large" data-text="signin_with"></div></div>
+      <div id="signinArea" class="d-lg-none me-2"></div>
 
       <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarMain">
         <span class="navbar-toggler-icon"></span>
@@ -391,8 +424,7 @@
         </ul>
 
         <div class="d-none d-lg-flex align-items-center gap-2">
-          <div id="signinAreaDesktop"><div id="g_id_onload" data-client_id="863564124015-838ksbuk27f0kkomm16hnc3bu608pbrr.apps.googleusercontent.com" data-callback="handleCredentialResponse" data-auto_select="false" data-cancel_on_tap_outside="true"></div>
-  <div class="g_id_signin" data-type="standard" data-size="large" data-text="signin_with"></div></div>
+          <div id="signinAreaDesktop"></div>
           <span id="staffBadge" class="badge bg-secondary d-none"><i class="bi bi-person-check me-1"></i><span id="staffEmail"></span></span>
           <!-- (Butang Log Calls terapung di bawah – tidak dalam navbar) -->
         </div>
@@ -1100,7 +1132,7 @@
   // Padanan objek → {nama, ic, telefon, alamat}
   function mapRow(raw) {
     const entries = Object.entries(raw);
-    const pick = (groups) => {
+    const pick = async (groups) => {
       // cuba padanan tepat dulu
       for (const [k,v] of entries) {
         const t = canon(k);
@@ -1445,7 +1477,7 @@ let MONITOR_LOADING = false;
   });
 })();
 // 1) Isi URL Web App Apps Script (deployment terkini)
-const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbx6TKE0vDDPO3-36cY7xjacAbGL0HIRKCrORNm-sED9y5NpIeIUk9gyrpiWy-S7vbc/exec';
+
 // 2) Google OAuth Client ID (Google Cloud Console)
 const GOOGLE_CLIENT_ID = '863564124015-838ksbuk27f0kkomm16hnc3bu608pbrr.apps.googleusercontent.com';
 // 3) Logo (optional) - Ganti dengan URL logo klinik anda
@@ -1454,36 +1486,24 @@ const LOGO_URL = 'data:image/jpeg;base64,/9j/4AAQSkZJRgABAQAAAQABAAD/4gHYSUNDX1B
 /* =======================
    AUTH (Google Identity)
    ======================= */
-let ID_TOKEN = '';      // diisi selepas login
+      // diisi selepas login
 let STAFF_EMAIL = '';   // email sebenar (server akan sahkan juga)
 
 function initGoogleSignIn(){
-  if (!(window.google && google.accounts && google.accounts.id)) return;
   google.accounts.id.initialize({
     client_id: GOOGLE_CLIENT_ID,
     callback: handleCredentialResponse,
     auto_select: false,
     cancel_on_tap_outside: true
   });
-  const renderSafe = (id) => {
-    const doRender = () => {
-      const el = document.getElementById(id);
-      if (!el) return;
-      try {
-        el.innerHTML = "";
-        google.accounts.id.renderButton(el, { theme: 'outline', size: 'medium', text:'signin_with' });
-      } catch(e){
-        console.warn('[GIS] render error for', id, e);
-      }
-    };
-    if (document.readyState === 'loading') {
-      document.addEventListener('DOMContentLoaded', doRender, { once:true });
-    } else {
-      doRender();
-    }
-  };
-  renderSafe('signinArea');
-  renderSafe('signinAreaDesktop');
+  google.accounts.id.renderButton(
+    document.getElementById('signinArea'),
+    { theme: 'outline', size: 'medium', text:'signin_with' }
+  );
+  google.accounts.id.renderButton(
+    document.getElementById('signinAreaDesktop'),
+    { theme: 'outline', size: 'medium', text:'signin_with' }
+  );
 }
 
 async function handleCredentialResponse(resp){
@@ -1543,14 +1563,7 @@ async function getJSON(params={}, {silent=false, msg='Memuat data…'}={}){
   } finally { if (!silent) hideLoader(); }
 }
 
-async function postForm(params={}, {silent=false, msg='Menyimpan data…'}={}){
-  if (!ID_TOKEN) throw new Error('Belum login');
-  if (!silent) showLoader(msg);
-  try{
-    const r = await Promise.race([
-      fetch(SCRIPT_URL, {
-        method:'POST',
-        headers:{ 'Content-Type':'application/x-www-form-urlencoded' },
+async ,
         body: new URLSearchParams({ ...params, id_token: ID_TOKEN })
       }),
       new Promise((_,rej)=> setTimeout(()=>rej(new Error('Timeout')), 12000))
@@ -1562,7 +1575,7 @@ async function postForm(params={}, {silent=false, msg='Menyimpan data…'}={}){
 /* =======================
    UTIL
    ======================= */
-const normalizeMsisdnMY = (raw) => {
+const normalizeMsisdnMY = async (raw) => {
   if (!raw) return '';
   let s = String(raw).replace(/\D/g, '');
   if (s.startsWith('00')) s = s.slice(2);
@@ -1576,7 +1589,7 @@ const telHref = (msisdn) => `tel:+${msisdn}`;
 const waHref  = (msisdn, txt='Assalamualaikum, saya dari Klinik SihatSokmo.') =>
   `https://wa.me/${msisdn}?text=${encodeURIComponent(txt)}`;
 
-const parseDDMMYYYY = (s) => {
+const parseDDMMYYYY = async (s) => {
   if (!s) return null;
   if (/^\d{4}-\d{2}-\d{2}$/.test(s)) { // "YYYY-MM-DD"
     const [Y, M, D] = s.split('-').map(Number);
@@ -1660,7 +1673,7 @@ function toast(title, message, variant = 'primary') {
   const onResize = () => clampToastIntoView(el);
   window.addEventListener('resize', onResize, { passive: true });
 
-  const cleanup = () => {
+  const cleanup = async () => {
     window.removeEventListener('resize', onResize);
     el.remove();
   };
@@ -2474,7 +2487,7 @@ async function addNadiRow(){
   const tinggi = row.querySelector('.nadi-tinggi');
   const berat = row.querySelector('.nadi-berat');
   const bmi = row.querySelector('.nadi-bmi');
-  const calculateBMI = () => {
+  const calculateBMI = async () => {
     const height = parseFloat(tinggi.value) / 100;
     const weight = parseFloat(berat.value);
     if (height && weight) {
@@ -2531,19 +2544,20 @@ async function addNadiRow(){
   });
 
   // Daftar
-  btnDaftar.addEventListener('click', async () => {
-    const nama = row.querySelector('.nadi-nama').value.trim();
-    const ic = row.querySelector('.nadi-ic').value.trim();
-    const tel = row.querySelector('.nadi-tel').value.trim();
-    const alamat = row.querySelector('.nadi-alamat').value.trim();
-    const date = tcaDate.value;
-    const time = tcaTime.value;
-    const staffName = staff.value.trim();
+  
+btnDaftar.addEventListener('click', async () => {
+  const nama = row.querySelector('.nadi-nama').value.trim();
+  const ic = row.querySelector('.nadi-ic').value.trim();
+  const tel = row.querySelector('.nadi-tel').value.trim();
+  const alamat = row.querySelector('.nadi-alamat').value.trim();
 
-    if (!nama || !ic || !tel || !date || !time || !staffName) {
-      toast('Ralat', 'Sila isi semua maklumat', 'danger');
-      return;
-    }
+  const vchr  = row.querySelector('.nadi-voucher');
+  const vDate = row.querySelector('.nadi-voucher-date');
+
+  // Laluan VOUCHER
+  if (vchr && vchr.checked) {
+    if (!nama || !ic || !tel) { toast('Ralat', 'Sila isi Nama, IC & Telefon', 'danger'); return; }
+    if (!vDate || !vDate.value) { toast('Ralat', 'Sila isi Tarikh TCA (Voucher)', 'danger'); return; }
 
     try {
       const res = await postForm({
@@ -2552,21 +2566,57 @@ async function addNadiRow(){
         noIC: ic,
         noTelefon: tel,
         alamat: alamat,
-        tarikhTCA: date,
-        masaTCA: time,
-        namaStaff: staffName
-      }, { msg: 'Mendaftar pesakit...' });
-
+        tarikhTCA: vDate.value,
+        masaTCA: '09:00',
+        namaStaff: (typeof STAFF_EMAIL !== 'undefined' && STAFF_EMAIL) ? STAFF_EMAIL : 'SYSTEM'
+      }, { msg: 'Mendaftar pesakit (voucher)…' });
       if (res.status === 'success') {
-        toast('Berjaya', 'Pesakit berjaya didaftarkan', 'success');
+        toast('Berjaya', 'Pesakit berjaya didaftarkan (voucher)', 'success');
         updateNadiRowData(row);
       } else {
-        throw new Error(res.message || 'Gagal mendaftar pesakit');
+        throw new Error(res.message || 'Gagal mendaftar pesakit (voucher)');
       }
     } catch (e) {
       toast('Ralat', e.message, 'danger');
     }
-  });
+    return;
+  }
+
+  // Laluan BIASA
+  const tcaDate = row.querySelector('.nadi-tca-date');
+  const tcaTime = row.querySelector('.nadi-tca-time');
+  const staff = row.querySelector('.nadi-staff');
+  const date = tcaDate.value;
+  const time = tcaTime.value;
+  const staffName = staff.value.trim();
+
+  if (!nama || !ic || !tel || !date || !time || !staffName) {
+    toast('Ralat', 'Sila isi semua maklumat', 'danger');
+    return;
+  }
+
+  try {
+    const res = await postForm({
+      action: 'daftarPesakit',
+      namaPesakit: nama,
+      noIC: ic,
+      noTelefon: tel,
+      alamat: alamat,
+      tarikhTCA: date,
+      masaTCA: time,
+      namaStaff: staffName
+    }, { msg: 'Mendaftar pesakit...' });
+    if (res.status === 'success') {
+      toast('Berjaya', 'Pesakit berjaya didaftarkan', 'success');
+      updateNadiRowData(row);
+    } else {
+      throw new Error(res.message || 'Gagal mendaftar pesakit');
+    }
+  } catch (e) {
+    toast('Ralat', e.message, 'danger');
+  }
+});
+
 
   // WA report (preview) — perhatikan: pembolehubah `data` DITAKRIF di dalam handler
   row.querySelector('.nadi-wa').addEventListener('click', async () => {
@@ -2615,7 +2665,6 @@ inputsToWatch.forEach(sel=>{
   if (el){
     el.addEventListener('input', ()=> queueSaveNadiLive(row));
     el.addEventListener('change', ()=> queueSaveNadiLive(row));
-    el.addEventListener('blur',  ()=> queueSaveNadiLive(row, { urgent:true }));
   }
 });
 layak.addEventListener('change', ()=> queueSaveNadiLive(row));
@@ -2623,9 +2672,6 @@ takLayak.addEventListener('change', ()=> queueSaveNadiLive(row));
 
 // set rowId mantap (guna id baris)
 row.dataset.rowId = row.id;
-  // Cap jari sesi semasa (digunakan untuk tapis paparan)
-row.dataset.sessionId = (window.NADI_LIVE_SESSION_ID || (typeof computeNadiSessionId==='function' ? computeNadiSessionId() : '')) || '';
-
 }
 
 function updateNadiRowData(row) {
@@ -2990,111 +3036,24 @@ function extractRowPayload(row){
   const tcaTime = row.querySelector('.nadi-tca-time')?.value || '';
   const tcaStaff= row.querySelector('.nadi-staff')?.value.trim() || '';
   const remark  = row.querySelector('.nadi-remark')?.value.trim() || '';
-  const sessionId = row.dataset.sessionId || window.NADI_LIVE_SESSION_ID || '';
-
 
   return {
     id, nama, ic, tel, alamat,
     bp, pr, dxtType, dxt, tinggi, berat, bmi,
     layak, takLayak, tcaDate, tcaTime, tcaStaff,
-    remark, sessionId
+    remark
   };
 }
 
 // Queue save (debounce per baris)
-// Queue save (debounce per baris) + immediate flush bila urgent
-function queueSaveNadiLive(row, opts = {}) {
-  if (!NADI_LIVE_SESSION_ID) return; // tiada sesi
-
-  const urgent = !!opts.urgent;
-  const payload = extractRowPayload(row);
-  if ((payload.sessionId || '') !== (NADI_LIVE_SESSION_ID || '')) {
-    // Pastikan baris cap dengan sesi semasa (jika belum)
-    row.dataset.sessionId = NADI_LIVE_SESSION_ID || '';
-    payload.sessionId = row.dataset.sessionId;
-  }
-  nadiLiveSaveQueue.set(payload.id, payload);
-  const items = Array.from(nadiLiveSaveQueue.values());
-      nadiLiveSaveQueue.clear();
-      await postForm({
-        action: 'saveNadiLive',
-        sessionId: NADI_LIVE_SESSION_ID,
-        items: JSON.stringify(items)
-      }, { silent:true });
-
-  // Helper untuk flush sekarang
-  async function flushNow() {
-    if (nadiLiveSaving) return;
-    nadiLiveSaving = true;
-    try {
-      const items = Array.from(nadiLiveSaveQueue.values());
-      if (!items.length) return;
-      nadiLiveSaveQueue.clear();
-
-      await postForm({
-        action: 'saveNadiLive',
-        sessionId: NADI_LIVE_SESSION_ID,
-        items: JSON.stringify(items)
-      }, { silent:true });
-
-      // Ping tab/tingkap lain pada domain sama (segera tarik)
-      try { localStorage.setItem('NADI_LIVE_TICK', String(Date.now())); } catch(_) {}
-
-      // Tarik semula lepas simpan untuk pastikan UI “on-time”
-      try { await pullNadiLiveOnce(); } catch(_) {}
-    } finally {
-      nadiLiveSaving = false;
-    }
-  }
-
-  if (urgent) {
-    // blur → flush segera
-    flushNow();
-  } else {
-    // laluan biasa → debounce 400ms (asal)
-    if (!nadiLiveSaving) {
-      nadiLiveSaving = true;
-      setTimeout(flushNow, 400);
-    }
+, { silent:true });
+      }catch(e){ /* senyap */ }
+      finally{ nadiLiveSaving = false; }
+    }, 400);
   }
 }
-
 
 // Mula tarik data berkala
-function startNadiLiveSync(){
-  stopNadiLiveSync();
-  if (!NADI_LIVE_SESSION_ID) return;
-
-  const FAST_MS = 1500;
-  const SLOW_MS = 6000;
-  pullNadiLiveOnce();
-  const ms = (document.visibilityState === 'visible') ? FAST_MS : SLOW_MS;
-  nadiLiveTimer = setInterval(pullNadiLiveOnce, ms);
-}
-// Tindak apabila tab aktif/tersembunyi
-document.addEventListener('visibilitychange', ()=>{ if (NADI_LIVE_SESSION_ID) startNadiLiveSync(); });
-// Tarik segera bila fokus kembali
-window.addEventListener('focus', ()=>{ if (NADI_LIVE_SESSION_ID) pullNadiLiveOnce(); });
-
-// Tukar tempo ikut visibility (aktif/tersembunyi)
-document.addEventListener('visibilitychange', ()=>{
-  if (!NADI_LIVE_SESSION_ID) return;
-  startNadiLiveSync();
-});
-
-// Tarik segera bila fokus kembali ke tab ini
-window.addEventListener('focus', ()=>{
-  if (!NADI_LIVE_SESSION_ID) return;
-  pullNadiLiveOnce();
-});
-
-// Di tab lain pada domain sama, bila detect “tick” → tarik segera
-window.addEventListener('storage', (e)=>{
-  if (e.key === 'NADI_LIVE_TICK') {
-    if (!NADI_LIVE_SESSION_ID) return;
-    pullNadiLiveOnce();
-  }
-});
 
 function stopNadiLiveSync(){
   if (nadiLiveTimer){ clearInterval(nadiLiveTimer); nadiLiveTimer = null; }
@@ -3108,22 +3067,10 @@ async function pullNadiLiveOnce(){
       sessionId: NADI_LIVE_SESSION_ID
     }, { silent:true });
     if (res.status==='success' && Array.isArray(res.items)){
-      // Tapis selamat ikut sesi aktif (jika server pulangkan bercampur)
-      const active = NADI_LIVE_SESSION_ID || '';
-      const items = res.items.filter(it => (it.sessionId || active) === active);
-
-      // Buang/bersihkan paparan baris yang bukan sesi aktif
-      const cont = document.getElementById('nadiContainer');
-      if (cont){
-        cont.querySelectorAll('tr').forEach(tr=>{
-          const sid = tr.dataset.sessionId || '';
-          if (sid && sid !== active) tr.remove();     // hilangkan dari jadual
-        });
-      }
-
-      // Gabung & paparkan hanya item untuk sesi aktif
-      mergeLiveRowsIntoUI(items);
+      mergeLiveRowsIntoUI(res.items);
     }
+  }catch(e){ /* senyap */ }
+}
 
 // Gabung rekod masuk ke UI (tanpa kacau input sedang fokus)
 function mergeLiveRowsIntoUI(items){
@@ -3141,20 +3088,17 @@ function mergeLiveRowsIntoUI(items){
     if (!row) return;
 
     // Jangan override jika user sedang menaip pada medan itu
-    const safeSet = (sel, val) => {
+    const safeSet = async (sel, val) => {
   const el = row.querySelector(sel);
   if (!el) return;
-  if (document.activeElement === el) return;
-  if (el.tagName === 'INPUT' || el.tagName === 'TEXTAREA'){
-    if (el.type === 'checkbox'){
-      if (typeof val === 'boolean') el.checked = !!val;
+  if (document.activeElement === el) return; // biar user habis menaip
+  if (el.tagName==='INPUT' || el.tagName==='TEXTAREA'){
+    if (el.type==='checkbox'){
+      if (val !== undefined && val !== null) el.checked = !!val;
     } else {
       if (val !== undefined && val !== null && val !== '') {
-        const incoming = String(val);
-        const current  = String(el.value || '');
-        if (current && incoming.length < current.length) return;
-        if (incoming === current) return;
-        el.value = incoming;
+        el.value = String(val);
+        // jika ada view-mode (inline edit), pantulkan
         if (el.previousElementSibling && el.previousElementSibling.classList.contains('view-mode')){
           el.previousElementSibling.textContent = el.value;
         }
@@ -3187,9 +3131,9 @@ function mergeLiveRowsIntoUI(items){
 
     // checkbox layak/tak layak – hormati mutual exclusive (guna helper asal)
     const layak   = row.querySelector('.nadi-layak');
-const takLayak= row.querySelector('.nadi-taklayak');
-if (layak && document.activeElement !== layak && typeof it.layak === 'boolean') layak.checked = it.layak;
-if (takLayak && document.activeElement !== takLayak && typeof it.takLayak === 'boolean') takLayak.checked = it.takLayak;
+    const takLayak= row.querySelector('.nadi-taklayak');
+    if (layak && document.activeElement !== layak) layak.checked = !!it.layak;
+    if (takLayak && document.activeElement !== takLayak) takLayak.checked = !!it.takLayak;
 
     // Pantulkan status enable/disable input TCA ikut logik asal
     const tcaDate = row.querySelector('.nadi-tca-date');
@@ -3356,7 +3300,7 @@ async function loadTCACallData(){
     const tb1 = document.getElementById('tcaCallTable');
     if (tb1) tb1.innerHTML = '';
 
-    const renderRow = (p) => {
+    const renderRow = async (p) => {
       const msisdn = normalizeMsisdnMY(p.noTelefon||'');
       return `
       <tr data-ic="${p.noIC}">
@@ -3936,21 +3880,15 @@ function activateFromHash(){
   })();
   
 /* ===== Session Picker (Live) ===== */
-let NADI_SESSION_LOCKED = false;
-function computeSessionIdFromInputs(){
-  const title = (document.getElementById('nadiProgramTitle')?.value || '').trim();
-  const iso   = (document.getElementById('nadiProgramDate')?.value || '').trim() || new Date().toISOString().slice(0,10);
-  const slug  = title ? title.toLowerCase().replace(/[^\p{L}\p{N}]+/gu,'-').replace(/^-+|-+$/g,'') : 'sesi-nadi';
+
+\p{N}]+/gu,'-').replace(/^-+|-+$/g,'') : 'sesi-nadi';
   return slug + '_' + iso;
 }
 function updateLiveSessionBadge(){
   const badge = document.getElementById('liveSessionLabel');
   if (badge) badge.textContent = NADI_LIVE_SESSION_ID ? NADI_LIVE_SESSION_ID : '-';
 }
-async function loadLiveSessionsForDate(){
-  try{
-    const iso = (document.getElementById('nadiProgramDate')?.value || new Date().toISOString().slice(0,10)).trim();
-    const res = await getJSON({ action:'listNadiSessionsLive', date: iso }, { silent:true });
+async , { silent:true });
     const sel = document.getElementById('nadiSessionSelect');
     if (!sel) return;
     sel.innerHTML = '';
@@ -3975,9 +3913,7 @@ async function loadLiveSessionsForDate(){
     }
   }catch(e){ /* senyap */ }
 }
-function useSelectedSession(){
-  const sel = document.getElementById('nadiSessionSelect');
-  if (!sel || !sel.value) { toast('Makluman','Sila pilih satu sesi dahulu','warning'); return; }
+
   const iso = sel.options[sel.selectedIndex].dataset.iso || '';
   const title = sel.options[sel.selectedIndex].dataset.title || '';
   if (title){ const t = document.getElementById('nadiProgramTitle'); if (t) t.value = title; }
@@ -3987,14 +3923,6 @@ function useSelectedSession(){
   updateLiveSessionBadge();
   startNadiLiveSync();
   toast('Sesi dipilih', 'Sesi live ditetapkan: ' + NADI_LIVE_SESSION_ID, 'success');
-  // Bila tukar sesi, kosongkan jadual & tarik data sesi baharu
-(function clearForNewSession(){
-  const cont = document.getElementById('nadiContainer');
-  if (cont) cont.innerHTML = '';     // kosongkan supaya hanya data sesi baharu dipaparkan
-})();
-updateLiveSessionBadge?.();
-startNadiLiveSync?.();               // akan panggil pullNadiLiveOnce() awal
-
 }
 
 </script>
@@ -4037,7 +3965,7 @@ startNadiLiveSync?.();               // akan panggil pullNadiLiveOnce() awal
     });
     localStorage.setItem(NADI_KEY, JSON.stringify(rows));
   }
-function saveNadiStateDebounced(){
+window.saveNadiStateDebounced = window.saveNadiStateDebounced || function(){
   clearTimeout(window.__saveNadiT);
   window.__saveNadiT = setTimeout(saveNadiState, 400);
 }
@@ -4055,7 +3983,7 @@ function saveNadiStateDebounced(){
         if (typeof window.addNadiRow === 'function') window.addNadiRow();
         const tr = document.querySelectorAll('#nadiContainer tr')[idx];
         if (!tr) return;
-        const set = (sel, val) => { const el=tr.querySelector(sel); if(el){ el.value=val; if(el.type==='checkbox') el.checked=!!val; el.dispatchEvent(new Event('input',{bubbles:true})); el.dispatchEvent(new Event('change',{bubbles:true})); } };
+        const set = async (sel, val) => { const el=tr.querySelector(sel); if(el){ el.value=val; if(el.type==='checkbox') el.checked=!!val; el.dispatchEvent(new Event('input',{bubbles:true})); el.dispatchEvent(new Event('change',{bubbles:true})); } };
         set('input[name="nama"]', r.nama);
         set('input[name="ic"]', r.ic);
         set('input[name="umur"]', r.umur);
@@ -4168,8 +4096,8 @@ function saveNadiStateDebounced(){
         }catch(_){ return true; }
       }
 
-      const SCRIPT_URL = window.SCRIPT_URL;
-      const ID_TOKEN = window.ID_TOKEN;
+      
+      
       for (const r of voucherRows){
         if (!within30Days(programDate, r.voucherDate)) {
           if (typeof toast === 'function') toast('Tarikh TCA voucher melebihi 1 bulan', r.nama || r.ic || r.telefon, 'warning');
@@ -4334,7 +4262,7 @@ function saveNadiStateDebounced(){
   cont.addEventListener('change', function(e){
     const t = e.target;
     if (!t.closest('tr')) return;
-    if (!(t.classList.contains('nadi-layak') || t.classList.contains('nadi-taklayak') || t.classList.contains('nadi-voucher'))) return;
+    if (!((t.classList.contains('nadi-layak') || t.classList.contains('nadi-taklayak') || t.classList.contains('nadi-voucher') || t.classList.contains('nadi-voucher-date')))) return;
     const row = t.closest('tr');
 
     // Get checkboxes
@@ -4359,18 +4287,178 @@ function saveNadiStateDebounced(){
     setEnabled(tcaStaff, onTCA);
     setEnabled(vDate, vchr && vchr.checked);
 
-    // Update main button label (voucher: aktif serta-merta)
-const btn = row.querySelector('.nadi-daftar');
-if (btn) {
-  const onVoucher = !!(vchr && vchr.checked);
-  const onLayak   = !!(layak && layak.checked);
-  btn.disabled = !(onVoucher || onLayak);
-  btn.textContent = onVoucher ? 'Daftar TCA' : 'Daftar';
-}
+    // Update main button label
+    const btn = row.querySelector('.nadi-daftar');
+    if (btn) {
+      btn.disabled = !((layak && layak.checked) || (vchr && vchr.checked && vDate && vDate.value));
+      if (vchr && vchr.checked) btn.textContent = 'Daftar TCA';
+      else btn.textContent = 'Daftar';
+    }
   }, true);
 })();
 </script>
 <script>
+
+// === LIVE SESSION (synced from latest) ===
+let NADI_SESSION_LOCKED = false;
+const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbx6TKE0vDDPO3-36cY7xjacAbGL0HIRKCrORNm-sED9y5NpIeIUk9gyrpiWy-S7vbc/exec';
+let ID_TOKEN = '';
+
+function computeSessionIdFromInputs(){
+  const title = (document.getElementById('nadiProgramTitle')?.value || '').trim();
+  const iso   = (document.getElementById('nadiProgramDate')?.value || '').trim() || new Date().toISOString().slice(0,10);
+  const slug  = title ? title.toLowerCase().replace(/[^\p{L}\p{N}]+/gu,'-').replace(/^-+|-+$/g,'') : 'sesi-nadi';
+  return slug + '_' + iso;
+}
+
+
+function postForm(params={}, {silent=false, msg='Menyimpan data…'}={}){
+  if (!ID_TOKEN) throw new Error('Belum login');
+  if (!silent) showLoader(msg);
+  try{
+    const r = await Promise.race([
+      fetch(SCRIPT_URL, {
+        method:'POST',
+        headers:{ 'Content-Type':'application/x-www-form-urlencoded' },
+        body: new URLSearchParams({ ...params, id_token: ID_TOKEN })
+      }),
+      new Promise((_,rej)=> setTimeout(()=>rej(new Error('Timeout')), 12000))
+    ]);
+    return await r.json();
+  } finally { if (!silent) hideLoader(); }
+}
+
+
+function saveNadiStateDebounced(){
+  clearTimeout(window.__saveNadiT);
+  window.__saveNadiT = setTimeout(saveNadiState, 400);
+}
+
+
+function queueSaveNadiLive(row, opts = {}) {
+  if (!NADI_LIVE_SESSION_ID) return; // tiada sesi
+
+  const urgent = !!opts.urgent;
+  const payload = extractRowPayload(row);
+  if ((payload.sessionId || '') !== (NADI_LIVE_SESSION_ID || '')) {
+    // Pastikan baris cap dengan sesi semasa (jika belum)
+    row.dataset.sessionId = NADI_LIVE_SESSION_ID || '';
+    payload.sessionId = row.dataset.sessionId;
+  }
+  nadiLiveSaveQueue.set(payload.id, payload);
+  const items = Array.from(nadiLiveSaveQueue.values());
+      nadiLiveSaveQueue.clear();
+      await postForm({
+        action: 'saveNadiLive',
+        sessionId: NADI_LIVE_SESSION_ID,
+        items: JSON.stringify(items)
+      }, { silent:true });
+
+  // Helper untuk flush sekarang
+  async function flushNow() {
+    if (nadiLiveSaving) return;
+    nadiLiveSaving = true;
+    try {
+      const items = Array.from(nadiLiveSaveQueue.values());
+      if (!items.length) return;
+      nadiLiveSaveQueue.clear();
+
+      await postForm({
+        action: 'saveNadiLive',
+        sessionId: NADI_LIVE_SESSION_ID,
+        items: JSON.stringify(items)
+      }, { silent:true });
+
+      // Ping tab/tingkap lain pada domain sama (segera tarik)
+      try { localStorage.setItem('NADI_LIVE_TICK', String(Date.now())); } catch(_) {}
+
+      // Tarik semula lepas simpan untuk pastikan UI “on-time”
+      try { await pullNadiLiveOnce(); } catch(_) {}
+    } finally {
+      nadiLiveSaving = false;
+    }
+  }
+
+  if (urgent) {
+    // blur → flush segera
+    flushNow();
+  } else {
+    // laluan biasa → debounce 400ms (asal)
+    if (!nadiLiveSaving) {
+      nadiLiveSaving = true;
+      setTimeout(flushNow, 400);
+    }
+  }
+}
+
+
+async function loadLiveSessionsForDate(){
+  try{
+    const iso = (document.getElementById('nadiProgramDate')?.value || new Date().toISOString().slice(0,10)).trim();
+    const res = await getJSON({ action:'listNadiSessionsLive', date: iso }, { silent:true });
+    const sel = document.getElementById('nadiSessionSelect');
+    if (!sel) return;
+    sel.innerHTML = '';
+    const opt0 = document.createElement('option');
+    opt0.value = ''; opt0.textContent = '(Pilih sesi live untuk hari ini)';
+    sel.appendChild(opt0);
+    if (res.status === 'success' && Array.isArray(res.sessions)){
+      res.sessions.forEach(s => {
+        const o = document.createElement('option');
+        o.value = s.sessionId;
+        o.textContent = s.title + ' — ' + s.programDate + ' [' + s.sessionId + ']';
+        o.dataset.title = s.title;
+        // convert dd/MM/yyyy to yyyy-MM-dd for inputs
+        const m = /^([0-9]{2})\/([0-9]{2})\/([0-9]{4})$/.exec(String(s.programDate||''));
+        o.dataset.iso = m ? (m[3]+'-'+m[2]+'-'+m[1]) : '';
+        sel.appendChild(o);
+      });
+    } else {
+      const o = document.createElement('option');
+      o.value = ''; o.textContent = '(Tiada sesi live ditemui)';
+      sel.appendChild(o);
+    }
+  }catch(e){ /* senyap */ }
+}
+
+
+function useSelectedSession(){
+  const sel = document.getElementById('nadiSessionSelect');
+  if (!sel || !sel.value) { toast('Makluman','Sila pilih satu sesi dahulu','warning'); return; }
+  const iso = sel.options[sel.selectedIndex].dataset.iso || '';
+  const title = sel.options[sel.selectedIndex].dataset.title || '';
+  if (title){ const t = document.getElementById('nadiProgramTitle'); if (t) t.value = title; }
+  if (iso){ const d = document.getElementById('nadiProgramDate'); if (d) d.value = iso; }
+  NADI_LIVE_SESSION_ID = sel.value;
+  NADI_SESSION_LOCKED = true;
+  updateLiveSessionBadge();
+  startNadiLiveSync();
+  toast('Sesi dipilih', 'Sesi live ditetapkan: ' + NADI_LIVE_SESSION_ID, 'success');
+  // Bila tukar sesi, kosongkan jadual & tarik data sesi baharu
+(function clearForNewSession(){
+  const cont = document.getElementById('nadiContainer');
+  if (cont) cont.innerHTML = '';     // kosongkan supaya hanya data sesi baharu dipaparkan
+})();
+updateLiveSessionBadge?.();
+startNadiLiveSync?.();               // akan panggil pullNadiLiveOnce() awal
+
+}
+
+
+function startNadiLiveSync(){
+  stopNadiLiveSync();
+  if (!NADI_LIVE_SESSION_ID) return;
+
+  const FAST_MS = 1500;
+  const SLOW_MS = 6000;
+  pullNadiLiveOnce();
+  const ms = (document.visibilityState === 'visible') ? FAST_MS : SLOW_MS;
+  nadiLiveTimer = setInterval(pullNadiLiveOnce, ms);
+}
+
+// === END LIVE SESSION ===
+
+
 // === NADI Indicators (BP/PR/DXT/BMI) ===
 (function(){
   function applyIndicator(elView, kind, raw, arg){
@@ -4454,89 +4542,8 @@ if (btn) {
   }, true);
 
   // Initial sweep (if any prefilled rows)
-  (document.getElementById('nadiContainer')?.querySelectorAll('input') || []).forEach(handle);
+  cont.querySelectorAll('input').forEach(handle);
 })();
 </script>
-<script>
-(function waitGIS(){
-  if (window.google?.accounts?.id) {
-    try { if (typeof initGoogleSignIn === 'function') initGoogleSignIn(); } catch(e){ console.warn(e); }
-  } else {
-    setTimeout(waitGIS, 300);
-  }
-})();
-</script><script>
-// === Patch helpers: Voucher enable & click intercept (non-intrusive) ===
-(function(){
-  // Enable button & relabel when voucher toggled
-  document.addEventListener('change', function(e){
-    const el = e.target;
-    if (!el || el.tagName !== 'INPUT') return;
-    if (!el.closest('#nadiContainer')) return;
-    if (!(el.matches('input[name="voucher"]') || el.classList.contains('nadi-voucher'))) return;
-    const row = el.closest('tr');
-    if (!row) return;
-    const btn = row.querySelector('.nadi-daftar');
-    const layak = row.querySelector('.nadi-layak');
-    if (btn){
-      const onVoucher = !!el.checked;
-      const onLayak   = !!(layak && layak.checked);
-      btn.disabled = !(onVoucher || onLayak);
-      btn.textContent = onVoucher ? 'Daftar TCA' : 'Daftar';
-    }
-    const dateInput = row.querySelector('input[name="voucherDate"], .nadi-voucher-date');
-    if (dateInput) dateInput.disabled = !el.checked;
-  }, true);
-
-  // Intercept click to perform voucher registration with fallback date
-  document.addEventListener('click', async function(e){
-    const btn = e.target && e.target.closest('.nadi-daftar');
-    if (!btn) return;
-    const row = btn.closest('tr');
-    const vchr = row && (row.querySelector('input[name="voucher"]') || row.querySelector('.nadi-voucher'));
-    if (!row || !vchr || !vchr.checked) return; // not voucher flow
-
-    e.preventDefault(); e.stopImmediatePropagation();
-
-    const qv = sel => (row.querySelector(sel)?.value || '').trim();
-    const nama   = qv('.nadi-nama');
-    const ic     = qv('.nadi-ic');
-    const telRaw = qv('.nadi-tel');
-    const tel    = (typeof normalizeMsisdnMY === 'function') ? normalizeMsisdnMY(telRaw) : String(telRaw||'').replace(/\D/g,'');
-    const alamat = qv('.nadi-alamat');
-    const vDate  = row.querySelector('input[name="voucherDate"], .nadi-voucher-date')?.value || '';
-    const programDate = document.getElementById('nadiProgramDate')?.value || new Date().toISOString().slice(0,10);
-    const tarikhTCA = vchr.checked && vDate ? vDate : programDate;
-
-    if (!nama || !ic || !tel){
-      if (typeof toast === 'function') toast('Ralat','Sila isi Nama, IC & Telefon','danger');
-      return;
-    }
-
-    try{
-      const res = await (typeof postForm === 'function' ? postForm({
-        action: 'daftarPesakit',
-        namaPesakit: nama,
-        noIC: ic,
-        noTelefon: tel,
-        alamat: alamat,
-        tarikhTCA: tarikhTCA,
-        masaTCA: '09:00',
-        namaStaff: (window.STAFF_EMAIL || 'SYSTEM')
-      }, { msg:'Mendaftar pesakit (voucher)…' }) : Promise.resolve({ status:'error', message:'postForm tidak tersedia' }));
-
-      if (res && res.status === 'success'){
-        if (typeof toast === 'function') toast('Berjaya','Pesakit berjaya didaftarkan (voucher)','success');
-        try { updateNadiRowData?.(row); } catch(_){}
-        try { await loadTCACallData?.(); } catch(_){}
-        location.hash = '#tca-call';
-      } else {
-        throw new Error(res?.message || 'Gagal mendaftar pesakit (voucher)');
-      }
-    }catch(err){
-      if (typeof toast === 'function') toast('Ralat', err.message || 'Gagal mendaftar pesakit (voucher)', 'danger');
-    }
-  }, true);
-})();
-</script></body>
+</body>
 </html>
