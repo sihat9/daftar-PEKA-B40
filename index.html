@@ -4444,6 +4444,7 @@ if (btn) {
     setTimeout(waitGIS, 300);
   }
 })();
+
 // === Patch helpers: Voucher enable & click intercept (non-intrusive) ===
 (function(){
   // Enable button & relabel when voucher toggled
@@ -4474,7 +4475,8 @@ if (btn) {
     const vchr = row && (row.querySelector('input[name="voucher"]') || row.querySelector('.nadi-voucher'));
     if (!row || !vchr || !vchr.checked) return; // not voucher flow
 
-    e.preventDefault(); e.stopImmediatePropagation();
+    e.preventDefault(); 
+    e.stopImmediatePropagation();
 
     const qv = sel => (row.querySelector(sel)?.value || '').trim();
     const nama   = qv('.nadi-nama');
@@ -4491,7 +4493,7 @@ if (btn) {
       return;
     }
 
-    try{
+    try {
       const res = await (typeof postForm === 'function' ? postForm({
         action: 'daftarPesakit',
         namaPesakit: nama,
@@ -4504,30 +4506,28 @@ if (btn) {
       }, { msg:'Mendaftar pesakit (voucher)…' }) : Promise.resolve({ status:'error', message:'postForm tidak tersedia' }));
 
       if (res && res.status === 'success'){
-    if (typeof toast === 'function') toast('Berjaya','Pesakit berjaya didaftarkan (voucher)','success');
-    try { updateNadiRowData?.(row); } catch(_){}
-    try { 
-      (async () => {
-        try {
-          await loadTCACallData?.();
-        } catch (err) {
-          console.error('Error loading TCA data:', err);
-        }
-      })();
-    } catch(_){}
-    location.hash = '#tca-call';
-  } else {
-    throw new Error(res?.message || 'Gagal mendaftar pesakit (voucher)');
-  }
-  
-} catch (error) {
-  console.error('Unexpected error:', error);
-  if (typeof toast === 'function') toast('Ralat', error.message || 'Terjadi kesalahan tidak terduga', 'danger');
-}
-
-// Kode penutup
-}, true);
-})();
+        if (typeof toast === 'function') toast('Berjaya','Pesakit berjaya didaftarkan (voucher)','success');
+        try { updateNadiRowData?.(row); } catch(_){}
+        try { 
+          // Gunakan IIFE async untuk handle await
+          (async () => {
+            try {
+              await loadTCACallData?.();
+            } catch (err) {
+              console.error('Error loading TCA data:', err);
+            }
+          })();
+        } catch(_){}
+        location.hash = '#tca-call';
+      } else {
+        throw new Error(res?.message || 'Gagal mendaftar pesakit (voucher)');
+      }
+    } catch (error) {
+      console.error('Unexpected error:', error);
+      if (typeof toast === 'function') toast('Ralat', error.message || 'Terjadi kesalahan tidak terduga', 'danger');
+    }
+  }, true); // <-- PENUTUP YANG TEPAT UNTUK addEventListener
+})(); // <-- PENUTUP YANG TEPAT UNTUK IIFE
 </script>
 </body>
 </html>
