@@ -251,12 +251,15 @@
   .whatsapp-report-value { flex: 1; }
   .whatsapp-report-footer { text-align: center; font-size: 12px; color: var(--muted); margin-top: 20px; padding-top: 15px; border-top: 1px solid #eee; }
 
+
 .monitor-card .stat {
   font-size: 28px; font-weight: 700; line-height: 1;
 }
 .monitor-card .label {
   font-size: 12px; text-transform: uppercase; letter-spacing: .06em;
 }
+
+
 
   /* NADI Summary Cards */
   .nadi-summary-container {
@@ -291,6 +294,7 @@
   .navbar-main{ background:#ffffff; }
   .page-header{ background:linear-gradient(135deg,#4e73df,#1cc88a); }
   .card{ background:#ffffff; }
+
 
   /* Toolbar spacing for NADI buttons */
   .nadi-toolbar .btn { margin: 2px; }
@@ -777,6 +781,7 @@
   <div id="monitorInfo" class="text-muted mb-2"></div>
   <div id="monitorCards" class="row g-3"></div>
 </section>
+
 
     <!-- Arkib -->
     <section id="arkib" class="mb-4 d-none">
@@ -2355,30 +2360,30 @@ function addNadiRow(){
     </td>
     <td class="nadi-input-cell">
       <div class="view-mode" onclick="editNadiCell(this)"></div>
-      <input class="form-control form-control-sm nadi-nama" placeholder="Nama pesakit" style="display:none" onblur="saveNadiCell(this)" />
+      <input class="form-control form-control-sm nadi-nama" placeholder="Nama pesakit" style="display:none" onblur="saveNadiCell(this)" / name="nama">
     </td>
     <td class="nadi-input-cell">
       <div class="view-mode" onclick="editNadiCell(this)"></div>
-      <input class="form-control form-control-sm nadi-ic" placeholder="IC" style="display:none" onblur="saveNadiCell(this)" />
+      <input class="form-control form-control-sm nadi-ic" placeholder="IC" style="display:none" onblur="saveNadiCell(this)" / name="ic">
     </td>
     <td class="nadi-input-cell">
       <div class="view-mode nadi-umur-view"></div>
     </td>
     <td class="nadi-input-cell">
       <div class="view-mode" onclick="editNadiCell(this)"></div>
-      <input class="form-control form-control-sm nadi-tel" placeholder="Telefon" style="display:none" onblur="saveNadiCell(this)" />
+      <input class="form-control form-control-sm nadi-tel" placeholder="Telefon" style="display:none" onblur="saveNadiCell(this)" / name="telefon">
     </td>
     <td class="nadi-input-cell">
       <div class="view-mode" onclick="editNadiCell(this)"></div>
-      <input class="form-control form-control-sm nadi-alamat" placeholder="Alamat" style="display:none" onblur="saveNadiCell(this)" />
+      <input class="form-control form-control-sm nadi-alamat" placeholder="Alamat" style="display:none" onblur="saveNadiCell(this)" / name="alamat">
     </td>
     <td class="nadi-input-cell">
       <div class="view-mode" onclick="editNadiCell(this)"></div>
-      <input class="form-control form-control-sm nadi-bp" placeholder="BP" style="display:none" onblur="saveNadiCell(this)" />
+      <input class="form-control form-control-sm nadi-bp" placeholder="BP" style="display:none" onblur="saveNadiCell(this)" / name="bp">
     </td>
     <td class="nadi-input-cell">
       <div class="view-mode" onclick="editNadiCell(this)"></div>
-      <input class="form-control form-control-sm nadi-pr" placeholder="PR" style="display:none" onblur="saveNadiCell(this)" />
+      <input class="form-control form-control-sm nadi-pr" placeholder="PR" style="display:none" onblur="saveNadiCell(this)" / name="pr">
     </td>
     <td>
       <div class="input-group input-group-sm">
@@ -2387,45 +2392,45 @@ function addNadiRow(){
           <li><a class="dropdown-item" href="#" data-value="Fasting">Fasting</a></li>
           <li><a class="dropdown-item" href="#" data-value="Random">Random</a></li>
         </ul>
-        <input class="form-control nadi-dxt" placeholder="DXT" style="width:100%; min-width:80px" />
-        <input type="hidden" class="nadi-dxt-type" value="Fasting" />
+        <input class="form-control nadi-dxt" placeholder="DXT" style="width:100%; min-width:80px" / name="dxt">
+        <input type="hidden" class="nadi-dxt-type" value="Fasting" / name="dxt">
       </div>
     </td>
     <td class="nadi-input-cell">
       <div class="view-mode" onclick="editNadiCell(this)"></div>
-      <input class="form-control form-control-sm nadi-tinggi" placeholder="Tinggi" style="display:none" onblur="saveNadiCell(this)" />
+      <input class="form-control form-control-sm nadi-tinggi" placeholder="Tinggi" style="display:none" onblur="saveNadiCell(this)" / name="tinggi">
     </td>
     <td class="nadi-input-cell">
       <div class="view-mode" onclick="editNadiCell(this)"></div>
-      <input class="form-control form-control-sm nadi-berat" placeholder="Berat" style="display:none" onblur="saveNadiCell(this)" />
+      <input class="form-control form-control-sm nadi-berat" placeholder="Berat" style="display:none" onblur="saveNadiCell(this)" / name="berat">
     </td>
     <td class="nadi-input-cell">
       <div class="view-mode" onclick="editNadiCell(this)"></div>
-      <input class="form-control form-control-sm nadi-bmi" placeholder="BMI" disabled style="display:none" onblur="saveNadiCell(this)" />
+      <input class="form-control form-control-sm nadi-bmi" placeholder="BMI" disabled style="display:none" onblur="saveNadiCell(this)" / name="bmi">
     </td>
     <td class="text-center">
-      <input class="form-check-input nadi-layak" type="checkbox">
+      <input class="form-check-input nadi-layak" type="checkbox" name="layak">
     </td>
-    <td class="text-center">
-      <input class="form-check-input nadi-taklayak" type="checkbox">
+    <td data-col="takLayak" class="text-center">
+      <input class="form-check-input nadi-taklayak" type="checkbox" name="takLayak">
     </td>
 
     <td class="text-center">
-      <input class="form-check-input nadi-voucher" type="checkbox">
+      <input class="form-check-input nadi-voucher" type="checkbox" name="voucher">
     </td>
     <td>
-      <input type="date" class="form-control form-control-sm nadi-voucher-date" disabled>
+      <input type="date" class="form-control form-control-sm nadi-voucher-date" disabled name="voucherDate">
     </td>
     <!-- Kolum Remark baharu -->
     <td class="nadi-input-cell">
       <div class="view-mode" onclick="editNadiCell(this)"></div>
-      <input class="form-control form-control-sm nadi-remark" placeholder="Catatan / Remark" style="display:none" onblur="saveNadiCell(this)" />
+      <input class="form-control form-control-sm nadi-remark" placeholder="Catatan / Remark" style="display:none" onblur="saveNadiCell(this)" / name="remark">
     </td>
     <td>
       <div class="d-flex gap-1">
-        <input type="date" class="form-control form-control-sm nadi-tca-date" disabled style="min-width:100px">
-        <input type="time" class="form-control form-control-sm nadi-tca-time" disabled style="min-width:80px">
-        <input type="text" class="form-control form-control-sm nadi-staff" placeholder="Staff" disabled style="min-width:100px">
+        <input type="date" class="form-control form-control-sm nadi-tca-date" disabled style="min-width:100px" name="tcaDate">
+        <input type="time" class="form-control form-control-sm nadi-tca-time" disabled style="min-width:80px" name="tcaTime">
+        <input type="text" class="form-control form-control-sm nadi-staff" placeholder="Staff" disabled style="min-width:100px" name="tcaStaff">
       </div>
     </td>
     <td>
@@ -2634,6 +2639,7 @@ function updateNadiRowData(row) {
     nadiRows[rowIndex].data = rowData;
   }
 }
+
 
 function editNadiCell(viewModeEl) {
   const input = viewModeEl.nextElementSibling;
@@ -3189,6 +3195,8 @@ async function saveNadiProgramActivity(){
     toast('Ralat', e.message, 'danger');
   }
 }
+
+
 
 // Pastikan butang di-wire sekali sahaja
 (function wireNadiSaveButtonOnce(){
@@ -4422,66 +4430,5 @@ if (btn) {
     }
   }, true);
 })();
-</script>
-<script>
-(() => {
-  function ensureNadiVoucherCellsForRow(tr){
-    if (!tr || tr.querySelector('th')) return;
-    const hasVoucher = tr.querySelector('input[name="voucher"]');
-    const hasVoucherDate = tr.querySelector('input[name="voucherDate"]');
-    // Find the cell after which voucher columns should be placed: after 'takLayak'
-    const takLayakInput = tr.querySelector('input[name="takLayak"]');
-    const takLayakCell = takLayakInput ? takLayakInput.closest('td') : null;
-    // Fallback: insert near the end if we can't find a good anchor
-    let insertAfter = takLayakCell || tr.querySelector('td:last-child');
-
-    const createCell = (html) => {
-      const td = document.createElement('td');
-      td.innerHTML = html;
-      return td;
-    };
-
-    // Insert "Voucher" checkbox cell if missing
-    if (!hasVoucher){
-      const tdVoucher = createCell('<div class="form-check d-flex justify-content-center"><input type="checkbox" class="form-check-input" name="voucher"></div>');
-      if (insertAfter && insertAfter.parentElement === tr) {
-        insertAfter.after(tdVoucher);
-        insertAfter = tdVoucher;
-      } else {
-        tr.appendChild(tdVoucher);
-        insertAfter = tdVoucher;
-      }
-    }
-
-    // Insert "Tarikh Voucher" date cell if missing
-    if (!hasVoucherDate){
-      const tdDate = createCell('<input type="date" class="form-control form-control-sm" name="voucherDate">');
-      if (insertAfter && insertAfter.parentElement === tr) {
-        insertAfter.after(tdDate);
-      } else {
-        tr.appendChild(tdDate);
-      }
-    }
-  }
-
-  function ensureNadiTableIntegrity(){
-    const rows = document.querySelectorAll('#nadiContainer tr');
-    rows.forEach(ensureNadiVoucherCellsForRow);
-  }
-
-  // Run once on DOM ready and also observe new rows
-  document.addEventListener('DOMContentLoaded', () => {
-    try { ensureNadiTableIntegrity(); } catch(e){ console.warn('ensureNadiTableIntegrity failed:', e); }
-    const container = document.querySelector('#nadiContainer');
-    if (container){
-      const mo = new MutationObserver((muts) => {
-        try { ensureNadiTableIntegrity(); } catch(e){ /* no-op */ }
-      });
-      mo.observe(container, { childList: true, subtree: false });
-      window.__nadiIntegrityMO = mo;
-    }
-  });
-})();
-</script>
-</body>
+</script></body>
 </html>
