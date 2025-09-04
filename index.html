@@ -4504,26 +4504,29 @@ if (btn) {
       }, { msg:'Mendaftar pesakit (voucher)…' }) : Promise.resolve({ status:'error', message:'postForm tidak tersedia' }));
 
       if (res && res.status === 'success'){
-  if (typeof toast === 'function') toast('Berjaya','Pesakit berjaya didaftarkan (voucher)','success');
+    if (typeof toast === 'function') toast('Berjaya','Pesakit berjaya didaftarkan (voucher)','success');
+    try { updateNadiRowData?.(row); } catch(_){}
+    try { 
+      (async () => {
+        try {
+          await loadTCACallData?.();
+        } catch (err) {
+          console.error('Error loading TCA data:', err);
+        }
+      })();
+    } catch(_){}
+    location.hash = '#tca-call';
+  } else {
+    throw new Error(res?.message || 'Gagal mendaftar pesakit (voucher)');
+  }
   
-  try { updateNadiRowData?.(row); } catch(_){}
-  
-  try { 
-    // Gunakan IIFE async untuk handle await
-    (async () => {
-      try {
-        await loadTCACallData?.();
-      } catch (err) {
-        console.error('Error loading TCA data:', err);
-      }
-    })();
-  } catch(_){}
-  
-  location.hash = '#tca-call';
-} else {
-  throw new Error(res?.message || 'Gagal mendaftar pesakit (voucher)');
+} catch (error) {
+  console.error('Unexpected error:', error);
+  if (typeof toast === 'function') toast('Ralat', error.message || 'Terjadi kesalahan tidak terduga', 'danger');
 }
-  }, true);
+
+// Kode penutup
+}, true);
 })();
 </script>
 </body>
