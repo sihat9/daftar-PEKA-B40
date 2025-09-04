@@ -1475,10 +1475,10 @@ function initGoogleSignIn(){
 async function handleCredentialResponse(resp){
   ID_TOKEN = resp.credential;
   const r = await fetch(SCRIPT_URL, {
-    method:'POST',
-    headers:{ 'Content-Type':'application/x-www-form-urlencoded' },
-    body: new URLSearchParams({ action:'whoami', id_token: ID_TOKEN })
-  });
+  method:'POST',
+  headers:{ 'Content-Type':'application/x-www-form-urlencoded' },
+  body: new URLSearchParams({ action:'whoami', id_token: ID_TOKEN })
+});
   const j = await r.json();
   if (j.status === 'success'){
     STAFF_EMAIL = j.email || '';
