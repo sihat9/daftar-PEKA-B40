@@ -251,15 +251,12 @@
   .whatsapp-report-value { flex: 1; }
   .whatsapp-report-footer { text-align: center; font-size: 12px; color: var(--muted); margin-top: 20px; padding-top: 15px; border-top: 1px solid #eee; }
 
-
 .monitor-card .stat {
   font-size: 28px; font-weight: 700; line-height: 1;
 }
 .monitor-card .label {
   font-size: 12px; text-transform: uppercase; letter-spacing: .06em;
 }
-
-
 
   /* NADI Summary Cards */
   .nadi-summary-container {
@@ -294,7 +291,6 @@
   .navbar-main{ background:#ffffff; }
   .page-header{ background:linear-gradient(135deg,#4e73df,#1cc88a); }
   .card{ background:#ffffff; }
-
 
   /* Toolbar spacing for NADI buttons */
   .nadi-toolbar .btn { margin: 2px; }
@@ -781,7 +777,6 @@
   <div id="monitorInfo" class="text-muted mb-2"></div>
   <div id="monitorCards" class="row g-3"></div>
 </section>
-
 
     <!-- Arkib -->
     <section id="arkib" class="mb-4 d-none">
@@ -2640,7 +2635,6 @@ function updateNadiRowData(row) {
   }
 }
 
-
 function editNadiCell(viewModeEl) {
   const input = viewModeEl.nextElementSibling;
   viewModeEl.style.display = 'none';
@@ -3195,8 +3189,6 @@ async function saveNadiProgramActivity(){
     toast('Ralat', e.message, 'danger');
   }
 }
-
-
 
 // Pastikan butang di-wire sekali sahaja
 (function wireNadiSaveButtonOnce(){
@@ -3934,8 +3926,7 @@ function useSelectedSession(){
     });
     localStorage.setItem(NADI_KEY, JSON.stringify(rows));
   }
-
-  const saveNadiStateDebounced = debounce(saveNadiState, 400);
+const saveNadiStateDebounced = debounce(saveNadiState, 400);
 
   function restoreNadiState(){
     try{
