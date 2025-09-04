@@ -4703,406 +4703,158 @@ if (btn) {
 </script>
 
 
-<!-- === Realtime Live Session Patch v2 (stable) === -->
-<style>
-  /* Baris dikunci oleh pengguna lain */
-  .row-locked { background: #fff7f7 !important; opacity: .85; }
-  .row-locked .form-control, .row-locked .form-select, .row-locked .form-check-input { pointer-events: none; }
-  .row-locked .lock-badge { display:inline-flex; align-items:center; gap:6px; padding:2px 8px; border-radius:999px; background:#ffd7d7; color:#b30000; font-size:.75rem; }
-  .row-me      { background: #f7fff7 !important; }
-  .row-dirty   { outline: 2px dashed #ffc107; outline-offset: -2px; }
-</style>
+<!-- ===================== NADI Realtime Sync (drop-in) ===================== -->
+<!-- Firebase (Compat SDKs) -->
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
+
+<!-- Konfigurasi Firebase projek anda (gantikan dengan nilai sebenar dari Firebase Console) -->
 <script>
-(function realtimeLiveSessionPatch(){
-  'use strict';
-
-  // --- Config ---
-  const POLL_MS = 1200;              // polling kekerapan
-  const LOCK_MS = 15000;             // tempoh soft-lock
-  const SAVE_DEBOUNCE_MS = 350;      // debounce push
-  const TABLE_BODY_ID = 'nadiContainer';
-
-  // --- State ---
-  const state = {
-    sessionId: '',
-    rows: new Map(),                 // rowId -> row object
-    pushTimers: new Map(),           // rowId -> timeout id
-    pollingTimer: null,
-    staff: '',
-    lastRenderSignature: '',
+  window.firebaseConfig = window.firebaseConfig || {
+    apiKey: "PASTE_YOUR_API_KEY",
+    authDomain: "PASTE_YOUR_AUTH_DOMAIN",
+    databaseURL: "PASTE_YOUR_DATABASE_URL",
+    projectId: "PASTE_YOUR_PROJECT_ID",
+    storageBucket: "PASTE_YOUR_STORAGE_BUCKET",
+    messagingSenderId: "PASTE_YOUR_SENDER_ID",
+    appId: "PASTE_YOUR_APP_ID"
   };
+</script>
 
-  // --- Utils ---
-  const $ = (sel, root=document) => root.querySelector(sel);
-  const $$ = (sel, root=document) => Array.from(root.querySelectorAll(sel));
-  const nowMs = () => Date.now();
-  const safe = (v) => v==null ? '' : String(v);
-  const isEmptyRow = (r) => !safe(r.nama) && !safe(r.ic) && !safe(r.tel) && !safe(r.alamat) && !safe(r.bp) && !safe(r.pr) && !safe(r.dxt) && !safe(r.tinggi) && !safe(r.berat) && !safe(r.bmi) && !r.layak && !r.takLayak && !safe(r.tcaDate) && !safe(r.tcaTime) && !safe(r.tcaStaff) && !safe(r.remark);
-  function slugify(s){ return String(s||'').toLowerCase().replace(/[^a-z0-9]+/g,'-').replace(/(^-|-$)/g,''); }
-  function toIso(d){
-    if (!d) return '';
-    if (/^\d{4}-\d{2}-\d{2}$/.test(d)) return d;
-    const m = /^(\d{2})\/(\d{2})\/(\d{4})$/.exec(String(d));
-    if (!m) return '';
-    return `${m[3]}-${m[2]}-${m[1]}`;
+<!-- Realtime sync script (tidak ubah struktur asal, hanya menyandar pada ID sedia ada) -->
+<script src="nadi-realtime.js"></script>
+<!-- =================== END NADI Realtime Sync (drop-in) =================== -->
+
+
+<!-- ===================== NADI Auto-Refresh (Polling via Apps Script) ===================== -->
+<script>
+(function(){
+  // Tetapan
+  const POLL_MS = window.NADI_POLL_MS || 2000; // setiap 2s
+  const GAS_URL  = window.GAS_WEB_APP_URL || ""; // letak URL Web App jika host di GitHub Pages
+  const tbody    = document.querySelector("#nadiContainer");
+  const titleEl  = document.querySelector("#nadiProgramTitle");
+  const dateEl   = document.querySelector("#nadiProgramDate");
+  const useBtn   = document.querySelector("#btnUseSession");
+  const liveLbl  = document.querySelector("#liveSessionLabel");
+  if(!tbody){ console.warn("[NADI-POLL] #nadiContainer tidak dijumpai."); return; }
+
+  const log = (...a)=>console.log("[NADI-POLL]", ...a);
+
+  function session() {
+    const title = (titleEl && titleEl.value || "").trim();
+    const date  = (dateEl && dateEl.value || "").trim();
+    if(!title || !date) return null;
+    return { title, date, key: date + "__" + title.toLowerCase().replace(/\s+/g,"-").replace(/[^a-z0-9\-_]/g,"") };
   }
 
-  function getStaffEmail(){
-    const el = $('#staffEmail');
-    const s = el ? el.textContent.trim() : (window.__STAFF_EMAIL || '');
-    return s || 'SYSTEM';
-  }
-
-  function computeSessionId(){
-    // Keutamaan: dropdown sesi, jika kosong -> guna tajuk+tarikh
-    const sel = $('#nadiSessionSelect');
-    if (sel && sel.value) return sel.value.trim();
-    const title = $('#nadiProgramTitle')?.value || '';
-    const date = $('#nadiProgramDate')?.value || '';
-    if (!title || !date) return '';
-    return `${slugify(title)}_${date}`;
-  }
-
-  function ensureGhostRow(){
-    // Pastikan sentiasa ada SATU baris kosong di hujung untuk input pantas (local only, belum push)
-    const arr = currentRowsSorted();
-    const last = arr[arr.length-1];
-    if (!last || !isEmptyRow(last)){
-      const id = 'ghost_'+Math.random().toString(36).slice(2);
-      const ghost = {
-        id, createdAtMs: nowMs(), nama:'', ic:'', umur:'', tel:'', alamat:'',
-        bp:'', pr:'', dxtType:'', dxt:'', tinggi:'', berat:'', bmi:'',
-        layak:false, takLayak:false, tcaDate:'', tcaTime:'', tcaStaff:'', remark:'',
-        _localOnly: true
-      };
-      state.rows.set(id, ghost);
+  function saveSel() {
+    const active = document.activeElement;
+    if (!active || !tbody.contains(active)) return null;
+    const path = [];
+    let el = active;
+    while (el && el !== tbody) {
+      const idx = Array.from(el.parentNode ? el.parentNode.childNodes : []).indexOf(el);
+      path.unshift(idx);
+      el = el.parentNode;
     }
+    let caret=null;
+    try {
+      if("selectionStart" in active) caret = {start:active.selectionStart, end:active.selectionEnd};
+    }catch(_){}
+    return {path, caret};
   }
 
-  function currentRowsSorted(){
-    return Array.from(state.rows.values()).sort((a,b)=>{
-      const aa = Number(a.createdAtMs || 0), bb = Number(b.createdAtMs || 0);
-      if (aa!==bb) return aa-bb;
-      return String(a.id||'').localeCompare(String(b.id||''));
+  function nodeFromPath(path) {
+    let el = tbody;
+    try {
+      for(const idx of path){ el = el.childNodes[idx]; }
+      return el;
+    } catch { return null; }
+  }
+
+  function restoreSel(sel){
+    if(!sel) return;
+    const el = nodeFromPath(sel.path);
+    if(!el || !(el instanceof HTMLElement)) return;
+    el.focus?.();
+    try {
+      if("setSelectionRange" in el && sel.caret) el.setSelectionRange(sel.caret.start, sel.caret.end);
+    }catch(_){}
+  }
+
+  function applyHtmlIfChanged(newHtml){
+    if (typeof newHtml !== "string") return;
+    if (tbody.innerHTML === newHtml) return;
+    const sel = saveSel();
+    tbody.innerHTML = newHtml;
+    restoreSel(sel);
+  }
+
+  function fetchViaGoogleScriptRun(sess) {
+    return new Promise((resolve, reject) => {
+      if (!(window.google && google.script && google.script.run)) return reject("no_gas_client");
+      google.script.run
+        .withSuccessHandler(html => resolve({ html }))
+        .withFailureHandler(err => reject(err))
+        .getNadiTbodyHtml(sess);
     });
   }
 
-  function signature(){
-    // Tandatangan ringkas untuk elak re-render tak perlu
-    const arr = currentRowsSorted();
-    const parts = arr.map(r => [
-      r.id, r.createdAtMs, r.nama, r.ic, r.tel, r.alamat,
-      r.bp, r.pr, r.dxtType, r.dxt, r.tinggi, r.berat, r.bmi,
-      r.layak?1:0, r.takLayak?1:0, r.tcaDate, r.tcaTime, r.tcaStaff, r.remark,
-      r.lockedBy||'', r.lockedUntil||''
-    ].join('|')).join('||');
-    return parts;
+  async function fetchViaWebApp(sess) {
+    if (!GAS_URL) throw "no_webapp_url";
+    const url = GAS_URL + "?fn=getNadiTbodyHtml&title=" + encodeURIComponent(sess.title) + "&date=" + encodeURIComponent(sess.date);
+    const res = await fetch(url, { method: "GET", mode: "cors" });
+    if (!res.ok) throw new Error("HTTP " + res.status);
+    const data = await res.json();
+    return data; // {html:"..."}
   }
 
-  // --- Networking helpers ---
-  async function apiGet(action, params={}){
-    const url = new URL(String(window.SCRIPT_URL||'').trim());
-    url.searchParams.set('action', action);
-    if (window.ID_TOKEN) url.searchParams.set('id_token', window.ID_TOKEN);
-    for (const [k,v] of Object.entries(params)) url.searchParams.set(k, v);
-    const res = await fetch(url.toString(), { method:'GET', credentials:'omit' });
-    const text = await res.text();
-    try{ return JSON.parse(text); }catch(e){ throw new Error('Respons bukan JSON sah. Semak SCRIPT_URL / token.'); }
-  }
-  async function apiPost(action, body={}){
-    const url = new URL(String(window.SCRIPT_URL||'').trim());
-    const form = new URLSearchParams();
-    form.set('action', action);
-    if (window.ID_TOKEN) form.set('id_token', window.ID_TOKEN);
-    for (const [k,v] of Object.entries(body)) form.set(k, typeof v==='string'?v:JSON.stringify(v));
-    const res = await fetch(url.toString(), { method:'POST', headers:{'Content-Type':'application/x-www-form-urlencoded'}, body: form.toString(), credentials:'omit' });
-    const text = await res.text();
-    try{ return JSON.parse(text); }catch(e){ throw new Error('Respons bukan JSON sah.'); }
-  }
+  let timer = null;
+  let lastKey = null;
 
-  // --- Push (debounced per row) ---
-  function enqueuePush(rowId){
-    const old = state.pushTimers.get(rowId);
-    if (old) clearTimeout(old);
-    const t = setTimeout(()=> pushRow(rowId).catch(console.error), SAVE_DEBOUNCE_MS);
-    state.pushTimers.set(rowId, t);
-  }
-
-  async function pushRow(rowId){
-    const r = state.rows.get(rowId);
-    if (!r || !state.sessionId) return;
-    const payload = { ...r };
-    // Remove local helpers
-    delete payload._localOnly;
-    payload.createdAtMs = payload.createdAtMs || nowMs();
-    await apiPost('saveNadiLive', {
-      sessionId: state.sessionId,
-      staff: state.staff,
-      items: [ payload ]
-    });
-  }
-
-  // --- Lock helpers ---
-  function isLockedByOther(r){
-    if (!r || !r.lockedBy || !r.lockedUntil) return false;
-    const until = Number(r.lockedUntil)||0;
-    return (r.lockedBy !== state.staff) && (until > nowMs());
-  }
-  function lockRow(rowId){
-    const r = state.rows.get(rowId);
-    if (!r) return;
-    const until = nowMs() + LOCK_MS;
-    r.lockedBy = state.staff;
-    r.lockedUntil = until;
-    r._localOnly = false;
-    enqueuePush(rowId);
-  }
-  function unlockRow(rowId){
-    const r = state.rows.get(rowId);
-    if (!r) return;
-    r.lockedBy = '';
-    r.lockedUntil = '';
-    enqueuePush(rowId);
-  }
-
-  // --- Render ---
-  function render(){
-    ensureGhostRow();
-    const sig = signature();
-    if (sig === state.lastRenderSignature) return;
-    state.lastRenderSignature = sig;
-
-    const tb = document.getElementById(TABLE_BODY_ID);
-    if (!tb) return;
-
-    const arr = currentRowsSorted();
-    const rowsHtml = arr.map((r, idx)=>{
-      const locked = isLockedByOther(r);
-      const me = r.lockedBy === state.staff && Number(r.lockedUntil||0) > nowMs();
-      const trCls = [
-        locked ? 'row-locked' : '',
-        me ? 'row-me' : '',
-        r._dirty ? 'row-dirty' : ''
-      ].filter(Boolean).join(' ');
-
-      const chk = (v)=> v ? 'checked' : '';
-
-      return `<tr data-rowid="${r.id}" class="${trCls}">
-        <td class="text-center">${idx+1}</td>
-        <td><input class="form-control form-control-sm i-nama" value="${safe(r.nama)}" ${locked?'disabled':''}></td>
-        <td><input class="form-control form-control-sm i-ic" value="${safe(r.ic)}" ${locked?'disabled':''}></td>
-        <td style="width:80px"><input class="form-control form-control-sm i-umur" value="${safe(r.umur)}" ${locked?'disabled':''}></td>
-        <td><input class="form-control form-control-sm i-tel" value="${safe(r.tel)}" ${locked?'disabled':''}></td>
-        <td><input class="form-control form-control-sm i-alamat" value="${safe(r.alamat)}" ${locked?'disabled':''}></td>
-        <td style="width:80px"><input class="form-control form-control-sm i-bp" value="${safe(r.bp)}" ${locked?'disabled':''}></td>
-        <td style="width:80px"><input class="form-control form-control-sm i-pr" value="${safe(r.pr)}" ${locked?'disabled':''}></td>
-        <td><input class="form-control form-control-sm i-dxt" value="${safe(r.dxt)}" ${locked?'disabled':''}></td>
-        <td style="width:80px"><input class="form-control form-control-sm i-tinggi" value="${safe(r.tinggi)}" ${locked?'disabled':''}></td>
-        <td style="width:80px"><input class="form-control form-control-sm i-berat" value="${safe(r.berat)}" ${locked?'disabled':''}></td>
-        <td style="width:80px"><input class="form-control form-control-sm i-bmi" value="${safe(r.bmi)}" ${locked?'disabled':''}></td>
-        <td class="text-center"><input class="form-check-input i-layak" type="checkbox" ${chk(!!r.layak)} ${locked?'disabled':''}></td>
-        <td class="text-center"><input class="form-check-input i-taklayak" type="checkbox" ${chk(!!r.takLayak)} ${locked?'disabled':''}></td>
-        <td class="text-center">${locked?`<span class="lock-badge"><i class="bi bi-lock"></i>${safe(r.lockedBy)}</span>`:''}</td>
-        <td><input class="form-control form-control-sm i-tcadate" type="date" value="${safe(toIso(r.tcaDate))}" ${locked?'disabled':''}></td>
-        <td><input class="form-control form-control-sm i-remark" value="${safe(r.remark)}" ${locked?'disabled':''}></td>
-        <td>
-          <div class="input-group input-group-sm">
-            <input class="form-control i-tcatime" type="time" value="${safe(r.tcaTime)}" ${locked?'disabled':''}>
-            <input class="form-control i-tcastaff" placeholder="Staff" value="${safe(r.tcaStaff)}" ${locked?'disabled':''}>
-          </div>
-        </td>
-        <td class="text-nowrap">
-          <button class="btn btn-sm btn-outline-secondary btn-dup" ${locked?'disabled':''}><i class="bi bi-files"></i></button>
-          <button class="btn btn-sm btn-outline-danger btn-del" ${locked?'disabled':''}><i class="bi bi-trash"></i></button>
-        </td>
-      </tr>`;
-    }).join('');
-
-    tb.innerHTML = rowsHtml || '<tr><td colspan="18" class="text-center text-muted">Tiada data. Klik "Tambah Pesakit".</td></tr>';
-  }
-
-  // --- Event delegation ---
-  function setupEvents(){
-    const tb = document.getElementById(TABLE_BODY_ID);
-    if (!tb) return;
-
-    tb.addEventListener('focusin', (ev)=>{
-      const tr = ev.target.closest('tr[data-rowid]'); if (!tr) return;
-      const rowId = tr.getAttribute('data-rowid');
-      const r = state.rows.get(rowId); if (!r) return;
-      if (isLockedByOther(r)){
-        // Alihkan fokus ke baris kosong (atau cipta)
-        ensureGhostRow();
-        render();
-        const arr = currentRowsSorted();
-        const target = arr.find(rr => !isLockedByOther(rr) && isEmptyRow(rr)) || arr.find(rr => !isLockedByOther(rr));
-        const tr2 = target ? tb.querySelector(`tr[data-rowid="${target.id}"] input`) : null;
-        if (tr2) tr2.focus();
-        return;
+  async function tick() {
+    const sess = session();
+    if (!sess) return; // belum pilih tajuk/tarikh
+    if (liveLbl) liveLbl.textContent = sess.date + " · " + sess.title;
+    try {
+      let data;
+      try {
+        data = await fetchViaGoogleScriptRun(sess);
+      } catch(_){
+        data = await fetchViaWebApp(sess);
       }
-      // Ambil lock untuk saya
-      lockRow(rowId);
-    });
-
-    tb.addEventListener('focusout', (ev)=>{
-      const tr = ev.target.closest('tr[data-rowid]'); if (!tr) return;
-      const rowId = tr.getAttribute('data-rowid');
-      unlockRow(rowId);
-    });
-
-    tb.addEventListener('input', (ev)=>{
-      const tr = ev.target.closest('tr[data-rowid]'); if (!tr) return;
-      const rowId = tr.getAttribute('data-rowid');
-      const r = state.rows.get(rowId); if (!r) return;
-
-      r._dirty = true;
-      if (ev.target.classList.contains('i-nama'))    r.nama    = ev.target.value;
-      if (ev.target.classList.contains('i-ic'))      r.ic      = ev.target.value;
-      if (ev.target.classList.contains('i-umur'))    r.umur    = ev.target.value;
-      if (ev.target.classList.contains('i-tel'))     r.tel     = ev.target.value;
-      if (ev.target.classList.contains('i-alamat'))  r.alamat  = ev.target.value;
-      if (ev.target.classList.contains('i-bp'))      r.bp      = ev.target.value;
-      if (ev.target.classList.contains('i-pr'))      r.pr      = ev.target.value;
-      if (ev.target.classList.contains('i-dxt'))     r.dxt     = ev.target.value;
-      if (ev.target.classList.contains('i-tinggi'))  r.tinggi  = ev.target.value;
-      if (ev.target.classList.contains('i-berat'))   r.berat   = ev.target.value;
-      if (ev.target.classList.contains('i-bmi'))     r.bmi     = ev.target.value;
-      if (ev.target.classList.contains('i-tcadate')) r.tcaDate = ev.target.value;
-      if (ev.target.classList.contains('i-tcatime')) r.tcaTime = ev.target.value;
-      if (ev.target.classList.contains('i-tcastaff'))r.tcaStaff= ev.target.value;
-      if (ev.target.classList.contains('i-remark'))  r.remark  = ev.target.value;
-      if (ev.target.classList.contains('i-layak'))   r.layak   = ev.target.checked;
-      if (ev.target.classList.contains('i-taklayak'))r.takLayak= ev.target.checked;
-
-      r._localOnly = false;
-      r.createdAtMs = r.createdAtMs || nowMs();
-
-      enqueuePush(rowId);
-      ensureGhostRow();
-      render();
-    });
-
-    tb.addEventListener('click', (ev)=>{
-      const tr = ev.target.closest('tr[data-rowid]'); if (!tr) return;
-      const rowId = tr.getAttribute('data-rowid');
-      const r = state.rows.get(rowId); if (!r) return;
-      if (ev.target.closest('.btn-dup')){
-        const copy = { ...r };
-        const id = 'row_'+Math.random().toString(36).slice(2);
-        copy.id = id;
-        copy.createdAtMs = nowMs();
-        copy.lockedBy = ''; copy.lockedUntil='';
-        copy._localOnly = false;
-        state.rows.set(id, copy);
-        enqueuePush(id);
-        render();
-      }
-      if (ev.target.closest('.btn-del')){
-        state.rows.delete(rowId);
-        // Push kosongkan rekod (mark as deleted)
-        enqueuePush(rowId); // optional: server tidak padam; paparan akan hide bila tiada dalam snapshot? biarkan local
-        render();
-      }
-    });
-  }
-
-  // --- Polling ---
-  async function poll(){
-    if (!state.sessionId) return;
-    try{
-      const res = await apiGet('getNadiLive', { sessionId: state.sessionId });
-      if (!res || res.status!=='success') return;
-      const items = Array.isArray(res.items) ? res.items : [];
-      items.forEach(it => {
-        const id = String(it.id || it.rowId || it.RowId || it.ID || '').trim();
-        if (!id) return;
-        const existing = state.rows.get(id) || { id };
-        const merged = { ...existing, ...it };
-        merged.createdAtMs = Number(merged.createdAtMs || existing.createdAtMs || nowMs());
-        merged._localOnly = false;
-        state.rows.set(id, merged);
-      });
-      // Buang baris-baris local-only lama jika ada snapshot sebenar utk id sama
-      ensureGhostRow();
-      render();
-    }catch(e){
-      console.error('[Live Poll]', e);
+      if (data && data.html != null) applyHtmlIfChanged(data.html);
+    } catch (e) {
+      // senyapkan error ringan supaya tidak ganggu UI
+      // console.warn("[NADI-POLL] gagal ambil data:", e);
     }
   }
 
   function startPolling(){
-    stopPolling();
-    state.pollingTimer = setInterval(poll, POLL_MS);
-    poll(); // first tick
-  }
-  function stopPolling(){
-    if (state.pollingTimer) clearInterval(state.pollingTimer);
-    state.pollingTimer = null;
-  }
-
-  // --- Session wiring ---
-  function useSelectedSession(){
-    const sid = computeSessionId();
-    if (!sid){
-      window.alert('Sila pilih sesi atau isi Tajuk & Tarikh program.');
-      return;
+    const sess = session();
+    if (!sess) return alert("Sila isi Tajuk Program dan Tarikh terlebih dahulu.");
+    if (lastKey !== sess.key){
+      lastKey = sess.key;
+      tick(); // muat sekarang
     }
-    state.sessionId = sid;
-    $('#liveSessionLabel') && ($('#liveSessionLabel').textContent = sid);
-    startPolling();
+    if (timer) clearInterval(timer);
+    timer = setInterval(tick, POLL_MS);
+    log("Polling bermula untuk sesi:", sess.key, "setiap", POLL_MS, "ms");
   }
 
-  function wireSessionControls(){
-    $('#btnUseSession')?.addEventListener('click', useSelectedSession);
-    $('#btnRefreshSessions')?.addEventListener('click', async ()=>{
-      try{
-        const dateEl = $('#nadiProgramDate');
-        const iso = (dateEl && dateEl.value) ? dateEl.value : (new Date().toISOString().slice(0,10));
-        const res = await apiGet('listNadiSessionsLive', { date: iso });
-        const sel = $('#nadiSessionSelect');
-        if (sel){
-          const opts = (res.sessions||[]).map(s=> `<option value="${s.sessionId}">${s.title} — ${s.programDate}</option>`).join('');
-          sel.innerHTML = `<option value="">(Pilih sesi…)</option>` + opts;
-        }
-      }catch(e){ console.error(e); }
-    });
-  }
+  // Hook
+  useBtn && useBtn.addEventListener("click", (e)=>{ e.preventDefault(); startPolling(); });
+  titleEl && titleEl.addEventListener("change", ()=>{ lastKey=null; });
+  dateEl && dateEl.addEventListener("change", ()=>{ lastKey=null; });
 
-  // --- Replace/augment addNadiRow global ---
-  window.addNadiRow = function addNadiRow(){
-    if (!state.sessionId) useSelectedSession(); // cuba set dahulu
-    const id = 'row_'+Math.random().toString(36).slice(2);
-    const r = {
-      id, createdAtMs: nowMs(), nama:'', ic:'', umur:'', tel:'', alamat:'',
-      bp:'', pr:'', dxtType:'', dxt:'', tinggi:'', berat:'', bmi:'',
-      layak:false, takLayak:false, tcaDate:'', tcaTime:'', tcaStaff:'', remark:''
-    };
-    state.rows.set(id, r);
-    render();
-    enqueuePush(id);
-    // fokus ke sel Nama
-    const tb = document.getElementById(TABLE_BODY_ID);
-    const input = tb?.querySelector(`tr[data-rowid="${id}"] .i-nama`);
-    input && input.focus();
-  };
-
-  // --- Init ---
-  function init(){
-    if (!document.getElementById(TABLE_BODY_ID)) return;
-    state.staff = getStaffEmail();
-    wireSessionControls();
-    setupEvents();
-    ensureGhostRow();
-    render();
-
-    // Auto-pilih sesi jika ada label sedia ada
-    const existing = $('#liveSessionLabel')?.textContent.trim();
-    if (existing) { state.sessionId = existing; startPolling(); }
-  }
-
-  window.addEventListener('DOMContentLoaded', init);
+  // Jika user sudah isi tajuk+tarikh, mula polling selepas load
+  window.addEventListener("load", ()=>{
+    if (session()) startPolling();
+  });
 })();
 </script>
-<!-- === End Realtime Patch === -->
+<!-- =================== END NADI Auto-Refresh (Polling via Apps Script) =================== -->
+
 </body>
 </html>
