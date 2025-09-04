@@ -1,6 +1,7 @@
 <!DOCTYPE html>
 <html lang="ms">
 <head>
+<meta http-equiv="Cross-Origin-Opener-Policy" content="same-origin-allow-popups">
 
   <!-- Performance resource hints -->
   <link rel="preconnect" href="https://cdn.jsdelivr.net">
@@ -25,7 +26,8 @@
   <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2"></script>
 
   <!-- SheetJS (Excel) via CDN -->
-<!-- XLSX robust loader + override (SIAP TAMPAL DI <head>) -->
+<!-- XLSX robust loader + override (SIAP TAMPAL DI <head>
+<meta http-equiv="Cross-Origin-Opener-Policy" content="same-origin-allow-popups">) -->
 <script>
   (function () {
     // Jika dah ada, tak perlu apa-apa
@@ -400,6 +402,7 @@
 
   <!-- Header -->
   <header class="page-header">
+<meta http-equiv="Cross-Origin-Opener-Policy" content="same-origin-allow-popups">
     <div class="container">
       <div class="row align-items-center g-2">
         <div class="col-md-6">
@@ -1098,7 +1101,8 @@
   // Padanan objek → {nama, ic, telefon, alamat}
   function mapRow(raw) {
     const entries = Object.entries(raw);
-    const pick = (groups) => {
+    const pick = (groups) =>
+<meta http-equiv="Cross-Origin-Opener-Policy" content="same-origin-allow-popups"> {
       // cuba padanan tepat dulu
       for (const [k,v] of entries) {
         const t = canon(k);
@@ -2854,7 +2858,23 @@ async function exportNadiCSV() {
       const aoa = [titleRow, HEADER, ...dataRows];
       const ws  = XLSX.utils.aoa_to_sheet(aoa);
 
-      // Lebar kolum asas yang kemas
+      
+      // Force text for key columns to preserve leading zeros / avoid auto-numbering in Excel
+      try {
+        const __ref = ws['!ref'];
+        if (__ref) {
+          const __range = XLSX.utils.decode_range(__ref);
+          const __textCols = [0,1,2,3,4]; // TARIKH, NAMA, NO IC, NO TEL, ALAMAT
+          for (let R = __range.s.r; R <= __range.e.r; ++R) {
+            for (const C of __textCols) {
+              const addr = XLSX.utils.encode_cell({r:R, c:C});
+              const cell = ws[addr];
+              if (cell && cell.v !== undefined && cell.v !== null) { cell.t = 's'; }
+            }
+          }
+        }
+      } catch(e) { /* noop */ }
+// Lebar kolum asas yang kemas
       ws['!cols'] = [
         { wch: 12 }, // TARIKH
         { wch: 22 }, // NAMA
