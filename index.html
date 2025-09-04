@@ -4288,8 +4288,6 @@ window.saveNadiStateDebounced = window.saveNadiStateDebounced || saveNadiStateDe
   if (location.hash === '#sejarah'){ loadPrograms(); }
 })();
 
-</script>
-<script>
 // === NADI Voucher hook: toggle primary button & enable voucher date ===
 (function(){
   const container = document.getElementById('nadiContainer');
@@ -4436,8 +4434,7 @@ if (btn) {
   // Initial sweep (if any prefilled rows)
   (document.getElementById('nadiContainer')?.querySelectorAll('input') || []).forEach(handle);
 })();
-</script>
-<script>
+
 (function waitGIS(){
   if (window.google?.accounts?.id) {
     try { if (typeof initGoogleSignIn === 'function') initGoogleSignIn(); } catch(e){ console.warn(e); }
