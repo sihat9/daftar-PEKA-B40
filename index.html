@@ -2999,14 +2999,20 @@ function queueSaveNadiLive(row, opts = {}) {
     row.dataset.sessionId = NADI_LIVE_SESSION_ID || '';
     payload.sessionId = row.dataset.sessionId;
   }
-  nadiLiveSaveQueue.set(payload.id, payload);
-  const items = Array.from(nadiLiveSaveQueue.values());
-      nadiLiveSaveQueue.clear();
-      await postForm({
-        action: 'saveNadiLive',
-        sessionId: NADI_LIVE_SESSION_ID,
-        items: JSON.stringify(items)
-      }, { silent:true });
+ nadiLiveSaveQueue.set(payload.id, payload);
+const items = Array.from(nadiLiveSaveQueue.values());
+nadiLiveSaveQueue.clear();
+
+// Pindahkan await ke dalam fungsi async
+async function saveNadiData() {
+  await postForm({
+    action: 'saveNadiLive',
+    sessionId: NADI_LIVE_SESSION_ID,
+    items: JSON.stringify(items)
+  }, { silent:true });
+}
+
+saveNadiData();
 
   // Helper untuk flush sekarang
   async function flushNow() {
