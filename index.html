@@ -32,7 +32,7 @@
     if (window.XLSX) return;
 
     // Helper umum: muat <script> sekali
-    window.loadScriptOnce = window.loadScriptOnce || (async function(){
+    window.loadScriptOnce = window.loadScriptOnce || (function () {
       const loaded = new Set();
       return function loadScriptOnce(url) {
         return new Promise((resolve, reject) => {
@@ -963,7 +963,7 @@
    - Auto detect header row & delimiter
    - Banyak sinonim lajur (IC/NRIC/KP/MyKad, No. H/P/WhatsApp)
    ======================= */
-(async function(){
+(function () {
   const fileInput = document.getElementById('excelFile');
   const tableBody = document.getElementById('kelayakanTable');
   if (!fileInput || !tableBody) return;
@@ -1470,10 +1470,11 @@ function initGoogleSignIn(){
       const el = document.getElementById(id);
       if (!el) return;
       try {
-        // Clear previous renders (if any) to prevent duplications
         el.innerHTML = "";
         google.accounts.id.renderButton(el, { theme: 'outline', size: 'medium', text:'signin_with' });
-      } catch(e) { console.warn('GIS render error for', id, e); }
+      } catch(e){
+        console.warn('[GIS] render error for', id, e);
+      }
     };
     if (document.readyState === 'loading') {
       document.addEventListener('DOMContentLoaded', doRender, { once:true });
@@ -3002,7 +3003,7 @@ function extractRowPayload(row){
 
 // Queue save (debounce per baris)
 // Queue save (debounce per baris) + immediate flush bila urgent
-async function queueSaveNadiLive(row, opts = {}) {
+function queueSaveNadiLive(row, opts = {}) {
   if (!NADI_LIVE_SESSION_ID) return; // tiada sesi
 
   const urgent = !!opts.urgent;
@@ -3887,7 +3888,7 @@ function activateFromHash(){
 </script>
 
   <script>
-  (async function(){
+  (function(){
     // === Auto-refresh (gentle) ===
     // Refresh every REFRESH_MS if the user is idle for IDLE_MS, page visible, and tiada modal terbuka.
     var REFRESH_MS = 10 * 60 * 1000; // 10 min
@@ -4001,7 +4002,7 @@ startNadiLiveSync?.();               // akan panggil pullNadiLiveOnce() awal
 <script>
 
 // === Tambahan: Autosave, TCA voucher, dan Sejarah Saringan ===
-(async function(){
+(function(){
   const NADI_KEY = 'nadi_autosave_v1';
 
   function debounce(fn, ms){ let t; return function(...a){ clearTimeout(t); t=setTimeout(()=>fn.apply(this,a), ms); }; }
@@ -4310,7 +4311,7 @@ function saveNadiStateDebounced(){
 </script>
 <script>
 // === NADI Voucher hook: toggle primary button & enable voucher date ===
-(async function(){
+(function(){
   const container = document.getElementById('nadiContainer');
   if (!container) return;
   container.addEventListener('change', function(e){
@@ -4326,7 +4327,7 @@ function saveNadiStateDebounced(){
 </script>
 <script>
 // === NADI: Mutual exclusivity for Layak / Tidak Layak / TCA voucher + controls ===
-(async function(){
+(function(){
   const cont = document.getElementById('nadiContainer');
   if (!cont) return;
   function setEnabled(el, on){ if (el) { el.disabled = !on; } }
@@ -4371,7 +4372,7 @@ if (btn) {
 </script>
 <script>
 // === NADI Indicators (BP/PR/DXT/BMI) ===
-(async function(){
+(function(){
   function applyIndicator(elView, kind, raw, arg){
     if (!elView) return;
     const v = String(raw||'').trim();
@@ -4466,7 +4467,7 @@ if (btn) {
 })();
 </script><script>
 // === Patch helpers: Voucher enable & click intercept (non-intrusive) ===
-(async function(){
+(function(){
   // Enable button & relabel when voucher toggled
   document.addEventListener('change', function(e){
     const el = e.target;
