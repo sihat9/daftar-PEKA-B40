@@ -74,7 +74,7 @@
 </script>
 
   <!-- Google Identity Services (Sign-In) -->
-  <script src="https://accounts.google.com/gsi/client" async defer></script>
+  <script src="https://accounts.google.com/gsi/client" async defer onload="console.log('[GIS] client loaded')"></script>
 
   <!-- html2canvas untuk tangkap preview → imej (BARU) -->
   <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
@@ -343,7 +343,8 @@
       </a>
 
       <!-- Google Sign-in button placeholder -->
-      <div id="signinArea" class="d-lg-none me-2"></div>
+      <div id="signinArea" class="d-lg-none me-2"><div id="g_id_onload" data-client_id="863564124015-838ksbuk27f0kkomm16hnc3bu608pbrr.apps.googleusercontent.com" data-callback="handleCredentialResponse" data-auto_select="false" data-cancel_on_tap_outside="true"></div>
+  <div class="g_id_signin" data-type="standard" data-size="large" data-text="signin_with"></div></div>
 
       <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarMain">
         <span class="navbar-toggler-icon"></span>
@@ -390,7 +391,8 @@
         </ul>
 
         <div class="d-none d-lg-flex align-items-center gap-2">
-          <div id="signinAreaDesktop"></div>
+          <div id="signinAreaDesktop"><div id="g_id_onload" data-client_id="863564124015-838ksbuk27f0kkomm16hnc3bu608pbrr.apps.googleusercontent.com" data-callback="handleCredentialResponse" data-auto_select="false" data-cancel_on_tap_outside="true"></div>
+  <div class="g_id_signin" data-type="standard" data-size="large" data-text="signin_with"></div></div>
           <span id="staffBadge" class="badge bg-secondary d-none"><i class="bi bi-person-check me-1"></i><span id="staffEmail"></span></span>
           <!-- (Butang Log Calls terapung di bawah – tidak dalam navbar) -->
         </div>
@@ -1456,20 +1458,31 @@ let ID_TOKEN = '';      // diisi selepas login
 let STAFF_EMAIL = '';   // email sebenar (server akan sahkan juga)
 
 function initGoogleSignIn(){
+  if (!(window.google && google.accounts && google.accounts.id)) return;
   google.accounts.id.initialize({
     client_id: GOOGLE_CLIENT_ID,
     callback: handleCredentialResponse,
     auto_select: false,
     cancel_on_tap_outside: true
   });
-  google.accounts.id.renderButton(
-    document.getElementById('signinArea'),
-    { theme: 'outline', size: 'medium', text:'signin_with' }
-  );
-  google.accounts.id.renderButton(
-    document.getElementById('signinAreaDesktop'),
-    { theme: 'outline', size: 'medium', text:'signin_with' }
-  );
+  const renderSafe = (id) => {
+    const doRender = () => {
+      const el = document.getElementById(id);
+      if (!el) return;
+      try {
+        // Clear previous renders (if any) to prevent duplications
+        el.innerHTML = "";
+        google.accounts.id.renderButton(el, { theme: 'outline', size: 'medium', text:'signin_with' });
+      } catch(e) { console.warn('GIS render error for', id, e); }
+    };
+    if (document.readyState === 'loading') {
+      document.addEventListener('DOMContentLoaded', doRender, { once:true });
+    } else {
+      doRender();
+    }
+  };
+  renderSafe('signinArea');
+  renderSafe('signinAreaDesktop');
 }
 
 async function handleCredentialResponse(resp){
@@ -1846,7 +1859,7 @@ function bootstrapApp(){
 /* =======================
    NAV & UI
    ======================= */
-function setupNavigation(){
+async function setupNavigation(){
   document.querySelectorAll('.nav-link').forEach(a=>{
     a.addEventListener('click',(e)=>{
       e.preventDefault();
@@ -1887,7 +1900,7 @@ function setupNavigation(){
   document.getElementById('statPeriodCompleted').addEventListener('change', function(){ loadCompletedStatistics(this.value); });
 }
 
-function setupModals(){
+async function setupModals(){
   retcaModal = new bootstrap.Modal(document.getElementById('retcaModal'));
   document.getElementById('btnSubmitRetca').addEventListener('click', submitRetca);
 
@@ -2048,7 +2061,7 @@ function parseCSVText(text){
   return rows;
 }
 
-function setupExcel(){
+async function setupExcel(){
   const input = document.getElementById('excelFile');
   const tbody = document.getElementById('kelayakanTable');
 
@@ -2345,7 +2358,7 @@ function updateNadiSummary() {
   document.getElementById('nadiTakLayakCount').textContent = takLayakCount;
 }
 
-function addNadiRow(){
+async function addNadiRow(){
   const container = document.getElementById('nadiContainer');
   const id = 'n'+Date.now()+Math.random().toString(36).slice(2,6);
   const row = document.createElement('tr');
@@ -2989,7 +3002,7 @@ function extractRowPayload(row){
 
 // Queue save (debounce per baris)
 // Queue save (debounce per baris) + immediate flush bila urgent
-function queueSaveNadiLive(row, opts = {}) {
+async function queueSaveNadiLive(row, opts = {}) {
   if (!NADI_LIVE_SESSION_ID) return; // tiada sesi
 
   const urgent = !!opts.urgent;
