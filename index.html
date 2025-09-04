@@ -3862,6 +3862,9 @@ async function daftarPesakit(){
     try { initGoogleSignIn(); } catch(e) { console.error(e); }
   });
 
+
+})();
+
 /* =======================
    HASH ROUTING (BARU)
    ======================= */
@@ -3871,7 +3874,9 @@ function activateFromHash(){
   const link = document.querySelector(`.nav-link[href="${hash}"]`);
   if (link){ link.click(); }
 }
+</script>
 
+  <script>
   (function(){
     // === Auto-refresh (gentle) ===
     // Refresh every REFRESH_MS if the user is idle for IDLE_MS, page visible, and tiada modal terbuka.
@@ -3980,6 +3985,11 @@ updateLiveSessionBadge?.();
 startNadiLiveSync?.();               // akan panggil pullNadiLiveOnce() awal
 
 }
+
+</script>
+
+<script>
+
 // === Tambahan: Autosave, TCA voucher, dan Sejarah Saringan ===
 (function(){
   const NADI_KEY = 'nadi_autosave_v1';
@@ -4288,6 +4298,8 @@ window.saveNadiStateDebounced = window.saveNadiStateDebounced || saveNadiStateDe
   if (location.hash === '#sejarah'){ loadPrograms(); }
 })();
 
+</script>
+<script>
 // === NADI Voucher hook: toggle primary button & enable voucher date ===
 (function(){
   const container = document.getElementById('nadiContainer');
@@ -4434,7 +4446,8 @@ if (btn) {
   // Initial sweep (if any prefilled rows)
   (document.getElementById('nadiContainer')?.querySelectorAll('input') || []).forEach(handle);
 })();
-
+</script>
+<script>
 (function waitGIS(){
   if (window.google?.accounts?.id) {
     try { if (typeof initGoogleSignIn === 'function') initGoogleSignIn(); } catch(e){ console.warn(e); }
