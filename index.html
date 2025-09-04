@@ -3029,7 +3029,7 @@ function startNadiLiveSync(){
   // Tarik sekali segera
   pullNadiLiveOnce();
   // Kemudian setiap 6s
-  nadiLiveTimer = setInterval(pullNadiLiveOnce, 6000);
+  nadiLiveTimer = setInterval(pullNadiLiveOnce, 1500);
 }
 function stopNadiLiveSync(){
   if (nadiLiveTimer){ clearInterval(nadiLiveTimer); nadiLiveTimer = null; }
@@ -4448,5 +4448,259 @@ if (btn) {
     }
   }, true);
 })();
-</script></body>
+</script>
+<script>
+// === Live Session: enhancements (snapshot, faster polling, soft locks, typing) ===
+(function(){
+  // Client identity (for lock/typing)
+  let NADI_CLIENT_ID = null;
+  async function initClientId(){
+    try{
+      const res = await getJSON({ action:'whoami' }, { silent:true });
+      if (res && (res.client || res.email || res.user)) {
+        NADI_CLIENT_ID = (res.client || res.email || res.user);
+      }
+    }catch(e){ /* no-op */ }
+    if (!NADI_CLIENT_ID){
+      NADI_CLIENT_ID = 'client-' + Math.random().toString(36).slice(2,8);
+    }
+  }
+  initClientId();
+
+  // Ensure a blank tail row exists so another user can keep typing even if last row is locked
+  function isRowEmpty(row){
+    const sel = ['.nadi-nama','.nadi-ic','.nadi-tel','.nadi-alamat','.nadi-bp','.nadi-pr','.nadi-tinggi','.nadi-berat','.nadi-bmi','.nadi-dxt','.nadi-remark'];
+    for (const s of sel){
+      const el = row.querySelector(s);
+      if (el && String(el.value||'').trim()!=='') return false;
+    }
+    const ck = ['.nadi-layak','.nadi-taklayak'];
+    for (const s of ck){
+      const el = row.querySelector(s);
+      if (el && el.checked) return false;
+    }
+    return true;
+  }
+  function ensureTailRow(){
+    const container = document.getElementById('nadiContainer');
+    if (!container) return;
+    const rows = container.querySelectorAll('.nadi-row');
+    if (!rows.length){ addNadiRow(); return; }
+    const last = rows[rows.length-1];
+    if (!isRowEmpty(last)) addNadiRow();
+  }
+
+  // Load a full snapshot for the selected session (clear table then merge items)
+  async function loadSessionSnapshot(sessionId){
+    try{
+      const res = await getJSON({ action:'getNadiLive', sessionId }, { silent:false });
+      const container = document.getElementById('nadiContainer');
+      if (!container) return;
+      container.innerHTML = '';
+      // Reset row counter if defined
+      if (typeof nadiRowCounter !== 'undefined') { nadiRowCounter = 0; }
+      if (res && res.status==='success' && Array.isArray(res.items)){
+        mergeLiveRowsIntoUI(res.items);
+      }
+      ensureTailRow();
+    }catch(e){ console.warn('loadSessionSnapshot failed', e); }
+  }
+  window.loadSessionSnapshot = loadSessionSnapshot;
+
+  // Soft lock: mark a row locked by someone else
+  function applyRemoteLocks(items){
+    items.forEach(it=>{
+      if (!it || !it.id) return;
+      const row = document.querySelector(`#nadiContainer .nadi-row[data-row-id="${it.id}"], #nadiContainer #${it.id}`);
+      if (!row) return;
+      const lockedBy = it.lockedBy || '';
+      const isRemote = lockedBy && lockedBy !== NADI_CLIENT_ID;
+      row.classList.toggle('locked-remote', !!isRemote);
+      const inputs = row.querySelectorAll('input, textarea, select, button');
+      inputs.forEach(inp => {
+        if (isRemote) {
+          // allow viewing but prevent editing
+          if (!inp.classList.contains('view-mode')) inp.setAttribute('disabled','disabled');
+        } else {
+          inp.removeAttribute('disabled');
+        }
+      });
+      // small badge
+      let badge = row.querySelector('.nadi-lock-badge');
+      if (isRemote){
+        if (!badge){
+          badge = document.createElement('div');
+          badge.className = 'nadi-lock-badge';
+          badge.textContent = 'Dikunci oleh pengguna lain';
+          row.firstElementChild?.appendChild(badge);
+        }
+      } else if (badge){
+        badge.remove();
+      }
+    });
+  }
+
+  // Enhance merge: after merge, apply remote locks + keep a tail row
+  const _mergeLiveRowsIntoUI = window.mergeLiveRowsIntoUI;
+  window.mergeLiveRowsIntoUI = function(items){
+    try{
+      _mergeLiveRowsIntoUI(items);
+      applyRemoteLocks(items);
+      ensureTailRow();
+    }catch(e){ _mergeLiveRowsIntoUI(items); }
+  };
+
+  // Focus/typing lock behaviour (soft, graceful if server ignores)
+  const container = document.getElementById('nadiContainer');
+  if (container){
+    container.addEventListener('focusin', e=>{
+      const row = e.target.closest('.nadi-row');
+      if (!row) return;
+      row.dataset.lockedBy = NADI_CLIENT_ID;
+      try {
+        // push lightweight lock flag along with row payload
+        queueSaveNadiLive(row);
+      } catch(e){}
+    });
+    container.addEventListener('focusout', e=>{
+      const row = e.target.closest('.nadi-row');
+      if (!row) return;
+      // release on blur if no focused input in the same row
+      if (!row.contains(document.activeElement)){
+        delete row.dataset.lockedBy;
+        try { queueSaveNadiLive(row); } catch(e){}
+      }
+    });
+  }
+
+  // Augment payload to include lockedBy if present
+  const __extract = window.extractRowPayload;
+  window.extractRowPayload = function(row){
+    const p = __extract(row);
+    if (row && row.dataset && row.dataset.lockedBy) p.lockedBy = row.dataset.lockedBy;
+    return p;
+  };
+
+  // Adjust start/stop to also refresh snapshot on session change
+  const __start = window.startNadiLiveSync;
+  const __stop  = window.stopNadiLiveSync;
+
+  window.startNadiLiveSync = function(){
+    __stop();
+    if (!window.NADI_LIVE_SESSION_ID) return;
+    // First pull quickly to get any locks/updates
+    pullNadiLiveOnce();
+    window.nadiLiveTimer = setInterval(pullNadiLiveOnce, 1500);
+  };
+
+  // When user selects a new session: stop, snapshot, start
+  const __useSession = window.useSelectedSession;
+  window.useSelectedSession = async function(){
+    const prev = window.NADI_LIVE_SESSION_ID;
+    // call original to set NADI_LIVE_SESSION_ID & UI
+    __useSession.apply(this, arguments);
+    try{
+      if (window.NADI_LIVE_SESSION_ID && window.NADI_LIVE_SESSION_ID !== prev){
+        __stop();
+        await loadSessionSnapshot(window.NADI_LIVE_SESSION_ID);
+        window.startNadiLiveSync();
+      }
+    }catch(e){ console.warn('switch session snapshot failed', e); }
+  };
+
+  // CSS for lock badge
+  const style = document.createElement('style');
+  style.textContent = `.locked-remote { background: rgba(255, 241, 213, .5); }
+  .nadi-lock-badge { margin-top:4px; font-size:11px; color:#b76e00; }`;
+  document.head.appendChild(style);
+
+})(); 
+</script>
+
+
+<script>
+// === Live Session: robustness patch (row numbering, immediate pull, stable IDs) ===
+(function(){
+  // Renumber visible rows so the first is always "1"
+  function renumberNadiRows(){
+    const rows = document.querySelectorAll('#nadiContainer .nadi-row');
+    let i = 1;
+    rows.forEach(r => {
+      const c = r.querySelector('.nadi-counter');
+      if (c) c.textContent = i++;
+    });
+    if (typeof nadiRowCounter !== 'undefined') nadiRowCounter = rows.length;
+  }
+  window.renumberNadiRows = renumberNadiRows;
+
+  // After adding a row, renumber (monkey-patch addNadiRow to call renumber)
+  if (typeof window.addNadiRow === 'function'){
+    const __add = window.addNadiRow;
+    window.addNadiRow = function(){
+      const res = __add.apply(this, arguments);
+      try { renumberNadiRows(); } catch(e){}
+      return res;
+    };
+  }
+
+  // Ensure new items get a stable DOM id equal to its record id
+  if (typeof window.mergeLiveRowsIntoUI === 'function'){
+    const __merge = window.mergeLiveRowsIntoUI;
+    window.mergeLiveRowsIntoUI = function(items){
+      __merge(items);
+      try {
+        items.forEach(it => {
+          if (!it || !it.id) return;
+          const sel = `#nadiContainer .nadi-row[data-row-id="${it.id}"], #nadiContainer #${CSS.escape(it.id)}`;
+          const row = document.querySelector(sel);
+          if (row){
+            row.dataset.rowId = it.id;
+            if (row.id !== it.id) row.id = it.id; // stabilize
+          }
+        });
+        renumberNadiRows();
+      } catch(e){}
+    };
+  }
+
+  // After pushing a change, trigger a quick pull for faster cross-device reflection
+  if (typeof window.queueSaveNadiLive === 'function'){
+    const __queue = window.queueSaveNadiLive;
+    window.queueSaveNadiLive = function(row){
+      const ret = __queue.apply(this, arguments);
+      try { setTimeout(()=>{ try{ pullNadiLiveOnce(); }catch(e){} }, 250); } catch(e){}
+      return ret;
+    };
+  }
+
+  // When switching session snapshot is loaded, renumber again
+  if (typeof window.loadSessionSnapshot === 'function'){
+    const __snap = window.loadSessionSnapshot;
+    window.loadSessionSnapshot = async function(sessionId){
+      const r = await __snap.apply(this, arguments);
+      try { renumberNadiRows(); } catch(e){}
+      return r;
+    };
+  }
+})();
+</script>
+
+
+
+<script>
+(function(){
+  document.addEventListener('DOMContentLoaded', function(){
+    const sel = document.getElementById('nadiSessionSelect');
+    if (sel && !sel.dataset._autoHooked){
+      sel.addEventListener('change', function(){
+        // Auto-switch when a session is picked
+        try { useSelectedSession(); } catch(e){ /* no-op */ }
+      });
+      sel.dataset._autoHooked = '1';
+    }
+  });
+})();
+</script>
+
+</body>
 </html>
