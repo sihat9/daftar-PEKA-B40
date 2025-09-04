@@ -3934,6 +3934,10 @@ function useSelectedSession(){
     });
     localStorage.setItem(NADI_KEY, JSON.stringify(rows));
   }
+function saveNadiStateDebounced(){
+  clearTimeout(window.__saveNadiT);
+  window.__saveNadiT = setTimeout(saveNadiState, 400);
+}
 
   const saveNadiStateDebounced = debounce(saveNadiState, 400);
 
