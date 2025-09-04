@@ -4505,13 +4505,20 @@ if (btn) {
 
       if (res && res.status === 'success'){
   if (typeof toast === 'function') toast('Berjaya','Pesakit berjaya didaftarkan (voucher)','success');
+  
   try { updateNadiRowData?.(row); } catch(_){}
+  
   try { 
-    // Tambahkan async/await dengan benar
-    if (loadTCACallData) {
-      await loadTCACallData();
-    }
+    // Gunakan IIFE async untuk handle await
+    (async () => {
+      try {
+        await loadTCACallData?.();
+      } catch (err) {
+        console.error('Error loading TCA data:', err);
+      }
+    })();
   } catch(_){}
+  
   location.hash = '#tca-call';
 } else {
   throw new Error(res?.message || 'Gagal mendaftar pesakit (voucher)');
