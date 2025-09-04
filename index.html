@@ -1563,13 +1563,6 @@ async function getJSON(params={}, {silent=false, msg='Memuat data…'}={}){
   } finally { if (!silent) hideLoader(); }
 }
 
-async ,
-        body: new URLSearchParams({ ...params, id_token: ID_TOKEN })
-      }),
-      new Promise((_,rej)=> setTimeout(()=>rej(new Error('Timeout')), 12000))
-    ]);
-    return await r.json();
-  } finally { if (!silent) hideLoader(); }
 }
 
 /* =======================
@@ -3888,7 +3881,6 @@ function updateLiveSessionBadge(){
   const badge = document.getElementById('liveSessionLabel');
   if (badge) badge.textContent = NADI_LIVE_SESSION_ID ? NADI_LIVE_SESSION_ID : '-';
 }
-async , { silent:true });
     const sel = document.getElementById('nadiSessionSelect');
     if (!sel) return;
     sel.innerHTML = '';
@@ -4312,7 +4304,7 @@ function computeSessionIdFromInputs(){
 }
 
 
-function postForm(params={}, {silent=false, msg='Menyimpan data…'}={}){
+async function postForm(params={}, {silent=false, msg='Menyimpan data…'}={}){
   if (!ID_TOKEN) throw new Error('Belum login');
   if (!silent) showLoader(msg);
   try{
