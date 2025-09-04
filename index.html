@@ -4028,7 +4028,7 @@ function saveNadiStateDebounced(){
   window.__saveNadiT = setTimeout(saveNadiState, 400);
 }
 
-  const saveNadiStateDebounced = debounce(saveNadiState, 400);
+  saveNadiStateDebounced = debounce(saveNadiState, 400);
 
   function restoreNadiState(){
     try{
