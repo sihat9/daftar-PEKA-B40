@@ -1,4 +1,4 @@
-  <!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="ms">
 <head>
 <meta http-equiv="Cross-Origin-Opener-Policy" content="same-origin-allow-popups">
@@ -4821,6 +4821,204 @@ if (btn) {
 })();
 </script>
 <!-- === END: HOTFIX === -->
+
+
+<script>
+/*! Sejarah (Auto-Refresh) Inline Addon — v1.2
+ * Fokus tab: #sejarah
+ * - Senarai semua program (getNadiActivities)
+ * - Carian kiri tapis senarai program sahaja
+ * - Carian kanan (#sejarahSearch) tapis jadual peserta
+ * - Auto refresh 7s melalui programFeedSince
+ * - Override loadPrograms/loadProgramDetail untuk konsisten
+ */
+(function(){
+  function $(sel){ return document.querySelector(sel); }
+  function $all(sel){ return Array.from(document.querySelectorAll(sel)); }
+  function escapeHtml(s){
+    if (s == null) return '';
+    return String(s).replace(/[&<>"']/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
+  }
+  async function fetchJson(url, opt={}, timeoutMs=20000){
+    const ctl = new AbortController();
+    const t = setTimeout(()=>ctl.abort(), timeoutMs);
+    try{
+      const res = await fetch(url, { ...opt, signal: ctl.signal, credentials:'omit' });
+      return await res.json().catch(()=>({status:'error'}));
+    } finally { clearTimeout(t); }
+  }
+  function ensureGlobals(){
+    if (!window.SCRIPT_URL || typeof window.SCRIPT_URL !== 'string' || !/^https?:\/\//.test(window.SCRIPT_URL)){
+      console.warn('[SejarahAddon] SCRIPT_URL tiada/invalid. Tetapkan window.SCRIPT_URL lebih awal.');
+    }
+    if (typeof window.ID_TOKEN !== 'string') window.ID_TOKEN = '';
+  }
+  ensureGlobals();
+
+  // ========== RENDER LIST PROGRAM ==========
+  async function loadPrograms(){
+    const list = $('#programList'); if (!list) return;
+    if (!window.ID_TOKEN){
+      list.innerHTML = '<div class="alert alert-warning m-2">Sila log masuk dahulu.</div>';
+      return;
+    }
+    list.innerHTML = '<div class="text-muted text-center p-3">Memuat program…</div>';
+    try{
+      const qs = new URLSearchParams({ action:'getNadiActivities', id_token: window.ID_TOKEN||'' });
+      const j = await fetchJson(`${window.SCRIPT_URL}?${qs.toString()}`);
+      if (!j || j.status !== 'success'){
+        throw new Error((j && (j.message||j.code)) || 'Gagal ambil program');
+      }
+      const data = Array.isArray(j.data) ? j.data : [];
+      if (!data.length){
+        list.innerHTML = '<div class="text-center text-muted p-3">Tiada rekod ditemui.</div>';
+        $('#sejarahTable') && ($('#sejarahTable').innerHTML = '<tr><td colspan="13" class="text-center text-muted">—</td></tr>');
+        return;
+      }
+      const html = data.map(r=>{
+        const title = `${escapeHtml(r.title||'-')} — ${escapeHtml(r.programDate||'')}`;
+        return `<button type="button" class="list-group-item list-group-item-action d-flex justify-content-between align-items-center"
+                  data-activity-id="${escapeHtml(r.activityId||'')}" data-meta="${title.toLowerCase()}">
+                  <span>${title}</span>
+                  <span class="badge bg-primary rounded-pill">${escapeHtml(r.total||'0')}</span>
+                </button>`;
+      }).join('');
+      list.innerHTML = html;
+
+      const currentActive = document.querySelector('#programList .list-group-item.active');
+      if (currentActive){
+        // pastikan item id sama masih wujud
+        const aid = currentActive.getAttribute('data-activity-id');
+        const match = aid && document.querySelector(`#programList .list-group-item[data-activity-id="${CSS.escape(aid)}"]`);
+        if (match){ currentActive.classList.remove('active'); match.classList.add('active'); }
+        else {
+          const first = $('#programList .list-group-item'); if (first) first.classList.add('active');
+        }
+      } else {
+        const first = $('#programList .list-group-item'); if (first) first.classList.add('active');
+      }
+
+      const active = document.querySelector('#programList .list-group-item.active');
+      if (active) await loadProgramDetail(active.getAttribute('data-activity-id'));
+    }catch(e){
+      list.innerHTML = `<div class="alert alert-danger m-2">Gagal memuat program: ${escapeHtml(e.message||e)}</div>`;
+    }
+  }
+
+  // ========== RENDER TABLE DETAIL ==========
+  async function loadProgramDetail(activityId){
+    const tbody = $('#sejarahTable');
+    if (!tbody) return;
+    if (!activityId){ tbody.innerHTML = '<tr><td colspan="13" class="text-center text-muted">Tiada program dipilih.</td></tr>'; return; }
+
+    const q = ($('#sejarahSearch')?.value || '').toLowerCase().trim();
+    tbody.innerHTML = '<tr><td colspan="13" class="text-center text-muted">Memuat data…</td></tr>';
+    try{
+      const qs = new URLSearchParams({ action:'getNadiActivityDetail', id: activityId, id_token: window.ID_TOKEN||'' });
+      const j = await fetchJson(`${window.SCRIPT_URL}?${qs.toString()}`);
+      if (!j || j.status !== 'success') throw new Error((j && (j.message||j.code)) || 'Ralat memuat detail');
+      const rows = (Array.isArray(j.data) ? j.data : [])
+        .filter(r => {
+          if (!q) return true;
+          const blob = `${r.nama||''}|${r.noIC||''}|${r.noTelefon||''}|${r.alamat||''}|${r.status||''}|${r.bp||''}|${r.pr||''}|${r.dxt||''}|${r.bmi||''}|${r.tcaDate||''}|${r.tcaTime||''}|${r.tcaStaff||''}|${r.remark||''}`.toLowerCase();
+          return blob.includes(q);
+        });
+
+      const titleEl = $('#sejarahTitle');
+      if (titleEl){
+        const activeBtn = document.querySelector('#programList .list-group-item.active');
+        titleEl.textContent = activeBtn ? activeBtn.textContent.trim() : 'Sejarah Saringan';
+      }
+
+      tbody.innerHTML = rows.map((r, i)=>`
+        <tr>
+          <td>${i+1}</td>
+          <td>${escapeHtml(r.nama||'')}</td>
+          <td>${escapeHtml(r.noIC||'')}</td>
+          <td>${escapeHtml(r.noTelefon||'')}</td>
+          <td>${escapeHtml(r.alamat||'')}</td>
+          <td>${escapeHtml(r.status||'')}</td>
+          <td>${escapeHtml(r.bp||'')}</td>
+          <td>${escapeHtml(r.pr||'')}</td>
+          <td>${escapeHtml(r.dxt||'')}</td>
+          <td>${escapeHtml(r.bmi||'')}</td>
+          <td>${escapeHtml(r.tcaDate||'')} ${escapeHtml(r.tcaTime||'')}</td>
+          <td>${escapeHtml(r.tcaStaff||'')}</td>
+          <td>${escapeHtml(r.remark||'')}</td>
+        </tr>
+      `).join('') || '<tr><td colspan="13" class="text-center text-muted">Tiada padanan carian.</td></tr>';
+    }catch(e){
+      tbody.innerHTML = `<tr><td colspan="13" class="text-center text-danger">Ralat memuat maklumat: ${escapeHtml(e.message||e)}</td></tr>`;
+    }
+  }
+
+  // Override global (simpanan asal, jika perlu)
+  window._origLoadPrograms = window.loadPrograms;
+  window._origLoadProgramDetail = window.loadProgramDetail;
+  window.loadPrograms = loadPrograms;
+  window.loadProgramDetail = loadProgramDetail;
+
+  // Interaksi
+  document.addEventListener('click', (e)=>{
+    const li = e.target.closest('#programList .list-group-item');
+    if (li){
+      $all('#programList .list-group-item').forEach(b=> b.classList.remove('active'));
+      li.classList.add('active');
+      window.loadProgramDetail(li.getAttribute('data-activity-id'));
+    }
+  });
+  document.addEventListener('input', (e)=>{
+    if (e.target && e.target.id === 'programFilter'){
+      const q = e.target.value.toLowerCase();
+      $all('#programList .list-group-item').forEach(b=>{
+        const meta = (b.getAttribute('data-meta') || b.textContent || '').toLowerCase();
+        b.style.display = meta.includes(q) ? '' : 'none';
+      });
+    }
+    if (e.target && e.target.id === 'sejarahSearch'){
+      const active = document.querySelector('#programList .list-group-item.active') || document.querySelector('#programList .list-group-item');
+      if (active) window.loadProgramDetail(active.getAttribute('data-activity-id'));
+    }
+  });
+
+  // Auto refresh feed
+  let FEED_TIMER = null;
+  let FEED_LATEST = 0;
+  async function pollSejarahFeed(){
+    if (!window.SCRIPT_URL || !window.ID_TOKEN) return;
+    try{
+      const qs = new URLSearchParams({ action:'programFeedSince', since:String(FEED_LATEST||0), limit:'50', id_token: window.ID_TOKEN||'' });
+      const j = await fetchJson(`${window.SCRIPT_URL}?${qs.toString()}`);
+      if (!j || j.status !== 'success') return;
+      const data = Array.isArray(j.data) ? j.data : [];
+      if (!data.length) return;
+      FEED_LATEST = Number(String(j.latest || (data[data.length-1]?.ts || FEED_LATEST)) || FEED_LATEST);
+      const active = document.querySelector('#programList .list-group-item.active');
+      const activeId = active ? active.getAttribute('data-activity-id') : null;
+      let touchActive = false;
+      for (const ev of data){ if (ev && ev.activityId && activeId && ev.activityId === activeId){ touchActive = true; break; } }
+      await window.loadPrograms();
+      if (activeId){
+        const match = document.querySelector(`#programList .list-group-item[data-activity-id="${CSS.escape(activeId)}"]`);
+        if (match){ match.classList.add('active'); }
+        if (touchActive){ window.loadProgramDetail(activeId); }
+      } else {
+        const first = document.querySelector('#programList .list-group-item');
+        if (first){ first.classList.add('active'); window.loadProgramDetail(first.getAttribute('data-activity-id')); }
+      }
+    }catch(e){}
+  }
+  function startSejarahFeed(){ stopSejarahFeed(); FEED_LATEST = Date.now(); FEED_TIMER = setInterval(pollSejarahFeed, 7000); }
+  function stopSejarahFeed(){ if (FEED_TIMER){ clearInterval(FEED_TIMER); FEED_TIMER = null; } }
+
+  function onHashChange(){
+    const onSejarah = location.hash === '#sejarah' || location.hash.startsWith('#sejarah?');
+    if (onSejarah){ window.loadPrograms(); startSejarahFeed(); } else { stopSejarahFeed(); }
+  }
+  window.addEventListener('hashchange', onHashChange);
+  if (document.readyState === 'loading'){ document.addEventListener('DOMContentLoaded', onHashChange); } else { onHashChange(); }
+})();
+</script>
 
 </body>
 </html>
