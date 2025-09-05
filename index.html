@@ -802,53 +802,112 @@
   
     <!-- Sejarah Saringan -->
     <section id="sejarah" class="mb-4 d-none page">
-      <div class="d-flex justify-content-between align-items-center mb-3">
-        <h2 class="h6 m-0"><i class="bi bi-clock-history me-2"></i>Lihat Sejarah Saringan</h2>
-        <div class="d-flex gap-2">
-          <input id="sejarahSearch" class="form-control form-control-sm" placeholder="Cari dalam jadual (nama / IC / telefon)">
+  <div class="d-flex align-items-center justify-content-between flex-wrap gap-2 mb-3">
+    <div class="d-flex align-items-center gap-2">
+      <h2 class="h6 m-0">
+        <i class="bi bi-clock-history me-2"></i>
+        Lihat Sejarah Saringan
+        <span id="sejarahLiveDot" class="align-middle ms-2 live-dot d-none" title="Auto-kemaskini aktif"></span>
+      </h2>
+      <span class="badge bg-secondary-subtle text-secondary-emphasis small fw-normal" id="sejarahEnvLabel" hidden></span>
+    </div>
+    <div class="d-flex align-items-center gap-2 flex-wrap">
+      <div class="input-group input-group-sm" style="min-width:260px">
+        <span class="input-group-text"><i class="bi bi-funnel"></i></span>
+        <input id="programFilter" class="form-control" placeholder="Tapis senarai program (tajuk / tarikh)">
+      </div>
+      <div class="input-group input-group-sm" style="min-width:260px">
+        <span class="input-group-text"><i class="bi bi-search"></i></span>
+        <input id="sejarahSearch" class="form-control" placeholder="Cari dalam jadual peserta (nama / IC / telefon / alamat / status)">
+      </div>
+      <div class="dropdown">
+        <button class="btn btn-sm btn-outline-secondary dropdown-toggle" data-bs-toggle="dropdown"><i class="bi bi-layout-three-columns me-1"></i>Lajur</button>
+        <div class="dropdown-menu dropdown-menu-end p-2" style="width:260px">
+          <div class="form-check form-switch"><input class="form-check-input col-toggle" data-col="alamat" type="checkbox" checked> <label class="form-check-label">Alamat</label></div>
+          <div class="form-check form-switch"><input class="form-check-input col-toggle" data-col="bp" type="checkbox" checked> <label class="form-check-label">BP</label></div>
+          <div class="form-check form-switch"><input class="form-check-input col-toggle" data-col="pr" type="checkbox" checked> <label class="form-check-label">PR</label></div>
+          <div class="form-check form-switch"><input class="form-check-input col-toggle" data-col="dxt" type="checkbox" checked> <label class="form-check-label">DXT</label></div>
+          <div class="form-check form-switch"><input class="form-check-input col-toggle" data-col="bmi" type="checkbox" checked> <label class="form-check-label">BMI</label></div>
+          <div class="form-check form-switch"><input class="form-check-input col-toggle" data-col="tca" type="checkbox" checked> <label class="form-check-label">TCA</label></div>
+          <div class="form-check form-switch"><input class="form-check-input col-toggle" data-col="staff" type="checkbox" checked> <label class="form-check-label">Staff</label></div>
+          <div class="form-check form-switch"><input class="form-check-input col-toggle" data-col="remark" type="checkbox" checked> <label class="form-check-label">Remark</label></div>
         </div>
       </div>
-      <div class="row g-3">
-        <div class="col-md-4">
-          <div class="card">
-            <div class="card-header">Senarai Program</div>
-            <div class="card-body">
-              <div class="input-group input-group-sm mb-2">
-                <span class="input-group-text"><i class="bi bi-search"></i></span>
-                <input id="programFilter" class="form-control" placeholder="Tapiskan tajuk / tarikh...">
-              </div>
-              <div id="programList" class="list-group small" style="max-height:420px;overflow:auto;">
-                <div class="text-muted text-center p-3">Memuat program...</div>
-              </div>
+      <button class="btn btn-sm btn-outline-primary" id="btnExportCsv"><i class="bi bi-download me-1"></i>Eksport CSV</button>
+    </div>
+  </div>
+
+  <div class="row g-3">
+    <!-- Kiri: Senarai Program -->
+    <div class="col-lg-4">
+      <div class="card shadow-sm">
+        <div class="card-header d-flex justify-content-between align-items-center">
+          <span class="fw-semibold">Senarai Program</span>
+          <div class="d-flex align-items-center gap-2">
+            <select id="programSort" class="form-select form-select-sm" style="width:auto">
+              <option value="date_desc">Tarikh ↓</option>
+              <option value="date_asc">Tarikh ↑</option>
+              <option value="title_asc">Tajuk A→Z</option>
+              <option value="title_desc">Tajuk Z→A</option>
+            </select>
+          </div>
+        </div>
+        <div class="card-body p-0">
+          <div id="programList" class="list-group small program-list" role="listbox" aria-label="Senarai program">
+            <div class="placeholder-glow p-3">
+              <div class="placeholder col-12 mb-2"></div>
+              <div class="placeholder col-10 mb-2"></div>
+              <div class="placeholder col-7"></div>
             </div>
           </div>
         </div>
-        <div class="col-md-8">
-          <div class="card">
-            <div class="card-header d-flex justify-content-between align-items-center">
-              <span id="programTitleLabel">Maklumat Program</span>
-              <span class="badge bg-light text-dark" id="programDateLabel"></span>
-            </div>
-            <div class="card-body">
-              <div class="table-responsive">
-                <table class="table table-hover align-middle">
-                  <thead class="table-light">
-                    <tr>
-                      <th>#</th><th>Nama</th><th>IC</th><th>Telefon</th><th>Alamat</th>
-                      <th>Status</th><th>BP</th><th>PR</th><th>DXT</th><th>BMI</th>
-                      <th>TCA</th><th>Staff</th><th>Remark</th>
-                    </tr>
-                  </thead>
-                  <tbody id="sejarahTable">
-                    <tr><td colspan="13" class="text-center text-muted">Pilih program di sebelah kiri.</td></tr>
-                  </tbody>
-                </table>
-              </div>
-            </div>
+      </div>
+    </div>
+
+    <!-- Kanan: Butiran Program + Jadual Peserta -->
+    <div class="col-lg-8">
+      <div class="card shadow-sm">
+        <div class="card-header d-flex justify-content-between align-items-center flex-wrap gap-2">
+          <div class="d-flex align-items-center gap-2">
+            <span id="sejarahTitle" class="fw-semibold">Maklumat Program</span>
+            <span class="badge text-bg-light" id="programDateLabel"></span>
+          </div>
+          <div class="d-flex align-items-center gap-2 small">
+            <span class="badge rounded-pill text-bg-secondary" id="sumTotal" title="Jumlah peserta">0</span>
+            <span class="badge rounded-pill text-bg-success" id="sumLayak" title="Layak">0</span>
+            <span class="badge rounded-pill text-bg-danger" id="sumTakLayak" title="Tak Layak">0</span>
+          </div>
+        </div>
+        <div class="card-body">
+          <div class="table-responsive sejarah-table-wrap">
+            <table class="table table-hover align-middle">
+              <thead class="table-light sticky-top">
+                <tr>
+                  <th style="width:56px">#</th>
+                  <th>Nama</th>
+                  <th>IC</th>
+                  <th>Telefon</th>
+                  <th class="col-alamat">Alamat</th>
+                  <th>Status</th>
+                  <th class="col-bp">BP</th>
+                  <th class="col-pr">PR</th>
+                  <th class="col-dxt">DXT</th>
+                  <th class="col-bmi">BMI</th>
+                  <th class="col-tca">TCA</th>
+                  <th class="col-staff">Staff</th>
+                  <th class="col-remark">Remark</th>
+                </tr>
+              </thead>
+              <tbody id="sejarahTable">
+                <tr><td colspan="13" class="text-center text-muted py-4">Pilih program di sebelah kiri.</td></tr>
+              </tbody>
+            </table>
           </div>
         </div>
       </div>
-    </section>
+    </div>
+  </div>
+</section>
 
   </main>
 
@@ -5017,6 +5076,291 @@ if (btn) {
   }
   window.addEventListener('hashchange', onHashChange);
   if (document.readyState === 'loading'){ document.addEventListener('DOMContentLoaded', onHashChange); } else { onHashChange(); }
+})();
+</script>
+
+
+<style>
+  .program-list { max-height: 480px; overflow: auto; }
+  .program-list .list-group-item { cursor: pointer; }
+  .program-list .meta { opacity: .8; }
+  .live-dot{ display:inline-block;width:10px;height:10px;border-radius:50%;background:#16a34a;box-shadow:0 0 0 0 rgba(22,163,74,.7);animation:pulse 1.6s infinite; }
+  @keyframes pulse{ 0%{ box-shadow:0 0 0 0 rgba(22,163,74,.6);} 70%{ box-shadow:0 0 0 12px rgba(22,163,74,0);} 100%{ box-shadow:0 0 0 0 rgba(22,163,74,0);} }
+  .sejarah-table-wrap thead.sticky-top{ position: sticky; top: 0; z-index: 5; }
+  .placeholder{ display:inline-block; height: .9rem; background: #e9ecef; border-radius:4px; }
+  .placeholder-glow .placeholder{ animation: placeholder-glow 1.2s ease-in-out infinite; }
+  @keyframes placeholder-glow{ 0%{opacity:.45}50%{opacity:.8}100%{opacity:.45} }
+  /* Hideable cols */
+  .col-alamat.hide, .col-bp.hide, .col-pr.hide, .col-dxt.hide, .col-bmi.hide, .col-tca.hide, .col-staff.hide, .col-remark.hide { display:none; }
+  td.hide { display:none; }
+</style>
+
+<script>
+(function(){
+  const $ = (s, r=document) => r.querySelector(s);
+  const $$ = (s, r=document) => Array.from(r.querySelectorAll(s));
+  const fmt = {
+    esc: s => (s==null?'':String(s)).replace(/[&<>"']/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m])),
+  };
+  const state = {
+    programs: [],
+    activeId: null,
+    rows: [],
+    lastFeedTs: 0,
+    colVisible: { alamat:true, bp:true, pr:true, dxt:true, bmi:true, tca:true, staff:true, remark:true },
+    sort: 'date_desc'
+  };
+
+  function needAuthWarning(){
+    return !window.SCRIPT_URL || !/^https?:\/\//.test(window.SCRIPT_URL) || !window.ID_TOKEN;
+  }
+
+  // ===== Fetch helpers =====
+  async function jget(params){
+    const qs = new URLSearchParams({ ...(params||{}), id_token: window.ID_TOKEN||'' });
+    const url = `${window.SCRIPT_URL}?${qs.toString()}`;
+    const ctl = new AbortController(); const t = setTimeout(()=>ctl.abort(), 20000);
+    try{
+      const res = await fetch(url, { signal: ctl.signal, credentials:'omit' });
+      return await res.json();
+    } finally { clearTimeout(t); }
+  }
+
+  // ===== Programs =====
+  async function loadPrograms(){
+    const list = $('#programList');
+    if (!list) return;
+    if (needAuthWarning()){
+      list.innerHTML = '<div class="p-3 text-center text-warning">Sila log masuk & tetapkan SCRIPT_URL.</div>';
+      return;
+    }
+    list.innerHTML = '<div class="placeholder-glow p-3"><div class="placeholder col-12 mb-2"></div><div class="placeholder col-9 mb-2"></div><div class="placeholder col-7"></div></div>';
+    const j = await jget({ action:'getNadiActivities' }).catch(()=>null);
+    if (!j || j.status!=='success'){
+      list.innerHTML = '<div class="p-3 text-danger">Gagal memuat senarai program.</div>';
+      return;
+    }
+    state.programs = Array.isArray(j.data) ? j.data.slice() : [];
+    renderProgramList();
+  }
+
+  function renderProgramList(){
+    const list = $('#programList'); if (!list) return;
+    const q = ($('#programFilter')?.value || '').toLowerCase().trim();
+    let arr = state.programs.slice();
+    // sort
+    arr.sort((a,b)=>{
+      const aD = (a.programDate||'').split('/').reverse().join('');
+      const bD = (b.programDate||'').split('/').reverse().join('');
+      const tA = (a.title||'').toLowerCase();
+      const tB = (b.title||'').toLowerCase();
+      if (state.sort==='date_desc') return (bD.localeCompare(aD)) || (tA.localeCompare(tB));
+      if (state.sort==='date_asc')  return (aD.localeCompare(bD)) || (tA.localeCompare(tB));
+      if (state.sort==='title_asc') return tA.localeCompare(tB) || (bD.localeCompare(aD));
+      if (state.sort==='title_desc')return tB.localeCompare(tA) || (bD.localeCompare(aD));
+      return 0;
+    });
+    // filter
+    if (q){
+      arr = arr.filter(r => `${r.title||''} ${r.programDate||''}`.toLowerCase().includes(q));
+    }
+    if (!arr.length){
+      list.innerHTML = '<div class="p-3 text-center text-muted">Tiada rekod ditemui.</div>';
+      $('#sejarahTable') && ($('#sejarahTable').innerHTML = '<tr><td colspan="13" class="text-center text-muted">—</td></tr>');
+      return;
+    }
+    list.innerHTML = arr.map(r=>{
+      const aid = fmt.esc(r.activityId||'');
+      const title = fmt.esc(r.title||'-');
+      const date  = fmt.esc(r.programDate||'');
+      const total = fmt.esc(r.total||'0');
+      return `<button type="button" class="list-group-item list-group-item-action d-flex justify-content-between align-items-center"
+                  data-activity-id="${aid}" data-meta="${(title+' '+date).toLowerCase()}">
+                <div>
+                  <div class="fw-semibold">${title}</div>
+                  <div class="meta small"><i class="bi bi-calendar-event me-1"></i>${date}</div>
+                </div>
+                <span class="badge bg-primary-subtle text-primary-emphasis rounded-pill">${total}</span>
+              </button>`;
+    }).join('');
+
+    // set active selection
+    let btn = state.activeId && list.querySelector(`.list-group-item[data-activity-id="${CSS.escape(state.activeId)}"]`);
+    if (!btn) btn = list.querySelector('.list-group-item');
+    if (btn){ btn.classList.add('active'); state.activeId = btn.getAttribute('data-activity-id'); }
+    if (state.activeId) loadProgramDetail(state.activeId);
+  }
+
+  // ===== Detail =====
+  async function loadProgramDetail(activityId){
+    state.activeId = activityId;
+    const tbody = $('#sejarahTable'); if (!tbody) return;
+    if (!activityId){ tbody.innerHTML = '<tr><td colspan="13" class="text-center text-muted">Tiada program dipilih.</td></tr>'; return; }
+
+    tbody.innerHTML = '<tr><td colspan="13" class="text-center text-muted py-4">Memuat data…</td></tr>';
+    const j = await jget({ action:'getNadiActivityDetail', id: activityId }).catch(()=>null);
+    if (!j || j.status!=='success'){
+      tbody.innerHTML = '<tr><td colspan="13" class="text-center text-danger py-4">Gagal memuat butiran.</td></tr>';
+      return;
+    }
+    state.rows = Array.isArray(j.data) ? j.data.slice() : [];
+    renderDetail();
+  }
+
+  function renderDetail(){
+    const tbody = $('#sejarahTable');
+    const q = ($('#sejarahSearch')?.value || '').toLowerCase().trim();
+    const rows = state.rows.filter(r => {
+      if (!q) return true;
+      const blob = `${r.nama||''}|${r.noIC||''}|${r.noTelefon||''}|${r.alamat||''}|${r.status||''}|${r.bp||''}|${r.pr||''}|${r.dxt||''}|${r.bmi||''}|${r.tcaDate||''}|${r.tcaTime||''}|${r.tcaStaff||''}|${r.remark||''}`.toLowerCase();
+      return blob.includes(q);
+    });
+
+    // Summary
+    const total = rows.length;
+    let layak=0, tak=0;
+    rows.forEach(r=>{
+      const s = String(r.status||'').toUpperCase();
+      if (s==='LAYAK') layak++;
+      else if (s==='TAK LAYAK') tak++;
+    });
+    $('#sumTotal').textContent = total;
+    $('#sumLayak').textContent = layak;
+    $('#sumTakLayak').textContent = tak;
+
+    const activeBtn = $('#programList .list-group-item.active');
+    $('#sejarahTitle').textContent = activeBtn ? activeBtn.querySelector('.fw-semibold')?.textContent || 'Maklumat Program' : 'Maklumat Program';
+    $('#programDateLabel').textContent = activeBtn ? (activeBtn.querySelector('.meta')?.textContent || '') : '';
+
+    const col = state.colVisible;
+    tbody.innerHTML = rows.map((r, i)=>{
+      const tca = [r.tcaDate||'', r.tcaTime||''].filter(Boolean).join(' ');
+      return `<tr>
+        <td>${i+1}</td>
+        <td>${fmt.esc(r.nama||'')}</td>
+        <td>${fmt.esc(r.noIC||'')}</td>
+        <td>${fmt.esc(r.noTelefon||'')}</td>
+        <td class="col-alamat ${col.alamat?'':'hide'}">${fmt.esc(r.alamat||'')}</td>
+        <td>${fmt.esc(r.status||'')}</td>
+        <td class="col-bp ${col.bp?'':'hide'}">${fmt.esc(r.bp||'')}</td>
+        <td class="col-pr ${col.pr?'':'hide'}">${fmt.esc(r.pr||'')}</td>
+        <td class="col-dxt ${col.dxt?'':'hide'}">${fmt.esc(r.dxt||'')}</td>
+        <td class="col-bmi ${col.bmi?'':'hide'}">${fmt.esc(r.bmi||'')}</td>
+        <td class="col-tca ${col.tca?'':'hide'}">${fmt.esc(tca)}</td>
+        <td class="col-staff ${col.staff?'':'hide'}">${fmt.esc(r.tcaStaff||'')}</td>
+        <td class="col-remark ${col.remark?'':'hide'}">${fmt.esc(r.remark||'')}</td>
+      </tr>`;
+    }).join('') || '<tr><td colspan="13" class="text-center text-muted">Tiada padanan carian.</td></tr>';
+  }
+
+  // ===== Export CSV =====
+  function exportCsv(){
+    const rows = [['#','Nama','IC','Telefon','Alamat','Status','BP','PR','DXT','BMI','TCA','Staff','Remark']];
+    const q = ($('#sejarahSearch')?.value || '').toLowerCase().trim();
+    const filtered = state.rows.filter(r=>{
+      if (!q) return true;
+      const blob = `${r.nama||''}|${r.noIC||''}|${r.noTelefon||''}|${r.alamat||''}|${r.status||''}|${r.bp||''}|${r.pr||''}|${r.dxt||''}|${r.bmi||''}|${r.tcaDate||''}|${r.tcaTime||''}|${r.tcaStaff||''}|${r.remark||''}`.toLowerCase();
+      return blob.includes(q);
+    });
+    filtered.forEach((r,i)=>{
+      rows.push([
+        String(i+1),
+        r.nama||'', r.noIC||'', r.noTelefon||'', r.alamat||'', r.status||'',
+        r.bp||'', r.pr||'', r.dxt||'', r.bmi||'',
+        [r.tcaDate||'', r.tcaTime||''].filter(Boolean).join(' ').trim(),
+        r.tcaStaff||'',
+        r.remark||''
+      ]);
+    });
+    const csv = rows.map(a => a.map(v=>`"${String(v).replace(/"/g,'""')}"`).join(',')).join('\n');
+    const blob = new Blob([csv], {type: 'text/csv;charset=utf-8;'});
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    const title = ($('#sejarahTitle')?.textContent||'sejarah').replace(/\s+/g,'_');
+    a.download = `export_${title}_${new Date().toISOString().slice(0,10)}.csv`;
+    document.body.appendChild(a);
+    a.click();
+    setTimeout(()=>{ URL.revokeObjectURL(url); a.remove(); }, 0);
+  }
+
+  // ===== Feed Poll =====
+  let FEED_TIMER = null;
+  async function pollFeed(){
+    if (needAuthWarning()) return;
+    const j = await jget({ action:'programFeedSince', since: String(state.lastFeedTs||0), limit: '50' }).catch(()=>null);
+    if (!j || j.status!=='success') return;
+    const data = Array.isArray(j.data) ? j.data : [];
+    if (!data.length) return;
+    state.lastFeedTs = Number(String(j.latest || data[data.length-1]?.ts || state.lastFeedTs));
+    const activeId = state.activeId;
+    let touchesActive = false;
+    for (const ev of data){ if (ev && ev.activityId && activeId && ev.activityId === activeId){ touchesActive = true; break; } }
+    await loadPrograms();
+    if (activeId){
+      const btn = $('#programList .list-group-item[data-activity-id="'+CSS.escape(activeId)+'"]');
+      if (btn){ btn.classList.add('active'); }
+      if (touchesActive){ await loadProgramDetail(activeId); }
+    }
+  }
+  function startFeed(){ stopFeed(); state.lastFeedTs = Date.now(); FEED_TIMER = setInterval(pollFeed, 7000); $('#sejarahLiveDot')?.classList.remove('d-none'); }
+  function stopFeed(){ if (FEED_TIMER){ clearInterval(FEED_TIMER); FEED_TIMER=null; } $('#sejarahLiveDot')?.classList.add('d-none'); }
+
+  // ===== Interactions =====
+  document.addEventListener('click', (e)=>{
+    const li = e.target.closest('#programList .list-group-item');
+    if (li){
+      $$('#programList .list-group-item').forEach(x=>x.classList.remove('active'));
+      li.classList.add('active');
+      loadProgramDetail(li.getAttribute('data-activity-id'));
+    }
+  });
+  document.addEventListener('input', (e)=>{
+    if (e.target?.id==='programFilter'){ renderProgramList(); }
+  });
+  (function(){
+    let t=null;
+    document.addEventListener('input', (e)=>{
+      if (e.target?.id==='sejarahSearch'){
+        clearTimeout(t);
+        t = setTimeout(renderDetail, 250);
+      }
+    });
+  })();
+
+  // Column toggles
+  document.addEventListener('change', (e)=>{
+    if (e.target?.classList.contains('col-toggle')){
+      const key = e.target.getAttribute('data-col');
+      state.colVisible[key] = !!e.target.checked;
+      // toggle header th
+      const th = $('.col-'+key);
+      if (th){ if (e.target.checked) th.classList.remove('hide'); else th.classList.add('hide'); }
+      // toggle body tds
+      $$('#sejarahTable .col-'+key).forEach(td => {
+        if (e.target.checked) td.classList.remove('hide'); else td.classList.add('hide');
+      });
+    }
+  });
+
+  $('#programSort')?.addEventListener('change', (e)=>{
+    state.sort = e.target.value || 'date_desc';
+    renderProgramList();
+  });
+
+  $('#btnExportCsv')?.addEventListener('click', exportCsv);
+
+  // ===== Hash routing =====
+  function onHash(){
+    const show = location.hash === '#sejarah' || location.hash.startsWith('#sejarah?');
+    if (show){ loadPrograms(); startFeed(); } else { stopFeed(); }
+  }
+  window.addEventListener('hashchange', onHash);
+  if (document.readyState === 'loading'){ document.addEventListener('DOMContentLoaded', onHash); } else { onHash(); }
+
+  // Expose globals expected by other code (compatibility)
+  window.loadPrograms = loadPrograms;
+  window.loadProgramDetail = loadProgramDetail;
 })();
 </script>
 
