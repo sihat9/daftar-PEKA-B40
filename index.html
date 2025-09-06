@@ -1361,8 +1361,15 @@ function openSessionDetail(activityId){
 }
 
 // ❌ PADAMKAN fungsi duplikasi ini kalau ada:
-// function escapeHtml(s){ ... }
-
+// function escapeHtml(s){
+  s = String(s || '');
+  s = s.replace(/&/g, '&amp;');
+  s = s.replace(/</g, '&lt;');
+  s = s.replace(/>/g, '&gt;');
+  s = s.replace(/"/g, '&quot;');
+  s = s.replace(/'/g, '&#039;');
+  return s;
+}
 // Henti polling bila keluar dari skrin monitor
 window.addEventListener('hashchange', ()=>{
   const onMonitor = location.hash.includes('#monitor');
@@ -4895,8 +4902,15 @@ if (btn) {
   function $(sel){ return document.querySelector(sel); }
   function $all(sel){ return Array.from(document.querySelectorAll(sel)); }
   function escapeHtml(s){
-    if (s == null) return '';
-    return String(s).replace(/[&<>"']/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
+  s = String(s || '');
+  s = s.replace(/&/g, '&amp;');
+  s = s.replace(/</g, '&lt;');
+  s = s.replace(/>/g, '&gt;');
+  s = s.replace(/"/g, '&quot;');
+  s = s.replace(/'/g, '&#039;');
+  return s;
+}
+[m]));
   }
   async function fetchJson(url, opt={}, timeoutMs=20000){
     const ctl = new AbortController();
@@ -5538,8 +5552,15 @@ function loadSejarahDetail(activityId, meta){
 
 /* Util */
 function escapeHtml(s){
-  return String(s||'').replace(/[&<>\"']/g, function(m){
-    return ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',\"'\":'&#039;'}[m]);
+  s = String(s || '');
+  s = s.replace(/&/g, '&amp;');
+  s = s.replace(/</g, '&lt;');
+  s = s.replace(/>/g, '&gt;');
+  s = s.replace(/"/g, '&quot;');
+  s = s.replace(/'/g, '&#039;');
+  return s;
+}
+[m]);
   });
 }
 
