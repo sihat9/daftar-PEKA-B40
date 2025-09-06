@@ -1157,7 +1157,8 @@
   // Padanan objek → {nama, ic, telefon, alamat}
   function mapRow(raw) {
     const entries = Object.entries(raw);
-    const pick = (groups) => {
+    const pick = (groups) =>
+{
       // cuba padanan tepat dulu
       for (const [k,v] of entries) {
         const t = canon(k);
@@ -5364,156 +5365,194 @@ if (btn) {
 </script>
 
 
+
+
+
 <script>
-// === KONFIG ===
-const SCRIPT_URL = 'PASTE_WEB_APP_URL_HERE'; // URL Web App Google Apps Script anda
-const GOOGLE_CLIENT_ID = 'PASTE_CLIENT_ID.apps.googleusercontent.com';
-let ID_TOKEN = '';
+/* === KONFIG (ISI NILAI ANDA) === */
+var SCRIPT_URL = 'PASTE_WEB_APP_URL_HERE'; // e.g. https://script.google.com/macros/s/xxxx/exec
+var GOOGLE_CLIENT_ID = 'PASTE_CLIENT_ID.apps.googleusercontent.com';
+var ID_TOKEN = '';
 
-// === Google Sign-In ===
-window.handleCredentialResponse = async (resp) => {
-  ID_TOKEN = resp && resp.credential || '';
-  if (!ID_TOKEN) { toast('Login gagal: tiada token', 'danger'); return; }
-  try{
-    const r = await fetch(`${SCRIPT_URL}?` + new URLSearchParams({action:'whoami', id_token:ID_TOKEN}));
-    const j = await r.json();
-    if (j.status === 'success') {
-      document.getElementById('staffBadge')?.classList.remove('d-none');
-      document.getElementById('staffEmail')?.textContent = j.email || '';
-      if (location.hash === '#sejarah') loadSejarahPrograms();
-    } else {
-      toast('Akses ditolak ('+(j.code||'')+')', 'danger');
-    }
-  }catch(e){ toast('Ralat whoami: '+e.message, 'danger'); }
-};
+/* === Google Sign-In === */
+function handleCredentialResponse(resp){
+  ID_TOKEN = resp && resp.credential ? resp.credential : '';
+  if (!ID_TOKEN){ toast('Login gagal: tiada token', 'danger'); return; }
+  // whoami (opsyenal tapi baik untuk sahkan akses)
+  fetch(SCRIPT_URL + '?' + new URLSearchParams({action:'whoami', id_token:ID_TOKEN}))
+    .then(function(r){ return r.json(); })
+    .then(function(j){
+      if (j.status === 'success') {
+        var badge = document.getElementById('staffBadge');
+        if (badge) badge.classList.remove('d-none');
+        var em = document.getElementById('staffEmail');
+        if (em) em.textContent = j.email || '';
+        if (location.hash === '#sejarah') { loadSejarahPrograms(); }
+      } else {
+        toast('Akses ditolak (' + (j.code||'') + ')', 'danger');
+      }
+    })
+    .catch(function(e){ toast('Ralat whoami: ' + e.message, 'danger'); });
+}
 
-window.onload = function initGIS(){
-  if (window.google && google.accounts && google.accounts.id) {
-    google.accounts.id.initialize({ client_id: GOOGLE_CLIENT_ID, callback: handleCredentialResponse });
-    google.accounts.id.renderButton(document.getElementById('signinArea') || document.body, { theme:'outline', size:'medium' });
+window.addEventListener('load', function(){
+  if (window.google && google.accounts && google.accounts.id){
+    try{
+      google.accounts.id.initialize({ client_id: GOOGLE_CLIENT_ID, callback: handleCredentialResponse });
+      var btn = document.getElementById('signinArea') || document.body;
+      google.accounts.id.renderButton(btn, { theme:'outline', size:'medium' });
+    }catch(e){ /* ignore */ }
   }
-};
+});
 
-function toast(msg, type='info'){
-  const host = document.getElementById('toastContainer'); if (!host) { alert(msg); return; }
-  const el = document.createElement('div');
-  el.className = `toast align-items-center text-bg-${type}`;
-  el.role='alert'; el.ariaLive='assertive'; el.ariaAtomic='true';
-  el.innerHTML = `<div class="d-flex"><div class="toast-body">${msg}</div>
-    <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast"></button></div>`;
+/* === Toast util (Bootstrap) === */
+function toast(msg, type){
+  if (type === void 0) type = 'info';
+  var host = document.getElementById('toastContainer');
+  if (!host) { alert(msg); return; }
+  var el = document.createElement('div');
+  el.className = 'toast align-items-center text-bg-' + type;
+  el.setAttribute('role','alert');
+  el.setAttribute('aria-live','assertive');
+  el.setAttribute('aria-atomic','true');
+  el.innerHTML = '<div class="d-flex"><div class="toast-body">' + escapeHtml(msg) + '</div>' +
+                 '<button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast"></button></div>';
   host.appendChild(el);
   new bootstrap.Toast(el, { delay: 4000 }).show();
 }
 
-// ====== SEJARAH ======
-const sejarah = { programs: [], currentId: '' };
+/* === SEJARAH === */
+var sejarah = { programs: [], currentId: '' };
 
-async function loadSejarahPrograms() {
+function loadSejarahPrograms(){
   if (!SCRIPT_URL || !/^https?:\/\//.test(SCRIPT_URL)) { toast('SCRIPT_URL belum ditetapkan', 'warning'); return; }
   if (!ID_TOKEN) { toast('Sila log masuk Google dahulu', 'warning'); return; }
-  const listEl = document.getElementById('programList');
-  if (listEl) listEl.innerHTML = `<div class="p-3 text-muted">Memuat senarai program…</div>`;
-  try{
-    const url = `${SCRIPT_URL}?` + new URLSearchParams({ action:'getNadiActivities', id_token:ID_TOKEN });
-    const res = await fetch(url);
-    const json = await res.json();
-    if (json.status !== 'success') throw new Error(json.message || 'Gagal dapatkan senarai program');
-    sejarah.programs = (json.data || []);
-    renderProgramList();
-  }catch(e){
-    if (listEl) listEl.innerHTML = `<div class="p-3 text-danger">Gagal memuat senarai program: ${e.message}</div>`;
-  }
+  var listEl = document.getElementById('programList');
+  if (listEl) listEl.innerHTML = '<div class="p-3 text-muted">Memuat senarai program…</div>';
+
+  var url = SCRIPT_URL + '?' + new URLSearchParams({ action:'getNadiActivities', id_token:ID_TOKEN });
+  fetch(url)
+    .then(function(r){ return r.json(); })
+    .then(function(json){
+      if (json.status !== 'success') throw new Error(json.message || 'Gagal dapatkan senarai program');
+      sejarah.programs = Array.isArray(json.data) ? json.data : [];
+      renderProgramList('');
+    })
+    .catch(function(e){
+      if (listEl) listEl.innerHTML = '<div class="p-3 text-danger">Gagal memuat senarai program: ' + escapeHtml(e.message) + '</div>';
+    });
 }
 
-function renderProgramList(filterText=''){
-  const listEl = document.getElementById('programList');
+function renderProgramList(filterText){
+  if (filterText === void 0) filterText = '';
+  var listEl = document.getElementById('programList');
   if (!listEl) return;
-  const ft = (filterText||'').toLowerCase();
-  const items = sejarah.programs.filter(p => {
-    const key = (p.title+' '+p.programDate).toLowerCase();
-    return !ft || key.includes(ft);
-  });
-  if (!items.length) {
-    listEl.innerHTML = `<div class="p-3 text-muted">Tiada program ditemui.</div>`;
+  var ft = String(filterText||'').toLowerCase();
+  var items = [];
+  for (var i=0;i<sejarah.programs.length;i++){
+    var p = sejarah.programs[i];
+    var key = (String(p.title||'') + ' ' + String(p.programDate||'')).toLowerCase();
+    if (!ft || key.indexOf(ft) >= 0) items.push(p);
+  }
+  if (!items.length){
+    listEl.innerHTML = '<div class="p-3 text-muted">Tiada program ditemui.</div>';
     return;
   }
   listEl.innerHTML = '';
-  items.forEach(p => {
-    const a = document.createElement('a');
+  for (var j=0;j<items.length;j++){
+    var it = items[j];
+    var a = document.createElement('a');
     a.href = 'javascript:void(0)';
     a.className = 'list-group-item list-group-item-action d-flex justify-content-between align-items-center';
-    a.innerHTML = `
-      <div>
-        <div class="fw-semibold">${p.title}</div>
-        <div class="small text-muted"><i class="bi bi-calendar3 me-1"></i>${p.programDate}</div>
-      </div>
-      <div class="text-nowrap small">
-        <span class="badge rounded-pill text-bg-success me-1">${p.layakCount||0}</span>
-        <span class="badge rounded-pill text-bg-danger me-1">${p.takLayakCount||0}</span>
-        <span class="badge rounded-pill text-bg-secondary">${p.total||0}</span>
-      </div>`;
-    a.onclick = () => loadSejarahDetail(p.activityId, p);
+    a.innerHTML = '<div>' +
+                    '<div class="fw-semibold">'+ escapeHtml(it.title||'') +'</div>' +
+                    '<div class="small text-muted"><i class="bi bi-calendar3 me-1"></i>'+ escapeHtml(it.programDate||'') +'</div>' +
+                  '</div>' +
+                  '<div class="text-nowrap small">' +
+                    '<span class="badge rounded-pill text-bg-success me-1">'+ (it.layakCount||0) +'</span>' +
+                    '<span class="badge rounded-pill text-bg-danger me-1">'+ (it.takLayakCount||0) +'</span>' +
+                    '<span class="badge rounded-pill text-bg-secondary">'+ (it.total||0) +'</span>' +
+                  '</div>';
+    (function(meta){
+      a.addEventListener('click', function(){ loadSejarahDetail(meta.activityId, meta); });
+    })(it);
     listEl.appendChild(a);
+  }
+}
+
+function loadSejarahDetail(activityId, meta){
+  if (!activityId) return;
+  sejarah.currentId = activityId;
+  var h = document.getElementById('sejarahTitle'); if (h) h.textContent = (meta && meta.title) ? meta.title : 'Maklumat Program';
+  var d = document.getElementById('programDateLabel'); if (d) d.textContent = (meta && meta.programDate) ? meta.programDate : '';
+  var tbody = document.getElementById('sejarahTable');
+  if (tbody) tbody.innerHTML = '<tr><td colspan="13" class="text-center text-muted py-4">Memuat butiran peserta…</td></tr>';
+
+  var url = SCRIPT_URL + '?' + new URLSearchParams({ action:'getNadiActivityDetail', activityId:activityId, id_token:ID_TOKEN });
+  fetch(url)
+    .then(function(r){ return r.json(); })
+    .then(function(json){
+      if (json.status !== 'success') throw new Error(json.message || 'Gagal muat butiran');
+      var rows = Array.isArray(json.data) ? json.data : [];
+      var t = document.getElementById('sumTotal'); if (t) t.textContent = rows.length;
+      var layak=0, tak=0;
+      for (var i=0;i<rows.length;i++){
+        var st = String(rows[i].status||'').toUpperCase();
+        if (st === 'LAYAK') layak++;
+        else if (st === 'TAK LAYAK') tak++;
+      }
+      var sl = document.getElementById('sumLayak'); if (sl) sl.textContent = layak;
+      var sk = document.getElementById('sumTakLayak'); if (sk) sk.textContent = tak;
+
+      if (!tbody) return;
+      if (!rows.length){
+        tbody.innerHTML = '<tr><td colspan="13" class="text-center text-muted py-4">Tiada peserta.</td></tr>';
+        return;
+      }
+      var html = '';
+      for (var r=0;r<rows.length;r++){
+        var row = rows[r];
+        var tca = [row.tcaDate||'', row.tcaTime||''].filter(function(x){ return !!x; }).join(' ');
+        html += '<tr>' +
+          '<td>'+(r+1)+'</td>' +
+          '<td>'+escapeHtml(row.nama||'')+'</td>' +
+          '<td>'+escapeHtml(row.noIC||'')+'</td>' +
+          '<td>'+escapeHtml(row.noTelefon||'')+'</td>' +
+          '<td class="col-alamat">'+escapeHtml(row.alamat||'')+'</td>' +
+          '<td>'+escapeHtml(row.status||'')+'</td>' +
+          '<td>'+escapeHtml(row.bp||'')+'</td>' +
+          '<td>'+escapeHtml(row.pr||'')+'</td>' +
+          '<td>'+escapeHtml(row.dxt||'')+'</td>' +
+          '<td>'+escapeHtml(row.bmi||'')+'</td>' +
+          '<td>'+escapeHtml(tca)+'</td>' +
+          '<td>'+escapeHtml(row.tcaStaff||'')+'</td>' +
+          '<td>'+escapeHtml(row.remark||'')+'</td>' +
+        '</tr>';
+      }
+      tbody.innerHTML = html;
+    })
+    .catch(function(e){
+      if (tbody) tbody.innerHTML = '<tr><td colspan="13" class="text-danger">Ralat: '+escapeHtml(e.message)+'</td></tr>';
+    });
+}
+
+/* Util */
+function escapeHtml(s){
+  return String(s||'').replace(/[&<>\"']/g, function(m){
+    return ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',\"'\":'&#039;'}[m]);
   });
 }
 
-async function loadSejarahDetail(activityId, meta){
-  if (!activityId) return;
-  sejarah.currentId = activityId;
-  document.getElementById('sejarahTitle')?.textContent = meta?.title || 'Maklumat Program';
-  document.getElementById('programDateLabel')?.textContent = meta?.programDate || '';
-  const tbody = document.getElementById('sejarahTable');
-  if (tbody) tbody.innerHTML = `<tr><td colspan="13" class="text-center text-muted py-4">Memuat butiran peserta…</td></tr>`;
-  try{
-    const url = `${SCRIPT_URL}?` + new URLSearchParams({ action:'getNadiActivityDetail', activityId, id_token:ID_TOKEN });
-    const res = await fetch(url);
-    const json = await res.json();
-    if (json.status !== 'success') throw new Error(json.message || 'Gagal muat butiran');
-    const rows = json.data || [];
-    document.getElementById('sumTotal')?.replaceChildren(document.createTextNode(rows.length));
-    const layak = rows.filter(r => (r.status||'').toUpperCase()==='LAYAK').length;
-    const tak   = rows.filter(r => (r.status||'').toUpperCase()==='TAK LAYAK').length;
-    document.getElementById('sumLayak')?.replaceChildren(document.createTextNode(layak));
-    document.getElementById('sumTakLayak')?.replaceChildren(document.createTextNode(tak));
-    if (tbody) {
-      if (!rows.length) {
-        tbody.innerHTML = `<tr><td colspan="13" class="text-center text-muted py-4">Tiada peserta.</td></tr>`;
-      } else {
-        tbody.innerHTML = rows.map((r,i)=>`
-          <tr>
-            <td>${i+1}</td>
-            <td>${escapeHtml(r.nama||'')}</td>
-            <td>${escapeHtml(r.noIC||'')}</td>
-            <td>${escapeHtml(r.noTelefon||'')}</td>
-            <td class="col-alamat">${escapeHtml(r.alamat||'')}</td>
-            <td>${escapeHtml(r.status||'')}</td>
-            <td>${escapeHtml(r.bp||'')}</td>
-            <td>${escapeHtml(r.pr||'')}</td>
-            <td>${escapeHtml(r.dxt||'')}</td>
-            <td>${escapeHtml(r.bmi||'')}</td>
-            <td>${[r.tcaDate,r.tcaTime].filter(Boolean).join(' ')}</td>
-            <td>${escapeHtml(r.tcaStaff||'')}</td>
-            <td>${escapeHtml(r.remark||'')}</td>
-          </tr>`).join('');
-      }
-    }
-  }catch(e){
-    if (tbody) tbody.innerHTML = `<tr><td colspan="13" class="text-danger">Ralat: ${e.message}</td></tr>`;
-  }
-}
-
-function escapeHtml(s){
-  return String(s||'').replace(/[&<>"']/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'}[m]));
-}
-
-window.addEventListener('hashchange', () => {
-  if (location.hash === '#sejarah') {
-    loadSejarahPrograms();
-  }
+/* Wire-up */
+window.addEventListener('hashchange', function(){
+  if (location.hash === '#sejarah'){ loadSejarahPrograms(); }
 });
-document.getElementById('programFilter')?.addEventListener('input', (e)=> {
-  renderProgramList(e.target.value || '');
-});
+var pf = document.getElementById('programFilter');
+if (pf){
+  pf.addEventListener('input', function(e){
+    renderProgramList(e.target.value || '');
+  });
+}
 </script>
 
 </body>
