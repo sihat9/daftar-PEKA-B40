@@ -5364,5 +5364,158 @@ if (btn) {
 })();
 </script>
 
+
+<script>
+// === KONFIG ===
+const SCRIPT_URL = 'PASTE_WEB_APP_URL_HERE'; // URL Web App Google Apps Script anda
+const GOOGLE_CLIENT_ID = 'PASTE_CLIENT_ID.apps.googleusercontent.com';
+let ID_TOKEN = '';
+
+// === Google Sign-In ===
+window.handleCredentialResponse = async (resp) => {
+  ID_TOKEN = resp && resp.credential || '';
+  if (!ID_TOKEN) { toast('Login gagal: tiada token', 'danger'); return; }
+  try{
+    const r = await fetch(`${SCRIPT_URL}?` + new URLSearchParams({action:'whoami', id_token:ID_TOKEN}));
+    const j = await r.json();
+    if (j.status === 'success') {
+      document.getElementById('staffBadge')?.classList.remove('d-none');
+      document.getElementById('staffEmail')?.textContent = j.email || '';
+      if (location.hash === '#sejarah') loadSejarahPrograms();
+    } else {
+      toast('Akses ditolak ('+(j.code||'')+')', 'danger');
+    }
+  }catch(e){ toast('Ralat whoami: '+e.message, 'danger'); }
+};
+
+window.onload = function initGIS(){
+  if (window.google && google.accounts && google.accounts.id) {
+    google.accounts.id.initialize({ client_id: GOOGLE_CLIENT_ID, callback: handleCredentialResponse });
+    google.accounts.id.renderButton(document.getElementById('signinArea') || document.body, { theme:'outline', size:'medium' });
+  }
+};
+
+function toast(msg, type='info'){
+  const host = document.getElementById('toastContainer'); if (!host) { alert(msg); return; }
+  const el = document.createElement('div');
+  el.className = `toast align-items-center text-bg-${type}`;
+  el.role='alert'; el.ariaLive='assertive'; el.ariaAtomic='true';
+  el.innerHTML = `<div class="d-flex"><div class="toast-body">${msg}</div>
+    <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast"></button></div>`;
+  host.appendChild(el);
+  new bootstrap.Toast(el, { delay: 4000 }).show();
+}
+
+// ====== SEJARAH ======
+const sejarah = { programs: [], currentId: '' };
+
+async function loadSejarahPrograms() {
+  if (!SCRIPT_URL || !/^https?:\/\//.test(SCRIPT_URL)) { toast('SCRIPT_URL belum ditetapkan', 'warning'); return; }
+  if (!ID_TOKEN) { toast('Sila log masuk Google dahulu', 'warning'); return; }
+  const listEl = document.getElementById('programList');
+  if (listEl) listEl.innerHTML = `<div class="p-3 text-muted">Memuat senarai program…</div>`;
+  try{
+    const url = `${SCRIPT_URL}?` + new URLSearchParams({ action:'getNadiActivities', id_token:ID_TOKEN });
+    const res = await fetch(url);
+    const json = await res.json();
+    if (json.status !== 'success') throw new Error(json.message || 'Gagal dapatkan senarai program');
+    sejarah.programs = (json.data || []);
+    renderProgramList();
+  }catch(e){
+    if (listEl) listEl.innerHTML = `<div class="p-3 text-danger">Gagal memuat senarai program: ${e.message}</div>`;
+  }
+}
+
+function renderProgramList(filterText=''){
+  const listEl = document.getElementById('programList');
+  if (!listEl) return;
+  const ft = (filterText||'').toLowerCase();
+  const items = sejarah.programs.filter(p => {
+    const key = (p.title+' '+p.programDate).toLowerCase();
+    return !ft || key.includes(ft);
+  });
+  if (!items.length) {
+    listEl.innerHTML = `<div class="p-3 text-muted">Tiada program ditemui.</div>`;
+    return;
+  }
+  listEl.innerHTML = '';
+  items.forEach(p => {
+    const a = document.createElement('a');
+    a.href = 'javascript:void(0)';
+    a.className = 'list-group-item list-group-item-action d-flex justify-content-between align-items-center';
+    a.innerHTML = `
+      <div>
+        <div class="fw-semibold">${p.title}</div>
+        <div class="small text-muted"><i class="bi bi-calendar3 me-1"></i>${p.programDate}</div>
+      </div>
+      <div class="text-nowrap small">
+        <span class="badge rounded-pill text-bg-success me-1">${p.layakCount||0}</span>
+        <span class="badge rounded-pill text-bg-danger me-1">${p.takLayakCount||0}</span>
+        <span class="badge rounded-pill text-bg-secondary">${p.total||0}</span>
+      </div>`;
+    a.onclick = () => loadSejarahDetail(p.activityId, p);
+    listEl.appendChild(a);
+  });
+}
+
+async function loadSejarahDetail(activityId, meta){
+  if (!activityId) return;
+  sejarah.currentId = activityId;
+  document.getElementById('sejarahTitle')?.textContent = meta?.title || 'Maklumat Program';
+  document.getElementById('programDateLabel')?.textContent = meta?.programDate || '';
+  const tbody = document.getElementById('sejarahTable');
+  if (tbody) tbody.innerHTML = `<tr><td colspan="13" class="text-center text-muted py-4">Memuat butiran peserta…</td></tr>`;
+  try{
+    const url = `${SCRIPT_URL}?` + new URLSearchParams({ action:'getNadiActivityDetail', activityId, id_token:ID_TOKEN });
+    const res = await fetch(url);
+    const json = await res.json();
+    if (json.status !== 'success') throw new Error(json.message || 'Gagal muat butiran');
+    const rows = json.data || [];
+    document.getElementById('sumTotal')?.replaceChildren(document.createTextNode(rows.length));
+    const layak = rows.filter(r => (r.status||'').toUpperCase()==='LAYAK').length;
+    const tak   = rows.filter(r => (r.status||'').toUpperCase()==='TAK LAYAK').length;
+    document.getElementById('sumLayak')?.replaceChildren(document.createTextNode(layak));
+    document.getElementById('sumTakLayak')?.replaceChildren(document.createTextNode(tak));
+    if (tbody) {
+      if (!rows.length) {
+        tbody.innerHTML = `<tr><td colspan="13" class="text-center text-muted py-4">Tiada peserta.</td></tr>`;
+      } else {
+        tbody.innerHTML = rows.map((r,i)=>`
+          <tr>
+            <td>${i+1}</td>
+            <td>${escapeHtml(r.nama||'')}</td>
+            <td>${escapeHtml(r.noIC||'')}</td>
+            <td>${escapeHtml(r.noTelefon||'')}</td>
+            <td class="col-alamat">${escapeHtml(r.alamat||'')}</td>
+            <td>${escapeHtml(r.status||'')}</td>
+            <td>${escapeHtml(r.bp||'')}</td>
+            <td>${escapeHtml(r.pr||'')}</td>
+            <td>${escapeHtml(r.dxt||'')}</td>
+            <td>${escapeHtml(r.bmi||'')}</td>
+            <td>${[r.tcaDate,r.tcaTime].filter(Boolean).join(' ')}</td>
+            <td>${escapeHtml(r.tcaStaff||'')}</td>
+            <td>${escapeHtml(r.remark||'')}</td>
+          </tr>`).join('');
+      }
+    }
+  }catch(e){
+    if (tbody) tbody.innerHTML = `<tr><td colspan="13" class="text-danger">Ralat: ${e.message}</td></tr>`;
+  }
+}
+
+function escapeHtml(s){
+  return String(s||'').replace(/[&<>"']/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'}[m]));
+}
+
+window.addEventListener('hashchange', () => {
+  if (location.hash === '#sejarah') {
+    loadSejarahPrograms();
+  }
+});
+document.getElementById('programFilter')?.addEventListener('input', (e)=> {
+  renderProgramList(e.target.value || '');
+});
+</script>
+
 </body>
 </html>
