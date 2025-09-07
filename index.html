@@ -4219,7 +4219,7 @@ const saveNadiStateDebounced = debounce(saveNadiState, 400);
     if (!tbody) return;
     tbody.innerHTML = '<tr><td colspan="13" class="text-center text-muted">Memuat data…</td></tr>';
     try{
-      const qs = new URLSearchParams({ action:'getNadiActivityDetail', activityId: activityId, id_token: (window.ID_TOKEN||'') });
+      const qs = new URLSearchParams({ action:'getNadiActivityDetail', activityId: activityId, id: activityId, id_token: (window.ID_TOKEN||'') });
       const res = await fetch(`${window.SCRIPT_URL}?${qs.toString()}`);
       const j = await res.json();
       if (!j || j.status!=='success') throw new Error(j && (j.message||j.code) || 'Gagal ambil detail');
@@ -4839,7 +4839,7 @@ if (btn) {
     if (!tbody) return;
     tbody.innerHTML = '<tr><td colspan="13" class="text-center text-muted">Memuat perincian…</td></tr>';
     try{
-      const qs = new URLSearchParams({ action:'getNadiActivityDetail', activityId: activityId, id_token: (window.ID_TOKEN||'') });
+      const qs = new URLSearchParams({ action:'getNadiActivityDetail', id: activityId, id_token: (window.ID_TOKEN||'') });
       const res = await fetch(`${window.SCRIPT_URL}?${qs.toString()}`, { credentials:'omit' });
       const j = await res.json();
       if (!j || j.status!=='success') throw new Error((j && (j.message||j.code)) || 'Gagal ambil detail');
@@ -4973,7 +4973,7 @@ if (btn) {
     const q = ($('#sejarahSearch')?.value || '').toLowerCase().trim();
     tbody.innerHTML = '<tr><td colspan="13" class="text-center text-muted">Memuat data…</td></tr>';
     try{
-      const qs = new URLSearchParams({ action:'getNadiActivityDetail', activityId: activityId, id_token: window.ID_TOKEN||'' });
+      const qs = new URLSearchParams({ action:'getNadiActivityDetail', id: activityId, id_token: window.ID_TOKEN||'' });
       const j = await fetchJson(`${window.SCRIPT_URL}?${qs.toString()}`);
       if (!j || j.status !== 'success') throw new Error((j && (j.message||j.code)) || 'Ralat memuat detail');
       const rows = (Array.isArray(j.data) ? j.data : [])
