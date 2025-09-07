@@ -5364,5 +5364,146 @@ if (btn) {
 })();
 </script>
 
+
+<!-- Google Identity (wajib untuk id_token) -->
+<script src="https://accounts.google.com/gsi/client" async defer></script>
+<script>
+(() => {
+  'use strict';
+
+  // === KONFIG: WAJIB DIKEMASKINI OLEH ANDA ===
+  const SCRIPT_URL = 'PASTE_WEB_APP_URL_HERE';
+  const GOOGLE_CLIENT_ID = 'PASTE_CLIENT_ID.apps.googleusercontent.com';
+
+  // === Cari elemen ikut struktur asal Index HTML7 ===
+  const elList   = document.querySelector('#sejarahList');
+  const elDetail = document.querySelector('#sejarahDetail');
+  const elAuth   = document.querySelector('#authStatus'); // opsyen; jika tiada, diabaikan
+
+  let ID_TOKEN = '';
+
+  function esc(v){
+    return String(v ?? '')
+      .replace(/&/g,'&amp;').replace(/</g,'&lt;')
+      .replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');
+  }
+
+  function parseJwt(t){
+    try{
+      const b=t.split('.')[1].replace(/-/g,'+').replace(/_/g,'/');
+      return JSON.parse(decodeURIComponent(atob(b).split('').map(c=>'%' + ('00'+c.charCodeAt(0).toString(16)).slice(-2)).join('')));
+    }catch(e){ return {}; }
+  }
+
+  async function apiGet(params){
+    if(!SCRIPT_URL || SCRIPT_URL.startsWith('PASTE_')) throw new Error('SCRIPT_URL belum ditetapkan');
+    if(!ID_TOKEN) throw new Error('Belum log masuk');
+    const q=new URLSearchParams({...params, id_token: ID_TOKEN});
+    const res = await fetch(`${SCRIPT_URL}?${q}`, { method:'GET' });
+    if(!res.ok) throw new Error(`HTTP ${res.status}`);
+    return res.json();
+  }
+
+  function renderList(items){
+    if(!elList) return;
+    if(!Array.isArray(items) || !items.length){
+      elList.innerHTML = '<div>Tiada rekod.</div>'; return;
+    }
+    elList.innerHTML = items.map(it => {
+      const id = esc(it.activityId||'');
+      const ttl= esc(it.title||'(Tanpa tajuk)');
+      const dt = esc(it.programDate||'');
+      const lay= esc(it.layakCount||'0');
+      const tak= esc(it.takLayakCount||'0');
+      const tot= esc(it.total||'0');
+      return `
+        <div class="sejarah-card">
+          <div class="sejarah-ttl">${ttl}</div>
+          <div class="sejarah-meta">Tarikh: ${dt} | Layak: ${lay} | Tidak: ${tak} | Jumlah: ${tot}</div>
+          <div class="sejarah-act">
+            <button type="button" class="sejarah-view" data-activity="${id}">Lihat butiran</button>
+            <span class="sejarah-id">ID: ${id}</span>
+          </div>
+        </div>`;
+    }).join('');
+    elList.querySelectorAll('.sejarah-view').forEach(btn=>{
+      btn.addEventListener('click', () => loadDetail(btn.getAttribute('data-activity')));
+    });
+  }
+
+  function renderDetail(rows){
+    if(!elDetail) return;
+    if(!Array.isArray(rows) || !rows.length){
+      elDetail.innerHTML = '<div>Tiada peserta.</div>'; return;
+    }
+    const head = ["No","Nama","NoIC","Umur","NoTelefon","Alamat","BP","PR","DXT","Tinggi","Berat","BMI","Status","Remark","TCADate","TCATime","TCAStaff"];
+    const body = rows.map(r => `
+      <tr>
+        <td>${esc(r.no)}</td><td>${esc(r.nama)}</td><td>${esc(r.noIC)}</td><td>${esc(r.umur)}</td>
+        <td>${esc(r.noTelefon)}</td><td>${esc(r.alamat)}</td><td>${esc(r.bp)}</td><td>${esc(r.pr)}</td>
+        <td>${esc(r.dxt)}</td><td>${esc(r.tinggi)}</td><td>${esc(r.berat)}</td><td>${esc(r.bmi)}</td>
+        <td>${esc(r.status)}</td><td>${esc(r.remark)}</td><td>${esc(r.tcaDate)}</td><td>${esc(r.tcaTime)}</td><td>${esc(r.tcaStaff)}</td>
+      </tr>`).join('');
+    elDetail.innerHTML = `
+      <table class="sejarah-detail-table">
+        <thead><tr>${head.map(h=>`<th>${h}</th>`).join('')}</tr></thead>
+        <tbody>${body}</tbody>
+      </table>`;
+  }
+
+  async function loadList(){
+    try{
+      if(elList) elList.innerHTML = '<div>Memuatkan…</div>';
+      const res = await apiGet({ action:'getNadiActivities' });
+      if(res?.status!=='success') throw new Error('getNadiActivities gagal');
+      renderList(res.data||[]);
+    }catch(err){
+      console.error(err);
+      if(elList) elList.innerHTML = `<div class="error">Gagal ambil sejarah: ${esc(err.message||err)}</div>`;
+    }
+  }
+
+  async function loadDetail(activityId){
+    if(!elDetail) return;
+    if(!activityId){ elDetail.innerHTML = '<div>Tiada activityId.</div>'; return; }
+    try{
+      elDetail.innerHTML = '<div>Memuatkan butiran…</div>';
+      const res = await apiGet({ action:'getNadiActivityDetail', id: activityId });
+      if(res?.status!=='success') throw new Error('getNadiActivityDetail gagal');
+      renderDetail(res.data||[]);
+    }catch(err){
+      console.error(err);
+      elDetail.innerHTML = `<div class="error">Gagal ambil butiran: ${esc(err.message||err)}</div>`;
+    }
+  }
+
+  // === Google Sign-In (GSI) ===
+  function onCred(r){
+    ID_TOKEN = r?.credential || '';
+    if(!ID_TOKEN){
+      if(elAuth) elAuth.textContent = 'Log masuk gagal';
+      return;
+    }
+    const info = parseJwt(ID_TOKEN);
+    if(elAuth) elAuth.textContent = `Log masuk: ${info.email||'Pengguna'}`;
+    // Bila sudah ada token, terus muat senarai
+    loadList();
+  }
+
+  function initGsi(){
+    if(!GOOGLE_CLIENT_ID || GOOGLE_CLIENT_ID.startsWith('PASTE_')){
+      if(elAuth) elAuth.textContent = 'GOOGLE_CLIENT_ID belum ditetapkan';
+      return;
+    }
+    if(window.google?.accounts?.id){
+      google.accounts.id.initialize({ client_id: GOOGLE_CLIENT_ID, callback: onCred, auto_select:false });
+      google.accounts.id.prompt();
+    }
+  }
+
+  window.addEventListener('load', initGsi);
+})();
+</script>
+
 </body>
 </html>
