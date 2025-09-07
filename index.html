@@ -1,1504 +1,311 @@
-/***********************
- * KESELAMATAN & AKSES
- ***********************/
-const ALLOWLIST = [
-  "amiruladlije@gmail.com",
-  "sihatsokmo2018@gmail.com",
-  "nurhidaeyahramli@gmail.com",
-  "ramlizulqarnain@gmail.com",
-  "fahmi987@gmail.com"
-];
-// Google Identity Client IDs yang dibenarkan (audience id_token)
-const ALLOWED_AUDS = [
-  "863564124015-838ksbuk27f0kkomm16hnc3bu608pbrr.apps.googleusercontent.com"
-];
+<!DOCTYPE html>
+<html lang="ms">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Saringan — Index 7 (Final)</title>
 
-function allowlist_(){
-  try{
-    const raw = PropertiesService.getScriptProperties().getProperty('ALLOWLIST');
-    if (raw) return JSON.parse(raw).map(s=>String(s||'').toLowerCase().trim());
-  }catch(e){}
-  return ALLOWLIST.map(s=>s.toLowerCase().trim());
-}
+  <!--
+    Fail ini fokus untuk memastikan HALAMAN "LIHAT SEJARAH" berfungsi tanpa ralat.
+    Jika anda mempunyai layout asal, letakkan markup asal anda di dalam <body>
+    dan kekalkan ID berikut supaya skrip ini boleh "bind":
+      - #sejarahList       : bekas kad senarai program
+      - #sejarahDetail     : bekas jadual butiran peserta
+      - #btnReload         : (opsyen) butang muat semula
+      - #authStatus        : (opsyen) label status login
+      - #detailHeader      : (opsyen) label tajuk butiran
+  -->
 
-// Ambil id_token dari query/body (x-www-form-urlencoded)
-function extractToken_(e){
-  if (!e) return '';
-  const p = e.parameter || {};
-  let t = String(p.id_token || p.token || p.auth || '').trim();
-  if (t) return t;
-  if (e.postData && e.postData.contents &&
-      /application\/x-www-form-urlencoded/i.test(String(e.postData.type||''))){
-    const kv = {};
-    String(e.postData.contents||'').split('&').forEach(pair=>{
-      const [k,v] = pair.split('=');
-      if (k) kv[decodeURIComponent(k)] = decodeURIComponent(v||'');
-    });
-    t = String(kv.id_token || kv.token || kv.auth || '').trim();
-    if (t) return t;
-  }
-  return '';
-}
+  <style>
+    /* Fallback gaya minimum (tidak mengganggu design asal anda) */
+    :root{ --muted:#f6f7f9; --text:#111; --sub:#667085; --card:#fff; --line:#e6e7eb; }
+    body{ font-family:system-ui,-apple-system,Segoe UI,Roboto,Ubuntu,"Helvetica Neue",Arial; margin:0; color:var(--text); background:#fff; }
+    .wrap{ max-width:1100px; margin:24px auto; padding:0 16px; }
+    .toolbar{ display:flex; gap:12px; align-items:center; justify-content:space-between; margin-bottom:16px; }
+    .pill{ background:var(--muted); padding:6px 10px; border-radius:999px; font-size:13px; color:var(--sub); }
+    .grid{ display:grid; grid-template-columns:repeat(auto-fill,minmax(260px,1fr)); gap:12px; }
+    .card{ background:var(--card); border:1px solid var(--line); border-radius:12px; padding:14px; }
+    .card h4{ margin:0 0 6px; font-size:16px; }
+    .meta{ font-size:12px; color:var(--sub); display:flex; gap:10px; flex-wrap:wrap; }
+    .btn{ appearance:none; border:1px solid var(--line); background:#fff; padding:8px 10px; border-radius:10px; cursor:pointer; font-size:13px; }
+    .btn:disabled{ opacity:.5; cursor:not-allowed; }
+    table{ width:100%; border-collapse:collapse; margin-top:12px; font-size:13px; }
+    th,td{ border:1px solid var(--line); padding:6px 8px; text-align:left; }
+    th{ background:#fafafa; }
+    .status{ font-size:12px; color:var(--sub); }
+    .sep{ height:1px; background:var(--line); margin:12px 0; }
+  </style>
 
-// Cache auth 5 minit
-function sha256hex_(s){
-  const b = Utilities.computeDigest(Utilities.DigestAlgorithm.SHA_256, s, Utilities.Charset.UTF_8);
-  return b.map(x=>('0'+(x & 0xff).toString(16)).slice(-2)).join('');
-}
-function auth_(e){
-  const token = extractToken_(e);
-  if (!token) return { ok:false, code:'NO_TOKEN' };
-  const key = 'auth_'+sha256hex_(token);
-  const cached = cget_(key);
-  if (cached && cached.email){
-    const allow = allowlist_();
-    if (allow.indexOf(cached.email) === -1) return { ok:false, code:'FORBIDDEN', email:cached.email };
-    return { ok:true, email:cached.email, name:cached.name||'', sub:cached.sub||'' };
-  }
-  // Verify ke Google
-  const url = 'https://oauth2.googleapis.com/tokeninfo?id_token='+encodeURIComponent(token);
-  const res = UrlFetchApp.fetch(url, { muteHttpExceptions:true });
-  if (res.getResponseCode() !== 200) return { ok:false, code:'BAD_TOKEN' };
-  const info = JSON.parse(res.getContentText());
+  <!-- Google Identity Services -->
+  <script src="https://accounts.google.com/gsi/client" async defer></script>
+</head>
+<body>
 
-  // Semak aud
-  const aud = String(info.aud || '').trim();
-  if (ALLOWED_AUDS && ALLOWED_AUDS.length && ALLOWED_AUDS.indexOf(aud) === -1){
-    return { ok:false, code:'BAD_AUD', aud };
-  }
+  <!-- Fallback markup; jika anda sudah ada markup sendiri dengan ID yang sama, ini tidak perlu ubah -->
+  <div class="wrap">
+    <div class="toolbar">
+      <div class="pill">Lihat Sejarah</div>
+      <div id="authStatus" class="status">Belum log masuk</div>
+    </div>
 
-  const email = String(info.email||'').toLowerCase().trim();
-  if (!email || String(info.email_verified) !== 'true') return { ok:false, code:'UNVERIFIED' };
-  const allow = allowlist_();
-  if (allow.indexOf(email) === -1) return { ok:false, code:'FORBIDDEN', email };
-  const user = { email, name:String(info.name||''), sub:String(info.sub||'') };
-  cput_(key, user, 300);
-  return { ok:true, ...user };
-}
+    <div class="card">
+      <div style="display:flex; gap:8px; align-items:center; justify-content:space-between">
+        <strong>Senarai Program</strong>
+        <button id="btnReload" class="btn" disabled>Muat semula</button>
+      </div>
+      <div id="sejarahList" class="grid" style="margin-top:12px;"></div>
+    </div>
 
-/***********************
- * KONFIGURASI
- ***********************/
-// PIN terus ke fail Spreadsheet anda (ganti semua rujukan ActiveSpreadsheet)
-const SPREADSHEET_ID = '1HNBBupKQZ9d472srn0XvE7M3wWEX4i479nHgCBkkrXU';
-function ss_(){ return SpreadsheetApp.openById(SPREADSHEET_ID); }
+    <div class="card" style="margin-top:12px;">
+      <div style="display:flex; gap:8px; align-items:center; justify-content:space-between">
+        <strong>Butiran Peserta</strong>
+        <div id="detailHeader" class="status">Tiada pilihan</div>
+      </div>
+      <div id="sejarahDetail">
+        <div class="status">Pilih salah satu program untuk melihat butiran…</div>
+      </div>
+    </div>
+  </div>
 
-const SHEET_NAME = {
-  PESAKIT:       'DAFTAR_PESAKIT',
-  LOG:           'LOG_AKTIVITI',
-  LOG_CALLS:     'LOG_CALLS',
-  // Aktiviti Program (NADI/Komuniti)
-  NADI_SUMMARY:  'AKTIVITI_PROGRAM',
-  NADI_DETAIL:   'AKTIVITI_PROGRAM_DETAIL',
-  // Feed ringan untuk sync masa nyata (polling)
-  PROGRAM_FEED:  'PROGRAM_FEED',
-  // Live tanpa tekan "Simpan semua"
-  NADI_LIVE:     'NADI_LIVE',
-  NADI_SESSIONS: 'NADI_SESSIONS'
-};
+  <script>
+  "use strict";
 
-// Folder Drive untuk PDPA (jika kosong → root Drive)
-const PDPA_FOLDER_ID = '';
+  // =========================
+  // KONFIGURASI (WAJIB GANTIKAN)
+  // =========================
+  const SCRIPT_URL = "PASTE_WEB_APP_URL_HERE"; // contoh: https://script.google.com/macros/s/AKfycbx.../exec
+  const GOOGLE_CLIENT_ID = "PASTE_CLIENT_ID.apps.googleusercontent.com";
 
-const TZ = 'GMT+8';
-const fmtDate      = (d=new Date()) => Utilities.formatDate(d, TZ, 'dd/MM/yyyy');
-const fmtTime      = (d=new Date()) => Utilities.formatDate(d, TZ, 'HH:mm');
-const fmtDateTime  = (d=new Date()) => Utilities.formatDate(d, TZ, 'dd/MM/yyyy HH:mm');
+  // =========================
+  // STATE
+  // =========================
+  let ID_TOKEN = "";
+  let IS_AUTH = false;
 
-/** Ambang hari untuk lab follow-up dikira "due" — selaraskan dengan UI “Result > 3 Hari” */
-const LAB_OVERDUE_DAYS = 3;
+  // =========================
+  // HELPER DOM
+  // =========================
+  const $ = (sel) => document.querySelector(sel);
+  const elList = $("#sejarahList");
+  const elDetail = $("#sejarahDetail");
+  const elReload = $("#btnReload");
+  const elAuth = $("#authStatus");
+  const elDetailHeader = $("#detailHeader");
 
-/***********************
- * CACHE & VERSION
- ***********************/
-const TTL_ROWS_S   = 20;
-const TTL_LIST_S   = 30;
-const TTL_STATS_S  = 45;
+  const setAuthStatus = (t) => { if (elAuth) elAuth.textContent = String(t||""); };
+  const setReloadEnabled = (on) => { if (elReload) elReload.disabled = !on; };
 
-function json_(obj){ return ContentService.createTextOutput(JSON.stringify(obj)).setMimeType(ContentService.MimeType.JSON); }
-function cache_(){ return CacheService.getScriptCache(); }
-function cget_(k){ try{ const s=cache_().get(k); return s?JSON.parse(s):null; }catch(e){ return null; } }
-function cput_(k,v,ttl){ try{ cache_().put(k, JSON.stringify(v), ttl||30);}catch(e){} }
-function cremoveAll_(keys){
-  try{
-    if (cache_().removeAll) cache_().removeAll(keys);
-    else keys.forEach(k=>{ try{ cache_().remove(k);}catch(e){} });
-  }catch(e){}
-}
-function version_(){
-  const p = PropertiesService.getScriptProperties();
-  return Number(p.getProperty('DATA_VERSION')||'0');
-}
-function bumpVersion_(){
-  const p = PropertiesService.getScriptProperties();
-  const v = version_()+1;
-  p.setProperty('DATA_VERSION', String(v));
-  return v;
-}
-function invalidateAll_(){
-  const keys=[
-    'rows_v1','dash_v1',
-    'tca_v1','tca_all_v1',
-    'first_v1','lab_v1','second_v1','completed_v1','archived_v1',
-    'stats_3','stats_6','stats_12'
-  ];
-  cremoveAll_(keys);
-  bumpVersion_();
-}
-
-/***********************
- * ENTRY POINTS
- ***********************/
-function doGet(e){
-  const user = auth_(e);
-  if (!user.ok) return json_({status:'unauthorized', code:user.code, message:'Akses ditolak'});
-  try{
-    const a=(e && e.parameter && e.parameter.action || '').trim();
-    switch(a){
-      case 'whoami':            return json_({status:'success', email:user.email, name:user.name||'', sub:user.sub||''});
-      case 'bootstrap':         return json_(getBootstrap_());
-      case 'getDashboardData':  return json_(getDashboardData_());
-      case 'getTCACall':        return json_(getTCACall_(e.parameter.all||''));   // sokong all=1
-      case 'getFirstVisit':     return json_(getFirstVisit_());
-      case 'getLabFollowUp':    return json_(getLabFollowUp_());
-      case 'getSecondVisit':    return json_(getSecondVisit_());
-      case 'getCompleted':      return json_(getCompleted_());
-      case 'getArchived':       return json_(getArchived_());
-      case 'getStatistics':     return json_(getStatistics_(e.parameter.period));
-      case 'getCallLogs':       return json_(getCallLogs_(e.parameter.q||''));    // Log Calls drawer
-      // Aktiviti Program (SEJARAH SARINGAN)
-      case 'getNadiActivities':     return json_(getNadiActivities_());
-      case 'getNadiActivityDetail': return json_(getNadiActivityDetail_(e.parameter.id||e.parameter.activityId||''));
-      // Feed / Live (summary/count)
-      case 'programFeedSince':      return json_(programFeedSince_(e.parameter.since || '', e.parameter.limit || '50'));
-      // Monitor simpanan rasmi (selepas "Simpan semua")
-      case 'listNadiSessions':      return json_(listNadiSessions_(e.parameter.date||'')); // Pantau: senarai sesi harian
-      case 'getNadiMonitor':        return json_(getNadiMonitor_(e.parameter.date||''));   // Pantau: live count setiap sesi
-      // LIVE SYNC NADI (tanpa "Simpan semua")
-      case 'listNadiSessionsLive':  return json_(listNadiSessionsLive_(e.parameter.date||'')); // senarai sesi live
-      case 'getNadiLive':           return json_(getNadiLive_(e.parameter));
-      default: return json_({status:'error', message:'Action tidak sah'});
-    }
-  }catch(err){ return json_({status:'error', message:String(err)}); }
-}
-
-function doPost(e){
-  // Lindungi apabila run manual dari Apps Script editor (e akan undefined)
-  e = e || { parameter: {} };
-  const user = auth_(e);
-  if (!user.ok){
-    const p = e.parameter||{};
-    if ((p.action||'').trim()==='whoami') return json_({status:'unauthorized', code:user.code, message:'Akses ditolak'});
-    return json_({status:'unauthorized', code:user.code, message:'Akses ditolak'});
-  }
-  try{
-    const p = e.parameter || {};
-    const a = (p.action||'').trim();
-    if (!p.staff) p.staff = user.email;
-
-    switch(a){
-      case 'whoami':                  return json_({status:'success', email:user.email, name:user.name||'', sub:user.sub||''});
-      case 'daftarPesakit':           return json_(daftarPesakit_(p));
-      case 'updateStatus':            return json_(updateStatus_(p));
-      case 'updatePatient':           return json_(updatePatient_(p));
-      case 'updateLabStatus':         return json_(updateLabStatus_(p));
-      case 'uploadPDPA':              return json_(uploadPDPA_(e));   // base64
-      case 'deletePDPA':              return json_(deletePDPA_(p));
-      case 'archivePatient':          return json_(archivePatient_(p));
-      case 'restorePatient':          return json_(restorePatient_(p));
-      case 'logCall':                 return json_(logCall_(p));
-      // (Opsyen) WhatsApp Cloud API
-      case 'sendWhatsApp':            return json_(sendWhatsAppAPI_(p));
-      // Aktiviti Program (SEJARAH SARINGAN)
-      case 'saveNadiActivity':        return json_(saveNadiActivity_(p));       // serasi belakang
-      case 'saveNadiProgramActivity': return json_(saveNadiActivity_(p));       // alias ikut index.html
-      // LIVE SYNC NADI (tanpa "Simpan semua")
-      case 'saveNadiLive':            return json_(saveNadiLive_(p));
-      case 'clearNadiLive':           return json_(clearNadiLive_(p));
-      // Feed
-      case 'pushProgramEvent':        return json_(pushProgramEvent_((p.kind||'').trim(), p));
-      default: return json_({status:'error', message:'Action tidak sah'});
-    }
-  }catch(err){ return json_({status:'error', message:String(err)}); }
-}
-
-/***********************
- * STRUKTUR LAJUR
- ***********************/
-function getSheet_(){
-  const ss = ss_();
-  let sh = ss.getSheetByName(SHEET_NAME.PESAKIT);
-  if (!sh) sh = ss.insertSheet(SHEET_NAME.PESAKIT);
-  ensureHeader_(sh);
-  return sh;
-}
-function ensureHeader_(sh){
-  const header = [
-    'CreatedAt','Nama','NoIC','NoTelefon','NamaStaff','TarikhDaftar',
-    'TarikhTCA','MasaTCA','Status',
-    'FirstVisitDate','FirstVisitStatus',
-    'SecondVisitDate','SecondVisitStatus',
-    'TarikhSelesai','Flag','PDPAFileId','LabStatus','ArchivedAt',
-    'LabDoneAt','LabDoneBy',
-    'TCACallAt','TCACallBy',
-    'Alamat'
-  ];
-  const cur = sh.getRange(1,1,1,header.length).getValues()[0];
-  const need = header.some((v,i)=> String(cur[i]||'')!==v);
-  if (need) sh.getRange(1,1,1,header.length).setValues([header]);
-  for (let c=1; c<=header.length; c++){
-    sh.getRange(1, c, sh.getMaxRows(), 1).setNumberFormat('@');
-  }
-  if (sh.getFrozenRows() < 1) sh.setFrozenRows(1);
-  PropertiesService.getScriptProperties().setProperty('HEADER_JSON', JSON.stringify(header));
-}
-function headerMap_(){
-  const header = JSON.parse(PropertiesService.getScriptProperties().getProperty('HEADER_JSON')||'[]');
-  const map = {}; header.forEach((h,idx)=> map[h]=idx);
-  return { header, map, cols: header.length };
-}
-function _rows_(sh){
-  const cached = cget_('rows_v1'); if (cached) return cached;
-  const {cols} = headerMap_();
-  const last = sh.getLastRow();
-  const arr = (last<2) ? [] : sh.getRange(2,1,last-1,cols).getValues();
-  cput_('rows_v1', arr, TTL_ROWS_S);
-  return arr;
-}
-function findRowByIC_(sh, noIC){
-  const vals = _rows_(sh);
-  for (let i=0;i<vals.length;i++){
-    if (String(vals[i][2]||'').trim()===String(noIC||'').trim()) return i+2;
-  }
-  return -1;
-}
-function setRow_(sh,row,obj){
-  const {map, cols} = headerMap_();
-  const line = sh.getRange(row,1,1,cols).getValues()[0];
-  Object.keys(obj).forEach(k=>{ if (map.hasOwnProperty(k)) line[map[k]]=obj[k]; });
-  sh.getRange(row,1,1,cols).setValues([line]);
-}
-
-/***********************
- * UTIL TARIKH & VALIDASI
- ***********************/
-const dayMY_=['Ahad','Isnin','Selasa','Rabu','Khamis','Jumaat','Sabtu'];
-function _toDisplayDate_(isoOrDd){
-  if (!isoOrDd) return '';
-  if (/^\d{4}-\d{2}-\d{2}$/.test(isoOrDd)){
-    const [Y,M,D] = isoOrDd.split('-').map(Number);
-    return `${('0'+D).slice(-2)}/${('0'+M).slice(-2)}/${Y}`;
-  }
-  return String(isoOrDd);
-}
-function tcaView_(iso,hhmm){
-  if (!iso) return '';
-  const m=/(^(\d{4})-(\d{2})-(\d{2})$)/.exec(iso); if (!m) return String(iso)+(hhmm?(' '+hhmm):'');
-  const Y=+m[2], M=+m[3]-1, D=+m[4], dt=new Date(Y,M,D);
-  const hari=dayMY_[dt.getDay()], dd=('0'+D).slice(-2), mm=('0'+(M+1)).slice(-2), jam=(hhmm||'').trim();
-  return `${hari}, ${dd}/${mm}/${Y}${jam?(' '+jam):''}`;
-}
-function _daysSinceFirst_(firstVisitDateStr){
-  if (!firstVisitDateStr) return null;
-  const [d] = String(firstVisitDateStr).split(' ');
-  const [dd,mm,yyyy] = d.split('/').map(Number);
-  const dt = new Date(yyyy,mm-1,dd);
-  const now = new Date();
-  return Math.floor((now.getTime()-dt.getTime())/(24*60*60*1000));
-}
-function addDaysIsoFromNow_(days){
-  const base=new Date(); const shifted=new Date(base.getTime()+days*24*60*60*1000);
-  return Utilities.formatDate(shifted, TZ, 'yyyy-MM-dd');
-}
-function isoDow_(iso){ const m=/(^(\d{4})-(\d{2})-(\d{2})$)/.exec(iso); if(!m)return-1; const Y=+m[2],M=+m[3]-1,D=+m[4]; return new Date(Y,M,D).getDay(); }
-
-function normalizeMsisdnMY_(raw){
-  if (!raw) return '';
-  let s = String(raw).replace(/\D/g,'');
-  if (s.startsWith('00')) s=s.slice(2);
-  if (s.startsWith('60')) return s;
-  if (s.startsWith('0'))  s='60'+s.slice(1); else s='60'+s;
-  return s;
-}
-function validIsoDate_(s){ return /^\d{4}-\d{2}-\d{2}$/.test(String(s||'')); }
-function validTimeHHmm_(s){ return /^\d{2}:\d{2}$/.test(String(s||'')); }
-
-/***********************
- * LOG AKTIVITI & CALLS
- ***********************/
-function logAktiviti_(staff,aktiviti,detail){
-  const ss=ss_();
-  let sh=ss.getSheetByName(SHEET_NAME.LOG); if(!sh) sh=ss.insertSheet(SHEET_NAME.LOG);
-  sh.appendRow([fmtDate(), fmtTime(), staff||'SYSTEM', aktiviti, detail]);
-}
-
-function getLogCallsSheet_(){
-  const ss=ss_();
-  let sh=ss.getSheetByName(SHEET_NAME.LOG_CALLS);
-  if(!sh) sh=ss.insertSheet(SHEET_NAME.LOG_CALLS);
-  const header=['Timestamp','Staff','Nama','NoIC','NoTelefon','Event'];
-  const cur=sh.getRange(1,1,1,header.length).getValues()[0];
-  const need=header.some((v,i)=> String(cur[i]||'')!==v);
-  if (need) sh.getRange(1,1,1,header.length).setValues([header]);
-  for (let c=1;c<=header.length;c++){ sh.getRange(1,c,sh.getMaxRows(),1).setNumberFormat('@'); }
-  if (sh.getFrozenRows()<1) sh.setFrozenRows(1);
-  return sh;
-}
-function logCall_(p){
-  const sh=getSheet_();
-  const noIC=(p.noIC||p.id||'').trim(); if(!noIC) return {status:'error', message:'noIC diperlukan'};
-  const row=findRowByIC_(sh,noIC); if(row===-1) return {status:'error', message:'Pesakit tidak ditemui'};
-
-  const staff=(p.staff||'SYSTEM').trim();
-  const nama=String(sh.getRange(row,2).getValue()||'');
-  const tel =String(sh.getRange(row,4).getValue()||'');
-  const event=(p.event||'LAB_COMPLETE_CALL').trim()||'LAB_COMPLETE_CALL';
-  const now= new Date();
-
-  if (event==='LAB_COMPLETE_CALL'){
-    setRow_(sh,row,{ LabDoneAt: fmtDateTime(now), LabDoneBy: staff });
-  }
-
-  const logSh=getLogCallsSheet_();
-  logSh.appendRow([ fmtDateTime(now), staff, nama, noIC, tel, event ]);
-  logAktiviti_(staff,'LOG_CALL',`${event} ${nama}/${noIC}`);
-  return {status:'success'};
-}
-function getCallLogs_(q){
-  const sh=getLogCallsSheet_();
-  const last=sh.getLastRow();
-  const arr=(last<2)?[]:sh.getRange(2,1,last-1,6).getValues();
-  let out=arr.map(r=>({ time:String(r[0]||''), staff:String(r[1]||''), nama:String(r[2]||''), noIC:String(r[3]||''), noTelefon:String(r[4]||''), event:String(r[5]||'') }));
-  if (q){
-    const qq=q.toLowerCase();
-    out=out.filter(o=>{
-      return (o.time||'').toLowerCase().includes(qq)
-          || (o.staff||'').toLowerCase().includes(qq)
-          || (o.nama||'').toLowerCase().includes(qq)
-          || (o.noIC||'').toLowerCase().includes(qq)
-          || (String(o.noTelefon||'')).toLowerCase().includes(qq);
-    });
-  }
-  out.reverse(); // terbaru di atas
-  return {status:'success', data: out.slice(0,1000)};
-}
-
-/***********************
- * BOOTSTRAP (opsyen)
- ***********************/
-function getBootstrap_(){
-  return {
-    status:'success',
-    version: String(version_()),
-    dashboard: getDashboardData_().data,
-    tcaToday: getTCACall_().data
-  };
-}
-
-/***********************
- * DAFTAR (elak duplikat aktif)
- ***********************/
-function daftarPesakit_(p){
-  const sh = getSheet_();
-  const now=new Date();
-
-  const nama=(p.namaPesakit||'').trim();
-  const noIC=(p.noIC||'').trim();
-  const noTelefon=normalizeMsisdnMY_(p.noTelefon||'');
-  const alamat=(p.alamat||'').trim();
-  const staff=(p.namaStaff||'SYSTEM').trim();
-  const tca=(p.tarikhTCA||'').trim();
-  const masa=(p.masaTCA||'').trim();
-
-  if(!nama||!noIC||!noTelefon||!tca||!masa) return {status:'error', message:'Maklumat tidak lengkap'};
-  if(!validIsoDate_(tca)||!validTimeHHmm_(masa)) return {status:'error', message:'Format tarikh/masa tidak sah'};
-
-  const row=findRowByIC_(sh,noIC);
-  if (row!==-1){
-    const flag=String(sh.getRange(row,15).getValue()||'');
-    if (flag==='AKTIF') return {status:'error', code:'DUPLICATE', message:'IC wujud (aktif). Guna Re-TCA atau kemas kini.'};
-    return {status:'error', code:'ARCHIVED', message:'Rekod wujud tetapi diarkib. Pulihkan dahulu.'};
-  }
-
-  sh.appendRow([
-    fmtDateTime(now), nama, noIC, noTelefon, staff, fmtDate(now),
-    tca, masa, 'TCA CALL',
-    '', '', '', '',
-    '', 'AKTIF', '', 'PENDING', '',
-    '', '',
-    '', '',
-    alamat
-  ]);
-  logAktiviti_(staff,'DAFTAR',`Daftar ${nama}/${noIC} → ${tca} ${masa}`);
-
-  invalidateAll_();
-  return {status:'success', version:String(version_())};
-}
-
-/***********************
- * UPDATE STATUS
- ***********************/
-function updateStatus_(p){
-  const sh=getSheet_();
-  const noIC=(p.noIC||p.id||'').trim();
-  const op=(p.op||'').trim();
-  const staff=(p.staff||'SYSTEM').trim();
-  if(!noIC) return {status:'error', message:'noIC diperlukan'};
-  const row=findRowByIC_(sh,noIC);
-  if(row===-1) return {status:'error', message:'Pesakit tidak ditemui'};
-
-  const now=new Date();
-
-  if(op==='firstVisit'){
-    setRow_(sh,row,{ FirstVisitDate:fmtDateTime(now), FirstVisitStatus:'HADIR', Status:'FIRST VISIT', LabStatus:'PENDING' });
-    logAktiviti_(staff,'FIRST_VISIT',`Hadir (IC ${noIC})`);
-    invalidateAll_();
-    return {status:'success', version:String(version_())};
-  }
-
-  if(op==='retca'){
-    const tca=(p.tarikhTCA||'').trim(), masa=(p.masaTCA||'').trim();
-    if(!validIsoDate_(tca)||!validTimeHHmm_(masa)) return {status:'error', message:'Tarikh/Masa tidak sah'};
-    setRow_(sh,row,{ TarikhTCA:tca, MasaTCA:masa, Status:'TCA CALL' });
-    logAktiviti_(staff,'RE_TCA',`IC ${noIC} → ${tca} ${masa}`);
-    invalidateAll_();
-    return {status:'success', version:String(version_())};
-  }
-
-  if(op==='tcaCalled'){
-    setRow_(sh,row,{ TCACallAt: fmtDateTime(now), TCACallBy: staff });
-    logAktiviti_(staff,'TCA_CALLED',`IC ${noIC}`);
-    invalidateAll_();
-    return {status:'success', version:String(version_())};
-  }
-
-  if(op==='secondVisitHadir'){
-    setRow_(sh,row,{ SecondVisitDate:fmtDateTime(now), SecondVisitStatus:'HADIR', Status:'SELESAI', TarikhSelesai:fmtDateTime(now) });
-    logAktiviti_(staff,'SECOND_VISIT',`Hadir (IC ${noIC}) → Selesai`);
-    invalidateAll_();
-    return {status:'success', version:String(version_())};
-  }
-
-  return {status:'error', message:'Operasi tidak sah'};
-}
-
-/***********************
- * SET TCA SECOND (perlu PDPA)
- ***********************/
-function updatePatient_(p){
-  const sh=getSheet_();
-  const noIC=(p.noIC||p.id||'').trim();
-  if(!noIC) return {status:'error', message:'noIC diperlukan'};
-  const row=findRowByIC_(sh,noIC);
-  if(row===-1) return {status:'error', message:'Pesakit tidak ditemui'};
-
-  const tca=(p.tarikhTCA||'').trim(), masa=(p.masaTCA||'').trim();
-  if(!validIsoDate_(tca)||!validTimeHHmm_(masa)) return {status:'error', message:'Tarikh/Masa tidak sah'};
-
-  const pdpaId=String(sh.getRange(row,16).getValue()||'');
-  if(!pdpaId) return {status:'error', message:'PDPA belum dimuat naik. Sila upload dahulu.'};
-
-  setRow_(sh,row,{ TarikhTCA:tca, MasaTCA:masa, Status:'SECOND VISIT' });
-  logAktiviti_(p.staff||'SYSTEM','SET_SECOND_TCA',`IC ${noIC} → ${tca} ${masa}`);
-  invalidateAll_();
-  return {status:'success', version:String(version_())};
-}
-
-/***********************
- * LAB STATUS
- ***********************/
-function updateLabStatus_(p){
-  const sh=getSheet_();
-  const noIC=(p.noIC||p.id||'').trim();
-  const status=(p.status||'').trim();
-  const staff=(p.staff||'SYSTEM').trim();
-  if(!noIC) return {status:'error', message:'noIC diperlukan'};
-  const row=findRowByIC_(sh,noIC);
-  if(row===-1) return {status:'error', message:'Pesakit tidak ditemui'};
-
-  const now=new Date();
-  const payload = { LabStatus: status||'PENDING' };
-  if ((status||'').toUpperCase()==='DONE'){
-    payload.LabDoneAt = fmtDateTime(now);
-    payload.LabDoneBy = staff;
-  }
-  setRow_(sh,row, payload);
-  logAktiviti_(staff,'LAB_STATUS',`IC ${noIC} → ${status}`);
-  invalidateAll_();
-  return {status:'success', version:String(version_())};
-}
-
-/***********************
- * PDPA (Base64)
- ***********************/
-function uploadPDPA_(e){
-  if (e && e.postData && String(e.postData.type||'').indexOf('multipart/form-data')>=0){
-    return {status:'error', message:'Multipart tidak disokong, hantar base64.'};
-  }
-  const p=e.parameter||{};
-  const noIC=(p.noIC||p.id||'').trim(); if(!noIC) return {status:'error', message:'noIC diperlukan'};
-
-  const sh=getSheet_();
-  const row=findRowByIC_(sh,noIC); if(row===-1) return {status:'error', message:'Pesakit tidak ditemui'};
-
-  const fileBase64=(p.fileBase64||'').trim();
-  const fileName=(p.fileName||`PDPA_${noIC}.pdf`).trim();
-  const fileType=(p.fileType||'application/pdf').trim();
-  if(!fileBase64) return {status:'error', message:'Fail PDPA tiada (base64 kosong)'};
-
-  const bytes=Utilities.base64Decode(fileBase64);
-  const blob=Utilities.newBlob(bytes, fileType, fileName);
-
-  let file;
-  if(PDPA_FOLDER_ID){ const folder=DriveApp.getFolderById(PDPA_FOLDER_ID); file=folder.createFile(blob); }
-  else { file=DriveApp.createFile(blob); }
-
-  setRow_(sh,row,{ PDPAFileId:file.getId() });
-  logAktiviti_(p.staff||'SYSTEM','PDPA_UPLOAD',`IC ${noIC} → ${file.getId()}`);
-  invalidateAll_();
-  return {status:'success', fileId:file.getId(), version:String(version_())};
-}
-function deletePDPA_(p){
-  const sh=getSheet_();
-  const noIC=(p.noIC||p.id||'').trim(); if(!noIC) return {status:'error', message:'noIC diperlukan'};
-  const row=findRowByIC_(sh,noIC); if(row===-1) return {status:'error', message:'Pesakit tidak ditemui'};
-
-  const fid=String(sh.getRange(row,16).getValue()||'');
-  if(fid){ try{ DriveApp.getFileById(fid).setTrashed(true);}catch(e){} }
-  setRow_(sh,row,{ PDPAFileId:'' });
-  logAktiviti_(p.staff||'SYSTEM','PDPA_DELETE',`IC ${noIC}`);
-  invalidateAll_();
-  return {status:'success', version:String(version_())};
-}
-
-/***********************
- * ARKIB
- ***********************/
-function archivePatient_(p){
-  const sh=getSheet_();
-  const noIC=(p.noIC||p.id||'').trim(); if(!noIC) return {status:'error', message:'noIC diperlukan'};
-  const row=findRowByIC_(sh,noIC); if(row===-1) return {status:'error', message:'Pesakit tidak ditemui'};
-
-  setRow_(sh,row,{ Flag:'TIDAK AKTIF', ArchivedAt: fmtDateTime(new Date()) });
-  logAktiviti_(p.staff||'SYSTEM','ARKIB',`IC ${noIC}`);
-  invalidateAll_();
-  return {status:'success', version:String(version_())};
-}
-function restorePatient_(p){
-  const sh=getSheet_();
-  const noIC=(p.noIC||p.id||'').trim(); if(!noIC) return {status:'error', message:'noIC diperlukan'};
-  const row=findRowByIC_(sh,noIC); if(row===-1) return {status:'error', message:'Pesakit tidak ditemui'};
-
-  setRow_(sh,row,{ Flag:'AKTIF', ArchivedAt:'' });
-  logAktiviti_(p.staff||'SYSTEM','PULIH',`IC ${noIC}`);
-  invalidateAll_();
-  return {status:'success', version:String(version_())};
-}
-
-/***********************
- * LIST GETTERS (cache)
- ***********************/
-function getTCACall_(allParam){
-  const wantAll = /^1|true|ya|all$/i.test(String(allParam||'').trim());
-  const key = wantAll ? 'tca_all_v1' : 'tca_v1';
-  const cached=cget_(key); if(cached) return cached;
-
-  const sh=getSheet_();
-  const out=[];
-  const {map} = headerMap_();
-
-  if (wantAll){
-    _rows_(sh).forEach(r=>{
-      const flag=String(r[14]||'');
-      const status=String(r[8]||'');
-      if(flag==='AKTIF' && status==='TCA CALL'){
-        const iso=String(r[6]||''); const masa=String(r[7]||'');
-        const calledAt = map.TCACallAt!=null ? String(r[map.TCACallAt]||'') : '';
-        out.push({
-          id:r[2], nama:r[1], noIC:r[2], noTelefon:r[3],
-          alamat: map.Alamat!=null ? String(r[map.Alamat]||'') : '',
-          tarikhTCA:_toDisplayDate_(iso), masaTCA:masa, tarikhTCAView:tcaView_(iso,masa),
-          iso, status: calledAt ? 'CALLED' : 'PENDING'
-        });
-      }
-    });
-    out.sort((a,b)=> (a.iso||'').localeCompare(b.iso||'') || (a.masaTCA||'').localeCompare(b.masaTCA||''));
-    const resp={status:'success', data:out};
-    cput_(key, resp, TTL_LIST_S);
-    return resp;
-  }
-
-  // Mod "ringkas" untuk pre-call (bergantung hari)
-  const now=new Date();
-  const eee=Utilities.formatDate(now, TZ, 'EEE');
-  const mapDow={Sun:0,Mon:1,Tue:2,Wed:3,Thu:4,Fri:5,Sat:6};
-  const dowToday=mapDow[eee] ?? 0;
-  const targets=new Set();
-  if(dowToday===4){ // Thu → siap-siap untuk Fri–Sun
-    targets.add(addDaysIsoFromNow_(1)); // Fri
-    targets.add(addDaysIsoFromNow_(2)); // Sat
-    targets.add(addDaysIsoFromNow_(3)); // Sun
-  } else {
-    const nextIso=addDaysIsoFromNow_(1);
-    const nextDow=isoDow_(nextIso);
-    if(nextDow!==6 && nextDow!==0) targets.add(nextIso);
-  }
-
-  _rows_(sh).forEach(r=>{
-    const status=String(r[8]||'');
-    const flag=String(r[14]||'');
-    const iso=String(r[6]||''); const masa=String(r[7]||'');
-    if(status==='TCA CALL' && flag==='AKTIF' && targets.has(iso)){
-      const calledAt = map.TCACallAt!=null ? String(r[map.TCACallAt]||'') : '';
-      out.push({
-        id:r[2], nama:r[1], noIC:r[2], noTelefon:r[3],
-        alamat: map.Alamat!=null ? String(r[map.Alamat]||'') : '',
-        tarikhTCA:_toDisplayDate_(iso), masaTCA:masa,
-        tarikhTCAView:tcaView_(iso,masa),
-        iso,
-        status: calledAt ? 'CALLED' : 'PENDING'
-      });
-    }
-  });
-  out.sort((a,b)=> (a.iso||'').localeCompare(b.iso||'') || (a.masaTCA||'').localeCompare(b.masaTCA||''));
-  const resp={status:'success', data:out};
-  cput_('tca_v1', resp, TTL_LIST_S);
-  return resp;
-}
-
-function getFirstVisit_(){
-  const cached=cget_('first_v1'); if(cached) return cached;
-  const sh=getSheet_();
-  const out=[];
-  const {map} = headerMap_();
-
-  _rows_(sh).forEach(r=>{
-    const flag=String(r[14]||''); if(flag!=='AKTIF') return;
-    const status=String(r[8]||''); const iso=String(r[6]||''); const masa=String(r[7]||'');
-    const firstD=String(r[9]||''); const pdpa=String(r[15]||'');
-
-    if(!firstD && (status==='TCA CALL' || status==='FIRST VISIT')){
-      out.push({
-        id:r[2], nama:r[1], noIC:r[2], noTelefon:r[3],
-        alamat: map.Alamat!=null ? String(r[map.Alamat]||'') : '',
-        tarikhTCA:_toDisplayDate_(iso), masaTCA:masa, tarikhTCAView:tcaView_(iso,masa),
-        status:'BELUM HADIR', pdpaFileId:pdpa
-      });
+  // =========================
+  // GOOGLE IDENTITY
+  // =========================
+  window.addEventListener("load", () => {
+    if (!GOOGLE_CLIENT_ID || GOOGLE_CLIENT_ID.indexOf("PASTE_") === 0){
+      setAuthStatus("Konfigurasi GOOGLE_CLIENT_ID belum ditetapkan.");
       return;
     }
-    if(firstD){
-      const days=_daysSinceFirst_(firstD);
-      if(days!==null && days<3){
-        out.push({
-          id:r[2], nama:r[1], noIC:r[2], noTelefon:r[3],
-          alamat: map.Alamat!=null ? String(r[map.Alamat]||'') : '',
-          tarikhTCA:_toDisplayDate_(iso), masaTCA:masa, tarikhTCAView:tcaView_(iso,masa),
-          status:'HADIR', pdpaFileId:pdpa
-        });
-      }
-    }
-  });
-  const resp={status:'success', data:out};
-  cput_('first_v1', resp, TTL_LIST_S);
-  return resp;
-}
-
-function getLabFollowUp_(){
-  const cached=cget_('lab_v1'); if(cached) return cached;
-  const sh=getSheet_();
-  const out=[];
-  const {map} = headerMap_();
-
-  _rows_(sh).forEach(r=>{
-    const flag=String(r[14]||''); if(flag!=='AKTIF') return;
-    const firstD=String(r[9]||''); const status=String(r[8]||'');
-    const lab=String(r[16]||'') || 'PENDING';
-    const days=_daysSinceFirst_(firstD);
-    if(firstD && days!==null && days>=LAB_OVERDUE_DAYS && lab!=='DONE' && status!=='SELESAI'){
-      out.push({
-        id:r[2], nama:r[1], noIC:r[2], noTelefon:r[3],
-        alamat: map.Alamat!=null ? String(r[map.Alamat]||'') : '',
-        firstVisitDate:firstD.split(' ')[0], daysSince:days, labStatus:lab
+    if (window.google && google.accounts && google.accounts.id){
+      google.accounts.id.initialize({
+        client_id: GOOGLE_CLIENT_ID,
+        callback: handleCredentialResponse,
+        auto_select: false
       });
-    }
-  });
-  out.sort((a,b)=>b.daysSince-a.daysSince);
-  const resp={status:'success', data:out};
-  cput_('lab_v1', resp, TTL_LIST_S);
-  return resp;
-}
-
-function getSecondVisit_(){
-  const cached=cget_('second_v1'); if(cached) return cached;
-  const sh=getSheet_();
-  const out=[];
-  const {map} = headerMap_();
-
-  _rows_(sh).forEach(r=>{
-    const flag=String(r[14]||''); if(flag!=='AKTIF') return;
-    const status=String(r[8]||''); if(status!=='SECOND VISIT') return;
-    const iso=String(r[6]||''); const masa=String(r[7]||'');
-    const hadir=(String(r[12]||'')==='HADIR') || Boolean(String(r[11]||''));
-    out.push({
-      id:r[2], nama:r[1], noIC:r[2], noTelefon:r[3],
-      alamat: map.Alamat!=null ? String(r[map.Alamat]||'') : '',
-      tarikhTCA:_toDisplayDate_(iso), masaTCA:masa, tarikhTCAView:tcaView_(iso,masa),
-      status:hadir?'HADIR':'BELUM HADIR', pdpaFileId:String(r[15]||'')
-    });
-  });
-  const resp={status:'success', data:out};
-  cput_('second_v1', resp, TTL_LIST_S);
-  return resp;
-}
-
-function getCompleted_(){
-  const cached=cget_('completed_v1'); if(cached) return cached;
-  const sh=getSheet_();
-  const out=[];
-  const {map} = headerMap_();
-
-  _rows_(sh).forEach(r=>{
-    const selesai=String(r[13]||''); const flag=String(r[14]||'');
-    if(selesai && flag==='AKTIF'){
-      const labAt = String(r[18]||''); // LabDoneAt
-      const labBy = String(r[19]||''); // LabDoneBy
-      const labCompletedLabel = labAt ? (labBy ? (labAt+' by '+labBy) : labAt) : '';
-      out.push({
-        id:r[2], nama:r[1], noIC:r[2], noTelefon:r[3],
-        alamat: map.Alamat!=null ? String(r[map.Alamat]||'') : '',
-        pdpaFileId:String(r[15]||''),
-        tarikhDaftar:String(r[5]||''),
-        firstVisitDate:String(r[9]||''),
-        labDoneDate: labCompletedLabel,
-        labCompletedAt: labCompletedLabel,
-        secondVisitDate:String(r[11]||''),
-        tarikhSelesai:String(r[13]||'')
-      });
-    }
-  });
-  out.sort((a,b)=>{
-    const A=(a.tarikhSelesai||'').split(' ')[0].split('/'); const B=(b.tarikhSelesai||'').split(' ')[0].split('/');
-    return new Date(+B[2],+B[1]-1,+B[0]) - new Date(+A[2],+A[1]-1,+A[0]);
-  });
-  const resp={status:'success', data:out};
-  cput_('completed_v1', resp, TTL_LIST_S);
-  return resp;
-}
-
-function getArchived_(){
-  const cached=cget_('archived_v1'); if(cached) return cached;
-  const sh=getSheet_();
-  const out=[];
-  const {map} = headerMap_();
-
-  _rows_(sh).forEach(r=>{
-    if(String(r[14]||'')==='TIDAK AKTIF'){
-      out.push({
-        id:r[2], nama:r[1], noIC:r[2], noTelefon:r[3],
-        alamat: map.Alamat!=null ? String(r[map.Alamat]||'') : '',
-        tarikhDaftar:String(r[5]||''), tarikhSelesai:String(r[13]||''), archivedAt:String(r[17]||'')
-      });
-    }
-  });
-  const resp={status:'success', data:out};
-  cput_('archived_v1', resp, TTL_LIST_S);
-  return resp;
-}
-
-/***********************
- * DASHBOARD & STATS
- ***********************/
-function getDashboardData_(){
-  const cached=cget_('dash_v1'); if(cached) return cached;
-  const sh=getSheet_();
-  let totalDaftar=0,totalFirstPending=0,totalSecondPending=0,totalSelesai=0,labDue=0,labPending=0;
-
-  _rows_(sh).forEach(r=>{
-    const flag=String(r[14]||''); if(flag!=='AKTIF') return; totalDaftar++; 
-    const status=String(r[8]||''); const firstD=String(r[9]||''); const secondD=String(r[11]||''); const selesai=String(r[13]||''); const lab=String(r[16]||'')||'PENDING';
-    if(!selesai){
-      if((status==='TCA CALL'||status==='FIRST VISIT')){
-        const days=_daysSinceFirst_(firstD);
-        if(!firstD || (days!==null && days<3)) totalFirstPending++;
-      }
-      if(status==='SECOND VISIT' && !secondD) totalSecondPending++;
-    } else totalSelesai++;
-    const days=_daysSinceFirst_(firstD);
-    if(firstD && days!==null && days>=LAB_OVERDUE_DAYS && lab!=='DONE' && status!=='SELESAI'){
-      labDue++;
-      if(lab==='IN_PROCESS'||lab==='REPEAT') labPending++;
-    }
-  });
-
-  const resp={status:'success', data:{ totalDaftar, totalFirstVisit:totalFirstPending, totalSecondVisit:totalSecondPending, totalSelesai, labFollowUpDue:labDue, labFollowUpPending:labPending }};
-  cput_('dash_v1', resp, TTL_LIST_S);
-  return resp;
-}
-
-function getStatistics_(period){
-  const key=(period==='12months')?'stats_12':(period==='6months')?'stats_6':'stats_3';
-  const cached=cget_(key); if(cached) return cached;
-
-  const back=(period==='12months')?12:((period==='6months')?6:3);
-  const sh=getSheet_(); const stats={}; const cutoff=new Date(); cutoff.setMonth(cutoff.getMonth()-back);
-
-  _rows_(sh).forEach(r=>{
-    const selesai=String(r[13]||''); if(!selesai) return;
-    const d=selesai.split(' ')[0].split('/'); const dt=new Date(+d[2],+d[1]-1,+d[0]);
-    if(dt>=cutoff){ const label=Utilities.formatDate(dt, TZ, 'MMM yyyy'); stats[label]=(stats[label]||0)+1; }
-  });
-  const arr=Object.entries(stats).map(([label,count])=>({label,count})).sort((a,b)=> (new Date('1 '+a.label))-(new Date('1 '+b.label)));
-  const resp={status:'success', data:arr};
-  cput_(key, resp, TTL_STATS_S);
-  return resp;
-}
-
-/***********************
- * (Opsyen) WhatsApp Cloud API
- ***********************/
-const WA = {
-  ENABLED: false,
-  TOKEN: '',
-  PHONE_NUMBER_ID: '',
-  USE_TEMPLATE: true,
-  TEMPLATE_NAME: 'appointment_reminder',
-  TEMPLATE_LANG: 'en',
-  BUSINESS_NAME: 'Klinik SihatSokmo'
-};
-function sendWhatsAppAPI_(p){
-  if(!WA.ENABLED) return {status:'error', message:'WhatsApp API tidak diaktifkan'};
-  const sh=getSheet_();
-  const noIC=(p.noIC||p.id||'').trim();
-  const msg=(p.message||'');
-  if(!noIC) return {status:'error', message:'noIC diperlukan'};
-  const row=findRowByIC_(sh,noIC); if(row===-1) return {status:'error', message:'Pesakit tidak ditemui'};
-
-  const tel=String(sh.getRange(row,4).getValue()||''); // 60...
-  const to = tel.startsWith('+')?tel:('+'+tel);
-
-  let result;
-  if (WA.USE_TEMPLATE && WA.TEMPLATE_NAME){
-    const nama=String(sh.getRange(row,2).getValue()||'Pesakit');
-    const tca=String(sh.getRange(row,7).getValue()||''); // yyyy-MM-dd
-    const masa=String(sh.getRange(row,8).getValue()||'');
-    const bodyParams=[ nama, _toDisplayDate_(tca), masa, WA.BUSINESS_NAME ];
-    result = waSendTemplate_(to, bodyParams);
-  } else {
-    const text = msg || `Assalamualaikum. ${WA.BUSINESS_NAME} di sini. Peringatan temujanji saringan anda.`;
-    result = waSendText_(to, text);
-  }
-
-  logAktiviti_('SYSTEM','WA_SEND',`to ${to}`);
-  return {status:'success', result};
-}
-function waSendText_(to, text){
-  const url = 'https://graph.facebook.com/v19.0/'+WA.PHONE_NUMBER_ID+'/messages';
-  const payload = { messaging_product:'whatsapp', to, type:'text', text:{ body:text } };
-  const opt = { method:'post', contentType:'application/json', payload:JSON.stringify(payload), headers:{ Authorization:'Bearer '+WA.TOKEN }, muteHttpExceptions:true };
-  const res = UrlFetchApp.fetch(url, opt);
-  return {code:res.getResponseCode(), body:res.getContentText()};
-}
-function waSendTemplate_(to, bodyParams){
-  const url = 'https://graph.facebook.com/v19.0/'+WA.PHONE_NUMBER_ID+'/messages';
-  const components = [{ type:'body', parameters: (bodyParams||[]).map(v=>({ type:'text', text:String(v) })) }];
-  const payload = { messaging_product:'whatsapp', to, type:'template', template:{ name:WA.TEMPLATE_NAME, language:{ code:WA.TEMPLATE_LANG }, components } };
-  const opt = { method:'post', contentType:'application/json', payload:JSON.stringify(payload), headers:{ Authorization:'Bearer '+WA.TOKEN }, muteHttpExceptions:true };
-  const res = UrlFetchApp.fetch(url, opt);
-  return {code:res.getResponseCode(), body:res.getContentText()};
-}
-
-/***********************
- * AKTIVITI PROGRAM (NADI/Komuniti)
- ***********************/
-function getNadiSummarySheet_(){
-  const ss = ss_();
-  let sh = ss.getSheetByName(SHEET_NAME.NADI_SUMMARY);
-  if (!sh) sh = ss.insertSheet(SHEET_NAME.NADI_SUMMARY);
-  const header = [
-    'CreatedAt','ProgramTitle','ProgramDate','Staff',
-    'LayakCount','TakLayakCount','Total','ActivityId','Note'
-  ];
-  const cur = sh.getRange(1,1,1,header.length).getValues()[0];
-  const need = header.some((v,i)=> String(cur[i]||'')!==v);
-  if (need) sh.getRange(1,1,1,header.length).setValues([header]);
-  for (let c=1;c<=header.length;c++){ sh.getRange(1,c,sh.getMaxRows(),1).setNumberFormat('@'); }
-  if (sh.getFrozenRows()<1) sh.setFrozenRows(1);
-  return sh;
-}
-function getNadiDetailSheet_(){
-  const ss = ss_();
-  let sh = ss.getSheetByName(SHEET_NAME.NADI_DETAIL);
-  if (!sh) sh = ss.insertSheet(SHEET_NAME.NADI_DETAIL);
-  const header = [
-    'ActivityId','No',
-    'Nama','NoIC','Umur','NoTelefon','Alamat',
-    'BP','PR','DXT','Tinggi','Berat','BMI',
-    'Status',
-    'Remark',
-    'TCADate','TCATime','TCAStaff'
-  ];
-  const cur = sh.getRange(1,1,1,header.length).getValues()[0];
-  const need = header.some((v,i)=> String(cur[i]||'')!==v);
-  if (need) sh.getRange(1,1,1,header.length).setValues([header]);
-  for (let c=1;c<=header.length;c++){ sh.getRange(1,c,sh.getMaxRows(),1).setNumberFormat('@'); }
-  if (sh.getFrozenRows()<1) sh.setFrozenRows(1);
-  return sh;
-}
-function newId_(){
-  return Utilities.formatDate(new Date(), TZ, 'yyyyMMddHHmmss') + '_' + Math.floor(Math.random()*1e6).toString(36);
-}
-
-/***********************
- * UTIL TARIKH (TAMBAHAN UNTUK MONITOR)
- ***********************/
-function _toIsoFromDisplayDate_(ddmmyyyy){
-  if (!ddmmyyyy) return '';
-  const m = /^(\d{2})\/(\d{2})\/(\d{4})$/.exec(ddmmyyyy);
-  if (!m) return ddmmyyyy;
-  return m[3]+'-'+m[2]+'-'+m[1];
-}
-function _sameDateDisplay_(a, b){
-  return String(a||'').trim() === String(b||'').trim();
-}
-function _todayDisplayDate_(){
-  return Utilities.formatDate(new Date(), TZ, 'dd/MM/yyyy');
-}
-
-/***********************
- * ENDPOINT MONITOR SESI (BERDASARKAN SIMPANAN RASMI)
- ***********************/
-function listNadiSessions_(dateStr){
-  const target = dateStr ? (validIsoDate_(dateStr) ? _toDisplayDate_(dateStr) : String(dateStr)) : _todayDisplayDate_();
-
-  const ck = 'mon_sessions_'+target;
-  const cached = cget_(ck);
-  if (cached) return cached;
-
-  const sh = getNadiSummarySheet_();
-  const last = sh.getLastRow();
-  const arr = (last<2)?[]:sh.getRange(2,1,last-1,9).getValues();
-  const items = arr
-    .filter(r => _sameDateDisplay_(String(r[2]||''), target))
-    .map(r => ({
-      createdAt:String(r[0]||''), title:String(r[1]||''), programDate:String(r[2]||''),
-      staff:String(r[3]||''), layakCount:Number(r[4]||0), takLayakCount:Number(r[5]||0), total:Number(r[6]||0),
-      activityId:String(r[7]||''), note:String(r[8]||'')
-    }))
-    .sort((a,b)=> (a.title||'').localeCompare(b.title||''));
-  const out = {status:'success', date:target, sessions:items};
-  cput_(ck, out, 15);
-  return out;
-}
-function getNadiMonitor_(dateStr){
-  const sess = listNadiSessions_(dateStr);
-  if (sess.status!=='success') return sess;
-
-  const target = sess.date;
-
-  const ck = 'mon_counts_'+target;
-  const cached = cget_(ck);
-  if (cached) return cached;
-
-  const sh = getNadiDetailSheet_();
-  const last = sh.getLastRow();
-  const arr = (last<2)?[]:sh.getRange(2,1,last-1,18).getValues();
-
-  const byId = {}; sess.sessions.forEach(s=> byId[s.activityId] = { title:s.title, programDate:s.programDate });
-  const live = {}; Object.keys(byId).forEach(id=> live[id]={layak:0,takLayak:0,total:0});
-
-  arr.forEach(r=>{
-    const id = String(r[0]||'');
-    if (!byId[id]) return;
-    const status = String(r[13]||'').toUpperCase();
-    live[id] = live[id] || {layak:0,takLayak:0,total:0};
-    if (status==='LAYAK') live[id].layak++;
-    else if (status==='TAK LAYAK') live[id].takLayak++;
-    live[id].total++;
-  });
-
-  const data = Object.keys(byId).map(id=>({
-    activityId:id,
-    title: byId[id].title,
-    programDate: byId[id].programDate,
-    counts: live[id] || {layak:0,takLayak:0,total:0}
-  })).sort((a,b)=> (a.title||'').localeCompare(b.title||''));
-
-  const out = { status:'success', date:target, data };
-  cput_(ck, out, 15);
-  return out;
-}
-
-/***********************
- * SIMPAN AKTIVITI (SIMPANAN RASMI)
- ***********************/
-function saveNadiActivity_(p){
-  const staff = (p.staff||'SYSTEM').trim();
-  const title = String(p.programTitle || p.title || '').trim();
-  const rawDate = String(p.programDate || p.date || '').trim();
-  if (!title) return {status:'error', message:'Tajuk program diperlukan'};
-  if (!rawDate) return {status:'error', message:'Tarikh program diperlukan'};
-
-  const programDate = validIsoDate_(rawDate) ? _toDisplayDate_(rawDate) : String(rawDate);
-
-  let items = p.items;
-  try{ if (typeof items === 'string') items = JSON.parse(items); }catch(e){
-    return {status:'error', message:'items bukan JSON sah'};
-  }
-  if (!Array.isArray(items) || !items.length){
-    return {status:'error', message:'Senarai peserta kosong'};
-  }
-
-  try{
-    const sample = items[0] || {};
-    const keys = Object.keys(sample);
-    logAktiviti_(staff,'NADI_SAVE_KEYS','keys:'+keys.join(','));
-  }catch(e){}
-
-  const pick = (...cands) => {
-    for (let i=0;i<cands.length;i++){
-      const v = cands[i];
-      if (v !== undefined && v !== null && String(v).trim()!=='') return String(v).trim();
-    }
-    return '';
-  };
-  const toBool = (v) => v===true || String(v).toLowerCase()==='true' || String(v).toUpperCase()==='YA';
-
-  const activityId = newId_();
-  let layakCount = 0, takLayakCount = 0;
-
-  const detailRows = items.map((row, idx) => {
-    const nama   = pick(row.nama, row.name, row.fullname);
-    const ic     = pick(row.ic, row.noIC, row.no_kp, row.icNumber, row.nokp);
-    const umur   = pick(row.umur, row.age);
-    const telRaw = pick(row.telefon, row.noTelefon, row.noTel, row.phone, row.msisdn, row.tel);
-    const tel    = normalizeMsisdnMY_(telRaw);
-    const alamat = pick(row.alamat, row.address, row.addr);
-
-    const bp     = pick(row.bp, row.bloodPressure);
-    const pr     = pick(row.pr, row.nadi, row.pulse);
-    const dxt    = pick(row.dxt, row.gula, row.dxtValue, row.bs, row.sugar);
-    const tinggi = pick(row.tinggi, row.height);
-    const berat  = pick(row.berat, row.weight);
-    const bmi    = pick(row.bmi, row.BMI);
-
-    let status = String(pick(row.status)).toUpperCase();
-    const isLayak = toBool(row.layak) || status==='LAYAK';
-    const isTak   = toBool(row.takLayak) || status==='TAK LAYAK' || status==='TIDAK LAYAK';
-    if (!status){
-      status = isLayak ? 'LAYAK' : (isTak ? 'TAK LAYAK' : '');
-    }
-    if (status==='LAYAK') layakCount++;
-    else if (status==='TAK LAYAK') takLayakCount++;
-
-    const tcaIso   = pick(row.tcaDate, row.tca_date, row.tca);
-    const tcaTime  = pick(row.tcaTime, row.tca_time, row.masaTCA);
-    const tcaDate  = tcaIso ? _toDisplayDate_(tcaIso) : '';
-    const tcaStaff = pick(row.tcaStaff, row.tca_staff, row.staffTCA);
-
-    const remark   = pick(row.remark, row.catatan, row.notes, row.note);
-
-    return [
-      activityId, String(idx+1),
-      nama, ic, umur, tel, alamat,
-      bp, pr, dxt, tinggi, berat, bmi,
-      status,
-      remark,
-      tcaDate, tcaTime, tcaStaff
-    ];
-  });
-
-  const summarySh = getNadiSummarySheet_();
-  const createdAt = fmtDateTime(new Date());
-  const total = layakCount + takLayakCount;
-  const note = String(p.note||'');
-  summarySh.appendRow([
-    createdAt, title, programDate, staff,
-    String(layakCount), String(takLayakCount), String(total),
-    activityId, note
-  ]);
-
-  const detailSh = getNadiDetailSheet_();
-  if (detailRows.length){
-    const startRow = detailSh.getLastRow() + 1;
-    detailSh.getRange(startRow, 1, detailRows.length, detailRows[0].length).setValues(detailRows);
-  }
-
-  logAktiviti_(staff,'NADI_SAVE',`${title} @ ${programDate} (ID ${activityId}) – Layak:${layakCount}, Tidak:${takLayakCount}`);
-  pushProgramEvent_('NADI_SAVE', {
-    staff,
-    activityId,
-    programTitle: title,
-    programDate: programDate,
-    layakCount,
-    takLayakCount,
-    total,
-    summary: `${title} @ ${programDate} – Layak:${layakCount}, Tidak:${takLayakCount}`
-  });
-
-  return { status:'success', activityId, layakCount, takLayakCount, total };
-}
-
-/** Senarai ringkas aktiviti (terbaru dahulu) */
-function getNadiActivities_(){
-  const sh = getNadiSummarySheet_();
-  const last = sh.getLastRow();
-  const arr = (last<2)?[]:sh.getRange(2,1,last-1,9).getValues();
-  const data = arr.map(r => ({
-    createdAt:String(r[0]||''), title:String(r[1]||''), programDate:String(r[2]||''),
-    staff:String(r[3]||''), layakCount:String(r[4]||''),
-    takLayakCount:String(r[5]||''), total:String(r[6]||''),
-    activityId:String(r[7]||''), note:String(r[8]||'')
-  })).reverse();
-  return { status:'success', data };
-}
-/** Detail aktiviti by activityId */
-function getNadiActivityDetail_(activityId){
-  const id = String(activityId||'').trim();
-  if(!id) return {status:'error', message:'activityId diperlukan'};
-  const sh = getNadiDetailSheet_();
-  const last = sh.getLastRow();
-  const arr = (last<2)?[]:sh.getRange(2,1,last-1,18).getValues(); // 18 kolum (dengan Remark)
-  const rows = arr.filter(r => String(r[0]||'')===id).map(r => ({
-    activityId: String(r[0]||''), no:String(r[1]||''),
-    nama:String(r[2]||''), noIC:String(r[3]||''), umur:String(r[4]||''),
-    noTelefon:String(r[5]||''), alamat:String(r[6]||''),
-    bp:String(r[7]||''), pr:String(r[8]||''), dxt:String(r[9]||''),
-    tinggi:String(r[10]||''), berat:String(r[11]||''), bmi:String(r[12]||''),
-    status:String(r[13]||''), remark:String(r[14]||''),
-    tcaDate:String(r[15]||''), tcaTime:String(r[16]||''), tcaStaff:String(r[17]||'')
-  }));
-  return { status:'success', data: rows };
-}
-
-/***********************
- * PROGRAM FEED (ringan untuk sync rentas laptop)
- ***********************/
-function getProgramFeedSheet_(){
-  const ss = ss_();
-  let sh = ss.getSheetByName(SHEET_NAME.PROGRAM_FEED);
-  if (!sh) sh = ss.insertSheet(SHEET_NAME.PROGRAM_FEED);
-  const header = ['TS','Staff','Kind','ActivityId','PayloadJSON'];
-  const cur = sh.getRange(1,1,1,header.length).getValues()[0];
-  const need = header.some((v,i)=> String(cur[i]||'')!==v);
-  if (need) sh.getRange(1,1,1,header.length).setValues([header]);
-  for (let c=1;c<=header.length;c++){ sh.getRange(1,c,sh.getMaxRows(),1).setNumberFormat('@'); }
-  if (sh.getFrozenRows()<1) sh.setFrozenRows(1);
-  return sh;
-}
-
-/** Tolak event ke feed */
-function pushProgramEvent_(kind, p){
-  const sh = getProgramFeedSheet_();
-  const nowMs = String(new Date().getTime());
-  const staff = String(p.staff||'SYSTEM');
-  const k = String(kind||'EVENT');
-  const activityId = String(p.activityId||'');
-  // Buat payload ringkas (hadkan saiz)
-  const payload = {
-    title: p.programTitle || p.title || '',
-    programDate: p.programDate || p.date || '',
-    summary: p.summary || '',
-    layakCount: p.layakCount || '',
-    takLayakCount: p.takLayakCount || '',
-    total: p.total || '',
-  };
-  sh.appendRow([ nowMs, staff, k, activityId, JSON.stringify(payload) ]);
-  return {status:'success', ts: nowMs};
-}
-
-/** API: ambil event lebih baharu daripada 'since' (ms sejak epoch). 'limit' default 50 */
-function programFeedSince_(since, limit){
-  const sh = getProgramFeedSheet_();
-  const last = sh.getLastRow();
-  const lim = Math.max(1, Math.min(500, Number(limit||50)));
-  if (last < 2) return { status:'success', data:[], latest: String(new Date().getTime()) };
-
-  const rows = sh.getRange(2,1,last-1,5).getValues(); // TS, Staff, Kind, ActivityId, PayloadJSON
-  const sinceMs = Number(since||0);
-  const newer = [];
-  for (let i = rows.length-1; i >= 0; i--){
-    const ts = Number(rows[i][0]||0);
-    if (ts > sinceMs){
-      newer.push({
-        ts: String(ts),
-        staff: String(rows[i][1]||''),
-        kind: String(rows[i][2]||''),
-        activityId: String(rows[i][3]||''),
-        payload: safeParseJson_(String(rows[i][4]||'{}'))
-      });
-      if (newer.length >= lim) break;
+      google.accounts.id.prompt(); // One Tap jika layak
     } else {
-      break;
+      setAuthStatus("GSI belum dimuatkan.");
     }
-  }
-  newer.reverse();
-  const latest = newer.length ? newer[newer.length-1].ts : String(sinceMs||new Date().getTime());
-  return { status:'success', data:newer, latest };
-}
-function safeParseJson_(s){
-  try{ return JSON.parse(s); }catch(e){ return {}; }
-}
-
-/***********************
- * NADI LIVE (draf masa nyata rentas laptop – tanpa tekan "Simpan semua")
- ***********************/
-function getNadiLiveSheet_(){
-  const ss = ss_();
-  let sh = ss.getSheetByName(SHEET_NAME.NADI_LIVE);
-  if (!sh) sh = ss.insertSheet(SHEET_NAME.NADI_LIVE);
-  const header = [ 'SessionId','RowId','PayloadJSON','UpdatedAt','Staff' ];
-  const cur = sh.getRange(1,1,1,header.length).getValues()[0] || [];
-  const need = header.some((v,i)=> String(cur[i]||'')!==v);
-  if (need) sh.getRange(1,1,1,header.length).setValues([header]);
-  for (let c=1;c<=header.length;c++){ sh.getRange(1,c,sh.getMaxRows(),1).setNumberFormat('@'); }
-  if (sh.getFrozenRows()<1) sh.setFrozenRows(1);
-  return sh;
-}
-function getNadiSessionsSheet_(){
-  const ss = ss_();
-  let sh = ss.getSheetByName(SHEET_NAME.NADI_SESSIONS);
-  if (!sh) sh = ss.insertSheet(SHEET_NAME.NADI_SESSIONS);
-  const header = [ 'SessionId','Title','ProgramDate','LastSeen','Staff' ];
-  const cur = sh.getRange(1,1,1,header.length).getValues()[0] || [];
-  const need = header.some((v,i)=> String(cur[i]||'')!==v);
-  if (need) sh.getRange(1,1,1,header.length).setValues([header]);
-  for (let c=1;c<=header.length;c++){ sh.getRange(1,c,sh.getMaxRows(),1).setNumberFormat('@'); }
-  if (sh.getFrozenRows()<1) sh.setFrozenRows(1);
-  return sh;
-}
-function _titleFromSessionId_(sessionId){
-  const m = /^(.+)_([0-9]{4}-[0-9]{2}-[0-9]{2})$/.exec(String(sessionId||''));
-  if (!m) return {title: sessionId || '', programDate: ''};
-  const slug = m[1].replace(/[-_]+/g,' ').trim();
-  const title = slug.split(' ').map(w=> w ? (w[0].toUpperCase()+w.slice(1)) : w).join(' ');
-  return { title, programDate: _toDisplayDate_(m[2]) };
-}
-function upsertNadiSession_(sessSh, rec){
-  const last = sessSh.getLastRow();
-  const all = (last<2) ? [] : sessSh.getRange(2,1,last-1,5).getValues(); // SessionId,Title,ProgramDate,LastSeen,Staff
-  let foundRow = -1;
-  for (let i=0;i<all.length;i++){
-    if (String(all[i][0]||'') === rec.sessionId){
-      foundRow = i+2; break;
-    }
-  }
-  const line = [ rec.sessionId, rec.title, rec.programDate, rec.lastSeen, rec.staff ];
-  if (foundRow === -1){
-    sessSh.appendRow(line);
-  } else {
-    sessSh.getRange(foundRow,1,1,5).setValues([line]);
-  }
-}
-function saveNadiLive_(p){
-  const sessionId = String(p.sessionId||'').trim();
-  if (!sessionId) return {status:'error', message:'sessionId diperlukan'};
-  let items = p.items;
-  try{ if (typeof items === 'string') items = JSON.parse(items); }catch(e){ return {status:'error', message:'items bukan JSON sah'}; }
-  if (!Array.isArray(items) || !items.length) return {status:'success', saved:0};
-
-  const sh = getNadiLiveSheet_();
-  const now = fmtDateTime(new Date());
-  const staff = String(p.staff||'SYSTEM');
-
-  const sessSh = getNadiSessionsSheet_();
-  const sessInfo = _titleFromSessionId_(sessionId);
-  upsertNadiSession_(sessSh, {
-    sessionId,
-    title: sessInfo.title,
-    programDate: sessInfo.programDate, // dd/MM/yyyy
-    lastSeen: now,
-    staff
   });
 
-  const rows = items.map(it => [
-    sessionId,
-    String(it.id||it.rowId||'').trim() || ('row_'+Utilities.getUuid()),
-    JSON.stringify({
-      id: String(it.id||it.rowId||''),
-      nama: String(it.nama||''),
-      ic: String(it.ic||''),
-      tel: String(it.tel||''),
-      alamat: String(it.alamat||''),
-      bp: String(it.bp||''),
-      pr: String(it.pr||''),
-      dxtType: String(it.dxtType||''),
-      dxt: String(it.dxt||''),
-      tinggi: String(it.tinggi||''),
-      berat: String(it.berat||''),
-      bmi: String(it.bmi||''),
-      layak: !!it.layak,
-      takLayak: !!it.takLayak,
-      tcaDate: String(it.tcaDate||''),
-      tcaTime: String(it.tcaTime||''),
-      tcaStaff: String(it.tcaStaff||''),
-      remark: String(it.remark||'')
-    }),
-    now,
-    staff
-  ]);
-
-  if (rows.length){
-    sh.getRange(sh.getLastRow()+1, 1, rows.length, rows[0].length).setValues(rows);
+  function parseJwt (token) {
+    try{
+      const base64Url = token.split('.')[1];
+      const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
+      const jsonPayload = decodeURIComponent(atob(base64).split('').map(function(c) {
+        return '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2);
+      }).join(''));
+      return JSON.parse(jsonPayload);
+    }catch(e){ return {}; }
   }
-  return {status:'success', saved: rows.length};
-}
-function listNadiSessionsLive_(dateStr){
-  const target = dateStr ? (validIsoDate_(dateStr) ? _toDisplayDate_(dateStr) : String(dateStr)) : _todayDisplayDate_();
-  const sh = getNadiSessionsSheet_();
-  const last = sh.getLastRow();
-  const out = [];
-  if (last >= 2){
-    const rows = sh.getRange(2,1,last-1,5).getValues(); // SessionId,Title,ProgramDate,LastSeen,Staff
-    const now = new Date().getTime();
-    rows.forEach(r=>{
-      const programDate = String(r[2]||'');
-      const lastSeenStr = String(r[3]||''); // dd/MM/yyyy HH:mm
-      if (programDate !== target) return;
-      // aktif 48 jam
-      let active = true;
-      try{
-        const [d,t] = lastSeenStr.split(' ');
-        const [dd,mm,yyyy] = d.split('/').map(Number);
-        const [HH,MM] = (t||'00:00').split(':').map(Number);
-        const ts = new Date(yyyy,mm-1,dd,HH||0,MM||0,0,0).getTime();
-        active = (now - ts) <= (48*60*60*1000);
-      }catch(e){}
-      if (!active) return;
 
-      out.push({
-        sessionId:String(r[0]||''),
-        title:String(r[1]||''),
-        programDate:programDate,
-        lastSeen:lastSeenStr,
-        staff:String(r[4]||'')
+  async function handleCredentialResponse(resp){
+    try{
+      ID_TOKEN = (resp && resp.credential) ? resp.credential : "";
+      if (!ID_TOKEN){ setAuthStatus("Log masuk gagal (tiada id_token)."); return; }
+      const info = parseJwt(ID_TOKEN);
+      setAuthStatus("Log masuk sebagai: " + (info.email || "Pengguna"));
+      IS_AUTH = true;
+      setReloadEnabled(true);
+      await bootstrap();
+    }catch(err){
+      console.error(err);
+      setAuthStatus("Log masuk gagal.");
+    }
+  }
+
+  // =========================
+  // API WRAPPER
+  // =========================
+  async function apiGet(params){
+    if (!SCRIPT_URL || SCRIPT_URL.indexOf("PASTE_") === 0) throw new Error("SCRIPT_URL belum disetkan.");
+    if (!ID_TOKEN) throw new Error("Belum log masuk (tiada id_token).");
+    const q = new URLSearchParams(Object.assign({}, params, { id_token: ID_TOKEN }));
+    const url = SCRIPT_URL + "?" + q.toString();
+    const res = await fetch(url, { method: "GET", credentials: "omit" });
+    if (!res.ok){
+      let msg = "";
+      try{ msg = await res.text(); }catch(e){}
+      throw new Error("HTTP " + res.status + " " + msg);
+    }
+    return res.json();
+  }
+
+  async function bootstrap(){
+    try{
+      const who = await apiGet({ action: "whoami" });
+      if (!who || who.status !== "success"){
+        setAuthStatus("Akses ditolak.");
+        return;
+      }
+      setAuthStatus("Log masuk: " + (who.email || "Pengguna"));
+      await loadSejarahList();
+    }catch(e){
+      console.error(e);
+      setAuthStatus("Akses ditolak: " + (e && e.message ? e.message : e));
+    }
+  }
+
+  // =========================
+  // RENDER
+  // =========================
+  function escapeHtml(s){
+    return String(s==null?"":s)
+      .replace(/&/g,"&amp;").replace(/</g,"&lt;")
+      .replace(/>/g,"&gt;").replace(/"/g,"&quot;").replace(/'/g,"&#39;");
+  }
+  const esc = (v) => escapeHtml(v);
+
+  function renderKadProgram(list){
+    if (!elList) return;
+    if (!Array.isArray(list) || list.length === 0){
+      elList.innerHTML = '<div class="status">Tiada rekod.</div>';
+      return;
+    }
+    elList.innerHTML = list.map(item => {
+      const id = item.activityId || "";
+      const ttl = esc(item.title || "(Tanpa tajuk)");
+      const dt  = esc(item.programDate || "");
+      const lay = esc(item.layakCount || "0");
+      const tlk = esc(item.takLayakCount || "0");
+      const tot = esc(item.total || "0");
+      const staff = esc(item.staff || "");
+      return (
+        '<div class="card">' +
+          '<h4>'+ttl+'</h4>' +
+          '<div class="meta">' +
+            '<span>Tarikh: '+dt+'</span>' +
+            '<span>Layak: '+lay+'</span>' +
+            '<span>Tidak: '+tlk+'</span>' +
+            '<span>Jumlah: '+tot+'</span>' +
+          '</div>' +
+          '<div class="sep"></div>' +
+          '<div class="meta">Oleh: '+staff+'</div>' +
+          '<div style="margin-top:10px; display:flex; gap:8px;">' +
+            '<button class="btn" data-activity="'+esc(id)+'">Lihat butiran</button>' +
+            '<span class="status">ID: '+esc(id)+'</span>' +
+          '</div>' +
+        '</div>'
+      );
+    }).join("");
+
+    // Bind klik
+    elList.querySelectorAll("button[data-activity]").forEach(btn => {
+      btn.addEventListener("click", async (ev) => {
+        const activityId = ev.currentTarget.getAttribute("data-activity");
+        if (elDetailHeader) elDetailHeader.textContent = "Memuatkan butiran ("+activityId+")…";
+        await loadSejarahDetail(activityId);
       });
     });
   }
-  out.sort((a,b)=> (a.title||'').localeCompare(b.title||''));
-  return {status:'success', date:target, sessions:out};
-}
-function getNadiLive_(param){
-  const sessionId = String((param.sessionId||param.id||'')||'').trim();
-  if (!sessionId) return {status:'error', message:'sessionId diperlukan'};
 
-  const sh = getNadiLiveSheet_();
-  const last = sh.getLastRow();
-  if (last < 2) return {status:'success', items: []};
+  function renderButiranPeserta(rows){
+    if (!elDetail) return;
+    if (!Array.isArray(rows) || rows.length === 0){
+      elDetail.innerHTML = '<div class="status">Tiada peserta untuk aktiviti ini.</div>';
+      return;
+    }
+    const head = [
+      "No","Nama","NoIC","Umur","NoTelefon","Alamat",
+      "BP","PR","DXT","Tinggi","Berat","BMI","Status","Remark","TCADate","TCATime","TCAStaff"
+    ];
+    const body = rows.map(r => (
+      "<tr>" +
+        "<td>"+esc(r.no)+"</td>" +
+        "<td>"+esc(r.nama)+"</td>" +
+        "<td>"+esc(r.noIC)+"</td>" +
+        "<td>"+esc(r.umur)+"</td>" +
+        "<td>"+esc(r.noTelefon)+"</td>" +
+        "<td>"+esc(r.alamat)+"</td>" +
+        "<td>"+esc(r.bp)+"</td>" +
+        "<td>"+esc(r.pr)+"</td>" +
+        "<td>"+esc(r.dxt)+"</td>" +
+        "<td>"+esc(r.tinggi)+"</td>" +
+        "<td>"+esc(r.berat)+"</td>" +
+        "<td>"+esc(r.bmi)+"</td>" +
+        "<td>"+esc(r.status)+"</td>" +
+        "<td>"+esc(r.remark)+"</td>" +
+        "<td>"+esc(r.tcaDate)+"</td>" +
+        "<td>"+esc(r.tcaTime)+"</td>" +
+        "<td>"+esc(r.tcaStaff)+"</td>" +
+      "</tr>"
+    )).join("");
 
-  const rows = sh.getRange(2,1,last-1,5).getValues(); // SessionId,RowId,PayloadJSON,UpdatedAt,Staff
-  const latestByRowId = new Map();
-  for (let i=0;i<rows.length;i++){
-    const sid = String(rows[i][0]||'');
-    if (sid !== sessionId) continue;
-    const rid = String(rows[i][1]||'');
-    const payload = safeParseJson_(String(rows[i][2]||'{}'));
-    const updatedAt = String(rows[i][3]||'');
-    const prev = latestByRowId.get(rid);
-    if (!prev || String(prev.updatedAt||'') < updatedAt){
-      latestByRowId.set(rid, { ...payload, updatedAt });
+    elDetail.innerHTML = (
+      '<div style="overflow:auto;">' +
+        '<table>' +
+          '<thead><tr>'+ head.map(h=>"<th>"+h+"</th>").join("") +'</tr></thead>' +
+          '<tbody>'+ body +'</tbody>' +
+        '</table>' +
+      '</div>'
+    );
+  }
+
+  // =========================
+  // ACTIONS
+  // =========================
+  async function loadSejarahList(){
+    try{
+      if (elList) elList.innerHTML = '<div class="status">Memuatkan senarai…</div>';
+      const resp = await apiGet({ action: "getNadiActivities" });
+      if (!resp || resp.status !== "success") throw new Error("API gagal: getNadiActivities");
+      renderKadProgram(resp.data || []);
+    }catch(err){
+      console.error(err);
+      if (elList) elList.innerHTML = '<div class="status">Gagal memuatkan sejarah: '+(err && err.message ? err.message : err)+'</div>';
     }
   }
-  const items = Array.from(latestByRowId.values());
-  return {status:'success', items};
-}
-function clearNadiLive_(p){
-  const sessionId = String(p.sessionId||'').trim();
-  if (!sessionId) return {status:'error', message:'sessionId diperlukan'};
-  const sh = getNadiLiveSheet_();
-  const last = sh.getLastRow();
-  if (last < 2) return {status:'success', cleared:0};
 
-  const vals = sh.getRange(2,1,last-1,5).getValues();
-  const keep = [];
-  vals.forEach(r=>{
-    if (String(r[0]||'') !== sessionId) keep.push(r);
-  });
-  // tulis semula
-  sh.clearContents();
-  sh.getRange(1,1,1,5).setValues([['SessionId','RowId','PayloadJSON','UpdatedAt','Staff']]);
-  if (keep.length){
-    sh.getRange(2,1,keep.length,5).setValues(keep);
+  async function loadSejarahDetail(activityId){
+    if (!activityId){
+      if (elDetail) elDetail.innerHTML = '<div class="status">Tiada activityId.</div>';
+      return;
+    }
+    try{
+      if (elDetail) elDetail.innerHTML = '<div class="status">Memuatkan butiran…</div>';
+      const resp = await apiGet({ action: "getNadiActivityDetail", id: activityId });
+      if (!resp || resp.status !== "success") throw new Error("API gagal: getNadiActivityDetail");
+      if (elDetailHeader) elDetailHeader.textContent = "Butiran untuk ID: " + activityId;
+      renderButiranPeserta(resp.data || []);
+    }catch(err){
+      console.error(err);
+      if (elDetail) elDetail.innerHTML = '<div class="status">Gagal memuatkan butiran: '+(err && err.message ? err.message : err)+'</div>';
+    }
   }
-  return {status:'success', cleared:(last-1-keep.length)};
-}
 
-/***********************
- * MIGRASI (sekali jalan)
- ***********************/
-function migrateAllToPlainText_(){
-  const sh=getSheet_(); const last=sh.getLastRow(); if(last<2) return;
-  const {cols}=headerMap_();
-  const rng=sh.getRange(2,1,last-1,cols);
-  const vals=rng.getValues();
-  const asText=vals.map(row=>row.map(v=>(v===null||v===undefined)?'':String(v)));
-  rng.setNumberFormat('@');
-  rng.setValues(asText);
-}
-
-/***********************
- * SETUP AUTOMATIK (RUN SEKALI)
- * - Buat semua sheet yang perlu dengan header
- * - Tersedia menu "Saringan" → "Setup/Validate Sheets"
- ***********************/
-function ensureLogSheet_(){
-  const ss = ss_();
-  let sh = ss.getSheetByName(SHEET_NAME.LOG);
-  if(!sh) sh = ss.insertSheet(SHEET_NAME.LOG);
-  const header=['Tarikh','Masa','Staff','Aktiviti','Butiran'];
-  const cur=sh.getRange(1,1,1,header.length).getValues()[0];
-  const need=header.some((v,i)=> String(cur[i]||'')!==v);
-  if(need) sh.getRange(1,1,1,header.length).setValues([header]);
-  for(let c=1;c<=header.length;c++){ sh.getRange(1,c,sh.getMaxRows(),1).setNumberFormat('@'); }
-  if(sh.getFrozenRows()<1) sh.setFrozenRows(1);
-}
-function setupAllSheets_(){
-  // Pastikan semua sheet asas wujud & berheader
-  getSheet_();             // DAFTAR_PESAKIT
-  ensureLogSheet_();       // LOG_AKTIVITI
-  getLogCallsSheet_();     // LOG_CALLS
-  getNadiSummarySheet_();  // AKTIVITI_PROGRAM
-  getNadiDetailSheet_();   // AKTIVITI_PROGRAM_DETAIL
-  getProgramFeedSheet_();  // PROGRAM_FEED
-  // —— Live tanpa Simpan —— //
-  getNadiLiveSheet_();     // NADI_LIVE
-  getNadiSessionsSheet_(); // NADI_SESSIONS
-  SpreadsheetApp.flush();
-}
-// Hanya cuba bina menu apabila berada dalam konteks UI Spreadsheet, bukan semasa web app
-function _isUiContext_(){
-  try{
-    SpreadsheetApp.getUi(); // akan throw jika bukan konteks editor/Spreadsheet
-    return true;
-  }catch(e){
-    return false;
+  if (elReload){
+    elReload.addEventListener("click", () => {
+      if (!IS_AUTH){ setAuthStatus("Sila log masuk dahulu."); return; }
+      loadSejarahList();
+    });
   }
-}
-function onOpen(e){
-  if (!_isUiContext_()) return; // elak error "Cannot call SpreadsheetApp.getUi() from this context"
-  SpreadsheetApp.getUi()
-    .createMenu('Saringan')
-    .addItem('Setup/Validate Sheets', 'runSetup')
-    .addToUi();
-}
-function onInstall(e){
-  if (!_isUiContext_()) return;
-  onOpen(e);
-}
-function fixDetailHeaders_(){
-  const ss = SpreadsheetApp.getActiveSpreadsheet();
-  let sh = ss.getSheetByName('AKTIVITI_PROGRAM_DETAIL');
-  if (!sh) sh = ss.insertSheet('AKTIVITI_PROGRAM_DETAIL');
-
-  const header = [
-    'ActivityId','No','Nama','NoIC','Umur','NoTelefon','Alamat',
-    'BP','PR','DXT','Tinggi','Berat','BMI','Status','Remark',
-    'TCADate','TCATime','TCAStaff'
-  ];
-  sh.getRange(1,1,1,header.length).breakApart(); // buang merge jika ada
-  sh.getRange(1,1,1,header.length).setValues([header]);
-  for (let c=1;c<=header.length;c++){ 
-    sh.getRange(1,c,sh.getMaxRows(),1).setNumberFormat('@'); 
-  }
-  if (sh.getFrozenRows()<1) sh.setFrozenRows(1);
-  SpreadsheetApp.flush();
-}
+  </script>
+</body>
+</html>
