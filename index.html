@@ -5619,12 +5619,14 @@ if (btn) {
     td.className = 'mini-actions edit-actions';
     td.innerHTML = '<button class="btn btn-sm btn-outline-primary btn-edit">Edit</button> ' +
                    '<button class="btn btn-sm btn-success btn-save d-none">Simpan</button> ' +
-                   '<button class="btn btn-sm btn-secondary btn-cancel d-none">Batal</button>';
+                   '<button class="btn btn-sm btn-secondary btn-cancel d-none">Batal</button> ' +
+                   '<button class="btn btn-sm btn-outline-danger btn-delete"><i class="fa-solid fa-trash"></i> Padam</button>';
     tr.appendChild(td);
 
     td.querySelector('.btn-edit').addEventListener('click', ()=> enterEdit(tr));
     td.querySelector('.btn-save').addEventListener('click', ()=> saveEdit(tr));
     td.querySelector('.btn-cancel').addEventListener('click', ()=> exitEdit(tr, true));
+    td.querySelector('.btn-delete').addEventListener('click', ()=> deleteSejarahParticipant(tr));
   }
   function enterEdit(tr){
     tr.classList.add('editing');
@@ -5725,7 +5727,23 @@ if (btn) {
       delete td.dataset.orig;
     }
     tr.classList.remove('editing');
+  
+  async function deleteSejarahParticipant(tr){
+    try{
+      const no = tr.dataset.rowNo || '';
+      const activityId = (typeof getCurrentActivityId==='function') ? getCurrentActivityId() : (window.CURRENT_ACTIVITY_ID||'');
+      if (!no || !activityId){ toast('ID baris atau Aktiviti tidak sah', 'warning'); return; }
+      if (!confirm('Padam peserta ini daripada aktiviti? Tindakan ini tidak boleh diundur.')) return;
+      const res = await postForm({ action:'deleteNadiParticipant', activityId, no }, { msg:'Memadam peserta…' });
+      if (!res || res.status!=='success') throw new Error(res && (res.message||res.code)||'Gagal padam');
+      tr.remove();
+      toast('Peserta telah dipadam');
+    }catch(e){
+      console.error(e);
+      toast('Ralat padam: '+(e.message||e), 'danger');
+    }
   }
+}
 
   // Observe sejarah table for re-render
   const sejarahObserver = new MutationObserver(()=>{
@@ -5821,7 +5839,7 @@ function injectTelahHadirButtons(){
       const ic = (icCell?.textContent||'').trim();
       const statusTxt = (statusCell?.textContent||'').toLowerCase();
       const tcaStr = (tcaCell?.textContent||'').trim();
-      if (/belum/.test(statusTxt) && tindakanCell && ic){
+      if (/belum/.test(statusTxt) && tindakanCell && ic){ if (tindakanCell && tindakanCell.textContent && tindakanCell.textContent.toLowerCase().includes('hadir')) { return; }
         if (isTcaToday(tcaStr)) { return; } const overdue = isTcaOverdue(tcaStr);
         const cls = overdue ? 'btn-warning' : 'btn-secondary'; // kelabu jika belum terlepas, kuning jika sudah terlepas
         const btn = document.createElement('button');
@@ -5833,11 +5851,62 @@ function injectTelahHadirButtons(){
     });
   }
 
-  // Observers
+  
+  function extractICFromRow(tr){
+    if (!tr) return '';
+    if (tr.dataset && tr.dataset.ic) return String(tr.dataset.ic||'').trim();
+    const td2 = tr.querySelectorAll('td')[1];
+    return (td2 && td2.textContent) ? td2.textContent.trim() : '';
+  }
+  async function archiveByIC(ic){
+    if (!ic) { toast('IC tidak sah', 'warning'); return; }
+    if (!confirm('Padam/Arkibkan pesakit ini?')) return;
+    const res = await postForm({ action:'archivePatient', noIC: ic }, { msg:'Mengarkibkan…' });
+    if (!res || res.status!=='success'){ toast('Gagal arkib', 'danger'); return; }
+    toast('Pesakit telah diarkibkan');
+    // Cuba muat semula beberapa paparan yang mungkin terlibat
+    window.loadFirstVisitData && window.loadFirstVisitData();
+    window.loadSecondVisitData && window.loadSecondVisitData();
+    window.loadLabFollowUp && window.loadLabFollowUp();
+    window.loadCompletedData && window.loadCompletedData();
+    window.loadTCACall && window.loadTCACall();
+  }
+  function addArchiveBtnToRow(tr){
+    if (!tr) return;
+    const tds = tr.querySelectorAll('td'); if (!tds.length) return;
+    const tindakanCell = tds[tds.length-1];
+    if (!tindakanCell) return;
+    if (tindakanCell.querySelector('[data-action="archive"]')) return; // sudah ada
+    const ic = extractICFromRow(tr); if (!ic) return;
+    const btn = document.createElement('button');
+    btn.className = 'btn btn-sm btn-outline-danger me-1';
+    btn.setAttribute('data-action','archive');
+    btn.innerHTML = '<i class="fa-solid fa-trash"></i> Padam';
+    btn.addEventListener('click', ()=> archiveByIC(ic));
+    tindakanCell.prepend(btn);
+  }
+  function injectArchiveButtons(){
+    ['firstVisitList','secondVisitList','labFollowupTable','completedTable','tcaCallList'].forEach(id=>{
+      const tb = document.getElementById(id);
+      if (!tb) return;
+      tb.querySelectorAll('tr').forEach(addArchiveBtnToRow);
+    });
+  }
+// Observers
   window.addEventListener('DOMContentLoaded', ()=>{
     const sejarahTbody = document.getElementById('sejarahTable');
     if (sejarahTbody){ sejarahObserver.observe(sejarahTbody, { childList:true }); }
     const firstVisitTbody = document.getElementById('firstVisitList');
+    // Inject padam/arkib butang pada pelbagai jadual
+    injectArchiveButtons();
+    const observeIds = ['firstVisitList','secondVisitList','labFollowupTable','completedTable','tcaCallList'];
+    observeIds.forEach(id=>{
+      const el = document.getElementById(id);
+      if (!el) return;
+      const ob = new MutationObserver(injectArchiveButtons);
+      ob.observe(el, { childList:true });
+    });
+
     if (firstVisitTbody){
       const obs = new MutationObserver(injectTelahHadirButtons);
       obs.observe(firstVisitTbody, { childList:true });
