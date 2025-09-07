@@ -5781,14 +5781,33 @@ if (btn) {
     }
   }
 
-  function isTcaOverdue(ddmmyyyy){
-    // gunakan util global parseDDMMYYYY jika wujud dalam index asal
-    const d = (typeof parseDDMMYYYY === 'function') ? parseDDMMYYYY(ddmmyyyy) : null;
+  
+  function pickDateStr(s){
+    const m = /(\d{2}\/\d{2}\/\d{4})/.exec(String(s||''));
+    return m ? m[1] : String(s||'');
+  }
+  function parseAsDate(ddmmyyyy){
+    if (typeof parseDDMMYYYY === 'function') return parseDDMMYYYY(ddmmyyyy);
+    const mm = /^(\d{2})\/(\d{2})\/(\d{4})$/.exec(ddmmyyyy||'');
+    if (!mm) return null;
+    const d = parseInt(mm[1],10), m = parseInt(mm[2],10)-1, y = parseInt(mm[3],10);
+    return new Date(y,m,d);
+  }
+  function isTcaOverdue(text){
+    const s = pickDateStr(text);
+    const d = parseAsDate(s);
     if (!d) return false;
     const end = new Date(d.getFullYear(), d.getMonth(), d.getDate(), 23,59,59,999);
     return new Date() > end;
   }
-  function injectTelahHadirButtons(){
+  function isTcaToday(text){
+    const s = pickDateStr(text);
+    const d = parseAsDate(s);
+    if (!d) return false;
+    const now = new Date();
+    return d.getFullYear()===now.getFullYear() && d.getMonth()===now.getMonth() && d.getDate()===now.getDate();
+  }
+function injectTelahHadirButtons(){
     document.querySelectorAll('#firstVisitList tr').forEach(tr=>{
       if (tr.dataset._th_injected==='1') return;
       if (tr.querySelector('td[colspan]')) return;
@@ -5803,7 +5822,7 @@ if (btn) {
       const statusTxt = (statusCell?.textContent||'').toLowerCase();
       const tcaStr = (tcaCell?.textContent||'').trim();
       if (/belum/.test(statusTxt) && tindakanCell && ic){
-        const overdue = isTcaOverdue(tcaStr);
+        if (isTcaToday(tcaStr)) { return; } const overdue = isTcaOverdue(tcaStr);
         const cls = overdue ? 'btn-warning' : 'btn-secondary'; // kelabu jika belum terlepas, kuning jika sudah terlepas
         const btn = document.createElement('button');
         btn.className = 'btn btn-sm '+cls+' me-1';
