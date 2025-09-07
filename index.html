@@ -4219,7 +4219,7 @@ const saveNadiStateDebounced = debounce(saveNadiState, 400);
     if (!tbody) return;
     tbody.innerHTML = '<tr><td colspan="13" class="text-center text-muted">Memuat data…</td></tr>';
     try{
-      const qs = new URLSearchParams({ action:'getNadiActivityDetail', activityId: activityId, id: activityId, id_token: (window.ID_TOKEN||'') });
+      const qs = new URLSearchParams({ action:'getNadiActivityDetail', id: activityId, id_token: (window.ID_TOKEN||'') });
       const res = await fetch(`${window.SCRIPT_URL}?${qs.toString()}`);
       const j = await res.json();
       if (!j || j.status!=='success') throw new Error(j && (j.message||j.code) || 'Gagal ambil detail');
@@ -5364,5 +5364,143 @@ if (btn) {
 })();
 </script>
 
+
+<!-- ====== PATCH: Sejarah Saringan wiring (tanpa ubah layout/HTML/CSS) ====== -->
+<script>
+(function(){
+  if (window.__sejarahPatchApplied) return;
+  window.__sejarahPatchApplied = true;
+
+  function getScriptUrl(){
+    if (typeof window.SCRIPT_URL === 'string' && window.SCRIPT_URL) return window.SCRIPT_URL;
+    if (typeof window.MACROS_URL === 'string' && window.MACROS_URL) return window.MACROS_URL;
+    if (typeof window.API_BASE === 'string' && window.API_BASE) return window.API_BASE;
+    return '';
+  }
+  function getIdToken(){
+    if (window.GOOGLE_ID_TOKEN) return window.GOOGLE_ID_TOKEN;
+    if (window.ID_TOKEN) return window.ID_TOKEN;
+    if (window.idToken) return window.idToken;
+    try {
+      const keys = ['gsi_id_token','id_token','google_id_token','GSI_ID_TOKEN'];
+      for (const k of keys){
+        const v = localStorage.getItem(k) || sessionStorage.getItem(k);
+        if (v) return v;
+      }
+    } catch(e){}
+    return '';
+  }
+
+  (function(){
+    if (window.__fetchPatched) return;
+    window.__fetchPatched = true;
+    const _fetch = window.fetch;
+    window.fetch = function(url, opts){
+      try { console.log('[TRACE:fetch]', url, opts||{}); } catch(e){}
+      return _fetch.apply(this, arguments);
+    };
+  })();
+
+  async function apiGet(action, params){
+    const base = getScriptUrl();
+    if (!base) throw new Error('SCRIPT_URL kosong atau tidak dijumpai pada window.');
+    const qp = new URLSearchParams({ action, id_token: getIdToken() });
+    if (params && typeof params === 'object'){
+      for (const k in params){ if (params[k] != null) qp.set(k, params[k]); }
+    }
+    const url = base + (base.includes('?') ? '&' : '?') + qp.toString();
+    console.log('[TRACE:apiGet]', action, Object.fromEntries(qp));
+    const res = await fetch(url, { method:'GET' });
+    const json = await res.json().catch(()=>({status:'error', message:'Bad JSON'}));
+    if (json.status !== 'success') throw new Error(json.message || 'Ralat pelayan');
+    return json;
+  }
+
+  // Event delegation: apa-apa elemen yang ada data-activity-id akan memanggil detail
+  document.addEventListener('click', function(ev){
+    let el = ev.target;
+    for (let i=0; i<6 && el; i++){
+      if (el.hasAttribute && el.hasAttribute('data-activity-id')){
+        const id = el.getAttribute('data-activity-id');
+        if (id){ console.log('[TRACE:klik-kad]', id); openSejarahDetail(id); }
+        return;
+      }
+      el = el.parentElement;
+    }
+  }, true);
+
+  // Auto-load senarai jika container wujud
+  async function loadSejarahListIfContainerExists(){
+    const container = document.getElementById('sejarah-list') || document.querySelector('[data-role="sejarah-list"]');
+    if (!container) return;
+    try{
+      const { data } = await apiGet('getNadiActivities');
+      const items = Array.isArray(data) ? data : [];
+      container.innerHTML = '';
+      items.forEach(it=>{
+        const wrap = document.createElement('div');
+        wrap.setAttribute('data-activity-id', it.activityId);
+        wrap.className = 'sejarah-item';
+        wrap.innerHTML = `
+          <div class="row align-items-center">
+            <div class="col">
+              <div class="fw-semibold">${escapeHtml(it.title||'-')}</div>
+              <div class="text-muted small">${escapeHtml(it.programDate||'')}</div>
+            </div>
+            <div class="col-auto text-end">
+              <div class="small">Layak: ${it.layakCount||0} • Tidak: ${it.takLayakCount||0}</div>
+              <div class="small text-muted">Total: ${it.total||0}</div>
+            </div>
+          </div>`;
+        container.appendChild(wrap);
+      });
+      if (!items.length){
+        container.innerHTML = '<div class="text-muted small">Tiada sejarah direkodkan.</div>';
+      }
+    }catch(err){
+      console.error('loadSejarahListIfContainerExists', err);
+    }
+  }
+
+  async function openSejarahDetail(activityId){
+    if (!activityId){ console.warn('[TRACE] activityId kosong'); return; }
+    try{
+      const { data } = await apiGet('getNadiActivityDetail', { activityId, id: activityId });
+      if (typeof window.renderSejarahDetailTable === 'function'){
+        window.renderSejarahDetailTable(Array.isArray(data)?data:[]);
+      } else {
+        const table = document.getElementById('sejarah-detail') || document.querySelector('[data-role="sejarah-detail"]');
+        if (table){
+          table.innerHTML = buildSimpleDetailTable(Array.isArray(data)?data:[]);
+        } else {
+          console.log('[TRACE] Terima data detail:', data);
+        }
+      }
+    }catch(err){
+      console.error('openSejarahDetail', err);
+    }
+  }
+  window.openSejarahDetail = openSejarahDetail;
+
+  function buildSimpleDetailTable(rows){
+    if (!rows.length) return '<div class="text-muted small">Tiada rekod peserta untuk aktiviti ini.</div>';
+    const headers = ['No','Nama','NoIC','Umur','NoTelefon','Alamat','BP','PR','DXT','Tinggi','Berat','BMI','Status','Remark','TCA Date','TCA Time','TCA Staff'];
+    const keys    = ['no','nama','noIC','umur','noTelefon','alamat','bp','pr','dxt','tinggi','berat','bmi','status','remark','tcaDate','tcaTime','tcaStaff'];
+    const th = headers.map(h=>`<th>${escapeHtml(h)}</th>`).join('');
+    const trs = rows.map(r=>'<tr>'+keys.map(k=>`<td>${escapeHtml(r[k]||'')}</td>`).join('')+'</tr>').join('');
+    return `<div class="table-responsive"><table class="table table-sm"><thead><tr>${th}</tr></thead><tbody>${trs}</tbody></table></div>`;
+  }
+  function escapeHtml(s){
+    return String(s||'').replace(/[&<>"']/g, (m)=>({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' }[m]));
+  }
+
+  if (document.readyState === 'loading'){
+    document.addEventListener('DOMContentLoaded', loadSejarahListIfContainerExists, {once:true});
+  } else {
+    loadSejarahListIfContainerExists();
+  }
+})();
+</script>
+<!-- ====== TAMAT PATCH ====== -->
 </body>
 </html>
