@@ -334,6 +334,19 @@
     .table-responsive { scrollbar-gutter: stable; }
   </style>
 
+
+  <style>
+    .stamp-voucher{
+      display:inline-flex; align-items:center; justify-content:center;
+      width:58px; height:58px; line-height:1; text-align:center;
+      border:2px dashed var(--bs-info); color: var(--bs-info);
+      border-radius:50%; font-size:.65rem; text-transform:uppercase;
+      font-weight:700; letter-spacing:.5px; transform: rotate(-10deg);
+      user-select:none;
+    }
+    .tca-remark-cell { min-width: 160px; }
+  </style>
+
 </head>
 <body>
   <!-- Global Loader -->
@@ -709,8 +722,8 @@
       <div class="card"><div class="card-body">
         <div class="table-responsive">
           <table class="table table-hover align-middle">
-            <thead class="table-light"><tr><th>Nama Pesakit</th><th>No IC</th><th>No Telefon</th><th>Alamat</th><th>Tarikh TCA</th><th>Status</th></tr></thead>
-            <tbody id="tcaCallList"><tr><td colspan="6" class="text-center text-muted">Memuat data...</td></tr></tbody>
+            <thead class="table-light"><tr><th>Nama Pesakit</th><th>No IC</th><th>No Telefon</th><th>Alamat</th><th\1<th>Remark</th><th>Status</th></tr></thead>
+            \17\2 class="text-center text-muted">Memuat data...</td></tr></tbody>
           </table>
         </div>
       </div></div>
@@ -3476,12 +3489,17 @@ function renderTcaList(mode){
         <td>${p.nama || '-'}</td>
         <td>${p.noIC || '-'}</td>
         <td class="mini-actions">
-          <a class="btn btn-sm btn-outline-secondary" href="${telHref(msisdn)}"><i class="fa-solid fa-phone"></i> Call</a>
-          <a class="btn btn-sm btn-outline-success" target="_blank" href="${waHref(msisdn)}"><i class="fa-brands fa-whatsapp"></i> WhatsApp</a>
-          <div class="small text-muted mt-1">${msisdn || '-'}</div>
+          <div class="d-flex align-items-start justify-content-between gap-2">
+            <div>
+              <a class="btn btn-sm btn-outline-secondary" href="${telHref(msisdn)}"><i class="fa-solid fa-phone"></i> Call</a>
+              <a class="btn btn-sm btn-outline-success" target="_blank" href="${waHref(msisdn)}"><i class="fa-brands fa-whatsapp"></i> WhatsApp</a>
+              <div class="small text-muted mt-1">${msisdn || '-'}</div>
+            </div>
+            <span class="stamp-voucher">TCA<br/>Voucher</span>
+          </div>
         </td>
         <td>${p.alamat || '-'}</td>
-        <td>${p.tarikhTCA || '-'}</td>
+        \1<td class="tca-remark-cell"><input class="form-control form-control-sm tca-remark" data-ic="${p.noIC}" placeholder="Remark…"></td>
         <td><span class="badge ${statusClass}">${p.status || 'PENDING'}</span></td>
       </tr>`;
     tbody.insertAdjacentHTML('beforeend', rowHtml);
@@ -5871,7 +5889,31 @@ function injectTelahHadirButtons(){
     window.loadCompletedData && window.loadCompletedData();
     window.loadTCACall && window.loadTCACall();
   }
-  function addArchiveBtnToRow(tr){
+  
+  async function hardDeleteByIC(ic){
+    if (!ic) { toast('IC tidak sah', 'warning'); return; }
+    if (!confirm('Padam kekal pesakit ini dari sistem? TINDAKAN INI TIDAK BOLEH DIUNDUR.')) return;
+    const res = await postForm({ action:'deletePatientPermanent', noIC: ic }, { msg:'Memadam kekal…' });
+    if (!res || res.status!=='success'){ toast('Gagal padam kekal', 'danger'); return; }
+    toast('Rekod dipadam kekal');
+    // Muat semula Arkib
+    window.loadArchivedData && window.loadArchivedData();
+  }
+  function addHardDeleteBtnToArchiveRow(tr){
+    if (!tr) return;
+    const tds = tr.querySelectorAll('td'); if (!tds.length) return;
+    const tindakanCell = tds[tds.length-1];
+    if (!tindakanCell) return;
+    if (tindakanCell.querySelector('[data-action="hard-delete"]')) return;
+    const ic = extractICFromRow(tr); if (!ic) return;
+    const btn = document.createElement('button');
+    btn.className = 'btn btn-sm btn-danger ms-1';
+    btn.setAttribute('data-action','hard-delete');
+    btn.innerHTML = '<i class="fa-solid fa-trash"></i> Padam Kekal';
+    btn.addEventListener('click', ()=> hardDeleteByIC(ic));
+    tindakanCell.appendChild(btn);
+  }
+function addArchiveBtnToRow(tr){
     if (!tr) return;
     const tds = tr.querySelectorAll('td'); if (!tds.length) return;
     const tindakanCell = tds[tds.length-1];
@@ -5886,7 +5928,10 @@ function injectTelahHadirButtons(){
     tindakanCell.prepend(btn);
   }
   function injectArchiveButtons(){
-    ['firstVisitList','secondVisitList','labFollowupTable','completedTable','tcaCallList'].forEach(id=>{
+    const archiveBody = document.getElementById('archiveTable');
+    if (archiveBody){ archiveBody.querySelectorAll('tr').forEach(addHardDeleteBtnToArchiveRow); }
+
+    ['firstVisitList','secondVisitList','labFollowupTable','completedTable','tcaCallList','archiveTable'].forEach(id=>{
       const tb = document.getElementById(id);
       if (!tb) return;
       tb.querySelectorAll('tr').forEach(addArchiveBtnToRow);
@@ -5899,7 +5944,7 @@ function injectTelahHadirButtons(){
     const firstVisitTbody = document.getElementById('firstVisitList');
     // Inject padam/arkib butang pada pelbagai jadual
     injectArchiveButtons();
-    const observeIds = ['firstVisitList','secondVisitList','labFollowupTable','completedTable','tcaCallList'];
+    const observeIds = ['firstVisitList','secondVisitList','labFollowupTable','completedTable','tcaCallList','archiveTable'];
     observeIds.forEach(id=>{
       const el = document.getElementById(id);
       if (!el) return;
