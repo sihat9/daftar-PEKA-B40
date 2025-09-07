@@ -991,9 +991,7 @@
           </div>
         </div>
         <div id="telahHadirStep2" class="d-none">
-          <div class="alert alert-info small">
-            Adakah keputusan darah daripada makmal telah diterima?
-          </div>
+          <div class="alert alert-info small">Adakah keputusan darah daripada makmal telah diterima?</div>
           <div class="d-flex gap-2">
             <button class="btn btn-success" id="btnTelahHadirLabYes"><i class="fa-solid fa-vial-circle-check me-1"></i> Ya, sudah diterima</button>
             <button class="btn btn-outline-secondary" id="btnTelahHadirLabNo"><i class="fa-solid fa-hourglass-half me-1"></i> Belum diterima</button>
@@ -4274,7 +4272,8 @@ const saveNadiStateDebounced = debounce(saveNadiState, 400);
         const s = ((r.nama||'') + ' ' + (r.noIC||'') + ' ' + (r.noTelefon||'')).toLowerCase();
         return !q || s.includes(q);
       });
-            tbody.innerHTML = filtered.map((r, i)=>`
+      
+      tbody.innerHTML = filtered.map((r, i)=>`
         <tr data-activity-id="${activityId}" data-no="${r.no||String(i+1)}">
           <td>${i+1}</td>
           <td>${r.nama||''}</td>
@@ -4296,6 +4295,7 @@ const saveNadiStateDebounced = debounce(saveNadiState, 400);
           </td>
         </tr>
       `).join('') || '<tr><td colspan="13" class="text-center text-muted">Tiada padanan carian.</td></tr>';
+    
     }catch(e){
       tbody.innerHTML = '<tr><td colspan="13" class="text-center text-danger">Ralat memuat maklumat.</td></tr>';
     }
@@ -5558,185 +5558,5 @@ if (btn) {
 })();
 </script>
 
-  <script>
-  // === Helper: convert display DD/MM/YYYY <-> ISO YYYY-MM-DD ===
-  function toIsoFromDisplay(ddmmyyyy){
-    if (!ddmmyyyy) return '';
-    const m = /^(\d{1,2})\/(\d{1,2})\/(\d{4})$/.exec(ddmmyyyy);
-    if (!m) return ddmmyyyy;
-    const d = ('0'+m[1]).slice(-2), mth=('0'+m[2]).slice(-2), y=m[3];
-    return `${y}-${mth}-${d}`;
-  }
-  function toDisplayFromIso(iso){
-    if (!iso) return '';
-    const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(iso);
-    if (!m) return iso;
-    return `${m[3]}/${m[2]}/${m[1]}`;
-  }
-
-  // === FIRST VISIT: Telah Hadir flow ===
-  let TELAH_HADIR_MODAL = null;
-  let TELAH_HADIR_STATE = { fileId: '', uploading: false };
-
-  function openTelahHadir(noIC){
-    if (!TELAH_HADIR_MODAL) TELAH_HADIR_MODAL = new bootstrap.Modal(document.getElementById('telahHadirModal'));
-    document.getElementById('telahHadirIC').value = noIC;
-    const today = new Date(); const yyyy = today.getFullYear(), mm = ('0'+(today.getMonth()+1)).slice(-2), dd=('0'+today.getDate()).slice(-2);
-    document.getElementById('telahHadirDate').value = `${yyyy}-${mm}-${dd}`;
-    document.getElementById('telahHadirPDPA').value = '';
-    document.getElementById('telahHadirStep1').classList.remove('d-none');
-    document.getElementById('telahHadirStep2').classList.add('d-none');
-    document.getElementById('btnTelahHadirNext').disabled = false;
-    TELAH_HADIR_STATE = { fileId:'', uploading:false };
-    TELAH_HADIR_MODAL.show();
-  }
-
-  async function handleTelahHadirNext(){
-    const noIC = document.getElementById('telahHadirIC').value.trim();
-    const date = document.getElementById('telahHadirDate').value.trim();
-    const file = document.getElementById('telahHadirPDPA').files[0];
-    if (!noIC || !date || !file){ toast('Ralat','Isi tarikh & muat naik PDPA','danger'); return; }
-    if (TELAH_HADIR_STATE.uploading) return;
-    TELAH_HADIR_STATE.uploading = true;
-    document.getElementById('btnTelahHadirNext').disabled = true;
-    showLoader('Muat naik PDPA…');
-    try{
-      const base64 = await fileToBase64(file); const pure64 = String(base64).split(',').pop();
-      const res = await fetch(SCRIPT_URL, {
-        method:'POST',
-        headers:{ 'Content-Type':'application/x-www-form-urlencoded' },
-        body: new URLSearchParams({
-          action:'uploadPDPA', id_token: ID_TOKEN, staff: STAFF_EMAIL, noIC,
-          fileBase64: pure64, fileName: file.name, fileType: file.type || 'application/octet-stream'
-        })
-      });
-      const j = await res.json();
-      if (!j || j.status!=='success') throw new Error((j && (j.message||j.code)) || 'Gagal muat naik PDPA');
-      TELAH_HADIR_STATE.fileId = j.fileId || '';
-      // Step 2
-      document.getElementById('telahHadirStep1').classList.add('d-none');
-      document.getElementById('telahHadirStep2').classList.remove('d-none');
-      document.getElementById('btnTelahHadirNext').disabled = true;
-      hideLoader();
-    }catch(e){
-      hideLoader();
-      TELAH_HADIR_STATE.uploading = false;
-      document.getElementById('btnTelahHadirNext').disabled = false;
-      toast('Ralat', e.message || 'Gagal muat naik PDPA', 'danger');
-    }
-  }
-  async function finalizeTelahHadir(labDone){
-    const noIC = document.getElementById('telahHadirIC').value.trim();
-    const dateIso = document.getElementById('telahHadirDate').value.trim(); // YYYY-MM-DD
-    if (!noIC || !dateIso){ toast('Ralat','Data tidak lengkap','danger'); return; }
-    showLoader('Menyimpan kehadiran…');
-    try{
-      const res = await postForm({ action:'markTelahHadir', noIC, firstVisitActualDate: dateIso, labDone: labDone ? 'YA' : 'TIDAK', staff: STAFF_EMAIL }, { msg:'Menyimpan…' });
-      // Jika backend belum ada endpoint ini, tunjuk mesej jelas.
-      if (!res || res.status!=='success'){
-        throw new Error((res && (res.message||res.code)) || 'Endpoint markTelahHadir tiada pada server');
-      }
-      toast('Berjaya','Rekod dikemas kini', 'success');
-      TELAH_HADIR_MODAL.hide();
-      // Segarkan halaman berkaitan
-      if (location.hash==='#first-visit') { loadFirstVisitData && loadFirstVisitData(); }
-      loadLabFollowUp && loadLabFollowUp();
-      loadSecondVisitData && loadSecondVisitData();
-      loadDashboardData && loadDashboardData();
-    }catch(e){
-      toast('Ralat', e.message, 'danger');
-    }finally{
-      hideLoader();
-    }
-  }
-
-  document.addEventListener('click', function(e){
-    if (e.target && e.target.id === 'btnTelahHadirNext') { e.preventDefault(); handleTelahHadirNext(); }
-    if (e.target && e.target.id === 'btnTelahHadirLabYes') { e.preventDefault(); finalizeTelahHadir(true); }
-    if (e.target && e.target.id === 'btnTelahHadirLabNo')  { e.preventDefault(); finalizeTelahHadir(false); }
-  }, true);
-
-  // === SEJARAH: In-place edit rows ===
-  function makeInput(value){ return `<input class="form-control form-control-sm" value="${(value||'').replace(/"/g,'&quot;')}" />`; }
-  function makeSelectStatus(value){
-    const v = String(value||'').toUpperCase();
-    const opts = ['','LAYAK','TAK LAYAK'];
-    return '<select class="form-select form-select-sm">' + opts.map(o=>`<option value="${o}" ${v===o?'selected':''}>${o||'-'}</option>`).join('') + '</select>';
-  }
-
-  document.addEventListener('click', function(e){
-    const btn = e.target.closest('[data-edit-row]');
-    if (!btn) return;
-    const tr = btn.closest('tr[data-activity-id]'); if (!tr) return;
-    if (tr.classList.contains('editing')) return;
-    tr.classList.add('editing');
-    const tds = tr.querySelectorAll('td');
-    // Column mapping per header: 0:#,1:Nama,2:IC,3:Telefon,4:Alamat,5:Status,6:BP,7:PR,8:DXT,9:BMI,10:TCA,11:Staff,12:Remark
-    tds[1].innerHTML = makeInput(tds[1].textContent.trim());
-    tds[2].innerHTML = makeInput(tds[2].textContent.trim());
-    tds[3].innerHTML = makeInput(tds[3].textContent.trim());
-    tds[4].innerHTML = makeInput(tds[4].textContent.trim());
-    tds[5].innerHTML = makeSelectStatus(tds[5].textContent.trim());
-    tds[6].innerHTML = makeInput(tds[6].textContent.trim());
-    tds[7].innerHTML = makeInput(tds[7].textContent.trim());
-    tds[8].innerHTML = makeInput(tds[8].textContent.trim());
-    tds[9].innerHTML = makeInput(tds[9].textContent.trim());
-    // TCA split
-    const tcaParts = (tds[10].textContent.trim()||'').split(' ');
-    const dDisp = (tcaParts[0]||'').trim(); const iso = toIsoFromDisplay(dDisp);
-    const hhmm = (tcaParts[1]||'').trim();
-    tds[10].innerHTML = `<div class="d-flex gap-2"><input type="date" class="form-control form-control-sm" value="${/\d{4}-\d{2}-\d{2}/.test(iso)?iso:''}"><input type="time" class="form-control form-control-sm" value="${hhmm||''}"></div>`;
-    tds[11].innerHTML = makeInput(tds[11].textContent.trim());
-    tds[12].innerHTML = `<div class="d-flex flex-column gap-2">
-      ${makeInput(tr.querySelector('td:nth-child(13) span') ? tr.querySelector('td:nth-child(13) span').textContent.trim() : tds[12].textContent.trim())}
-      <div class="d-flex gap-2">
-        <button class="btn btn-sm btn-primary" data-save-row>Simpan</button>
-        <button class="btn btn-sm btn-outline-secondary" data-cancel-row>Batal</button>
-      </div>
-    </div>`;
-  }, true);
-
-  document.addEventListener('click', async function(e){
-    // Cancel
-    if (e.target && e.target.matches('[data-cancel-row]')){
-      // Trigger reload: click active program to refresh details
-      const active = document.querySelector('#programList .list-group-item.active'); if (active) active.click();
-      return;
-    }
-    // Save
-    if (!(e.target && e.target.matches('[data-save-row]'))) return;
-    const tr = e.target.closest('tr[data-activity-id]'); if (!tr) return;
-    const tds = tr.querySelectorAll('td');
-    const payload = {
-      nama: tds[1].querySelector('input').value.trim(),
-      noIC: tds[2].querySelector('input').value.trim(),
-      noTelefon: tds[3].querySelector('input').value.trim(),
-      alamat: tds[4].querySelector('input').value.trim(),
-      status: tds[5].querySelector('select').value.trim(),
-      bp: tds[6].querySelector('input').value.trim(),
-      pr: tds[7].querySelector('input').value.trim(),
-      dxt: tds[8].querySelector('input').value.trim(),
-      bmi: tds[9].querySelector('input').value.trim(),
-      tcaDate: (tds[10].querySelector('input[type="date"]').value || '').trim(),
-      tcaTime: (tds[10].querySelector('input[type="time"]').value || '').trim(),
-      tcaStaff: tds[11].querySelector('input').value.trim(),
-      remark: tds[12].querySelector('input').value.trim()
-    };
-    const activityId = tr.getAttribute('data-activity-id');
-    const no = tr.getAttribute('data-no');
-    showLoader('Menyimpan perubahan…');
-    try{
-      const res = await postForm({ action:'updateNadiParticipant', activityId, no, ...payload, staff: STAFF_EMAIL }, { msg:'Menyimpan…' });
-      if (!res || res.status!=='success'){ throw new Error((res && (res.message||res.code)) || 'Gagal kemaskini peserta'); }
-      toast('Berjaya','Rekod peserta dikemas kini','success');
-      // Reload current detail by re-clicking active program
-      const active = document.querySelector('#programList .list-group-item.active'); if (active) active.click();
-    }catch(err){
-      toast('Ralat', err.message, 'danger');
-    }finally{
-      hideLoader();
-    }
-  }, true);
-  </script>
 </body>
 </html>
