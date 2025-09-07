@@ -307,6 +307,29 @@
 .nadi-table td.text-center, .nadi-table th.text-center { vertical-align: middle; }
 .nadi-table td:last-child .btn { margin: 2px 4px; white-space: nowrap; }
 </style>
+<style>
+/* === UI Kemas: jadual scroll dalam kad + penambahbaikan kecil === */
+.sejarah-table-wrap{
+  max-height: 62vh;
+  overflow: auto;
+  border: 1px solid rgba(0,0,0,.06);
+  border-radius: .5rem;
+}
+#sejarah table thead.sticky-top{ top: 0; z-index: 2; }
+#sejarah table.table{ margin-bottom: 0; }
+#sejarah .mini-actions .btn{ padding: .25rem .5rem; }
+
+/* Kekalkan tinggi konsisten untuk layout First Visit */
+#first-visit .table-responsive{ max-height: 62vh; overflow:auto; }
+#first-visit thead.sticky-top{ top: 0; z-index: 2; }
+
+/* Sedikit padding untuk kad utama */
+#sejarah .card, #first-visit .card{ box-shadow: var(--bs-box-shadow-sm, 0 .125rem .25rem rgba(0,0,0,.075)); border: 1px solid rgba(0,0,0,.06); border-radius: .75rem; }
+#sejarah .card > .card-header, #first-visit .card > .card-header{ position: sticky; top: 0; z-index: 3; background: var(--bs-body-bg); }
+
+/* Edit mode highlight */
+tr.editing{ background: rgba(255, 243, 205, .4); }
+</style>
 </head>
 <body>
   <!-- Global Loader -->
@@ -466,7 +489,7 @@
         </div>
         <div class="card-body">
           <div class="table-responsive">
-            <table class="table table-hover align-middle">
+            <table class="table table-sm table-hover align-middle">
               <thead class="table-light"><tr><th>Nama Pesakit</th><th>No IC</th><th>No Telefon</th><th>Alamat</th><th>Tarikh TCA</th><th>Status</th></tr></thead>
               <tbody id="tcaCallTable"><tr><td colspan="6" class="text-center text-muted">Memuat data...</td></tr></tbody>
             </table>
@@ -651,7 +674,7 @@
           </div>
         </div>
         <div class="table-responsive">
-          <table class="table table-hover align-middle">
+          <table class="table table-sm table-hover align-middle">
             <thead class="table-light">
               <tr>
                 <th>Nama</th><th>IC</th><th>Telefon</th><th>Alamat</th>
@@ -681,7 +704,7 @@
       </div>
       <div class="card"><div class="card-body">
         <div class="table-responsive">
-          <table class="table table-hover align-middle">
+          <table class="table table-sm table-hover align-middle">
             <thead class="table-light"><tr><th>Nama Pesakit</th><th>No IC</th><th>No Telefon</th><th>Alamat</th><th>Tarikh TCA</th><th>Status</th></tr></thead>
             <tbody id="tcaCallList"><tr><td colspan="6" class="text-center text-muted">Memuat data...</td></tr></tbody>
           </table>
@@ -697,8 +720,8 @@
       </div>
       <div class="card"><div class="card-body">
         <div class="table-responsive">
-          <table class="table table-hover align-middle">
-            <thead class="table-light"><tr><th>Nama Pesakit</th><th>No IC</th><th>Alamat</th><th>Tarikh TCA</th><th>PDPA</th><th>Status</th><th>Tindakan</th></tr></thead>
+          <table class="table table-sm table-hover align-middle">
+            <thead class="table-light sticky-top"><tr><th>Nama Pesakit</th><th>No IC</th><th>Alamat</th><th>Tarikh TCA</th><th>PDPA</th><th>Status</th><th>Tindakan</th></tr></thead>
             <tbody id="firstVisitList"><tr><td colspan="7" class="text-center text-muted">Memuat data...</td></tr></tbody>
           </table>
         </div>
@@ -713,7 +736,7 @@
       </div>
       <div class="card"><div class="card-body">
         <div class="table-responsive">
-          <table class="table table-hover align-middle">
+          <table class="table table-sm table-hover align-middle">
             <thead class="table-light">
               <tr><th>Nama</th><th>IC</th><th>Telefon</th><th>Alamat</th><th>Tarikh First Visit</th><th>Hari Ke-</th><th>Status</th><th>Tindakan</th></tr>
             </thead>
@@ -731,7 +754,7 @@
       </div>
       <div class="card"><div class="card-body">
         <div class="table-responsive">
-          <table class="table table-hover align-middle">
+          <table class="table table-sm table-hover align-middle">
             <thead class="table-light"><tr><th>Nama Pesakit</th><th>No IC</th><th>Alamat</th><th>Tarikh TCA</th><th>PDPA</th><th>Status</th><th>Tindakan</th></tr></thead>
             <tbody id="secondVisitList"><tr><td colspan="7" class="text-center text-muted">Memuat data...</td></tr></tbody>
           </table>
@@ -747,7 +770,7 @@
       </div>
       <div class="card mb-3"><div class="card-body">
         <div class="table-responsive">
-          <table class="table table-hover align-middle">
+          <table class="table table-sm table-hover align-middle">
             <thead class="table-light">
               <tr>
                 <th>Nama Pesakit</th><th>No IC</th><th>No Telefon</th><th>Alamat</th><th>PDPA</th>
@@ -792,7 +815,7 @@
       </div>
       <div class="card"><div class="card-body">
         <div class="table-responsive">
-          <table class="table table-hover align-middle">
+          <table class="table table-sm table-hover align-middle">
             <thead class="table-light"><tr><th>Nama Pesakit</th><th>No IC</th><th>No Telefon</th><th>Alamat</th><th>Tarikh Daftar</th><th>Tarikh Selesai</th><th>Diarkib</th><th>Tindakan</th></tr></thead>
             <tbody id="archiveTable"><tr><td colspan="8" class="text-center text-muted">Tiada rekod arkib</td></tr></tbody>
           </table>
@@ -880,7 +903,7 @@
         </div>
         <div class="card-body">
           <div class="table-responsive sejarah-table-wrap">
-            <table class="table table-hover align-middle">
+            <table class="table table-sm table-hover align-middle">
               <thead class="table-light sticky-top">
                 <tr>
                   <th style="width:56px">#</th>
@@ -2430,6 +2453,9 @@ function calculateAgeFromIC(ic) {
 }
 
 function updateNadiSummary() {
+  // Reset paparan dahulu
+  const _lay = document.getElementById('nadiLayakCount'); if (_lay) _lay.textContent = '0';
+  const _tak = document.getElementById('nadiTakLayakCount'); if (_tak) _tak.textContent = '0';
   let layakCount = 0;
   let takLayakCount = 0;
   
@@ -2710,6 +2736,9 @@ takLayak.addEventListener('change', ()=> queueSaveNadiLive(row));
 row.dataset.rowId = row.id;
 }
 
+
+// Kemas kini ringkasan selepas tambah baris
+try{ updateNadiSummary(); }catch(_e){}
 function updateNadiRowData(row) {
   const rowData = {
     nama: row.querySelector('.nadi-nama').value.trim(),
@@ -4138,6 +4167,9 @@ const saveNadiStateDebounced = debounce(saveNadiState, 400);
   if (nadiContainer) {
     const mo = new MutationObserver(()=>{ ensureVoucherColumns(); });
     mo.observe(nadiContainer, {childList:true, subtree:false});
+    // Auto update ringkasan bila baris berubah
+    const mo2 = new MutationObserver(()=>{ try{ updateNadiSummary(); }catch(_e){} });
+    mo2.observe(nadiContainer, {childList:true});
   }
 
   // Intercept Simpan Aktiviti: proses baris voucher → daftar sebagai TCA CALL (remark "Saringan kesihatan voucher")
@@ -4215,6 +4247,7 @@ const saveNadiStateDebounced = debounce(saveNadiState, 400);
       document.querySelectorAll('#nadiContainer tr').forEach(tr=>{
         if (tr.querySelector('input[name="voucher"]')?.checked) tr.remove();
       });
+      updateNadiSummary();
       saveNadiState();
     }
     // Teruskan handler asal (jika ada) – kita tidak preventDefault
