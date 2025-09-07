@@ -309,13 +309,33 @@
 </style>
 
   <style>
-    .sejarah-scroll { max-height: 65vh; overflow: auto; }
-    .sejarah-scroll table thead th { position: sticky; top: 0; background: var(--bs-light); z-index: 2; box-shadow: inset 0 -1px 0 rgba(0,0,0,.05); }
+    /* --- UI Kemas & Tersusun (penambahbaikan) --- */
+    /* Jadual Sejarah: tatal dalam kotak sahaja, kepala melekat */
+    .sejarah-scroll { 
+      max-height: 65vh; 
+      overflow: auto; 
+    }
+    .sejarah-scroll table thead th {
+      position: sticky; top: 0;
+      background: var(--bs-light);
+      z-index: 2; 
+      box-shadow: inset 0 -1px 0 rgba(0,0,0,.05);
+    }
+    /* Sel edit highlight */
     #sejarahTable tr.editing td { background: #fffbe6; }
+    #sejarahTable td .form-control, 
+    #sejarahTable td .form-select { min-width: 120px; }
+    #sejarahTable td.col-tca .form-control { min-width: 140px; }
+    #sejarahTable td.col-remark .form-control { min-width: 220px; }
+    #sejarahTable td.edit-actions { white-space: nowrap; }
+    /* Butang kecil konsisten */
     .mini-actions .btn { padding: .2rem .5rem; font-size: .75rem; }
-    .stamp-bulat { display:inline-block; border:2px solid var(--bs-info); color:var(--bs-info); border-radius:999px; font-weight:700; font-size:.7rem; padding:.15rem .5rem; text-transform:uppercase; }
-    .col-remark { min-width: 180px; }
+    /* Badge stail stempel bulat untuk TCA Voucher */
+    .badge-voucher { display: inline-block; vertical-align: middle; }
+    /* Jadual lain: responsif yang selesa */
+    .table-responsive { scrollbar-gutter: stable; }
   </style>
+
 </head>
 <body>
   <!-- Global Loader -->
@@ -476,7 +496,7 @@
         <div class="card-body">
           <div class="table-responsive">
             <table class="table table-hover align-middle">
-              <thead class="table-light"><tr><th>Nama Pesakit</th><th>No IC</th><th>No Telefon</th><th>Alamat</th><th>Tarikh TCA</th><th>Remark</th><th>Status</th></tr></thead>
+              <thead class="table-light"><tr><th>Nama Pesakit</th><th>No IC</th><th>No Telefon</th><th>Alamat</th><th>Tarikh TCA</th><th>Status</th></tr></thead>
               <tbody id="tcaCallTable"><tr><td colspan="6" class="text-center text-muted">Memuat data...</td></tr></tbody>
             </table>
           </div>
@@ -691,7 +711,7 @@
       <div class="card"><div class="card-body">
         <div class="table-responsive">
           <table class="table table-hover align-middle">
-            <thead class="table-light"><tr><th>Nama Pesakit</th><th>No IC</th><th>No Telefon</th><th>Alamat</th><th>Tarikh TCA</th><th>Status</th></tr></thead>
+            <thead class="table-light"><tr><th>Nama Pesakit</th><th>No IC</th><th>No Telefon</th><th>Alamat</th><th>Tarikh TCA</th><th>Remark</th><th>Status</th></tr></thead>
             <tbody id="tcaCallList"><tr><td colspan="6" class="text-center text-muted">Memuat data...</td></tr></tbody>
           </table>
         </div>
@@ -3355,11 +3375,11 @@ async function loadTCACallData(){
         <td class="mini-actions">
           <a class="btn btn-sm btn-outline-secondary" href="${telHref(msisdn)}"><i class="fa-solid fa-phone"></i> Call</a>
           <a class="btn btn-sm btn-outline-success" target="_blank" href="${waHref(msisdn)}"><i class="fa-brands fa-whatsapp"></i> WhatsApp</a>
-          <div class="small text-muted mt-1">${msisdn}</div>${ (window.TCA_VOUCHER_SET && window.TCA_VOUCHER_SET.has(p.noIC)) ? '<span class="stamp-bulat ms-2">TCA Voucher</span>' : '' }
+          <div class="small text-muted mt-1">${msisdn}</div><span class="badge rounded-pill bg-info ms-2 badge-voucher">TCA Voucher</span>
         </td>
         <td>${p.alamat || '-'}</td>
         <td>${p.tarikhTCA}</td>
-        <td class="col-remark"><input type="text" class="form-control form-control-sm tca-remark" placeholder="Catatan…"></td>
+        <td class="tca-remark"><div class="input-group input-group-sm"><input type="text" class="form-control" placeholder="Catatan…" data-remark="1"><button class="btn btn-outline-primary" data-save-remark="1"><i class="fa-solid fa-save"></i></button></div></td>
         <td><span class="badge ${p.status==='CALLED'?'bg-success':'bg-warning'}">${p.status || 'PENDING'}</span></td>
       </tr>`;
     };
@@ -3367,7 +3387,7 @@ async function loadTCACallData(){
     if (data.status==='success' && data.data.length>0){
       data.data.forEach(p=>{ if (tb1) tb1.insertAdjacentHTML('beforeend', renderRow(p)); });
     } else {
-      if (tb1) tb1.innerHTML = `<tr><td colspan="7" class="text-center text-muted">Tiada pesakit perlu dihubungi hari ini</td></tr>`;
+      if (tb1) tb1.innerHTML = `<tr><td colspan="6" class="text-center text-muted">Tiada pesakit perlu dihubungi hari ini</td></tr>`;
     }
   }catch(e){ /* senyap */ }
 }
@@ -3421,10 +3441,11 @@ function renderTcaList(mode){
         <td class="mini-actions">
           <a class="btn btn-sm btn-outline-secondary" href="${telHref(msisdn)}"><i class="fa-solid fa-phone"></i> Call</a>
           <a class="btn btn-sm btn-outline-success" target="_blank" href="${waHref(msisdn)}"><i class="fa-brands fa-whatsapp"></i> WhatsApp</a>
-          <div class="small text-muted mt-1">${msisdn || '-'}</div>
+          <div class="small text-muted mt-1">${msisdn || '-'}</div><span class="badge rounded-pill bg-info ms-2 badge-voucher">TCA Voucher</span>
         </td>
         <td>${p.alamat || '-'}</td>
         <td>${p.tarikhTCA || '-'}</td>
+        <td class="tca-remark"><div class="input-group input-group-sm"><input type="text" class="form-control" placeholder="Catatan…" data-remark="1"><button class="btn btn-outline-primary" data-save-remark="1"><i class="fa-solid fa-save"></i></button></div></td>
         <td><span class="badge ${statusClass}">${p.status || 'PENDING'}</span></td>
       </tr>`;
     tbody.insertAdjacentHTML('beforeend', rowHtml);
@@ -3608,7 +3629,7 @@ async function loadArchivedData(){
         const msisdn = normalizeMsisdnMY(p.noTelefon||'');
         const row = `<tr data-ic="${p.noIC}">
           <td>${p.nama}</td><td>${p.noIC}</td><td>${msisdn}</td><td>${p.alamat || '-'}</td><td>${p.tarikhDaftar}</td><td>${p.tarikhSelesai}</td><td>${p.archivedAt||'-'}</td>
-          <td><button class="btn btn-sm btn-outline-primary" onclick="restorePatient('${p.noIC}')"><i class="fa-solid fa-rotate-left"></i> Pulihkan</button> <button class="btn btn-sm btn-danger ms-1" onclick="permanentDeletePatient(\'${p.noIC}\')"><i class="fa-solid fa-trash"></i> Padam Kekal</button></td>
+          <td><button class="btn btn-sm btn-outline-primary" onclick="restorePatient('${p.noIC}')"><i class="fa-solid fa-rotate-left"></i> Pulihkan</button></td>
         </tr>`;
         tbody.insertAdjacentHTML('beforeend', row);
       });
@@ -5516,83 +5537,300 @@ if (btn) {
 </script>
 
 
+  <!-- Modal: Telah Hadir (retrospektif) -->
   <div class="modal fade" id="telahHadirModal" tabindex="-1" aria-hidden="true">
-    <div class="modal-dialog modal-dialog-centered"><div class="modal-content">
-      <div class="modal-header"><h5 class="modal-title"><i class="fa-solid fa-user-check me-2"></i>Tandakan Telah Hadir</h5><button class="btn-close" data-bs-dismiss="modal"></button></div>
-      <div class="modal-body">
-        <input type="hidden" id="th_noIC">
-        <div class="mb-3"><label class="form-label">Tarikh Hadir Sebenar</label><input type="date" id="th_date" class="form-control" required /></div>
-        <div class="mb-3"><label class="form-label">Muat naik PDPA (wajib)</label><input type="file" id="th_file" class="form-control" accept=".pdf,image/*" required /></div>
-        <div class="mb-2">Adakah keputusan darah makmal telah diterima?</div>
-        <div class="d-flex gap-4">
-          <div class="form-check"><input class="form-check-input" type="radio" name="th_lab" id="th_lab_yes" value="yes"><label class="form-check-label" for="th_lab_yes">Ya</label></div>
-          <div class="form-check"><input class="form-check-input" type="radio" name="th_lab" id="th_lab_no" value="no" checked><label class="form-check-label" for="th_lab_no">Tidak</label></div>
+    <div class="modal-dialog modal-dialog-centered">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title"><i class="fa-solid fa-user-check me-2"></i>Tandakan Telah Hadir</h5>
+          <button class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+        </div>
+        <div class="modal-body">
+          <input type="hidden" id="th_noIC">
+          <div class="mb-3">
+            <label class="form-label">Tarikh Hadir Sebenar</label>
+            <input type="date" id="th_date" class="form-control" required />
+          </div>
+          <div class="mb-3">
+            <label class="form-label">Muat naik PDPA (wajib)</label>
+            <input type="file" id="th_file" class="form-control" accept=".pdf,image/*" required />
+            <div class="form-text">PDF atau imej (JPG/PNG). Saiz munasabah disyorkan.</div>
+          </div>
+          <div class="mb-2">Adakah keputusan darah makmal telah diterima?</div>
+          <div class="d-flex gap-4">
+            <div class="form-check">
+              <input class="form-check-input" type="radio" name="th_lab" id="th_lab_yes" value="yes">
+              <label class="form-check-label" for="th_lab_yes">Ya</label>
+            </div>
+            <div class="form-check">
+              <input class="form-check-input" type="radio" name="th_lab" id="th_lab_no" value="no" checked>
+              <label class="form-check-label" for="th_lab_no">Tidak</label>
+            </div>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button class="btn btn-secondary" data-bs-dismiss="modal">Batal</button>
+          <button class="btn btn-primary" id="th_submit"><i class="fa-solid fa-save me-1"></i> Simpan</button>
         </div>
       </div>
-      <div class="modal-footer"><button class="btn btn-secondary" data-bs-dismiss="modal">Batal</button><button class="btn btn-primary" id="th_submit"><i class="fa-solid fa-save me-1"></i> Simpan</button></div>
-    </div></div>
+    </div>
   </div>
+
 
 <script>
 (function(){
   'use strict';
-  // Voucher set builder (lazy)
-  window.TCA_VOUCHER_SET = window.TCA_VOUCHER_SET || new Set();
-  window._voucher_built = window._voucher_built || false;
-  async function ensureVoucherICs(limitActivities=40){
-    if (window._voucher_built) return;
-    try{
-      const acts = await getJSON({ action:'getNadiActivities' });
-      if (acts?.status!=='success') return;
-      const list = acts.data || [];
-      const recent = list.slice(0, limitActivities);
-      for (const a of recent){
-        const id = a.activityId; if (!id) continue;
-        const det = await getJSON({ action:'getNadiActivityDetail', id });
-        if (det?.status!=='success') continue;
-        (det.data||[]).forEach(r=>{
-          const ic = String(r.noIC||'').trim();
-          const hasTCA = String(r.tcaDate||'').trim() || String(r.tcaTime||'').trim();
-          if (ic && hasTCA){ window.TCA_VOUCHER_SET.add(ic); }
-        });
-      }
-      window._voucher_built = true;
-      tagVoucherBadges();
-    }catch(e){}
+  // ---------- Util tarikh ----------
+  function toIso(ddmmyyyy){
+    const m = /^(\d{2})\/(\d{2})\/(\d{4})$/.exec(ddmmyyyy||''); return m ? (m[3]+'-'+m[2]+'-'+m[1]) : (ddmmyyyy||'');
   }
-  function tagVoucherBadges(){
-    const tbody = document.getElementById('tcaCallTable'); if (!tbody) return;
-    tbody.querySelectorAll('tr').forEach(tr=>{
-      const ic = tr.getAttribute('data-ic')||'';
-      if (ic && window.TCA_VOUCHER_SET.has(ic)){
-        const phoneCell = tr.querySelector('td:nth-child(3)');
-        if (phoneCell && !phoneCell.querySelector('.stamp-bulat')){
-          const span = document.createElement('span');
-          span.className = 'stamp-bulat ms-2'; span.textContent = 'TCA Voucher';
-          phoneCell.appendChild(span);
-        }
+  function toDisplay(iso){
+    const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(iso||''); return m ? (m[3]+'/'+m[2]+'/'+m[1]) : (iso||'');
+  }
+
+  // ---------- Sejarah: Edit inline & Delete ----------
+  window.CURRENT_ACTIVITY_ID = window.CURRENT_ACTIVITY_ID || '';
+  function getCurrentActivityId(){
+    const active = document.querySelector('#programList .list-group-item.active');
+    return active ? active.getAttribute('data-activity-id') : (window.CURRENT_ACTIVITY_ID||'');
+  }
+  function ensureSejarahHeaderActions(){
+    const thRow = document.querySelector('#sejarah table thead tr');
+    if (!thRow) return;
+    const lastTh = thRow.querySelector('th:last-child');
+    if (!lastTh) return;
+    if (!/tindakan/i.test(lastTh.textContent||'')){
+      const th = document.createElement('th'); th.className = 'col-actions'; th.textContent = 'Tindakan'; thRow.appendChild(th);
+    }
+  }
+  function enhanceSejarahRow(tr){
+    if (!tr || tr.dataset.enhanced==='1') return;
+    if (tr.querySelector('td[colspan]')) return;
+    tr.dataset.enhanced = '1';
+    const noCell = tr.querySelector('td'); const no = (noCell?.textContent||'').trim(); tr.dataset.rowNo = no;
+
+    const td = document.createElement('td');
+    td.className = 'mini-actions edit-actions';
+    td.innerHTML = '<button class="btn btn-sm btn-outline-primary btn-edit">Edit</button> ' +
+                   '<button class="btn btn-sm btn-success btn-save d-none">Simpan</button> ' +
+                   '<button class="btn btn-sm btn-secondary btn-cancel d-none">Batal</button> ' +
+                   '<button class="btn btn-sm btn-outline-danger btn-delete"><i class="fa-solid fa-trash"></i> Padam</button>';
+    tr.appendChild(td);
+
+    td.querySelector('.btn-edit').addEventListener('click', ()=> enterEdit(tr));
+    td.querySelector('.btn-save').addEventListener('click', ()=> saveEdit(tr));
+    td.querySelector('.btn-cancel').addEventListener('click', ()=> exitEdit(tr, true));
+    td.querySelector('.btn-delete').addEventListener('click', ()=> deleteSejarahParticipant(tr));
+  }
+  function enterEdit(tr){
+    tr.classList.add('editing');
+    tr.querySelector('.btn-edit')?.classList.add('d-none');
+    tr.querySelector('.btn-save')?.classList.remove('d-none');
+    tr.querySelector('.btn-cancel')?.classList.remove('d-none');
+
+    const cells = tr.querySelectorAll('td');
+    const map = [null,'nama','noIC','noTelefon','alamat','status','bp','pr','dxt','bmi','tca','tcaStaff','remark'];
+    for (let i=1;i<cells.length-1;i++){
+      const field = map[i]; if (!field) continue;
+      const td = cells[i]; const text = (td.textContent||'').trim(); td.dataset.orig = text;
+      if (field==='status'){
+        td.innerHTML = '<select class="form-select form-select-sm">\
+          <option value=""></option>\
+          <option value="LAYAK">LAYAK</option>\
+          <option value="TAK LAYAK">TAK LAYAK</option>\
+        </select>'; td.querySelector('select').value = text.toUpperCase();
+      } else if (field==='tca'){
+        const mDate = text.match(/(\d{2}\/\d{2}\/\d{4})/); const mTime = text.match(/(\d{2}:\d{2})/);
+        td.classList.add('col-tca');
+        td.innerHTML = '<div class="d-flex gap-1 align-items-center">\
+          <input type="date" class="form-control form-control-sm" data-field="tcaDate">\
+          <input type="time" class="form-control form-control-sm" data-field="tcaTime">\
+        </div>';
+        if (mDate) td.querySelector('[data-field="tcaDate"]').value = toIso(mDate[1]);
+        if (mTime) td.querySelector('[data-field="tcaTime"]').value = mTime[1];
+      } else {
+        const type = (field==='bmi')?'number':(field==='noTelefon'?'tel':'text');
+        td.innerHTML = '<input class="form-control form-control-sm" type="'+type+'" data-field="'+field+'" />';
+        td.querySelector('input').value = text;
+      }
+    }
+  }
+  async function saveEdit(tr){
+    try{
+      const no = tr.dataset.rowNo || ''; const activityId = getCurrentActivityId();
+      if (!no || !activityId){ toast('ID baris atau Aktiviti tidak sah', 'warning'); return; }
+      const cells = tr.querySelectorAll('td');
+      const map = [null,'nama','noIC','noTelefon','alamat','status','bp','pr','dxt','bmi','tca','tcaStaff','remark'];
+      const payload = { action:'updateNadiParticipant', activityId, no };
+      for (let i=1;i<cells.length-1;i++){
+        const field = map[i]; if (!field) continue;
+        const td = cells[i];
+        if (field==='status'){ payload.status = (td.querySelector('select')?.value || '').trim(); }
+        else if (field==='tca'){ payload.tcaDate = (td.querySelector('[data-field="tcaDate"]')?.value || '').trim(); payload.tcaTime = (td.querySelector('[data-field="tcaTime"]')?.value || '').trim(); }
+        else { payload[field] = (td.querySelector('input')?.value || td.textContent || '').trim(); }
+      }
+      const res = await postForm(payload, { msg:'Menyimpan peserta…' });
+      if (!res || res.status!=='success') throw new Error(res && (res.message||res.code)||'Gagal simpan');
+      exitEdit(tr, false, payload); toast('Rekod berjaya dikemaskini');
+    }catch(e){ console.error(e); toast('Ralat semasa simpan: '+(e.message||e), 'danger'); }
+  }
+  function exitEdit(tr, restore, updated){
+    tr.querySelector('.btn-edit')?.classList.remove('d-none');
+    tr.querySelector('.btn-save')?.classList.add('d-none');
+    tr.querySelector('.btn-cancel')?.classList.add('d-none');
+
+    const cells = tr.querySelectorAll('td');
+    const map = [null,'nama','noIC','noTelefon','alamat','status','bp','pr','dxt','bmi','tca','tcaStaff','remark'];
+    for (let i=1;i<cells.length-1;i++){
+      const field = map[i]; if (!field) continue;
+      const td = cells[i]; const orig = td.dataset.orig || '';
+      if (restore){ td.textContent = orig; }
+      else {
+        if (field==='tca'){ const d = updated?.tcaDate ? toDisplay(updated.tcaDate) : ''; const t = (updated?.tcaTime||'').trim(); td.textContent = d && t ? (d+' '+t) : (d||t||orig); }
+        else { td.textContent = (updated && updated[field]!=null) ? updated[field] : orig; }
+      }
+      delete td.dataset.orig;
+    }
+    tr.classList.remove('editing');
+  }
+  async function deleteSejarahParticipant(tr){
+    try{
+      const no = tr.dataset.rowNo || ''; const activityId = getCurrentActivityId();
+      if (!no || !activityId){ toast('ID baris atau Aktiviti tidak sah', 'warning'); return; }
+      if (!confirm('Padam peserta ini daripada aktiviti? Tindakan ini tidak boleh diundur.')) return;
+      const res = await postForm({ action:'deleteNadiParticipant', activityId, no }, { msg:'Memadam peserta…' });
+      if (!res || res.status!=='success') throw new Error(res && (res.message||res.code)||'Gagal padam');
+      tr.remove(); toast('Peserta telah dipadam');
+    }catch(e){ console.error(e); toast('Ralat padam: '+(e.message||e), 'danger'); }
+  }
+  const sejarahObserver = new MutationObserver(()=>{
+    ensureSejarahHeaderActions();
+    document.querySelectorAll('#sejarahTable tr').forEach(enhanceSejarahRow);
+  });
+
+  // ---------- First Visit: Telah Hadir flow ----------
+  function openTelahHadir(noIC){
+    const m = new bootstrap.Modal(document.getElementById('telahHadirModal'));
+    document.getElementById('th_noIC').value = noIC || '';
+    document.getElementById('th_date').value = '';
+    document.getElementById('th_file').value = '';
+    document.getElementById('th_lab_no').checked = true;
+    m.show();
+  }
+  async function fileToBase64(file){
+    return new Promise((resolve,reject)=>{ const r=new FileReader(); r.onload=()=>resolve(String(r.result).split(',')[1]||''); r.onerror=reject; r.readAsDataURL(file); });
+  }
+  async function submitTelahHadir(){
+    try{
+      const noIC = document.getElementById('th_noIC').value.trim();
+      const dateIso = document.getElementById('th_date').value;
+      const fileEl = document.getElementById('th_file');
+      const labDone = document.getElementById('th_lab_yes').checked;
+      if (!noIC){ toast('IC tidak sah', 'warning'); return; }
+      if (!dateIso){ toast('Sila pilih tarikh hadir', 'warning'); return; }
+      if (!fileEl.files || !fileEl.files[0]){ toast('Sila muat naik PDPA', 'warning'); return; }
+      const f = fileEl.files[0];
+      const b64 = await fileToBase64(f);
+      const up = await postForm({ action:'uploadPDPA', noIC, fileName:f.name, fileType:(f.type||'application/octet-stream'), fileBase64:b64 }, { msg:'Memuat naik PDPA…' });
+      if (!up || up.status!=='success') throw new Error(up && (up.message||up.code)||'Gagal upload PDPA');
+      const r = await postForm({ action:'markTelahHadir', noIC, firstVisitDate: dateIso, labDone: labDone ? 'YES' : 'NO' }, { msg:'Mengemaskini status…' });
+      if (!r || r.status!=='success') throw new Error(r && (r.message||r.code)||'Gagal kemas kini status');
+      bootstrap.Modal.getInstance(document.getElementById('telahHadirModal'))?.hide();
+      toast('Ditandakan Telah Hadir');
+      window.loadFirstVisitData && window.loadFirstVisitData();
+      setTimeout(()=>{ if (labDone){ location.hash = '#second-visit'; window.loadSecondVisitData && window.loadSecondVisitData(); } else { location.hash = '#lab-followup'; window.loadLabFollowUp && window.loadLabFollowUp(); } }, 200);
+    }catch(e){ console.error(e); toast('Ralat: '+(e.message||e), 'danger'); }
+  }
+
+  // ---------- Telah Hadir button injection ----------
+  function pickDateStr(s){ const m=/(\d{2}\/\d{2}\/\d{4})/.exec(String(s||'')); return m?m[1]:String(s||''); }
+  function parseAsDate(ddmmyyyy){
+    if (typeof parseDDMMYYYY === 'function') return parseDDMMYYYY(ddmmyyyy);
+    const mm = /^(\d{2})\/(\d{2})\/(\d{4})$/.exec(ddmmyyyy||''); if (!mm) return null; return new Date(+mm[3], +mm[2]-1, +mm[1]);
+  }
+  function isTcaOverdue(text){ const s=pickDateStr(text); const d=parseAsDate(s); if(!d) return false; const end=new Date(d.getFullYear(),d.getMonth(),d.getDate(),23,59,59,999); return new Date()>end; }
+  function isTcaToday(text){ const s=pickDateStr(text); const d=parseAsDate(s); if(!d) return false; const now=new Date(); return d.getFullYear()===now.getFullYear() && d.getMonth()===now.getMonth() && d.getDate()===now.getDate(); }
+  function injectTelahHadirButtons(){
+    document.querySelectorAll('#firstVisitList tr').forEach(tr=>{
+      if (tr.dataset._th_injected==='1') return;
+      if (tr.querySelector('td[colspan]')) return;
+      tr.dataset._th_injected = '1';
+      const tds = tr.querySelectorAll('td');
+      const icCell = tds[1]; const tcaCell = tds[3]; const statusCell = tds[tds.length-2]; const tindakanCell = tds[tds.length-1];
+      const ic = (icCell?.textContent||'').trim();
+      const statusTxt = (statusCell?.textContent||'').toLowerCase();
+      const tcaStr = (tcaCell?.textContent||'').trim();
+      if (/belum/.test(statusTxt) && tindakanCell && ic){
+        if (tindakanCell && tindakanCell.textContent && tindakanCell.textContent.toLowerCase().includes('hadir')) { return; }
+        if (isTcaToday(tcaStr)) { return; } // sembunyi pada hari kejadian (butang "Hadir" wujud)
+        const overdue = isTcaOverdue(tcaStr);
+        const cls = overdue ? 'btn-warning' : 'btn-secondary';
+        const btn = document.createElement('button');
+        btn.className = 'btn btn-sm '+cls+' me-1';
+        btn.innerHTML = '<i class="fa-solid fa-user-check me-1"></i> Telah Hadir';
+        btn.addEventListener('click', ()=> openTelahHadir(ic));
+        tindakanCell.prepend(btn);
       }
     });
   }
-  const tcaOb = new MutationObserver(()=> tagVoucherBadges());
-  window.addEventListener('DOMContentLoaded', ()=>{
-    ensureVoucherICs();
-    const tb = document.getElementById('tcaCallTable'); if (tb) tcaOb.observe(tb, { childList:true });
-  });
-  // Arkib: padam kekal
-  window.permanentDeletePatient = async function(ic){
-    if (!ic) return toast('IC tidak sah','warning');
-    if (!confirm('Padam KEKAL pesakit ini? Tindakan ini tidak boleh diundur.')) return;
+
+  // ---------- Arkib: Padam Kekal ----------
+  async function hardDeleteByIC(noIC){
+    if (!noIC) { toast('IC tidak sah', 'warning'); return; }
+    if (!confirm('Padam KEKAL rekod pesakit ini dari sheet? Tindakan ini tidak boleh diundur.')) return;
     try{
-      const res = await postForm({ action:'deletePatientPermanent', noIC: ic }, { msg:'Memadam kekal…' });
-      if (res?.status!=='success') throw new Error(res?.message||res?.code||'Gagal padam kekal');
-      toast('Pesakit dipadam kekal');
-      const tr = document.querySelector('#archiveTable tr[data-ic="'+ic+'"]'); tr?.remove();
-      window.loadDashboardData && window.loadDashboardData();
-    }catch(e){ console.error(e); toast('Ralat padam kekal: '+(e.message||e),'danger'); }
-  };
+      const res = await postForm({ action:'hardDeletePatient', noIC }, { msg:'Memadam kekal…' });
+      if (res.status==='success'){ toast('Padam', 'Rekod telah dipadam kekal', 'success'); window.loadArchivedData && window.loadArchivedData(); window.loadDashboardData && window.loadDashboardData(); }
+      else throw new Error(res.message||'Gagal padam kekal');
+    }catch(e){ toast('Ralat', e.message, 'danger'); }
+  }
+
+  // ---------- TCA Remark wiring ----------
+  function wireTcaRemarks(rootId){
+    const root = document.getElementById(rootId); if (!root) return;
+    root.querySelectorAll('tr').forEach(tr=>{
+      const btn = tr.querySelector('[data-save-remark]'); if (!btn) return;
+      const input = tr.querySelector('[data-remark]'); const ic = (tr.dataset.ic||'').trim();
+      btn.addEventListener('click', async ()=>{
+        const remark = (input?.value||'').trim();
+        try{
+          if (!ic){ toast('IC tidak sah', 'warning'); return; }
+          const res = await postForm({ action:'logCall', noIC: ic, event: 'TCA_NOTE: '+remark }, { msg:'Menyimpan remark…' });
+          if (res && res.status==='success') toast('Berjaya','Catatan disimpan','success');
+          else throw new Error(res && (res.message||res.code)||'Gagal simpan remark');
+        }catch(e){ toast('Ralat', e.message||String(e), 'danger'); }
+      });
+    });
+  }
+
+  // ---------- DOM Ready ----------
+  window.addEventListener('DOMContentLoaded', ()=>{
+    const sejarahTbody = document.getElementById('sejarahTable'); if (sejarahTbody){ sejarahObserver.observe(sejarahTbody, { childList:true }); }
+    const firstVisitTbody = document.getElementById('firstVisitList');
+    if (firstVisitTbody){ const obs = new MutationObserver(injectTelahHadirButtons); obs.observe(firstVisitTbody, { childList:true }); }
+    document.getElementById('th_submit')?.addEventListener('click', submitTelahHadir);
+
+    // Inject padam/arkib butang auto (untuk view lain) + TCA remarks wiring
+    const observeIds = ['firstVisitList','secondVisitList','labFollowupTable','completedTable','tcaCallList','tcaAllList','archiveTable'];
+    observeIds.forEach(id=>{
+      const el = document.getElementById(id);
+      if (!el) return;
+      const ob = new MutationObserver(()=>{
+        if (id==='tcaCallList' || id==='tcaAllList') wireTcaRemarks(id);
+      });
+      ob.observe(el, { childList:true });
+    });
+
+    // Pastikan kiraan NADI bermula 0 defensif
+    if (typeof updateNadiSummary === 'function') updateNadiSummary();
+  });
+
+  // Simpan activityId bila klik program sejarah
+  document.addEventListener('click', (e)=>{
+    const item = e.target.closest('#programList .list-group-item'); if (item) window.CURRENT_ACTIVITY_ID = item.getAttribute('data-activity-id') || '';
+  });
 })();
 </script>
-</body>
 
+</body>
 </html>
