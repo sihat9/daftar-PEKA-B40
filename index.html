@@ -6269,6 +6269,16 @@ function injectTelahHadirButtons(){
   };
 
   // ===== Utilities =====
+  // Strict JSON fetch (helps diagnose 'Unexpected token <' by showing first 200 chars)
+  RUMUS.fetchJsonStrict = async function(url, init){
+    const res = await fetch(url, init);
+    const ct = (res.headers.get('content-type')||'').toLowerCase();
+    const text = await res.text();
+    if (!res.ok) throw new Error('HTTP '+res.status+' '+res.statusText+' — '+text.slice(0,200));
+    try { return JSON.parse(text); }
+    catch(e){ throw new SyntaxError('Expected JSON, got "'+ct+'" — preview: '+text.slice(0,200)); }
+  };
+
   RUMUS.dateDisplayToIso = function(ddmmyyyy){
     if (!ddmmyyyy) return '';
     const m = /^\s*(\d{2})\/(\d{2})\/(\d{4})\s*$/.exec(String(ddmmyyyy));
