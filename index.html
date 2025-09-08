@@ -334,6 +334,15 @@
     .table-responsive { scrollbar-gutter: stable; }
   </style>
 
+
+<style>
+/* voucher-stamp-marker */
+.stamp-voucher-min {
+  display:inline-block; border:2px solid var(--bs-info, #0dcaf0); color:var(--bs-info, #0dcaf0);
+  border-radius:999px; font-weight:700; font-size:.7rem; padding:.1rem .5rem;
+  text-transform:uppercase; vertical-align: middle; line-height:1;
+}
+</style>
 </head>
 <body>
   <!-- Global Loader -->
@@ -5926,5 +5935,187 @@ function injectTelahHadirButtons(){
 })();
 </script>
 
+
+<script>
+/* === injected-augmentations === */
+(function(){'use strict';
+
+  function _toast(msg, type){ try{ return toast(msg, type||'success'); }catch(e){ console.log('[toast]', type||'success', msg); } }
+  async function _postForm(payload){ try{ if (typeof postForm==='function') return await postForm(payload); }catch(e){} 
+    const form = new URLSearchParams(); Object.entries(payload||{}).forEach(([k,v])=>form.append(k, v));
+    const res = await fetch(location.href, { method:'POST', headers:{'Content-Type':'application/x-www-form-urlencoded'}, body: form.toString() });
+    return await res.json();
+  }
+  async function _getJSON(payload){ try{ if (typeof getJSON==='function') return await getJSON(payload); }catch(e){}
+    const params = new URLSearchParams(payload||{}); const res = await fetch(location.pathname + '?' + params.toString());
+    return await res.json();
+  }
+
+  // Permanent Delete for Arkib page
+  window.permanentDeletePatient = async function(ic){
+    ic = String(ic||'').trim();
+    if (!ic) return _toast('IC tidak sah','warning');
+    if (!confirm('Padam KEKAL pesakit ini? Tindakan ini tidak boleh diundur.')) return;
+    try{
+      const res = await _postForm({ action:'deletePatientPermanent', noIC: ic });
+      if (res?.status!=='success') throw new Error(res?.message||res?.code||'Gagal padam kekal');
+      _toast('Pesakit dipadam kekal');
+      const tr = document.querySelector('#archiveTable tr[data-ic="'+ic+'"]');
+      if (tr) tr.remove();
+      if (!document.querySelector('#archiveTable tr')){ 
+        const row = document.createElement('tr'); 
+        row.innerHTML = '<td colspan="8" class="text-center text-muted">Tiada rekod arkib</td>'; 
+        document.getElementById('archiveTable').appendChild(row);
+      }
+    }catch(e){ console.error(e); _toast('Ralat padam kekal: '+(e.message||e),'danger'); }
+  };
+
+  function augmentArchiveTable(){
+    const tb = document.getElementById('archiveTable'); if (!tb) return;
+    tb.querySelectorAll('tr').forEach(tr => {
+      const tds = tr.children; if (!tds || !tds.length) return;
+      const last = tds[tds.length-1];
+      if (!last) return;
+      if (last.querySelector('[data-role="delete-permanent"]')) return;
+      const ic = (tr.getAttribute('data-ic')||'').trim() || (tds[1] ? tds[1].textContent.trim() : '');
+      if (!ic) return;
+      const btn = document.createElement('button');
+      btn.className = 'btn btn-sm btn-danger ms-1';
+      btn.innerHTML = '<i class="fa-solid fa-trash"></i> Padam Kekal';
+      btn.setAttribute('data-role','delete-permanent');
+      btn.onclick = () => window.permanentDeletePatient(ic);
+      last.appendChild(btn);
+    });
+  }
+
+  // Build voucher IC set from NADI activities
+  window.TCA_VOUCHER_SET = window.TCA_VOUCHER_SET || new Set();
+  window._voucherBuilt = window._voucherBuilt || false;
+
+  async function ensureVoucherICs(limit=40){
+    if (window._voucherBuilt) return;
+    try{
+      const acts = await _getJSON({ action:'getNadiActivities' });
+      if (acts?.status!=='success') return;
+      const list = acts.data || [];
+      const recent = list.slice(0, limit);
+      for (const a of recent){
+        const id = a.activityId; if (!id) continue;
+        const det = await _getJSON({ action:'getNadiActivityDetail', id });
+        if (det?.status!=='success') continue;
+        (det.data||[]).forEach(r=>{
+          const ic = String(r.noIC||'').trim();
+          const hasTCA = String(r.tcaDate||'').trim() || String(r.tcaTime||'').trim();
+          if (ic && hasTCA) window.TCA_VOUCHER_SET.add(ic);
+        });
+      }
+      window._voucherBuilt = true;
+      applyTCABadges();
+    }catch(e){ console.warn('Build voucher set failed', e); }
+  }
+
+  function applyTCABadges(){
+    const tableCandidates = [ document.getElementById('tcaCallTable'), document.getElementById('tcaCallList') ];
+    tableCandidates.forEach(tb => {
+      if (!tb) return;
+      const table = tb.closest('table') || tb;
+      let phoneIdx = 2;
+      try{
+        const ths = table.querySelectorAll('thead th');
+        ths.forEach((th, i) => { const t = (th.textContent||'').toLowerCase().trim(); if (/telefon/.test(t)) phoneIdx = i; });
+      }catch(e){}
+      tb.querySelectorAll('tr').forEach(tr=>{
+        const icCell = tr.children[1];
+        const phoneCell = tr.children[phoneIdx];
+        const ic = icCell ? icCell.textContent.trim() : '';
+        if (!ic || !phoneCell) return;
+        if (window.TCA_VOUCHER_SET.has(ic)) {
+          if (!phoneCell.querySelector('.stamp-voucher-min')){ 
+            const span = document.createElement('span');
+            span.className = 'stamp-voucher-min ms-2';
+            span.textContent = 'TCA Voucher';
+            phoneCell.appendChild(span);
+          }
+        }
+      });
+    });
+  }
+
+  function ensureTCARemarkColumn(){
+    // TCA Call on dashboard
+    const sectionDash = document.querySelector('#dashboard');
+    if (sectionDash){
+      const tb = sectionDash.querySelector('#tcaCallTable');
+      const thRow = sectionDash.querySelector('thead tr');
+      if (tb && thRow){
+        const heads = Array.from(thRow.children).map(th=>th.textContent.trim().toLowerCase());
+        const tcaIdx = heads.findIndex(h => /tarikh\s*tca/.test(h));
+        if (tcaIdx >=0 && !/remark/.test(heads[tcaIdx+1]||'')){
+          const remarkTh = document.createElement('th'); remarkTh.textContent = 'Remark';
+          thRow.insertBefore(remarkTh, thRow.children[tcaIdx+1] || null);
+        }
+        tb.querySelectorAll('tr').forEach(tr=>{
+          const cells = tr.children;
+          if (!cells || !cells.length) return;
+          if (cells.length <= (tcaIdx+1)) return;
+          const nextCell = cells[tcaIdx+1];
+          if (nextCell && nextCell.classList.contains('tca-remark-cell')) return;
+          const td = document.createElement('td'); td.className = 'tca-remark-cell';
+          td.innerHTML = '<input type="text" class="form-control form-control-sm tca-remark-input" placeholder="Catatan…">';
+          tr.insertBefore(td, nextCell || null);
+        });
+      }
+    }
+    // TCA Call page
+    const section = document.querySelector('#tca-call'); if (!section) return;
+    const table = section.querySelector('table'); if (!table) return;
+    const thead = table.querySelector('thead'); if (!thead) return;
+    const trh = thead.querySelector('tr') || thead;
+    let headCells = Array.from(thead.querySelectorAll('th'));
+    let tcaIdx = headCells.findIndex(th => (/tarikh\s*tca/i).test(th.textContent||''));
+    if (tcaIdx === -1) { 
+      const wanted = ['Nama Pesakit','No IC','No Telefon','Alamat','Tarikh TCA','Remark','Status'];
+      thead.innerHTML = '<tr>' + wanted.map(t=>'<'+'th'+ '>'+ t +'</'+'th'+'>').join('') + '</tr>';
+      tcaIdx = 4;
+    } else {
+      const next = headCells[tcaIdx+1];
+      if (!next || !/remark/i.test(next.textContent||'')) {
+        const th = document.createElement('th'); th.textContent = 'Remark';
+        trh.insertBefore(th, headCells[tcaIdx+1] || null);
+      }
+    }
+    const tbody = table.querySelector('tbody'); if (!tbody) return;
+    tbody.querySelectorAll('tr').forEach(tr=>{
+      const cells = tr.children; if (!cells || !cells.length) return;
+      if (cells.length <= tcaIdx+1) return;
+      const afterTca = cells[tcaIdx+1];
+      if (afterTca && afterTca.querySelector && afterTca.querySelector('input.tca-remark-input')) return;
+      const td = document.createElement('td'); td.className = 'tca-remark-cell';
+      td.innerHTML = '<input type="text" class="form-control form-control-sm tca-remark-input" placeholder="Catatan…">';
+      tr.insertBefore(td, afterTca || null);
+    });
+  }
+
+  const _observer = new MutationObserver(() => { 
+    ensureTCARemarkColumn(); 
+    applyTCABadges();
+    augmentArchiveTable();
+  });
+
+  window.addEventListener('DOMContentLoaded', () => {
+    ensureVoucherICs();
+    ensureTCARemarkColumn();
+    applyTCABadges();
+    augmentArchiveTable();
+    const tcaTb = document.getElementById('tcaCallTable');
+    if (tcaTb) _observer.observe(tcaTb, { childList:true, subtree:true });
+    const tcaList = document.getElementById('tcaCallList');
+    if (tcaList) _observer.observe(tcaList, { childList:true, subtree:true });
+    const archTb = document.getElementById('archiveTable');
+    if (archTb) _observer.observe(archTb, { childList:true, subtree:true });
+  });
+
+})();
+</script>
 </body>
 </html>
