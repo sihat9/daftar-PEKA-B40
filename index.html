@@ -932,11 +932,10 @@
                   <th class="col-tca">TCA</th>
                   <th class="col-staff">Staff</th>
                   <th class="col-remark">Remark</th>
-                                  <th class="col-actions">Tindakan</th>
                 </tr>
               </thead>
               <tbody id="sejarahTable">
-                <tr><td colspan="14" class="text-center text-muted py-4">Pilih program di sebelah kiri.</td></tr>
+                <tr><td colspan="13" class="text-center text-muted py-4">Pilih program di sebelah kiri.</td></tr>
               </tbody>
             </table>
           </div>
@@ -947,28 +946,6 @@
 </section>
 
   </main>
-
-  <!-- Modal Edit Voucher TCA -->
-  <div class="modal fade" id="voucherEditModal" tabindex="-1" aria-hidden="true">
-    <div class="modal-dialog"><div class="modal-content">
-      <div class="modal-header">
-        <h5 class="modal-title"><i class="bi bi-pencil-square me-2"></i>Edit TCA Voucher</h5>
-        <button class="btn-close" data-bs-dismiss="modal"></button>
-      </div>
-      <div class="modal-body">
-        <input type="hidden" id="vEditNo">
-        <div class="mb-2"><label class="form-label">Nama</label><div id="vEditName" class="form-control-plaintext"></div></div>
-        <div class="mb-2"><label class="form-label">Tarikh TCA</label><input type="date" id="vEditDate" class="form-control"></div>
-        <div class="mb-2"><label class="form-label">Masa TCA</label><input type="time" id="vEditTime" class="form-control"></div>
-        <div class="mb-2"><label class="form-label">Remark</label><textarea id="vEditRemark" class="form-control" rows="3"></textarea></div>
-      </div>
-      <div class="modal-footer">
-        <button class="btn btn-outline-secondary" data-bs-dismiss="modal">Tutup</button>
-        <button class="btn btn-primary" id="vEditSave"><i class="fa-solid fa-floppy-disk me-1"></i>Simpan</button>
-      </div>
-    </div></div>
-  </div>
-
 
   <!-- Modal Re-TCA -->
   <div class="modal fade" id="retcaModal" tabindex="-1" aria-hidden="true">
@@ -4316,14 +4293,14 @@ const saveNadiStateDebounced = debounce(saveNadiState, 400);
     const titleLabel = document.getElementById('programTitleLabel');
     const dateLabel = document.getElementById('programDateLabel');
     if (!tbody) return;
-    tbody.innerHTML = '<tr><td colspan="14" class="text-center text-muted">Memuat data…</td></tr>';
+    tbody.innerHTML = '<tr><td colspan="13" class="text-center text-muted">Memuat data…</td></tr>';
     try{
       const qs = new URLSearchParams({ action:'getNadiActivityDetail', id: activityId, id_token: (window.ID_TOKEN||'') });
       const res = await fetch(`${window.SCRIPT_URL}?${qs.toString()}`);
       const j = await res.json();
       if (!j || j.status!=='success') throw new Error(j && (j.message||j.code) || 'Gagal ambil detail');
       const rows = Array.isArray(j.data) ? j.data : [];
-      if (!rows.length){ tbody.innerHTML = '<tr><td colspan="14" class="text-center text-muted">Tiada data.</td></tr>'; return; }
+      if (!rows.length){ tbody.innerHTML = '<tr><td colspan="13" class="text-center text-muted">Tiada data.</td></tr>'; return; }
       // Set tajuk & tarikh (kita tak dapat terus; ambil dari butang terpilih)
       const btn = document.querySelector(`[data-activity-id="${activityId}"]`);
       if (btn){
@@ -4341,9 +4318,9 @@ const saveNadiStateDebounced = debounce(saveNadiState, 400);
           <td>${r.status||''}</td><td>${r.bp||''}</td><td>${r.pr||''}</td><td>${r.dxt||''}</td><td>${r.bmi||''}</td>
           <td>${r.tcaDate||''} ${r.tcaTime||''}</td><td>${r.tcaStaff||''}</td><td>${r.remark||''}</td>
         </tr>
-      `).join('') || '<tr><td colspan="14" class="text-center text-muted">Tiada padanan carian.</td></tr>';
+      `).join('') || '<tr><td colspan="13" class="text-center text-muted">Tiada padanan carian.</td></tr>';
     }catch(e){
-      tbody.innerHTML = '<tr><td colspan="14" class="text-center text-danger">Ralat memuat maklumat.</td></tr>';
+      tbody.innerHTML = '<tr><td colspan="13" class="text-center text-danger">Ralat memuat maklumat.</td></tr>';
     }
   }
 
@@ -4936,7 +4913,7 @@ if (btn) {
     const titleEl = document.getElementById('programTitleLabel');
     const dateEl = document.getElementById('programDateLabel');
     if (!tbody) return;
-    tbody.innerHTML = '<tr><td colspan="14" class="text-center text-muted">Memuat perincian…</td></tr>';
+    tbody.innerHTML = '<tr><td colspan="13" class="text-center text-muted">Memuat perincian…</td></tr>';
     try{
       const qs = new URLSearchParams({ action:'getNadiActivityDetail', id: activityId, id_token: (window.ID_TOKEN||'') });
       const res = await fetch(`${window.SCRIPT_URL}?${qs.toString()}`, { credentials:'omit' });
@@ -4944,7 +4921,7 @@ if (btn) {
       if (!j || j.status!=='success') throw new Error((j && (j.message||j.code)) || 'Gagal ambil detail');
       const rows = Array.isArray(j.data) ? j.data : [];
       if (!rows.length){
-        tbody.innerHTML = '<tr><td colspan="14" class="text-center text-muted">Tiada data.</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="13" class="text-center text-muted">Tiada data.</td></tr>';
         return;
       }
       // cuba isi header dari item pertama jika info ada di list kiri (optional)
@@ -4971,7 +4948,7 @@ if (btn) {
       }).join('');
       tbody.innerHTML = html;
     }catch(err){
-      tbody.innerHTML = `<tr><td colspan="14" class="text-center text-danger">Gagal memuat perincian: ${err && err.message ? err.message : err}</td></tr>`;
+      tbody.innerHTML = `<tr><td colspan="13" class="text-center text-danger">Gagal memuat perincian: ${err && err.message ? err.message : err}</td></tr>`;
     }
   }
 
@@ -5030,7 +5007,7 @@ if (btn) {
       const data = Array.isArray(j.data) ? j.data : [];
       if (!data.length){
         list.innerHTML = '<div class="text-center text-muted p-3">Tiada rekod ditemui.</div>';
-        $('#sejarahTable') && ($('#sejarahTable').innerHTML = '<tr><td colspan="14" class="text-center text-muted">—</td></tr>');
+        $('#sejarahTable') && ($('#sejarahTable').innerHTML = '<tr><td colspan="13" class="text-center text-muted">—</td></tr>');
         return;
       }
       const html = data.map(r=>{
@@ -5067,10 +5044,10 @@ if (btn) {
   async function loadProgramDetail(activityId){
     const tbody = $('#sejarahTable');
     if (!tbody) return;
-    if (!activityId){ tbody.innerHTML = '<tr><td colspan="14" class="text-center text-muted">Tiada program dipilih.</td></tr>'; return; }
+    if (!activityId){ tbody.innerHTML = '<tr><td colspan="13" class="text-center text-muted">Tiada program dipilih.</td></tr>'; return; }
 
     const q = ($('#sejarahSearch')?.value || '').toLowerCase().trim();
-    tbody.innerHTML = '<tr><td colspan="14" class="text-center text-muted">Memuat data…</td></tr>';
+    tbody.innerHTML = '<tr><td colspan="13" class="text-center text-muted">Memuat data…</td></tr>';
     try{
       const qs = new URLSearchParams({ action:'getNadiActivityDetail', id: activityId, id_token: window.ID_TOKEN||'' });
       const j = await fetchJson(`${window.SCRIPT_URL}?${qs.toString()}`);
@@ -5104,9 +5081,9 @@ if (btn) {
           <td>${escapeHtml(r.tcaStaff||'')}</td>
           <td>${escapeHtml(r.remark||'')}</td>
         </tr>
-      `).join('') || '<tr><td colspan="14" class="text-center text-muted">Tiada padanan carian.</td></tr>';
+      `).join('') || '<tr><td colspan="13" class="text-center text-muted">Tiada padanan carian.</td></tr>';
     }catch(e){
-      tbody.innerHTML = `<tr><td colspan="14" class="text-center text-danger">Ralat memuat maklumat: ${escapeHtml(e.message||e)}</td></tr>`;
+      tbody.innerHTML = `<tr><td colspan="13" class="text-center text-danger">Ralat memuat maklumat: ${escapeHtml(e.message||e)}</td></tr>`;
     }
   }
 
@@ -5180,11 +5157,6 @@ if (btn) {
 
 
 <style>
-  .col-actions [data-act]{ display:inline-block; }
-  .col-actions[data-apt]:not([data-apt="VOUCHER"]) { opacity:.4; pointer-events:none; }
-
-  .sejarah-table-wrap{ max-height:60vh; overflow:auto; }
-
   .program-list { max-height: 480px; overflow: auto; }
   .program-list .list-group-item { cursor: pointer; }
   .program-list .meta { opacity: .8; }
@@ -5270,7 +5242,7 @@ if (btn) {
     }
     if (!arr.length){
       list.innerHTML = '<div class="p-3 text-center text-muted">Tiada rekod ditemui.</div>';
-      $('#sejarahTable') && ($('#sejarahTable').innerHTML = '<tr><td colspan="14" class="text-center text-muted">—</td></tr>');
+      $('#sejarahTable') && ($('#sejarahTable').innerHTML = '<tr><td colspan="13" class="text-center text-muted">—</td></tr>');
       return;
     }
     list.innerHTML = arr.map(r=>{
@@ -5299,12 +5271,12 @@ if (btn) {
   async function loadProgramDetail(activityId){
     state.activeId = activityId;
     const tbody = $('#sejarahTable'); if (!tbody) return;
-    if (!activityId){ tbody.innerHTML = '<tr><td colspan="14" class="text-center text-muted">Tiada program dipilih.</td></tr>'; return; }
+    if (!activityId){ tbody.innerHTML = '<tr><td colspan="13" class="text-center text-muted">Tiada program dipilih.</td></tr>'; return; }
 
-    tbody.innerHTML = '<tr><td colspan="14" class="text-center text-muted py-4">Memuat data…</td></tr>';
+    tbody.innerHTML = '<tr><td colspan="13" class="text-center text-muted py-4">Memuat data…</td></tr>';
     const j = await jget({ action:'getNadiActivityDetail', id: activityId }).catch(()=>null);
     if (!j || j.status!=='success'){
-      tbody.innerHTML = '<tr><td colspan="14" class="text-center text-danger py-4">Gagal memuat butiran.</td></tr>';
+      tbody.innerHTML = '<tr><td colspan="13" class="text-center text-danger py-4">Gagal memuat butiran.</td></tr>';
       return;
     }
     state.rows = Array.isArray(j.data) ? j.data.slice() : [];
@@ -5353,10 +5325,8 @@ if (btn) {
         <td class="col-tca ${col.tca?'':'hide'}">${fmt.esc(tca)}</td>
         <td class="col-staff ${col.staff?'':'hide'}">${fmt.esc(r.tcaStaff||'')}</td>
         <td class="col-remark ${col.remark?'':'hide'}">${fmt.esc(r.remark||'')}</td>
-      
-        <td class="col-actions" data-apt="${String(r.appointmentType||'').toUpperCase()}"><div class="btn-group btn-group-sm" role="group"> <button type="button" class="btn btn-outline-primary" data-act="edit" data-apt="${(String(r.appointmentType||'').toUpperCase()==='VOUCHER')?'VOUCHER':''}" data-no="${fmt.esc(r.no||'')}" data-nama="${fmt.esc(r.nama||'')}" data-date="${fmt.esc(r.tcaDate||'')}" data-time="${fmt.esc(r.tcaTime||'')}" data-remark="${fmt.esc(r.remark||'')}">Edit</button> <button type="button" class="btn btn-outline-danger" data-act="clear" data-no="${fmt.esc(r.no||'')}">Padam</button></div></td>
       </tr>`;
-    }).join('') || '<tr><td colspan="14" class="text-center text-muted">Tiada padanan carian.</td></tr>';
+    }).join('') || '<tr><td colspan="13" class="text-center text-muted">Tiada padanan carian.</td></tr>';
   }
 
   // ===== Export CSV =====
@@ -5434,63 +5404,7 @@ if (btn) {
     });
   })();
 
-  
-  // === Actions: Edit/Padam (Voucher) ===
-  // Save from voucher edit modal
-  document.addEventListener('click', async (e)=>{
-    if (e.target && e.target.id==='vEditSave'){
-      const no = $('#vEditNo')?.value || '';
-      const tcaDate = $('#vEditDate')?.value || '';
-      const tcaTime = $('#vEditTime')?.value || '';
-      const remark  = $('#vEditRemark')?.value || '';
-      try{
-        await postUpdateVoucher({ activityId: state.activeId, no, tcaDate, tcaTime, remark });
-        bootstrap.Modal.getInstance(document.getElementById('voucherEditModal'))?.hide();
-        await loadProgramDetail(state.activeId);
-      }catch(err){
-        alert('Gagal simpan: ' + (err && err.message ? err.message : err));
-      }
-    }
-  });
-
-  document.addEventListener('click', async (e)=>{
-    const btn = e.target.closest('[data-act]');
-    if (!btn) return;
-    const tbody = $('#sejarahTable');
-    if (!tbody) return;
-    const act = btn.getAttribute('data-act');
-    const no = btn.getAttribute('data-no')||'';
-    if (act==='edit'){
-      // open modal
-      $('#vEditNo') && ($('#vEditNo').value = no);
-      $('#vEditName') && ($('#vEditName').textContent = btn.getAttribute('data-nama')||'');
-      const dd = btn.getAttribute('data-date')||'';
-      const tt = btn.getAttribute('data-time')||'';
-      const rk = btn.getAttribute('data-remark')||'';
-      $('#vEditDate') && ($('#vEditDate').value = toInputDate(dd));
-      $('#vEditTime') && ($('#vEditTime').value = tt);
-      $('#vEditRemark') && ($('#vEditRemark').value = rk);
-      const m = new bootstrap.Modal(document.getElementById('voucherEditModal')); m.show();
-    } else if (act==='clear'){
-      if (!confirm('Padam TCA & remark rekod ini?')) return;
-      await postUpdateVoucher({ activityId: state.activeId, no, tcaDate: '', tcaTime: '', remark: '' });
-      await loadProgramDetail(state.activeId);
-    }
-  });
-
-  function toInputDate(ddmmyyyy){
-    const m = /^\s*(\d{2})\/(\d{2})\/(\d{4})\s*$/.exec(ddmmyyyy||'');
-    if (!m) return '';
-    return `${m[3]}-${m[2]}-${m[1]}`;
-  }
-  async function postUpdateVoucher({ activityId, no, tcaDate, tcaTime, remark }){
-    const body = new URLSearchParams({ action:'updateVoucherTCA', activityId, no, tcaDate, tcaTime, remark, id_token: (window.ID_TOKEN||'') });
-    const res = await fetch(window.SCRIPT_URL, { method:'POST', headers:{'Content-Type':'application/x-www-form-urlencoded'}, body });
-    const j = await res.json().catch(()=>null);
-    if (!j || j.status!=='success'){ throw new Error((j && (j.message||j.code)) || 'Gagal kemaskini'); }
-    return j;
-  }
-// Column toggles
+  // Column toggles
   document.addEventListener('change', (e)=>{
     if (e.target?.classList.contains('col-toggle')){
       const key = e.target.getAttribute('data-col');
@@ -6202,6 +6116,25 @@ function injectTelahHadirButtons(){
   });
 
 })();
-</script>
-</body>
+
+// === Patch: map legacy payload to updateVoucherTCA shape (minimal change) ===
+function __toVoucherPayload(payload){
+  // Accept many possible keys and normalize
+  const obj = Object.assign({}, payload||{});
+  const activityId = String(obj.activityId || obj.id || obj.activity_id || '').trim();
+  const no = String(obj.no || obj.rowNo || obj.index || '').trim();
+  // Date normalization: allow yyyy-mm-dd or dd/mm/yyyy
+  function toIso(val){
+    if(!val) return '';
+    if(/^\d{4}-\d{2}-\d{2}$/.test(val)) return val;
+    const m = /^(\d{2})\/(\d{2})\/(\d{4})$/.exec(String(val));
+    return m ? `${m[3]}-${m[2]}-${m[1]}` : String(val);
+  }
+  const tcaDate = toIso(obj.tcaDate || obj.date || obj.tca_date || '');
+  const tcaTime = String(obj.tcaTime || obj.time || obj.tca_time || '').trim();
+  const remark  = String(obj.remark || obj.note || obj.notes || '').trim();
+  return { activityId, no, tcaDate, tcaTime, remark };
+}
+
+</script></body>
 </html>
