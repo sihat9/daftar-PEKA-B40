@@ -300,6 +300,8 @@
   /* Toolbar spacing for NADI buttons */
   .nadi-toolbar .btn { margin: 2px; }
 
+
+.inner-scroll{max-height:60vh;overflow:auto;}
 </style>
 <style>
 /* === NADI tidy === */
@@ -932,11 +934,10 @@
                   <th class="col-tca">TCA</th>
                   <th class="col-staff">Staff</th>
                   <th class="col-remark">Remark</th>
-                                  <th class="col-actions">Tindakan</th>
                 </tr>
               </thead>
               <tbody id="sejarahTable">
-                <tr><td colspan="14" class="text-center text-muted py-4">Pilih program di sebelah kiri.</td></tr>
+                <tr><td colspan="13" class="text-center text-muted py-4">Pilih program di sebelah kiri.</td></tr>
               </tbody>
             </table>
           </div>
@@ -947,28 +948,6 @@
 </section>
 
   </main>
-
-  <!-- Modal Edit Voucher TCA -->
-  <div class="modal fade" id="voucherEditModal" tabindex="-1" aria-hidden="true">
-    <div class="modal-dialog"><div class="modal-content">
-      <div class="modal-header">
-        <h5 class="modal-title"><i class="bi bi-pencil-square me-2"></i>Edit TCA Voucher</h5>
-        <button class="btn-close" data-bs-dismiss="modal"></button>
-      </div>
-      <div class="modal-body">
-        <input type="hidden" id="vEditNo">
-        <div class="mb-2"><label class="form-label">Nama</label><div id="vEditName" class="form-control-plaintext"></div></div>
-        <div class="mb-2"><label class="form-label">Tarikh TCA</label><input type="date" id="vEditDate" class="form-control"></div>
-        <div class="mb-2"><label class="form-label">Masa TCA</label><input type="time" id="vEditTime" class="form-control"></div>
-        <div class="mb-2"><label class="form-label">Remark</label><textarea id="vEditRemark" class="form-control" rows="3"></textarea></div>
-      </div>
-      <div class="modal-footer">
-        <button class="btn btn-outline-secondary" data-bs-dismiss="modal">Tutup</button>
-        <button class="btn btn-primary" id="vEditSave"><i class="fa-solid fa-floppy-disk me-1"></i>Simpan</button>
-      </div>
-    </div></div>
-  </div>
-
 
   <!-- Modal Re-TCA -->
   <div class="modal fade" id="retcaModal" tabindex="-1" aria-hidden="true">
@@ -4316,14 +4295,14 @@ const saveNadiStateDebounced = debounce(saveNadiState, 400);
     const titleLabel = document.getElementById('programTitleLabel');
     const dateLabel = document.getElementById('programDateLabel');
     if (!tbody) return;
-    tbody.innerHTML = '<tr><td colspan="14" class="text-center text-muted">Memuat data…</td></tr>';
+    tbody.innerHTML = '<tr><td colspan="13" class="text-center text-muted">Memuat data…</td></tr>';
     try{
       const qs = new URLSearchParams({ action:'getNadiActivityDetail', id: activityId, id_token: (window.ID_TOKEN||'') });
       const res = await fetch(`${window.SCRIPT_URL}?${qs.toString()}`);
       const j = await res.json();
       if (!j || j.status!=='success') throw new Error(j && (j.message||j.code) || 'Gagal ambil detail');
       const rows = Array.isArray(j.data) ? j.data : [];
-      if (!rows.length){ tbody.innerHTML = '<tr><td colspan="14" class="text-center text-muted">Tiada data.</td></tr>'; return; }
+      if (!rows.length){ tbody.innerHTML = '<tr><td colspan="13" class="text-center text-muted">Tiada data.</td></tr>'; return; }
       // Set tajuk & tarikh (kita tak dapat terus; ambil dari butang terpilih)
       const btn = document.querySelector(`[data-activity-id="${activityId}"]`);
       if (btn){
@@ -4341,9 +4320,9 @@ const saveNadiStateDebounced = debounce(saveNadiState, 400);
           <td>${r.status||''}</td><td>${r.bp||''}</td><td>${r.pr||''}</td><td>${r.dxt||''}</td><td>${r.bmi||''}</td>
           <td>${r.tcaDate||''} ${r.tcaTime||''}</td><td>${r.tcaStaff||''}</td><td>${r.remark||''}</td>
         </tr>
-      `).join('') || '<tr><td colspan="14" class="text-center text-muted">Tiada padanan carian.</td></tr>';
+      `).join('') || '<tr><td colspan="13" class="text-center text-muted">Tiada padanan carian.</td></tr>';
     }catch(e){
-      tbody.innerHTML = '<tr><td colspan="14" class="text-center text-danger">Ralat memuat maklumat.</td></tr>';
+      tbody.innerHTML = '<tr><td colspan="13" class="text-center text-danger">Ralat memuat maklumat.</td></tr>';
     }
   }
 
@@ -4936,7 +4915,7 @@ if (btn) {
     const titleEl = document.getElementById('programTitleLabel');
     const dateEl = document.getElementById('programDateLabel');
     if (!tbody) return;
-    tbody.innerHTML = '<tr><td colspan="14" class="text-center text-muted">Memuat perincian…</td></tr>';
+    tbody.innerHTML = '<tr><td colspan="13" class="text-center text-muted">Memuat perincian…</td></tr>';
     try{
       const qs = new URLSearchParams({ action:'getNadiActivityDetail', id: activityId, id_token: (window.ID_TOKEN||'') });
       const res = await fetch(`${window.SCRIPT_URL}?${qs.toString()}`, { credentials:'omit' });
@@ -4944,7 +4923,7 @@ if (btn) {
       if (!j || j.status!=='success') throw new Error((j && (j.message||j.code)) || 'Gagal ambil detail');
       const rows = Array.isArray(j.data) ? j.data : [];
       if (!rows.length){
-        tbody.innerHTML = '<tr><td colspan="14" class="text-center text-muted">Tiada data.</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="13" class="text-center text-muted">Tiada data.</td></tr>';
         return;
       }
       // cuba isi header dari item pertama jika info ada di list kiri (optional)
@@ -4971,7 +4950,7 @@ if (btn) {
       }).join('');
       tbody.innerHTML = html;
     }catch(err){
-      tbody.innerHTML = `<tr><td colspan="14" class="text-center text-danger">Gagal memuat perincian: ${err && err.message ? err.message : err}</td></tr>`;
+      tbody.innerHTML = `<tr><td colspan="13" class="text-center text-danger">Gagal memuat perincian: ${err && err.message ? err.message : err}</td></tr>`;
     }
   }
 
@@ -5030,7 +5009,7 @@ if (btn) {
       const data = Array.isArray(j.data) ? j.data : [];
       if (!data.length){
         list.innerHTML = '<div class="text-center text-muted p-3">Tiada rekod ditemui.</div>';
-        $('#sejarahTable') && ($('#sejarahTable').innerHTML = '<tr><td colspan="14" class="text-center text-muted">—</td></tr>');
+        $('#sejarahTable') && ($('#sejarahTable').innerHTML = '<tr><td colspan="13" class="text-center text-muted">—</td></tr>');
         return;
       }
       const html = data.map(r=>{
@@ -5067,10 +5046,10 @@ if (btn) {
   async function loadProgramDetail(activityId){
     const tbody = $('#sejarahTable');
     if (!tbody) return;
-    if (!activityId){ tbody.innerHTML = '<tr><td colspan="14" class="text-center text-muted">Tiada program dipilih.</td></tr>'; return; }
+    if (!activityId){ tbody.innerHTML = '<tr><td colspan="13" class="text-center text-muted">Tiada program dipilih.</td></tr>'; return; }
 
     const q = ($('#sejarahSearch')?.value || '').toLowerCase().trim();
-    tbody.innerHTML = '<tr><td colspan="14" class="text-center text-muted">Memuat data…</td></tr>';
+    tbody.innerHTML = '<tr><td colspan="13" class="text-center text-muted">Memuat data…</td></tr>';
     try{
       const qs = new URLSearchParams({ action:'getNadiActivityDetail', id: activityId, id_token: window.ID_TOKEN||'' });
       const j = await fetchJson(`${window.SCRIPT_URL}?${qs.toString()}`);
@@ -5104,9 +5083,9 @@ if (btn) {
           <td>${escapeHtml(r.tcaStaff||'')}</td>
           <td>${escapeHtml(r.remark||'')}</td>
         </tr>
-      `).join('') || '<tr><td colspan="14" class="text-center text-muted">Tiada padanan carian.</td></tr>';
+      `).join('') || '<tr><td colspan="13" class="text-center text-muted">Tiada padanan carian.</td></tr>';
     }catch(e){
-      tbody.innerHTML = `<tr><td colspan="14" class="text-center text-danger">Ralat memuat maklumat: ${escapeHtml(e.message||e)}</td></tr>`;
+      tbody.innerHTML = `<tr><td colspan="13" class="text-center text-danger">Ralat memuat maklumat: ${escapeHtml(e.message||e)}</td></tr>`;
     }
   }
 
@@ -5180,11 +5159,6 @@ if (btn) {
 
 
 <style>
-  .col-actions [data-act]{ display:inline-block; }
-  .col-actions[data-apt]:not([data-apt="VOUCHER"]) { opacity:.4; pointer-events:none; }
-
-  .sejarah-table-wrap{ max-height:60vh; overflow:auto; }
-
   .program-list { max-height: 480px; overflow: auto; }
   .program-list .list-group-item { cursor: pointer; }
   .program-list .meta { opacity: .8; }
@@ -5270,7 +5244,7 @@ if (btn) {
     }
     if (!arr.length){
       list.innerHTML = '<div class="p-3 text-center text-muted">Tiada rekod ditemui.</div>';
-      $('#sejarahTable') && ($('#sejarahTable').innerHTML = '<tr><td colspan="14" class="text-center text-muted">—</td></tr>');
+      $('#sejarahTable') && ($('#sejarahTable').innerHTML = '<tr><td colspan="13" class="text-center text-muted">—</td></tr>');
       return;
     }
     list.innerHTML = arr.map(r=>{
@@ -5299,12 +5273,12 @@ if (btn) {
   async function loadProgramDetail(activityId){
     state.activeId = activityId;
     const tbody = $('#sejarahTable'); if (!tbody) return;
-    if (!activityId){ tbody.innerHTML = '<tr><td colspan="14" class="text-center text-muted">Tiada program dipilih.</td></tr>'; return; }
+    if (!activityId){ tbody.innerHTML = '<tr><td colspan="13" class="text-center text-muted">Tiada program dipilih.</td></tr>'; return; }
 
-    tbody.innerHTML = '<tr><td colspan="14" class="text-center text-muted py-4">Memuat data…</td></tr>';
+    tbody.innerHTML = '<tr><td colspan="13" class="text-center text-muted py-4">Memuat data…</td></tr>';
     const j = await jget({ action:'getNadiActivityDetail', id: activityId }).catch(()=>null);
     if (!j || j.status!=='success'){
-      tbody.innerHTML = '<tr><td colspan="14" class="text-center text-danger py-4">Gagal memuat butiran.</td></tr>';
+      tbody.innerHTML = '<tr><td colspan="13" class="text-center text-danger py-4">Gagal memuat butiran.</td></tr>';
       return;
     }
     state.rows = Array.isArray(j.data) ? j.data.slice() : [];
@@ -5353,10 +5327,8 @@ if (btn) {
         <td class="col-tca ${col.tca?'':'hide'}">${fmt.esc(tca)}</td>
         <td class="col-staff ${col.staff?'':'hide'}">${fmt.esc(r.tcaStaff||'')}</td>
         <td class="col-remark ${col.remark?'':'hide'}">${fmt.esc(r.remark||'')}</td>
-      
-        <td class="col-actions" data-apt="${String(r.appointmentType||'').toUpperCase()}"><div class="btn-group btn-group-sm" role="group"> <button type="button" class="btn btn-outline-primary" data-act="edit" data-apt="${(String(r.appointmentType||'').toUpperCase()==='VOUCHER')?'VOUCHER':''}" data-no="${fmt.esc(r.no||'')}" data-nama="${fmt.esc(r.nama||'')}" data-date="${fmt.esc(r.tcaDate||'')}" data-time="${fmt.esc(r.tcaTime||'')}" data-remark="${fmt.esc(r.remark||'')}">Edit</button> <button type="button" class="btn btn-outline-danger" data-act="clear" data-no="${fmt.esc(r.no||'')}">Padam</button></div></td>
       </tr>`;
-    }).join('') || '<tr><td colspan="14" class="text-center text-muted">Tiada padanan carian.</td></tr>';
+    }).join('') || '<tr><td colspan="13" class="text-center text-muted">Tiada padanan carian.</td></tr>';
   }
 
   // ===== Export CSV =====
@@ -5434,63 +5406,7 @@ if (btn) {
     });
   })();
 
-  
-  // === Actions: Edit/Padam (Voucher) ===
-  // Save from voucher edit modal
-  document.addEventListener('click', async (e)=>{
-    if (e.target && e.target.id==='vEditSave'){
-      const no = $('#vEditNo')?.value || '';
-      const tcaDate = $('#vEditDate')?.value || '';
-      const tcaTime = $('#vEditTime')?.value || '';
-      const remark  = $('#vEditRemark')?.value || '';
-      try{
-        await postUpdateVoucher({ activityId: state.activeId, no, tcaDate, tcaTime, remark });
-        bootstrap.Modal.getInstance(document.getElementById('voucherEditModal'))?.hide();
-        await loadProgramDetail(state.activeId);
-      }catch(err){
-        alert('Gagal simpan: ' + (err && err.message ? err.message : err));
-      }
-    }
-  });
-
-  document.addEventListener('click', async (e)=>{
-    const btn = e.target.closest('[data-act]');
-    if (!btn) return;
-    const tbody = $('#sejarahTable');
-    if (!tbody) return;
-    const act = btn.getAttribute('data-act');
-    const no = btn.getAttribute('data-no')||'';
-    if (act==='edit'){
-      // open modal
-      $('#vEditNo') && ($('#vEditNo').value = no);
-      $('#vEditName') && ($('#vEditName').textContent = btn.getAttribute('data-nama')||'');
-      const dd = btn.getAttribute('data-date')||'';
-      const tt = btn.getAttribute('data-time')||'';
-      const rk = btn.getAttribute('data-remark')||'';
-      $('#vEditDate') && ($('#vEditDate').value = toInputDate(dd));
-      $('#vEditTime') && ($('#vEditTime').value = tt);
-      $('#vEditRemark') && ($('#vEditRemark').value = rk);
-      const m = new bootstrap.Modal(document.getElementById('voucherEditModal')); m.show();
-    } else if (act==='clear'){
-      if (!confirm('Padam TCA & remark rekod ini?')) return;
-      await postUpdateVoucher({ activityId: state.activeId, no, tcaDate: '', tcaTime: '', remark: '' });
-      await loadProgramDetail(state.activeId);
-    }
-  });
-
-  function toInputDate(ddmmyyyy){
-    const m = /^\s*(\d{2})\/(\d{2})\/(\d{4})\s*$/.exec(ddmmyyyy||'');
-    if (!m) return '';
-    return `${m[3]}-${m[2]}-${m[1]}`;
-  }
-  async function postUpdateVoucher({ activityId, no, tcaDate, tcaTime, remark }){
-    const body = new URLSearchParams({ action:'updateVoucherTCA', activityId, no, tcaDate, tcaTime, remark, id_token: (window.ID_TOKEN||'') });
-    const res = await fetch(window.SCRIPT_URL, { method:'POST', headers:{'Content-Type':'application/x-www-form-urlencoded'}, body });
-    const j = await res.json().catch(()=>null);
-    if (!j || j.status!=='success'){ throw new Error((j && (j.message||j.code)) || 'Gagal kemaskini'); }
-    return j;
-  }
-// Column toggles
+  // Column toggles
   document.addEventListener('change', (e)=>{
     if (e.target?.classList.contains('col-toggle')){
       const key = e.target.getAttribute('data-col');
@@ -6203,5 +6119,368 @@ function injectTelahHadirButtons(){
 
 })();
 </script>
-</body>
-</html>
+
+<script>
+(function(){
+  const _origFetch = window.fetch;
+  function toIso(val){
+    if(!val) return '';
+    if(/^\d{4}-\d{2}-\d{2}$/.test(val)) return val;
+    const m = /^(\d{2})\/(\d{2})\/(\d{4})$/.exec(String(val));
+    return m ? `${m[3]}-${m[2]}-${m[1]}` : String(val);
+  }
+  function normBool(v){ if(v===true||v===false) return v; const s=String(v||'').toLowerCase(); return (s==='true'||s==='ya'||s==='yes'||s==='1'); }
+  function normalizeItem(row){
+    const r = Object.assign({}, row||{});
+    const out = {};
+    out.nama      = r.nama || r.name || r.fullname || '';
+    out.noIC      = r.noIC || r.ic || r.no_kp || r.icNumber || r.nokp || '';
+    out.umur      = r.umur || r.age || '';
+    out.noTelefon = r.noTelefon || r.telefon || r.noTel || r.phone || r.msisdn || r.tel || '';
+    out.alamat    = r.alamat || r.address || r.addr || '';
+    out.bp        = r.bp || r.bloodPressure || '';
+    out.pr        = r.pr || r.nadi || r.pulse || '';
+    out.dxt       = r.dxt || r.gula || r.dxtValue || r.bs || r.sugar || '';
+    out.dxtType   = (r.dxtType || r.dxt_type || r.dxttype || '').toString().toUpperCase();
+    out.tinggi    = r.tinggi || r.height || '';
+    out.berat     = r.berat || r.weight || '';
+    out.bmi       = r.bmi || r.BMI || '';
+    let status    = (r.status || '').toString().toUpperCase();
+    const layak   = normBool(r.layak);
+    const tak     = normBool(r.takLayak) || status==='TAK LAYAK' || status==='TIDAK LAYAK';
+    if(!status){ status = layak ? 'LAYAK' : (tak ? 'TAK LAYAK' : ''); }
+    out.status = status;
+    const tcaISO  = r.tcaDate || r.tca_date || r.tca || '';
+    out.tcaDate   = toIso(tcaISO);
+    out.tcaTime   = r.tcaTime || r.tca_time || r.masaTCA || '';
+    out.tcaStaff  = r.tcaStaff || r.tca_staff || r.staffTCA || '';
+    out.remark           = r.remark || r.catatan || r.notes || r.note || '';
+    out.appointmentType  = (r.appointmentType || r.appointment_type || r.jenis || '').toString().toUpperCase();
+    return Object.assign({}, r, out);
+  }
+  function normalizeItemsJson(itemsStr){
+    try{
+      const arr = JSON.parse(itemsStr);
+      if(Array.isArray(arr)){
+        return JSON.stringify(arr.map(normalizeItem));
+      }
+    }catch(e){}
+    return itemsStr;
+  }
+  function parseUrlEncoded(body){
+    const obj = {};
+    body.split('&').forEach(pair=>{
+      const [k,v] = pair.split('=');
+      if(!k) return;
+      obj[decodeURIComponent(k)] = decodeURIComponent((v||'').replace(/\+/g,' '));
+    });
+    return obj;
+  }
+  function encodeUrlEncoded(obj){
+    const p = [];
+    for(const k in obj){
+      if(Object.prototype.hasOwnProperty.call(obj,k)){
+        p.push(encodeURIComponent(k)+'='+encodeURIComponent(obj[k]??''));
+      }
+    }
+    return p.join('&');
+  }
+  window.fetch = function(input, init){
+    try{
+      const method = (init && (init.method||'GET')).toUpperCase();
+      if(method==='POST' && init && init.headers && /application\/x-www-form-urlencoded/i.test(String(init.headers['Content-Type']||init.headers['content-type']||''))){
+        const bodyStr = String(init.body||'');
+        const obj = parseUrlEncoded(bodyStr);
+        const action = (obj.action||'').trim();
+        if(action==='saveNadiActivity' || action==='saveNadiProgramActivity'){
+          if(obj.items){ obj.items = normalizeItemsJson(obj.items); }
+          init.body = encodeUrlEncoded(obj);
+        }
+        if(action==='updateNadiParticipant' || action==='deleteNadiParticipant'){
+          obj.action = 'updateVoucherTCA';
+          const activityId = obj.activityId || obj.id || obj.activity_id || '';
+          const no = obj.no || obj.rowNo || obj.index || '';
+          if(action==='deleteNadiParticipant'){
+            obj.tcaDate = ''; obj.tcaTime=''; obj.remark='';
+          }else{
+            obj.tcaDate = toIso(obj.tcaDate || obj.date || obj.tca_date || '');
+            obj.tcaTime = obj.tcaTime || obj.time || obj.tca_time || '';
+            obj.remark  = obj.remark || obj.note || obj.notes || '';
+          }
+          obj.activityId = activityId; obj.no = no;
+          init.body = encodeUrlEncoded(obj);
+        }
+      }
+    }catch(e){}
+    return _origFetch(input, init);
+  };
+})();
+</script>
+
+
+<script>
+(function(){
+  try{
+    const sejarah = document.querySelector('#history, [data-section="history"], [data-page="history"]');
+    if(!sejarah) return;
+    const tables = sejarah.querySelectorAll('table');
+    if(tables.length >= 2){
+      const pesertaTable = tables[tables.length-1];
+      const parent = pesertaTable.parentElement;
+      if(parent && !parent.classList.contains('inner-scroll')){
+        const wrap = document.createElement('div');
+        wrap.className = 'inner-scroll';
+        parent.insertBefore(wrap, pesertaTable);
+        wrap.appendChild(pesertaTable);
+      }
+    }
+  }catch(e){}
+})();
+</script>
+
+
+<!-- RUMUS: API helper & debug harness (non-invasive). Keeps original structure intact. -->
+<script>
+(function(window, document){
+  'use strict';
+  if (window.RUMUS) return; // avoid double-inject
+
+  const RUMUS = {};
+  window.RUMUS = RUMUS;
+
+  // ===== Config & token handling =====
+  const state = {
+    webAppUrl: (document.querySelector('meta[name="gas-endpoint"]')?.content || window.GAS_WEBAPP_URL || '').trim(),
+    idToken: (localStorage.getItem('id_token') || '').trim()
+  };
+
+  RUMUS.setWebAppUrl = function(url){
+    state.webAppUrl = String(url||'').trim();
+  };
+  RUMUS.setToken = function(token){
+    state.idToken = String(token||'').trim();
+    if (state.idToken) localStorage.setItem('id_token', state.idToken);
+  };
+  RUMUS.getToken = function(){
+    return state.idToken || '';
+  };
+  RUMUS.getWebAppUrl = function(){
+    return state.webAppUrl || '';
+  };
+
+  // ===== Utilities =====
+  // Strict JSON fetch (helps diagnose 'Unexpected token <' by showing first 200 chars)
+  RUMUS.fetchJsonStrict = async function(url, init){
+    const res = await fetch(url, init);
+    const ct = (res.headers.get('content-type')||'').toLowerCase();
+    const text = await res.text();
+    if (!res.ok) throw new Error('HTTP '+res.status+' '+res.statusText+' — '+text.slice(0,200));
+    try { return JSON.parse(text); }
+    catch(e){ throw new SyntaxError('Expected JSON, got "'+ct+'" — preview: '+text.slice(0,200)); }
+  };
+
+  RUMUS.dateDisplayToIso = function(ddmmyyyy){
+    if (!ddmmyyyy) return '';
+    const m = /^\s*(\d{2})\/(\d{2})\/(\d{4})\s*$/.exec(String(ddmmyyyy));
+    return m ? (m[3] + '-' + m[2] + '-' + m[1]) : String(ddmmyyyy).trim();
+  };
+  RUMUS.trimTimeHHmm = function(t){
+    return String(t||'').trim().slice(0,5);
+  };
+  RUMUS.normalizeMsisdnMY = function(raw){
+    let s = String(raw||'').replace(/\D/g,'');
+    if (!s) return '';
+    if (s.startsWith('00')) s=s.slice(2);
+    if (s.startsWith('60')) return s;
+    if (s.startsWith('0')) return '60'+s.slice(1);
+    return '60'+s;
+  };
+
+  // Field mapping for daftar (defensive; does not touch UI)
+  function mapDaftarFields(obj){
+    const o = {...obj};
+    // tolerant aliases → backend expects these exact keys
+    o.namaPesakit = o.namaPesakit || o.nama || o.name || o.fullname || '';
+    o.noIC        = o.noIC || o.ic || o.nokp || o.no_kp || '';
+    o.noTelefon   = o.noTelefon || o.noTel || o.phone || o.msisdn || '';
+    o.alamat      = o.alamat || o.address || o.almt || '';
+    o.namaStaff   = o.namaStaff || o.staff || o.staffEmail || '';
+    if (o.tarikhTCA) o.tarikhTCA = RUMUS.dateDisplayToIso(o.tarikhTCA);
+    if (o.masaTCA)   o.masaTCA   = RUMUS.trimTimeHHmm(o.masaTCA);
+    if (o.noTelefon) o.noTelefon = RUMUS.normalizeMsisdnMY(o.noTelefon);
+    return o;
+  }
+
+  // Build URL-encoded body with id_token merged
+  function encodeForm(params){
+    const p = new URLSearchParams();
+    const token = RUMUS.getToken();
+    if (token) p.set('id_token', token);
+    Object.entries(params||{}).forEach(([k,v])=>{
+      if (v===undefined || v===null) return;
+      p.append(k, String(v));
+    });
+    return p.toString();
+  }
+
+  function ensureEndpoint(){
+    const url = RUMUS.getWebAppUrl();
+    if (url) return url;
+    console.warn('RUMUS: GAS endpoint not set. Call RUMUS.setWebAppUrl("https://script.google.com/macros/s/.../exec")');
+    return ''; // let fetch fail loudly if not set
+  }
+
+  // ===== Core API helpers (safe defaults: x-www-form-urlencoded) =====
+  RUMUS.get = async function(action, params){
+    const base = ensureEndpoint();
+    const token = RUMUS.getToken();
+    const all = Object.assign({}, params||{}, { action });
+    const qs = encodeForm(all) + (token ? '' : '');
+    const url = base + (base.includes('?') ? '&' : '?') + qs;
+    const res = await fetch(url, { method:'GET', credentials:'omit' });
+    return res.json();
+  };
+
+  // opts: { json: false } by default → match backend expectation
+  RUMUS.post = async function(action, params, opts){
+    const base = ensureEndpoint();
+    const isJson = !!(opts && opts.json);
+    const token = RUMUS.getToken();
+
+    const bodyObj = Object.assign({}, params||{}, { action });
+    if (isJson){
+      if (token) bodyObj.id_token = token;
+      const res = await fetch(base, {
+        method: 'POST',
+        headers: { 'Content-Type':'application/json' },
+        body: JSON.stringify(bodyObj)
+      });
+      return res.json();
+    } else {
+      const body = encodeForm(bodyObj);
+      const res = await fetch(base, {
+        method: 'POST',
+        headers: { 'Content-Type':'application/x-www-form-urlencoded' },
+        body
+      });
+      return res.json();
+    }
+  };
+
+  // Convenience wrappers for key flows
+  RUMUS.api = {
+    whoami(){ return RUMUS.get('whoami'); },
+    bootstrap(){ return RUMUS.get('bootstrap'); },
+    daftarPesakit(data){
+      const p = mapDaftarFields(data||{});
+      return RUMUS.post('daftarPesakit', p); // form-encoded
+    },
+    updateStatus(p){ return RUMUS.post('updateStatus', p); },
+    updatePatient(p){
+      // expects PDPA already uploaded
+      if (p.tarikhTCA) p.tarikhTCA = RUMUS.dateDisplayToIso(p.tarikhTCA);
+      if (p.masaTCA)   p.masaTCA   = RUMUS.trimTimeHHmm(p.masaTCA);
+      return RUMUS.post('updatePatient', p);
+    },
+    updateLabStatus(p){ return RUMUS.post('updateLabStatus', p); },
+    archivePatient(p){ return RUMUS.post('archivePatient', p); },
+    restorePatient(p){ return RUMUS.post('restorePatient', p); },
+    getTCACall(all){ return RUMUS.get('getTCACall', { all: all? '1':'0' }); },
+    getFirstVisit(){ return RUMUS.get('getFirstVisit'); },
+    getLabFollowUp(){ return RUMUS.get('getLabFollowUp'); },
+    getSecondVisit(){ return RUMUS.get('getSecondVisit'); },
+    getCompleted(){ return RUMUS.get('getCompleted'); },
+    getArchived(){ return RUMUS.get('getArchived'); },
+    getStatistics(period){ return RUMUS.get('getStatistics', { period }); },
+    getCallLogs(q){ return RUMUS.get('getCallLogs', { q }); },
+    // NADI
+    saveNadiProgramActivity(p){ return RUMUS.post('saveNadiProgramActivity', p, { json:true }); },
+    updateVoucherTCA(p){ return RUMUS.post('updateVoucherTCA', p); },
+    // Live
+    saveNadiLive(p){ return RUMUS.post('saveNadiLive', p, { json:true }); },
+    clearNadiLive(p){ return RUMUS.post('clearNadiLive', p); },
+    programFeedSince(p){ return RUMUS.get('programFeedSince', p); },
+    listNadiSessions(date){ return RUMUS.get('listNadiSessions', { date }); },
+    getNadiMonitor(date){ return RUMUS.get('getNadiMonitor', { date }); },
+    listNadiSessionsLive(date){ return RUMUS.get('listNadiSessionsLive', { date }); },
+    getNadiLive(p){ return RUMUS.get('getNadiLive', p); }
+  };
+
+  // PDPA upload helper (base64, as required by backend)
+  RUMUS.uploadPDPA = function(noIC, file, extra){
+    return new Promise((resolve, reject)=>{
+      try{
+        if (!file) return reject(new Error('Fail PDPA tidak dipilih'));
+        const reader = new FileReader();
+        reader.onload = async (e) => {
+          try{
+            const full = String(e.target.result||'');
+            const base64 = full.includes(',') ? full.split(',')[1] : full;
+            const payload = Object.assign({
+              noIC: String(noIC||'').trim(),
+              fileName: file.name || ('PDPA_'+noIC+'.pdf'),
+              fileType: file.type || 'application/pdf',
+              fileBase64: base64
+            }, extra||{});
+            const out = await RUMUS.post('uploadPDPA', payload); // form-encoded
+            resolve(out);
+          }catch(err){ reject(err); }
+        };
+        reader.onerror = (err)=> reject(err);
+        reader.readAsDataURL(file);
+      }catch(e){ reject(e); }
+    });
+  };
+
+  // ===== Optional: lightweight debug (enable via ?debug=1) =====
+  (function(){
+    const params = new URLSearchParams(location.search);
+    const enabled = params.get('debug') === '1' || localStorage.getItem('DEBUG_RUMUS') === '1';
+    if (!enabled) return;
+
+    const group = (t)=> console.groupCollapsed('%c'+t,'color:#0a58ca;font-weight:bold');
+    const end = ()=> console.groupEnd();
+
+    group('RUMUS Debug: Libraries');
+    console.table({
+      bootstrap: !!window.bootstrap,
+      Chart: !!window.Chart,
+      Chart_version: window.Chart?.version || '',
+      ChartDataLabels: !!window.ChartDataLabels,
+      XLSX: !!window.XLSX,
+      html2canvas: !!window.html2canvas
+    }); end();
+
+    // Duplicate IDs detector (read-only)
+    group('RUMUS Debug: Duplicate IDs');
+    const ids={}, dups=[];
+    document.querySelectorAll('[id]').forEach(el=>{
+      const id=el.id; if(ids[id]) dups.push(id); ids[id]=(ids[id]||0)+1;
+    });
+    if (dups.length) console.warn('ID bertindih:', [...new Set(dups)]); else console.log('Tiada ID bertindih.');
+    end();
+
+    // Fetch hook: log failures only
+    const origFetch = window.fetch;
+    window.fetch = async (...args)=>{
+      try{
+        const res = await origFetch(...args);
+        if (!res.ok) console.error('Fetch tidak OK:', args[0], res.status, res.statusText);
+        return res;
+      }catch(err){
+        console.error('Fetch gagal:', args[0], err); throw err;
+      }
+    };
+    console.info('RUMUS debug aktif. Tambah ?debug=1 pada URL untuk hidupkan; localStorage.DEBUG_RUMUS="1".');
+  })();
+
+  // ===== Friendly startup tasks (non-invasive) =====
+  document.addEventListener('DOMContentLoaded', function(){
+    // Try register Chart.js datalabels if present
+    if (window.Chart && window.ChartDataLabels){
+      try{ Chart.register(ChartDataLabels); }catch(e){ /* ignore */ }
+    }
+  });
+})(window, document);
+</script>
+</body></html>
