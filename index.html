@@ -6238,4 +6238,239 @@ function injectTelahHadirButtons(){
 })();
 </script>
 
+
+<!-- RUMUS: API helper & debug harness (non-invasive). Keeps original structure intact. -->
+<script>
+(function(window, document){
+  'use strict';
+  if (window.RUMUS) return; // avoid double-inject
+
+  const RUMUS = {};
+  window.RUMUS = RUMUS;
+
+  // ===== Config & token handling =====
+  const state = {
+    webAppUrl: (document.querySelector('meta[name="gas-endpoint"]')?.content || window.GAS_WEBAPP_URL || '').trim(),
+    idToken: (localStorage.getItem('id_token') || '').trim()
+  };
+
+  RUMUS.setWebAppUrl = function(url){
+    state.webAppUrl = String(url||'').trim();
+  };
+  RUMUS.setToken = function(token){
+    state.idToken = String(token||'').trim();
+    if (state.idToken) localStorage.setItem('id_token', state.idToken);
+  };
+  RUMUS.getToken = function(){
+    return state.idToken || '';
+  };
+  RUMUS.getWebAppUrl = function(){
+    return state.webAppUrl || '';
+  };
+
+  // ===== Utilities =====
+  RUMUS.dateDisplayToIso = function(ddmmyyyy){
+    if (!ddmmyyyy) return '';
+    const m = /^\s*(\d{2})\/(\d{2})\/(\d{4})\s*$/.exec(String(ddmmyyyy));
+    return m ? (m[3] + '-' + m[2] + '-' + m[1]) : String(ddmmyyyy).trim();
+  };
+  RUMUS.trimTimeHHmm = function(t){
+    return String(t||'').trim().slice(0,5);
+  };
+  RUMUS.normalizeMsisdnMY = function(raw){
+    let s = String(raw||'').replace(/\D/g,'');
+    if (!s) return '';
+    if (s.startsWith('00')) s=s.slice(2);
+    if (s.startsWith('60')) return s;
+    if (s.startsWith('0')) return '60'+s.slice(1);
+    return '60'+s;
+  };
+
+  // Field mapping for daftar (defensive; does not touch UI)
+  function mapDaftarFields(obj){
+    const o = {...obj};
+    // tolerant aliases → backend expects these exact keys
+    o.namaPesakit = o.namaPesakit || o.nama || o.name || o.fullname || '';
+    o.noIC        = o.noIC || o.ic || o.nokp || o.no_kp || '';
+    o.noTelefon   = o.noTelefon || o.noTel || o.phone || o.msisdn || '';
+    o.alamat      = o.alamat || o.address || o.almt || '';
+    o.namaStaff   = o.namaStaff || o.staff || o.staffEmail || '';
+    if (o.tarikhTCA) o.tarikhTCA = RUMUS.dateDisplayToIso(o.tarikhTCA);
+    if (o.masaTCA)   o.masaTCA   = RUMUS.trimTimeHHmm(o.masaTCA);
+    if (o.noTelefon) o.noTelefon = RUMUS.normalizeMsisdnMY(o.noTelefon);
+    return o;
+  }
+
+  // Build URL-encoded body with id_token merged
+  function encodeForm(params){
+    const p = new URLSearchParams();
+    const token = RUMUS.getToken();
+    if (token) p.set('id_token', token);
+    Object.entries(params||{}).forEach(([k,v])=>{
+      if (v===undefined || v===null) return;
+      p.append(k, String(v));
+    });
+    return p.toString();
+  }
+
+  function ensureEndpoint(){
+    const url = RUMUS.getWebAppUrl();
+    if (url) return url;
+    console.warn('RUMUS: GAS endpoint not set. Call RUMUS.setWebAppUrl("https://script.google.com/macros/s/.../exec")');
+    return ''; // let fetch fail loudly if not set
+  }
+
+  // ===== Core API helpers (safe defaults: x-www-form-urlencoded) =====
+  RUMUS.get = async function(action, params){
+    const base = ensureEndpoint();
+    const token = RUMUS.getToken();
+    const all = Object.assign({}, params||{}, { action });
+    const qs = encodeForm(all) + (token ? '' : '');
+    const url = base + (base.includes('?') ? '&' : '?') + qs;
+    const res = await fetch(url, { method:'GET', credentials:'omit' });
+    return res.json();
+  };
+
+  // opts: { json: false } by default → match backend expectation
+  RUMUS.post = async function(action, params, opts){
+    const base = ensureEndpoint();
+    const isJson = !!(opts && opts.json);
+    const token = RUMUS.getToken();
+
+    const bodyObj = Object.assign({}, params||{}, { action });
+    if (isJson){
+      if (token) bodyObj.id_token = token;
+      const res = await fetch(base, {
+        method: 'POST',
+        headers: { 'Content-Type':'application/json' },
+        body: JSON.stringify(bodyObj)
+      });
+      return res.json();
+    } else {
+      const body = encodeForm(bodyObj);
+      const res = await fetch(base, {
+        method: 'POST',
+        headers: { 'Content-Type':'application/x-www-form-urlencoded' },
+        body
+      });
+      return res.json();
+    }
+  };
+
+  // Convenience wrappers for key flows
+  RUMUS.api = {
+    whoami(){ return RUMUS.get('whoami'); },
+    bootstrap(){ return RUMUS.get('bootstrap'); },
+    daftarPesakit(data){
+      const p = mapDaftarFields(data||{});
+      return RUMUS.post('daftarPesakit', p); // form-encoded
+    },
+    updateStatus(p){ return RUMUS.post('updateStatus', p); },
+    updatePatient(p){
+      // expects PDPA already uploaded
+      if (p.tarikhTCA) p.tarikhTCA = RUMUS.dateDisplayToIso(p.tarikhTCA);
+      if (p.masaTCA)   p.masaTCA   = RUMUS.trimTimeHHmm(p.masaTCA);
+      return RUMUS.post('updatePatient', p);
+    },
+    updateLabStatus(p){ return RUMUS.post('updateLabStatus', p); },
+    archivePatient(p){ return RUMUS.post('archivePatient', p); },
+    restorePatient(p){ return RUMUS.post('restorePatient', p); },
+    getTCACall(all){ return RUMUS.get('getTCACall', { all: all? '1':'0' }); },
+    getFirstVisit(){ return RUMUS.get('getFirstVisit'); },
+    getLabFollowUp(){ return RUMUS.get('getLabFollowUp'); },
+    getSecondVisit(){ return RUMUS.get('getSecondVisit'); },
+    getCompleted(){ return RUMUS.get('getCompleted'); },
+    getArchived(){ return RUMUS.get('getArchived'); },
+    getStatistics(period){ return RUMUS.get('getStatistics', { period }); },
+    getCallLogs(q){ return RUMUS.get('getCallLogs', { q }); },
+    // NADI
+    saveNadiProgramActivity(p){ return RUMUS.post('saveNadiProgramActivity', p, { json:true }); },
+    updateVoucherTCA(p){ return RUMUS.post('updateVoucherTCA', p); },
+    // Live
+    saveNadiLive(p){ return RUMUS.post('saveNadiLive', p, { json:true }); },
+    clearNadiLive(p){ return RUMUS.post('clearNadiLive', p); },
+    programFeedSince(p){ return RUMUS.get('programFeedSince', p); },
+    listNadiSessions(date){ return RUMUS.get('listNadiSessions', { date }); },
+    getNadiMonitor(date){ return RUMUS.get('getNadiMonitor', { date }); },
+    listNadiSessionsLive(date){ return RUMUS.get('listNadiSessionsLive', { date }); },
+    getNadiLive(p){ return RUMUS.get('getNadiLive', p); }
+  };
+
+  // PDPA upload helper (base64, as required by backend)
+  RUMUS.uploadPDPA = function(noIC, file, extra){
+    return new Promise((resolve, reject)=>{
+      try{
+        if (!file) return reject(new Error('Fail PDPA tidak dipilih'));
+        const reader = new FileReader();
+        reader.onload = async (e) => {
+          try{
+            const full = String(e.target.result||'');
+            const base64 = full.includes(',') ? full.split(',')[1] : full;
+            const payload = Object.assign({
+              noIC: String(noIC||'').trim(),
+              fileName: file.name || ('PDPA_'+noIC+'.pdf'),
+              fileType: file.type || 'application/pdf',
+              fileBase64: base64
+            }, extra||{});
+            const out = await RUMUS.post('uploadPDPA', payload); // form-encoded
+            resolve(out);
+          }catch(err){ reject(err); }
+        };
+        reader.onerror = (err)=> reject(err);
+        reader.readAsDataURL(file);
+      }catch(e){ reject(e); }
+    });
+  };
+
+  // ===== Optional: lightweight debug (enable via ?debug=1) =====
+  (function(){
+    const params = new URLSearchParams(location.search);
+    const enabled = params.get('debug') === '1' || localStorage.getItem('DEBUG_RUMUS') === '1';
+    if (!enabled) return;
+
+    const group = (t)=> console.groupCollapsed('%c'+t,'color:#0a58ca;font-weight:bold');
+    const end = ()=> console.groupEnd();
+
+    group('RUMUS Debug: Libraries');
+    console.table({
+      bootstrap: !!window.bootstrap,
+      Chart: !!window.Chart,
+      Chart_version: window.Chart?.version || '',
+      ChartDataLabels: !!window.ChartDataLabels,
+      XLSX: !!window.XLSX,
+      html2canvas: !!window.html2canvas
+    }); end();
+
+    // Duplicate IDs detector (read-only)
+    group('RUMUS Debug: Duplicate IDs');
+    const ids={}, dups=[];
+    document.querySelectorAll('[id]').forEach(el=>{
+      const id=el.id; if(ids[id]) dups.push(id); ids[id]=(ids[id]||0)+1;
+    });
+    if (dups.length) console.warn('ID bertindih:', [...new Set(dups)]); else console.log('Tiada ID bertindih.');
+    end();
+
+    // Fetch hook: log failures only
+    const origFetch = window.fetch;
+    window.fetch = async (...args)=>{
+      try{
+        const res = await origFetch(...args);
+        if (!res.ok) console.error('Fetch tidak OK:', args[0], res.status, res.statusText);
+        return res;
+      }catch(err){
+        console.error('Fetch gagal:', args[0], err); throw err;
+      }
+    };
+    console.info('RUMUS debug aktif. Tambah ?debug=1 pada URL untuk hidupkan; localStorage.DEBUG_RUMUS="1".');
+  })();
+
+  // ===== Friendly startup tasks (non-invasive) =====
+  document.addEventListener('DOMContentLoaded', function(){
+    // Try register Chart.js datalabels if present
+    if (window.Chart && window.ChartDataLabels){
+      try{ Chart.register(ChartDataLabels); }catch(e){ /* ignore */ }
+    }
+  });
+})(window, document);
+</script>
 </body></html>
