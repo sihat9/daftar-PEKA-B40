@@ -300,8 +300,6 @@
   /* Toolbar spacing for NADI buttons */
   .nadi-toolbar .btn { margin: 2px; }
 
-
-.inner-scroll{max-height:60vh;overflow:auto;}
 </style>
 <style>
 /* === NADI tidy === */
@@ -934,10 +932,12 @@
                   <th class="col-tca">TCA</th>
                   <th class="col-staff">Staff</th>
                   <th class="col-remark">Remark</th>
+                
+                  <th class="text-end col-actions">Tindakan</th>
                 </tr>
               </thead>
               <tbody id="sejarahTable">
-                <tr><td colspan="13" class="text-center text-muted py-4">Pilih program di sebelah kiri.</td></tr>
+                <tr><td colspan="14" class="text-center text-muted py-4">Pilih program di sebelah kiri.</td></tr>
               </tbody>
             </table>
           </div>
@@ -4295,14 +4295,14 @@ const saveNadiStateDebounced = debounce(saveNadiState, 400);
     const titleLabel = document.getElementById('programTitleLabel');
     const dateLabel = document.getElementById('programDateLabel');
     if (!tbody) return;
-    tbody.innerHTML = '<tr><td colspan="13" class="text-center text-muted">Memuat data…</td></tr>';
+    tbody.innerHTML = '<tr><td colspan="14" class="text-center text-muted">Memuat data…</td></tr>';
     try{
       const qs = new URLSearchParams({ action:'getNadiActivityDetail', id: activityId, id_token: (window.ID_TOKEN||'') });
       const res = await fetch(`${window.SCRIPT_URL}?${qs.toString()}`);
       const j = await res.json();
       if (!j || j.status!=='success') throw new Error(j && (j.message||j.code) || 'Gagal ambil detail');
       const rows = Array.isArray(j.data) ? j.data : [];
-      if (!rows.length){ tbody.innerHTML = '<tr><td colspan="13" class="text-center text-muted">Tiada data.</td></tr>'; return; }
+      if (!rows.length){ tbody.innerHTML = '<tr><td colspan="14" class="text-center text-muted">Tiada data.</td></tr>'; return; }
       // Set tajuk & tarikh (kita tak dapat terus; ambil dari butang terpilih)
       const btn = document.querySelector(`[data-activity-id="${activityId}"]`);
       if (btn){
@@ -4320,9 +4320,9 @@ const saveNadiStateDebounced = debounce(saveNadiState, 400);
           <td>${r.status||''}</td><td>${r.bp||''}</td><td>${r.pr||''}</td><td>${r.dxt||''}</td><td>${r.bmi||''}</td>
           <td>${r.tcaDate||''} ${r.tcaTime||''}</td><td>${r.tcaStaff||''}</td><td>${r.remark||''}</td>
         </tr>
-      `).join('') || '<tr><td colspan="13" class="text-center text-muted">Tiada padanan carian.</td></tr>';
+      `).join('') || '<tr><td colspan="14" class="text-center text-muted">Tiada padanan carian.</td></tr>';
     }catch(e){
-      tbody.innerHTML = '<tr><td colspan="13" class="text-center text-danger">Ralat memuat maklumat.</td></tr>';
+      tbody.innerHTML = '<tr><td colspan="14" class="text-center text-danger">Ralat memuat maklumat.</td></tr>';
     }
   }
 
@@ -4915,7 +4915,7 @@ if (btn) {
     const titleEl = document.getElementById('programTitleLabel');
     const dateEl = document.getElementById('programDateLabel');
     if (!tbody) return;
-    tbody.innerHTML = '<tr><td colspan="13" class="text-center text-muted">Memuat perincian…</td></tr>';
+    tbody.innerHTML = '<tr><td colspan="14" class="text-center text-muted">Memuat perincian…</td></tr>';
     try{
       const qs = new URLSearchParams({ action:'getNadiActivityDetail', id: activityId, id_token: (window.ID_TOKEN||'') });
       const res = await fetch(`${window.SCRIPT_URL}?${qs.toString()}`, { credentials:'omit' });
@@ -4923,7 +4923,7 @@ if (btn) {
       if (!j || j.status!=='success') throw new Error((j && (j.message||j.code)) || 'Gagal ambil detail');
       const rows = Array.isArray(j.data) ? j.data : [];
       if (!rows.length){
-        tbody.innerHTML = '<tr><td colspan="13" class="text-center text-muted">Tiada data.</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="14" class="text-center text-muted">Tiada data.</td></tr>';
         return;
       }
       // cuba isi header dari item pertama jika info ada di list kiri (optional)
@@ -4950,7 +4950,7 @@ if (btn) {
       }).join('');
       tbody.innerHTML = html;
     }catch(err){
-      tbody.innerHTML = `<tr><td colspan="13" class="text-center text-danger">Gagal memuat perincian: ${err && err.message ? err.message : err}</td></tr>`;
+      tbody.innerHTML = `<tr><td colspan="14" class="text-center text-danger">Gagal memuat perincian: ${err && err.message ? err.message : err}</td></tr>`;
     }
   }
 
@@ -5009,7 +5009,7 @@ if (btn) {
       const data = Array.isArray(j.data) ? j.data : [];
       if (!data.length){
         list.innerHTML = '<div class="text-center text-muted p-3">Tiada rekod ditemui.</div>';
-        $('#sejarahTable') && ($('#sejarahTable').innerHTML = '<tr><td colspan="13" class="text-center text-muted">—</td></tr>');
+        $('#sejarahTable') && ($('#sejarahTable').innerHTML = '<tr><td colspan="14" class="text-center text-muted">—</td></tr>');
         return;
       }
       const html = data.map(r=>{
@@ -5046,10 +5046,10 @@ if (btn) {
   async function loadProgramDetail(activityId){
     const tbody = $('#sejarahTable');
     if (!tbody) return;
-    if (!activityId){ tbody.innerHTML = '<tr><td colspan="13" class="text-center text-muted">Tiada program dipilih.</td></tr>'; return; }
+    if (!activityId){ tbody.innerHTML = '<tr><td colspan="14" class="text-center text-muted">Tiada program dipilih.</td></tr>'; return; }
 
     const q = ($('#sejarahSearch')?.value || '').toLowerCase().trim();
-    tbody.innerHTML = '<tr><td colspan="13" class="text-center text-muted">Memuat data…</td></tr>';
+    tbody.innerHTML = '<tr><td colspan="14" class="text-center text-muted">Memuat data…</td></tr>';
     try{
       const qs = new URLSearchParams({ action:'getNadiActivityDetail', id: activityId, id_token: window.ID_TOKEN||'' });
       const j = await fetchJson(`${window.SCRIPT_URL}?${qs.toString()}`);
@@ -5083,9 +5083,9 @@ if (btn) {
           <td>${escapeHtml(r.tcaStaff||'')}</td>
           <td>${escapeHtml(r.remark||'')}</td>
         </tr>
-      `).join('') || '<tr><td colspan="13" class="text-center text-muted">Tiada padanan carian.</td></tr>';
+      `).join('') || '<tr><td colspan="14" class="text-center text-muted">Tiada padanan carian.</td></tr>';
     }catch(e){
-      tbody.innerHTML = `<tr><td colspan="13" class="text-center text-danger">Ralat memuat maklumat: ${escapeHtml(e.message||e)}</td></tr>`;
+      tbody.innerHTML = `<tr><td colspan="14" class="text-center text-danger">Ralat memuat maklumat: ${escapeHtml(e.message||e)}</td></tr>`;
     }
   }
 
@@ -5164,7 +5164,9 @@ if (btn) {
   .program-list .meta { opacity: .8; }
   .live-dot{ display:inline-block;width:10px;height:10px;border-radius:50%;background:#16a34a;box-shadow:0 0 0 0 rgba(22,163,74,.7);animation:pulse 1.6s infinite; }
   @keyframes pulse{ 0%{ box-shadow:0 0 0 0 rgba(22,163,74,.6);} 70%{ box-shadow:0 0 0 12px rgba(22,163,74,0);} 100%{ box-shadow:0 0 0 0 rgba(22,163,74,0);} }
-  .sejarah-table-wrap thead.sticky-top{ position: sticky; top: 0; z-index: 5; }
+  .sejarah-table-wrap{ max-height:60vh; overflow:auto; }
+.sejarah-table-wrap thead.sticky-top{ position: sticky; top: 0; z-index: 5; }
+.sejarah-table-wrap table{ margin-bottom:0; }
   .placeholder{ display:inline-block; height: .9rem; background: #e9ecef; border-radius:4px; }
   .placeholder-glow .placeholder{ animation: placeholder-glow 1.2s ease-in-out infinite; }
   @keyframes placeholder-glow{ 0%{opacity:.45}50%{opacity:.8}100%{opacity:.45} }
@@ -5244,7 +5246,7 @@ if (btn) {
     }
     if (!arr.length){
       list.innerHTML = '<div class="p-3 text-center text-muted">Tiada rekod ditemui.</div>';
-      $('#sejarahTable') && ($('#sejarahTable').innerHTML = '<tr><td colspan="13" class="text-center text-muted">—</td></tr>');
+      $('#sejarahTable') && ($('#sejarahTable').innerHTML = '<tr><td colspan="14" class="text-center text-muted">—</td></tr>');
       return;
     }
     list.innerHTML = arr.map(r=>{
@@ -5273,12 +5275,12 @@ if (btn) {
   async function loadProgramDetail(activityId){
     state.activeId = activityId;
     const tbody = $('#sejarahTable'); if (!tbody) return;
-    if (!activityId){ tbody.innerHTML = '<tr><td colspan="13" class="text-center text-muted">Tiada program dipilih.</td></tr>'; return; }
+    if (!activityId){ tbody.innerHTML = '<tr><td colspan="14" class="text-center text-muted">Tiada program dipilih.</td></tr>'; return; }
 
-    tbody.innerHTML = '<tr><td colspan="13" class="text-center text-muted py-4">Memuat data…</td></tr>';
+    tbody.innerHTML = '<tr><td colspan="14" class="text-center text-muted py-4">Memuat data…</td></tr>';
     const j = await jget({ action:'getNadiActivityDetail', id: activityId }).catch(()=>null);
     if (!j || j.status!=='success'){
-      tbody.innerHTML = '<tr><td colspan="13" class="text-center text-danger py-4">Gagal memuat butiran.</td></tr>';
+      tbody.innerHTML = '<tr><td colspan="14" class="text-center text-danger py-4">Gagal memuat butiran.</td></tr>';
       return;
     }
     state.rows = Array.isArray(j.data) ? j.data.slice() : [];
@@ -5328,7 +5330,7 @@ if (btn) {
         <td class="col-staff ${col.staff?'':'hide'}">${fmt.esc(r.tcaStaff||'')}</td>
         <td class="col-remark ${col.remark?'':'hide'}">${fmt.esc(r.remark||'')}</td>
       </tr>`;
-    }).join('') || '<tr><td colspan="13" class="text-center text-muted">Tiada padanan carian.</td></tr>';
+    }).join('') || '<tr><td colspan="14" class="text-center text-muted">Tiada padanan carian.</td></tr>';
   }
 
   // ===== Export CSV =====
@@ -6118,124 +6120,35 @@ function injectTelahHadirButtons(){
   });
 
 })();
-</script>
 
-<script>
-(function(){
-  const _origFetch = window.fetch;
-  function toIso(val){
-    if(!val) return '';
-    if(/^\d{4}-\d{2}-\d{2}$/.test(val)) return val;
-    const m = /^(\d{2})\/(\d{2})\/(\d{4})$/.exec(String(val));
-    return m ? `${m[3]}-${m[2]}-${m[1]}` : String(val);
-  }
-  function normBool(v){ if(v===true||v===false) return v; const s=String(v||'').toLowerCase(); return (s==='true'||s==='ya'||s==='yes'||s==='1'); }
-  function normalizeItem(row){
-    const r = Object.assign({}, row||{});
-    const out = {};
-    out.nama      = r.nama || r.name || r.fullname || '';
-    out.noIC      = r.noIC || r.ic || r.no_kp || r.icNumber || r.nokp || '';
-    out.umur      = r.umur || r.age || '';
-    out.noTelefon = r.noTelefon || r.telefon || r.noTel || r.phone || r.msisdn || r.tel || '';
-    out.alamat    = r.alamat || r.address || r.addr || '';
-    out.bp        = r.bp || r.bloodPressure || '';
-    out.pr        = r.pr || r.nadi || r.pulse || '';
-    out.dxt       = r.dxt || r.gula || r.dxtValue || r.bs || r.sugar || '';
-    out.dxtType   = (r.dxtType || r.dxt_type || r.dxttype || '').toString().toUpperCase();
-    out.tinggi    = r.tinggi || r.height || '';
-    out.berat     = r.berat || r.weight || '';
-    out.bmi       = r.bmi || r.BMI || '';
-    let status    = (r.status || '').toString().toUpperCase();
-    const layak   = normBool(r.layak);
-    const tak     = normBool(r.takLayak) || status==='TAK LAYAK' || status==='TIDAK LAYAK';
-    if(!status){ status = layak ? 'LAYAK' : (tak ? 'TAK LAYAK' : ''); }
-    out.status = status;
-    const tcaISO  = r.tcaDate || r.tca_date || r.tca || '';
-    out.tcaDate   = toIso(tcaISO);
-    out.tcaTime   = r.tcaTime || r.tca_time || r.masaTCA || '';
-    out.tcaStaff  = r.tcaStaff || r.tca_staff || r.staffTCA || '';
-    out.remark           = r.remark || r.catatan || r.notes || r.note || '';
-    out.appointmentType  = (r.appointmentType || r.appointment_type || r.jenis || '').toString().toUpperCase();
-    return Object.assign({}, r, out);
-  }
-  function normalizeItemsJson(itemsStr){
-    try{
-      const arr = JSON.parse(itemsStr);
-      if(Array.isArray(arr)){
-        return JSON.stringify(arr.map(normalizeItem));
-      }
-    }catch(e){}
-    return itemsStr;
-  }
-  function parseUrlEncoded(body){
-    const obj = {};
-    body.split('&').forEach(pair=>{
-      const [k,v] = pair.split('=');
-      if(!k) return;
-      obj[decodeURIComponent(k)] = decodeURIComponent((v||'').replace(/\+/g,' '));
-    });
-    return obj;
-  }
-  function encodeUrlEncoded(obj){
-    const p = [];
-    for(const k in obj){
-      if(Object.prototype.hasOwnProperty.call(obj,k)){
-        p.push(encodeURIComponent(k)+'='+encodeURIComponent(obj[k]??''));
-      }
+  // ===== Sejarah: aksi Edit/Padam di jadual peserta =====
+  document.addEventListener('click', (e)=>{
+    const editBtn = e.target.closest('.btn-edit');
+    const delBtn  = e.target.closest('.btn-delete');
+    if (editBtn){
+      const noIC = editBtn.getAttribute('data-noic')||'';
+      const d    = editBtn.getAttribute('data-date')||'';
+      const t    = editBtn.getAttribute('data-time')||'';
+      const iso  = (typeof toIso==='function') ? toIso(d) : d;
+      const icEl = document.getElementById('retcaIC');
+      const dEl  = document.getElementById('retcaDate');
+      const tEl  = document.getElementById('retcaTime');
+      if (icEl) icEl.value = noIC;
+      if (dEl)  dEl.value = iso && /^\d{4}-\d{2}-\d{2}$/.test(iso) ? iso : '';
+      if (tEl)  tEl.value = t && /^\d{2}:\d{2}$/.test(t) ? t : '';
+      const modal = new bootstrap.Modal(document.getElementById('retcaModal'));
+      modal.show();
+      return;
     }
-    return p.join('&');
-  }
-  window.fetch = function(input, init){
-    try{
-      const method = (init && (init.method||'GET')).toUpperCase();
-      if(method==='POST' && init && init.headers && /application\/x-www-form-urlencoded/i.test(String(init.headers['Content-Type']||init.headers['content-type']||''))){
-        const bodyStr = String(init.body||'');
-        const obj = parseUrlEncoded(bodyStr);
-        const action = (obj.action||'').trim();
-        if(action==='saveNadiActivity' || action==='saveNadiProgramActivity'){
-          if(obj.items){ obj.items = normalizeItemsJson(obj.items); }
-          init.body = encodeUrlEncoded(obj);
-        }
-        if(action==='updateNadiParticipant' || action==='deleteNadiParticipant'){
-          obj.action = 'updateVoucherTCA';
-          const activityId = obj.activityId || obj.id || obj.activity_id || '';
-          const no = obj.no || obj.rowNo || obj.index || '';
-          if(action==='deleteNadiParticipant'){
-            obj.tcaDate = ''; obj.tcaTime=''; obj.remark='';
-          }else{
-            obj.tcaDate = toIso(obj.tcaDate || obj.date || obj.tca_date || '');
-            obj.tcaTime = obj.tcaTime || obj.time || obj.tca_time || '';
-            obj.remark  = obj.remark || obj.note || obj.notes || '';
-          }
-          obj.activityId = activityId; obj.no = no;
-          init.body = encodeUrlEncoded(obj);
-        }
-      }
-    }catch(e){}
-    return _origFetch(input, init);
-  };
-})();
-</script>
-
-
-<script>
-(function(){
-  try{
-    const sejarah = document.querySelector('#history, [data-section="history"], [data-page="history"]');
-    if(!sejarah) return;
-    const tables = sejarah.querySelectorAll('table');
-    if(tables.length >= 2){
-      const pesertaTable = tables[tables.length-1];
-      const parent = pesertaTable.parentElement;
-      if(parent && !parent.classList.contains('inner-scroll')){
-        const wrap = document.createElement('div');
-        wrap.className = 'inner-scroll';
-        parent.insertBefore(wrap, pesertaTable);
-        wrap.appendChild(pesertaTable);
-      }
+    if (delBtn){
+      const noIC = delBtn.getAttribute('data-noic')||'';
+      // Buat masa ini, operasi padam peserta dari sejarah belum disokong server-side.
+      // Papar notis mesra supaya tak mengelirukan pengguna.
+      if (window._toast){ _toast('Fungsi padam peserta belum tersedia.', 'warning'); }
+      else { alert('Fungsi padam peserta belum tersedia.'); }
+      return;
     }
-  }catch(e){}
-})();
+  });
 </script>
-
-</body></html>
+</body>
+</html>
