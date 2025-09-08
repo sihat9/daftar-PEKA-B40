@@ -932,8 +932,7 @@
                   <th class="col-tca">TCA</th>
                   <th class="col-staff">Staff</th>
                   <th class="col-remark">Remark</th>
-                
-                  <th class="text-end col-actions">Tindakan</th>
+                                  <th class="col-actions">Tindakan</th>
                 </tr>
               </thead>
               <tbody id="sejarahTable">
@@ -948,6 +947,28 @@
 </section>
 
   </main>
+
+  <!-- Modal Edit Voucher TCA -->
+  <div class="modal fade" id="voucherEditModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog"><div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title"><i class="bi bi-pencil-square me-2"></i>Edit TCA Voucher</h5>
+        <button class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body">
+        <input type="hidden" id="vEditNo">
+        <div class="mb-2"><label class="form-label">Nama</label><div id="vEditName" class="form-control-plaintext"></div></div>
+        <div class="mb-2"><label class="form-label">Tarikh TCA</label><input type="date" id="vEditDate" class="form-control"></div>
+        <div class="mb-2"><label class="form-label">Masa TCA</label><input type="time" id="vEditTime" class="form-control"></div>
+        <div class="mb-2"><label class="form-label">Remark</label><textarea id="vEditRemark" class="form-control" rows="3"></textarea></div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-outline-secondary" data-bs-dismiss="modal">Tutup</button>
+        <button class="btn btn-primary" id="vEditSave"><i class="fa-solid fa-floppy-disk me-1"></i>Simpan</button>
+      </div>
+    </div></div>
+  </div>
+
 
   <!-- Modal Re-TCA -->
   <div class="modal fade" id="retcaModal" tabindex="-1" aria-hidden="true">
@@ -5159,14 +5180,17 @@ if (btn) {
 
 
 <style>
+  .col-actions [data-act]{ display:inline-block; }
+  .col-actions[data-apt]:not([data-apt="VOUCHER"]) { opacity:.4; pointer-events:none; }
+
+  .sejarah-table-wrap{ max-height:60vh; overflow:auto; }
+
   .program-list { max-height: 480px; overflow: auto; }
   .program-list .list-group-item { cursor: pointer; }
   .program-list .meta { opacity: .8; }
   .live-dot{ display:inline-block;width:10px;height:10px;border-radius:50%;background:#16a34a;box-shadow:0 0 0 0 rgba(22,163,74,.7);animation:pulse 1.6s infinite; }
   @keyframes pulse{ 0%{ box-shadow:0 0 0 0 rgba(22,163,74,.6);} 70%{ box-shadow:0 0 0 12px rgba(22,163,74,0);} 100%{ box-shadow:0 0 0 0 rgba(22,163,74,0);} }
-  .sejarah-table-wrap{ max-height:60vh; overflow:auto; }
-.sejarah-table-wrap thead.sticky-top{ position: sticky; top: 0; z-index: 5; }
-.sejarah-table-wrap table{ margin-bottom:0; }
+  .sejarah-table-wrap thead.sticky-top{ position: sticky; top: 0; z-index: 5; }
   .placeholder{ display:inline-block; height: .9rem; background: #e9ecef; border-radius:4px; }
   .placeholder-glow .placeholder{ animation: placeholder-glow 1.2s ease-in-out infinite; }
   @keyframes placeholder-glow{ 0%{opacity:.45}50%{opacity:.8}100%{opacity:.45} }
@@ -5329,6 +5353,8 @@ if (btn) {
         <td class="col-tca ${col.tca?'':'hide'}">${fmt.esc(tca)}</td>
         <td class="col-staff ${col.staff?'':'hide'}">${fmt.esc(r.tcaStaff||'')}</td>
         <td class="col-remark ${col.remark?'':'hide'}">${fmt.esc(r.remark||'')}</td>
+      
+        <td class="col-actions" data-apt="${String(r.appointmentType||'').toUpperCase()}"><div class="btn-group btn-group-sm" role="group"> <button type="button" class="btn btn-outline-primary" data-act="edit" data-apt="${(String(r.appointmentType||'').toUpperCase()==='VOUCHER')?'VOUCHER':''}" data-no="${fmt.esc(r.no||'')}" data-nama="${fmt.esc(r.nama||'')}" data-date="${fmt.esc(r.tcaDate||'')}" data-time="${fmt.esc(r.tcaTime||'')}" data-remark="${fmt.esc(r.remark||'')}">Edit</button> <button type="button" class="btn btn-outline-danger" data-act="clear" data-no="${fmt.esc(r.no||'')}">Padam</button></div></td>
       </tr>`;
     }).join('') || '<tr><td colspan="14" class="text-center text-muted">Tiada padanan carian.</td></tr>';
   }
@@ -5408,7 +5434,63 @@ if (btn) {
     });
   })();
 
-  // Column toggles
+  
+  // === Actions: Edit/Padam (Voucher) ===
+  // Save from voucher edit modal
+  document.addEventListener('click', async (e)=>{
+    if (e.target && e.target.id==='vEditSave'){
+      const no = $('#vEditNo')?.value || '';
+      const tcaDate = $('#vEditDate')?.value || '';
+      const tcaTime = $('#vEditTime')?.value || '';
+      const remark  = $('#vEditRemark')?.value || '';
+      try{
+        await postUpdateVoucher({ activityId: state.activeId, no, tcaDate, tcaTime, remark });
+        bootstrap.Modal.getInstance(document.getElementById('voucherEditModal'))?.hide();
+        await loadProgramDetail(state.activeId);
+      }catch(err){
+        alert('Gagal simpan: ' + (err && err.message ? err.message : err));
+      }
+    }
+  });
+
+  document.addEventListener('click', async (e)=>{
+    const btn = e.target.closest('[data-act]');
+    if (!btn) return;
+    const tbody = $('#sejarahTable');
+    if (!tbody) return;
+    const act = btn.getAttribute('data-act');
+    const no = btn.getAttribute('data-no')||'';
+    if (act==='edit'){
+      // open modal
+      $('#vEditNo') && ($('#vEditNo').value = no);
+      $('#vEditName') && ($('#vEditName').textContent = btn.getAttribute('data-nama')||'');
+      const dd = btn.getAttribute('data-date')||'';
+      const tt = btn.getAttribute('data-time')||'';
+      const rk = btn.getAttribute('data-remark')||'';
+      $('#vEditDate') && ($('#vEditDate').value = toInputDate(dd));
+      $('#vEditTime') && ($('#vEditTime').value = tt);
+      $('#vEditRemark') && ($('#vEditRemark').value = rk);
+      const m = new bootstrap.Modal(document.getElementById('voucherEditModal')); m.show();
+    } else if (act==='clear'){
+      if (!confirm('Padam TCA & remark rekod ini?')) return;
+      await postUpdateVoucher({ activityId: state.activeId, no, tcaDate: '', tcaTime: '', remark: '' });
+      await loadProgramDetail(state.activeId);
+    }
+  });
+
+  function toInputDate(ddmmyyyy){
+    const m = /^\s*(\d{2})\/(\d{2})\/(\d{4})\s*$/.exec(ddmmyyyy||'');
+    if (!m) return '';
+    return `${m[3]}-${m[2]}-${m[1]}`;
+  }
+  async function postUpdateVoucher({ activityId, no, tcaDate, tcaTime, remark }){
+    const body = new URLSearchParams({ action:'updateVoucherTCA', activityId, no, tcaDate, tcaTime, remark, id_token: (window.ID_TOKEN||'') });
+    const res = await fetch(window.SCRIPT_URL, { method:'POST', headers:{'Content-Type':'application/x-www-form-urlencoded'}, body });
+    const j = await res.json().catch(()=>null);
+    if (!j || j.status!=='success'){ throw new Error((j && (j.message||j.code)) || 'Gagal kemaskini'); }
+    return j;
+  }
+// Column toggles
   document.addEventListener('change', (e)=>{
     if (e.target?.classList.contains('col-toggle')){
       const key = e.target.getAttribute('data-col');
@@ -6120,35 +6202,6 @@ function injectTelahHadirButtons(){
   });
 
 })();
-
-  // ===== Sejarah: aksi Edit/Padam di jadual peserta =====
-  document.addEventListener('click', (e)=>{
-    const editBtn = e.target.closest('.btn-edit');
-    const delBtn  = e.target.closest('.btn-delete');
-    if (editBtn){
-      const noIC = editBtn.getAttribute('data-noic')||'';
-      const d    = editBtn.getAttribute('data-date')||'';
-      const t    = editBtn.getAttribute('data-time')||'';
-      const iso  = (typeof toIso==='function') ? toIso(d) : d;
-      const icEl = document.getElementById('retcaIC');
-      const dEl  = document.getElementById('retcaDate');
-      const tEl  = document.getElementById('retcaTime');
-      if (icEl) icEl.value = noIC;
-      if (dEl)  dEl.value = iso && /^\d{4}-\d{2}-\d{2}$/.test(iso) ? iso : '';
-      if (tEl)  tEl.value = t && /^\d{2}:\d{2}$/.test(t) ? t : '';
-      const modal = new bootstrap.Modal(document.getElementById('retcaModal'));
-      modal.show();
-      return;
-    }
-    if (delBtn){
-      const noIC = delBtn.getAttribute('data-noic')||'';
-      // Buat masa ini, operasi padam peserta dari sejarah belum disokong server-side.
-      // Papar notis mesra supaya tak mengelirukan pengguna.
-      if (window._toast){ _toast('Fungsi padam peserta belum tersedia.', 'warning'); }
-      else { alert('Fungsi padam peserta belum tersedia.'); }
-      return;
-    }
-  });
 </script>
 </body>
 </html>
