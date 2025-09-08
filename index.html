@@ -300,6 +300,8 @@
   /* Toolbar spacing for NADI buttons */
   .nadi-toolbar .btn { margin: 2px; }
 
+
+.inner-scroll{max-height:60vh;overflow:auto;}
 </style>
 <style>
 /* === NADI tidy === */
@@ -6116,25 +6118,124 @@ function injectTelahHadirButtons(){
   });
 
 })();
+</script>
 
-// === Patch: map legacy payload to updateVoucherTCA shape (minimal change) ===
-function __toVoucherPayload(payload){
-  // Accept many possible keys and normalize
-  const obj = Object.assign({}, payload||{});
-  const activityId = String(obj.activityId || obj.id || obj.activity_id || '').trim();
-  const no = String(obj.no || obj.rowNo || obj.index || '').trim();
-  // Date normalization: allow yyyy-mm-dd or dd/mm/yyyy
+<script>
+(function(){
+  const _origFetch = window.fetch;
   function toIso(val){
     if(!val) return '';
     if(/^\d{4}-\d{2}-\d{2}$/.test(val)) return val;
     const m = /^(\d{2})\/(\d{2})\/(\d{4})$/.exec(String(val));
     return m ? `${m[3]}-${m[2]}-${m[1]}` : String(val);
   }
-  const tcaDate = toIso(obj.tcaDate || obj.date || obj.tca_date || '');
-  const tcaTime = String(obj.tcaTime || obj.time || obj.tca_time || '').trim();
-  const remark  = String(obj.remark || obj.note || obj.notes || '').trim();
-  return { activityId, no, tcaDate, tcaTime, remark };
-}
+  function normBool(v){ if(v===true||v===false) return v; const s=String(v||'').toLowerCase(); return (s==='true'||s==='ya'||s==='yes'||s==='1'); }
+  function normalizeItem(row){
+    const r = Object.assign({}, row||{});
+    const out = {};
+    out.nama      = r.nama || r.name || r.fullname || '';
+    out.noIC      = r.noIC || r.ic || r.no_kp || r.icNumber || r.nokp || '';
+    out.umur      = r.umur || r.age || '';
+    out.noTelefon = r.noTelefon || r.telefon || r.noTel || r.phone || r.msisdn || r.tel || '';
+    out.alamat    = r.alamat || r.address || r.addr || '';
+    out.bp        = r.bp || r.bloodPressure || '';
+    out.pr        = r.pr || r.nadi || r.pulse || '';
+    out.dxt       = r.dxt || r.gula || r.dxtValue || r.bs || r.sugar || '';
+    out.dxtType   = (r.dxtType || r.dxt_type || r.dxttype || '').toString().toUpperCase();
+    out.tinggi    = r.tinggi || r.height || '';
+    out.berat     = r.berat || r.weight || '';
+    out.bmi       = r.bmi || r.BMI || '';
+    let status    = (r.status || '').toString().toUpperCase();
+    const layak   = normBool(r.layak);
+    const tak     = normBool(r.takLayak) || status==='TAK LAYAK' || status==='TIDAK LAYAK';
+    if(!status){ status = layak ? 'LAYAK' : (tak ? 'TAK LAYAK' : ''); }
+    out.status = status;
+    const tcaISO  = r.tcaDate || r.tca_date || r.tca || '';
+    out.tcaDate   = toIso(tcaISO);
+    out.tcaTime   = r.tcaTime || r.tca_time || r.masaTCA || '';
+    out.tcaStaff  = r.tcaStaff || r.tca_staff || r.staffTCA || '';
+    out.remark           = r.remark || r.catatan || r.notes || r.note || '';
+    out.appointmentType  = (r.appointmentType || r.appointment_type || r.jenis || '').toString().toUpperCase();
+    return Object.assign({}, r, out);
+  }
+  function normalizeItemsJson(itemsStr){
+    try{
+      const arr = JSON.parse(itemsStr);
+      if(Array.isArray(arr)){
+        return JSON.stringify(arr.map(normalizeItem));
+      }
+    }catch(e){}
+    return itemsStr;
+  }
+  function parseUrlEncoded(body){
+    const obj = {};
+    body.split('&').forEach(pair=>{
+      const [k,v] = pair.split('=');
+      if(!k) return;
+      obj[decodeURIComponent(k)] = decodeURIComponent((v||'').replace(/\+/g,' '));
+    });
+    return obj;
+  }
+  function encodeUrlEncoded(obj){
+    const p = [];
+    for(const k in obj){
+      if(Object.prototype.hasOwnProperty.call(obj,k)){
+        p.push(encodeURIComponent(k)+'='+encodeURIComponent(obj[k]??''));
+      }
+    }
+    return p.join('&');
+  }
+  window.fetch = function(input, init){
+    try{
+      const method = (init && (init.method||'GET')).toUpperCase();
+      if(method==='POST' && init && init.headers && /application\/x-www-form-urlencoded/i.test(String(init.headers['Content-Type']||init.headers['content-type']||''))){
+        const bodyStr = String(init.body||'');
+        const obj = parseUrlEncoded(bodyStr);
+        const action = (obj.action||'').trim();
+        if(action==='saveNadiActivity' || action==='saveNadiProgramActivity'){
+          if(obj.items){ obj.items = normalizeItemsJson(obj.items); }
+          init.body = encodeUrlEncoded(obj);
+        }
+        if(action==='updateNadiParticipant' || action==='deleteNadiParticipant'){
+          obj.action = 'updateVoucherTCA';
+          const activityId = obj.activityId || obj.id || obj.activity_id || '';
+          const no = obj.no || obj.rowNo || obj.index || '';
+          if(action==='deleteNadiParticipant'){
+            obj.tcaDate = ''; obj.tcaTime=''; obj.remark='';
+          }else{
+            obj.tcaDate = toIso(obj.tcaDate || obj.date || obj.tca_date || '');
+            obj.tcaTime = obj.tcaTime || obj.time || obj.tca_time || '';
+            obj.remark  = obj.remark || obj.note || obj.notes || '';
+          }
+          obj.activityId = activityId; obj.no = no;
+          init.body = encodeUrlEncoded(obj);
+        }
+      }
+    }catch(e){}
+    return _origFetch(input, init);
+  };
+})();
+</script>
 
-</script></body>
-</html>
+
+<script>
+(function(){
+  try{
+    const sejarah = document.querySelector('#history, [data-section="history"], [data-page="history"]');
+    if(!sejarah) return;
+    const tables = sejarah.querySelectorAll('table');
+    if(tables.length >= 2){
+      const pesertaTable = tables[tables.length-1];
+      const parent = pesertaTable.parentElement;
+      if(parent && !parent.classList.contains('inner-scroll')){
+        const wrap = document.createElement('div');
+        wrap.className = 'inner-scroll';
+        parent.insertBefore(wrap, pesertaTable);
+        wrap.appendChild(pesertaTable);
+      }
+    }
+  }catch(e){}
+})();
+</script>
+
+</body></html>
