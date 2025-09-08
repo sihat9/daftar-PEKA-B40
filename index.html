@@ -5692,7 +5692,7 @@ if (btn) {
         const td = cells[i];
         if (field==='status'){
           payload.status = (td.querySelector('select')?.value || '').trim();
-        } else if (field==='tca'){
+        , VoucherTCADate: form.VoucherTCADate?.value || '', VoucherTCATime: form.VoucherTCATime?.value || '', VoucherTCAStaff: form.VoucherTCAStaff?.value || '', PekaTCADate: form.PekaTCADate?.value || '', PekaTCATime: form.PekaTCATime?.value || '', PekaTCAStaff: form.PekaTCAStaff?.value || ''} else if (field==='tca'){
           payload.tcaDate = (td.querySelector('[data-field="tcaDate"]')?.value || '').trim();
           payload.tcaTime = (td.querySelector('[data-field="tcaTime"]')?.value || '').trim();
         } else {
