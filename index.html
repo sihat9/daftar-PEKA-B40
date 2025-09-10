@@ -1,6 +1,123 @@
 <!DOCTYPE html>
 <html lang="ms">
 <head>
+
+<!-- strict-compat patch v5: EARLY head patch -->
+<script>
+(function(){'use strict';
+  var META='gas-endpoint';
+  var defaultEndpoint='https://broken-dew-0eb2.amiruladlije.workers.dev';
+  function getEndpoint(){ try{var m=document.querySelector('meta[name="'+META+'"]'); if(m&&m.content) return m.content.trim();}catch(e){} try{var s=localStorage.getItem('GAS_URL'); if(s) return s.trim();}catch(e){} return defaultEndpoint; }
+  var endpoint=getEndpoint();
+  function getToken(){ try{ return (localStorage.getItem('id_token')||'').trim(); }catch(e){ return ''; } }
+  function isGAS(url){ try{var u=new URL(url, location.href); return u.hostname==='script.google.com' && /\/macros\/s\//.test(u.pathname);}catch(e){return false;} }
+  function isVoucherLike(url){ try{var s=String(url).toLowerCase(); var u=new URL(url, location.href); return s.includes('voucher') && (s.includes('.json')||s.includes('json')||/voucher[-_/]?(ics|set)/.test(u.pathname));}catch(e){return false;} }
+
+  async function buildVoucherICSetJSON(){
+    if (!window.RUMUS || !window.RUMUS.api) return { ics: [] };
+    try {
+      const acts = await window.RUMUS.api.getNadiActivities();
+      const data = (acts && acts.data) || [];
+      const ids = data.map(a => String(a.activityId||'')).filter(Boolean);
+      const set = new Set();
+      for (const id of ids) {
+        const det = await window.RUMUS.api.getNadiActivityDetail(id);
+        const rows = (det && det.data) || [];
+        for (const r of rows) {
+          const apt = String(r.appointmentType||'').toUpperCase();
+          const ic = String(r.noIC||'').trim();
+          if (apt==='VOUCHER' && ic) set.add(ic);
+        }
+      }
+      return { ics: Array.from(set) };
+    } catch(err) { console.error('voucher build failed:', err); return { ics: [] }; }
+  }
+
+  // EARLY override of window.fetch before other scripts run
+  var _fetch=window.fetch.bind(window);
+  window.fetch = async function(input, init){
+    var url = (typeof input==='string') ? input : (input && input.url) || '';
+    if (!url) return _fetch(input, init);
+    if (isVoucherLike(url)) {
+      const payload = await buildVoucherICSetJSON();
+      return new Response(JSON.stringify(payload), { headers: { 'Content-Type':'application/json' } });
+    }
+    if (isGAS(url)) {
+      var method = (init && init.method) || 'GET';
+      if (method.toUpperCase()==='GET') {
+        var qs=''; try{var u=new URL(url, location.href); qs=u.search.slice(1);}catch(e){qs='';}
+        var prox = endpoint + (endpoint.indexOf('?')>=0 ? '&' : '?') + qs;
+        if (!(/[?&]id_token=/.test(prox))) { var tok=getToken(); if (tok) prox += (prox.indexOf('?')>=0?'&':'?') + 'id_token='+encodeURIComponent(tok); }
+        return _fetch(prox, { method:'GET' });
+      } else {
+        var body=(init&&init.body)||''; if (typeof body!=='string'){ try{ if(body&&body.toString) body=body.toString(); }catch(e){ body=''; } }
+        var p=new URLSearchParams(String(body||'')); var tok=getToken(); if (tok && !p.get('id_token')) p.set('id_token', tok);
+        return _fetch(endpoint, { method:'POST', headers: {'Content-Type':'application/x-www-form-urlencoded'}, body: p.toString() });
+      }
+    }
+    return _fetch(input, init);
+  };
+
+  // Later patch for RUMUS when available
+  function whenRUMUS(cb){
+    if (window.RUMUS) return cb();
+    var tries=0; var iv=setInterval(function(){ tries++; if (window.RUMUS){ clearInterval(iv); cb(); } if(tries>200) clearInterval(iv); }, 50);
+  }
+  function normalizeItems(items){
+    try{ if (typeof items==='string') items=JSON.parse(items); }catch(e){ return items; }
+    if (!Array.isArray(items)) return items;
+    function truthy(x){ return x===true || String(x).toLowerCase()==='true' || x===1 || String(x)==='1'; }
+    function normDXTType(v){ v=String(v||'').toUpperCase(); if(/FAST|FBG|PUASA/.test(v))return 'FASTING'; if(/RAND|RBG|RANDOM/.test(v))return 'RANDOM'; return v; }
+    function pickStatus(r){
+      var s = (r.status||r.kelayakan||r.kel||r.statusKel||'').toString().toUpperCase().trim();
+      if (!s) s = truthy(r.layak)?'LAYAK':(truthy(r.takLayak)?'TAK LAYAK':'');
+      if (/TIDAK\s*LAYAK|TAK\s*LAYAK/.test(s)) return 'TAK LAYAK';
+      if (/LAYAK/.test(s)) return 'LAYAK';
+      return s;
+    }
+    return items.map(function(r){
+      var status = pickStatus(r);
+      var voucher = truthy(r.voucher)||truthy(r.isVoucher);
+      var apt = (r.appointmentType||r.appointment_type||'').toString().toUpperCase();
+      if(!apt) apt = voucher ? 'VOUCHER' : (status==='LAYAK' ? 'PKB40' : (status==='TAK LAYAK' ? 'NONE' : ''));
+      return {
+        nama: r.nama||r.name||r.fullname||'',
+        noIC: r.noIC||r.ic||r.no_kp||r.icNumber||r.nokp||'',
+        umur: r.umur||r.age||'',
+        noTelefon: r.noTelefon||r.telefon||r.noTel||r.msisdn||r.phone||r.tel||'',
+        alamat: r.alamat||r.address||r.addr||'',
+        bp: r.bp||r.bloodPressure||'',
+        pr: r.pr||r.nadi||r.pulse||'',
+        dxt: r.dxt||r.gula||r.bs||r.sugar||'',
+        dxtType: normDXTType(r.dxtType||r.dxt_type||r.dxttype),
+        tinggi: r.tinggi||r.height||'',
+        berat: r.berat||r.weight||'',
+        bmi: r.bmi||r.BMI||'',
+        status: status,
+        appointmentType: apt,
+        remark: r.remark||r.catatan||r.notes||r.note||'',
+        tcaDate: r.tcaDate||r.tca_date||r.tca||'',
+        tcaTime: r.tcaTime||r.tca_time||r.masaTCA||'',
+        tcaStaff: r.tcaStaff||r.tca_staff||r.staffTCA||''
+      };
+    });
+  }
+  whenRUMUS(function(){
+    if (typeof window.RUMUS.get==='function'){
+      var _get=window.RUMUS.get.bind(window.RUMUS);
+      window.RUMUS.get=function(action, params){ var p=Object.assign({}, params||{}); var tok=getToken(); if(tok&&!p.id_token)p.id_token=tok; return _get(action,p); };
+    }
+    if (typeof window.RUMUS.post==='function'){
+      var _post=window.RUMUS.post.bind(window.RUMUS);
+      window.RUMUS.post=function(action, params){ var p=Object.assign({}, params||{}); var tok=getToken(); if(tok&&!p.id_token)p.id_token=tok;
+        if(action==='saveNadiProgramActivity' && p.items){ var arr=normalizeItems(p.items); p.items=JSON.stringify(arr); }
+        return _post(action,p);
+      };
+    }
+  });
+})();
+</script>
+
   <meta name="gas-endpoint" content="https://broken-dew-0eb2.amiruladlije.workers.dev">
 
 <meta http-equiv="Cross-Origin-Opener-Policy" content="same-origin-allow-popups">
@@ -6138,166 +6255,5 @@ function __toVoucherPayload(payload){
   return { activityId, no, tcaDate, tcaTime, remark };
 }
 
-</script>
-<!-- strict-compat patch v4: Worker proxy + GET/POST token + NADI normalize + wide voucher intercept + RUMUS.get token -->
-<script>
-(function(){'use strict';
-  var META='gas-endpoint';
-  var defaultEndpoint='https://broken-dew-0eb2.amiruladlije.workers.dev';
-  function getEndpoint(){
-    try{ var m=document.querySelector('meta[name="'+META+'"]'); if(m&&m.content) return m.content.trim(); }catch(e){}
-    try{ var s=localStorage.getItem('GAS_URL'); if(s) return s.trim(); }catch(e){}
-    return defaultEndpoint;
-  }
-  var endpoint=getEndpoint();
-  window.__setWorkerEndpoint=function(url){ endpoint=String(url||'').trim(); try{localStorage.setItem('GAS_URL',endpoint);}catch(e){} };
-
-  function getToken(){
-    try{ return (localStorage.getItem('id_token')||'').trim(); }catch(e){ return ''; }
-  }
-  function isGAS(url){
-    try{ var u=new URL(url, location.href); return u.hostname==='script.google.com' && /\/macros\/s\//.test(u.pathname); }catch(e){ return false; }
-  }
-  function isVoucherLike(url){
-    try{ 
-      var s=String(url).toLowerCase(); 
-      var u=new URL(url, location.href);
-      return s.includes('voucher') && (s.includes('.json') || s.includes('json') || /voucher[-_/]?(ics|set)/.test(u.pathname));
-    }catch(e){ return false; }
-  }
-
-  async function buildVoucherICSetJSON(){
-    if (!window.RUMUS || !window.RUMUS.api) return { ics: [] };
-    try {
-      const acts = await window.RUMUS.api.getNadiActivities();
-      const data = (acts && acts.data) || [];
-      const ids = data.map(a => String(a.activityId||'')).filter(Boolean);
-      const set = new Set();
-      for (const id of ids) {
-        const det = await window.RUMUS.api.getNadiActivityDetail(id);
-        const rows = (det && det.data) || [];
-        for (const r of rows) {
-          const apt = String(r.appointmentType||'').toUpperCase();
-          const ic = String(r.noIC||'').trim();
-          if (apt==='VOUCHER' && ic) set.add(ic);
-        }
-      }
-      return { ics: Array.from(set) };
-    } catch(err) {
-      console.error('voucher build failed:', err);
-      return { ics: [] };
-    }
-  }
-
-  var _fetch=window.fetch.bind(window);
-  window.fetch = async function(input, init){
-    var url = (typeof input==='string') ? input : (input && input.url) || '';
-    if (!url) return _fetch(input, init);
-
-    // Intercept any voucher-like JSON request (even if 404 normally)
-    if (isVoucherLike(url)) {
-      const payload = await buildVoucherICSetJSON();
-      return new Response(JSON.stringify(payload), { headers: { 'Content-Type':'application/json' } });
-    }
-
-    if (isGAS(url)) {
-      var method = (init && init.method) || 'GET';
-      if (method.toUpperCase()==='GET') {
-        var qs = '';
-        try{ var u = new URL(url, location.href); qs = u.search.slice(1); }catch(e){ qs=''; }
-        var prox = endpoint + (endpoint.indexOf('?')>=0 ? '&' : '?') + qs;
-        // Inject id_token into GET if missing
-        if (!(/[?&]id_token=/.test(prox))) {
-          var tok = getToken();
-          if (tok) prox += (prox.indexOf('?')>=0 ? '&' : '?') + 'id_token=' + encodeURIComponent(tok);
-        }
-        return _fetch(prox, { method:'GET' });
-      } else {
-        var body = (init && init.body) || '';
-        if (typeof body!=='string') {
-          try{ if (body && body.toString) body = body.toString(); }catch(e){ body=''; }
-        }
-        var p = new URLSearchParams(String(body||''));
-        var tok = getToken();
-        if (tok && !p.get('id_token')) p.set('id_token', tok);
-        return _fetch(endpoint, {
-          method:'POST',
-          headers: { 'Content-Type':'application/x-www-form-urlencoded' },
-          body: p.toString()
-        });
-      }
-    }
-    return _fetch(input, init);
-  };
-
-  // Normalizer untuk payload NADI supaya lajur masuk betul mengikut header
-  window.__normalizeNadiItems = function(items){
-    try{ if (typeof items==='string') items = JSON.parse(items); }catch(e){ return items; }
-    if (!Array.isArray(items)) return items;
-    function norm(r){
-      function normDXTType(v){
-        v=String(v||'').toUpperCase();
-        if (/FAST|FBG|PUASA/.test(v)) return 'FASTING';
-        if (/RAND|RBG|RANDOM/.test(v)) return 'RANDOM';
-        return v;
-      }
-      function truthy(x){ return x===true || String(x).toLowerCase()==='true' || x===1 || String(x)==='1'; }
-      var statusRaw = String(r.status||'').toUpperCase();
-      var status = statusRaw || (truthy(r.layak)?'LAYAK':(truthy(r.takLayak)?'TAK LAYAK':''));
-      var voucher = truthy(r.voucher)||truthy(r.isVoucher);
-      var apt = String(r.appointmentType||r.appointment_type||'').toUpperCase();
-      if(!apt) apt = voucher ? 'VOUCHER' : (status==='LAYAK' ? 'PKB40' : (status==='TAK LAYAK' ? 'NONE' : ''));
-      return {
-        nama: r.nama||r.name||r.fullname||'',
-        noIC: r.noIC||r.ic||r.no_kp||r.icNumber||r.nokp||'',
-        umur: r.umur||r.age||'',
-        noTelefon: r.noTelefon||r.telefon||r.noTel||r.msisdn||r.phone||r.tel||'',
-        alamat: r.alamat||r.address||r.addr||'',
-        bp: r.bp||r.bloodPressure||'',
-        pr: r.pr||r.nadi||r.pulse||'',
-        dxt: r.dxt||r.gula||r.bs||r.sugar||'',
-        dxtType: normDXTType(r.dxtType||r.dxt_type||r.dxttype),
-        tinggi: r.tinggi||r.height||'',
-        berat: r.berat||r.weight||'',
-        bmi: r.bmi||r.BMI||'',
-        status: status,
-        appointmentType: apt,
-        remark: r.remark||r.catatan||r.notes||r.note||'',
-        tcaDate: r.tcaDate||r.tca_date||r.tca||'',
-        tcaTime: r.tcaTime||r.tca_time||r.masaTCA||'',
-        tcaStaff: r.tcaStaff||r.tca_staff||r.staffTCA||''
-      };
-    }
-    return items.map(norm);
-  };
-
-  // Patch RUMUS.get untuk pasti token dihantar dalam semua GET
-  if (window.RUMUS && typeof window.RUMUS.get==='function') {
-    var _get = window.RUMUS.get.bind(window.RUMUS);
-    window.RUMUS.get = function(action, params) {
-      var p = Object.assign({}, params||{});
-      var tok = getToken();
-      if (tok && !p.id_token) p.id_token = tok;
-      return _get(action, p);
-    };
-  }
-
-  // Patch RUMUS.post untuk saveNadiProgramActivity
-  if (window.RUMUS && typeof window.RUMUS.post==='function') {
-    var _post = window.RUMUS.post.bind(window.RUMUS);
-    window.RUMUS.post = function(action, params){
-      var p = Object.assign({}, params||{});
-      var tok = getToken();
-      if (tok && !p.id_token) p.id_token = tok;
-      if (action==='saveNadiProgramActivity' && p.items) {
-        var arr = window.__normalizeNadiItems(p.items);
-        p.items = JSON.stringify(arr);
-      }
-      return _post(action, p);
-    };
-  }
-})();
-</script>
-
-</body>
+</script></body>
 </html>
