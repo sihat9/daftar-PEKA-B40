@@ -6139,7 +6139,7 @@ function __toVoucherPayload(payload){
 }
 
 </script>
-<!-- strict-compat patch v3: Worker proxy + GET token + NADI normalize + voucher*.json intercept -->
+<!-- strict-compat patch v4: Worker proxy + GET/POST token + NADI normalize + wide voucher intercept + RUMUS.get token -->
 <script>
 (function(){'use strict';
   var META='gas-endpoint';
@@ -6158,8 +6158,12 @@ function __toVoucherPayload(payload){
   function isGAS(url){
     try{ var u=new URL(url, location.href); return u.hostname==='script.google.com' && /\/macros\/s\//.test(u.pathname); }catch(e){ return false; }
   }
-  function isVoucherJson(url){
-    try{ var u=new URL(url, location.href); return /voucher.*\.json$/i.test(u.pathname); }catch(e){ return false; }
+  function isVoucherLike(url){
+    try{ 
+      var s=String(url).toLowerCase(); 
+      var u=new URL(url, location.href);
+      return s.includes('voucher') && (s.includes('.json') || s.includes('json') || /voucher[-_/]?(ics|set)/.test(u.pathname));
+    }catch(e){ return false; }
   }
 
   async function buildVoucherICSetJSON(){
@@ -6180,7 +6184,7 @@ function __toVoucherPayload(payload){
       }
       return { ics: Array.from(set) };
     } catch(err) {
-      console.error('voucher*.json intercept build failed:', err);
+      console.error('voucher build failed:', err);
       return { ics: [] };
     }
   }
@@ -6190,8 +6194,8 @@ function __toVoucherPayload(payload){
     var url = (typeof input==='string') ? input : (input && input.url) || '';
     if (!url) return _fetch(input, init);
 
-    // Intercept voucher*.json to avoid 404 HTML -> JSON parse error
-    if (isVoucherJson(url)) {
+    // Intercept any voucher-like JSON request (even if 404 normally)
+    if (isVoucherLike(url)) {
       const payload = await buildVoucherICSetJSON();
       return new Response(JSON.stringify(payload), { headers: { 'Content-Type':'application/json' } });
     }
@@ -6267,19 +6271,29 @@ function __toVoucherPayload(payload){
     return items.map(norm);
   };
 
+  // Patch RUMUS.get untuk pasti token dihantar dalam semua GET
+  if (window.RUMUS && typeof window.RUMUS.get==='function') {
+    var _get = window.RUMUS.get.bind(window.RUMUS);
+    window.RUMUS.get = function(action, params) {
+      var p = Object.assign({}, params||{});
+      var tok = getToken();
+      if (tok && !p.id_token) p.id_token = tok;
+      return _get(action, p);
+    };
+  }
+
   // Patch RUMUS.post untuk saveNadiProgramActivity
   if (window.RUMUS && typeof window.RUMUS.post==='function') {
     var _post = window.RUMUS.post.bind(window.RUMUS);
     window.RUMUS.post = function(action, params){
-      if (action==='saveNadiProgramActivity' && params) {
-        var cp = Object.assign({}, params);
-        if (cp.items) {
-          var arr = window.__normalizeNadiItems(cp.items);
-          cp.items = JSON.stringify(arr);
-        }
-        return _post(action, cp);
+      var p = Object.assign({}, params||{});
+      var tok = getToken();
+      if (tok && !p.id_token) p.id_token = tok;
+      if (action==='saveNadiProgramActivity' && p.items) {
+        var arr = window.__normalizeNadiItems(p.items);
+        p.items = JSON.stringify(arr);
       }
-      return _post(action, params);
+      return _post(action, p);
     };
   }
 })();
