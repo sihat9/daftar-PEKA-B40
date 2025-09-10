@@ -1,17 +1,20 @@
 <!DOCTYPE html>
 <html lang="ms">
 <head>
-
-<!-- strict-compat patch v5: EARLY head patch -->
+<!-- strict-compat v6 inline -->
 <script>
+
+// strict-compat patch v6 (standalone JS)
+// Inject early BEFORE other app scripts
 (function(){'use strict';
   var META='gas-endpoint';
   var defaultEndpoint='https://broken-dew-0eb2.amiruladlije.workers.dev';
   function getEndpoint(){ try{var m=document.querySelector('meta[name="'+META+'"]'); if(m&&m.content) return m.content.trim();}catch(e){} try{var s=localStorage.getItem('GAS_URL'); if(s) return s.trim();}catch(e){} return defaultEndpoint; }
   var endpoint=getEndpoint();
   function getToken(){ try{ return (localStorage.getItem('id_token')||'').trim(); }catch(e){ return ''; } }
+
   function isGAS(url){ try{var u=new URL(url, location.href); return u.hostname==='script.google.com' && /\/macros\/s\//.test(u.pathname);}catch(e){return false;} }
-  function isVoucherLike(url){ try{var s=String(url).toLowerCase(); var u=new URL(url, location.href); return s.includes('voucher') && (s.includes('.json')||s.includes('json')||/voucher[-_/]?(ics|set)/.test(u.pathname));}catch(e){return false;} }
+  function isVoucherLike(url){ try{var s=String(url).toLowerCase(); var u=new URL(url, location.href); return /voucher/i.test(s) || /ics/i.test(u.search) || /voucher[-_\/]?(ics|set)/i.test(u.pathname);}catch(e){return false;} }
 
   async function buildVoucherICSetJSON(){
     if (!window.RUMUS || !window.RUMUS.api) return { ics: [] };
@@ -30,10 +33,10 @@
         }
       }
       return { ics: Array.from(set) };
-    } catch(err) { console.error('voucher build failed:', err); return { ics: [] }; }
+    } catch(err) { console.error('voucher build failed (fallback):', err); return { ics: [] }; }
   }
 
-  // EARLY override of window.fetch before other scripts run
+  // Early fetch override
   var _fetch=window.fetch.bind(window);
   window.fetch = async function(input, init){
     var url = (typeof input==='string') ? input : (input && input.url) || '';
@@ -45,28 +48,25 @@
     if (isGAS(url)) {
       var method = (init && init.method) || 'GET';
       if (method.toUpperCase()==='GET') {
-        var qs=''; try{var u=new URL(url, location.href); qs=u.search.slice(1);}catch(e){qs='';}
-        var prox = endpoint + (endpoint.indexOf('?')>=0 ? '&' : '?') + qs;
-        if (!(/[?&]id_token=/.test(prox))) { var tok=getToken(); if (tok) prox += (prox.indexOf('?')>=0?'&':'?') + 'id_token='+encodeURIComponent(tok); }
-        return _fetch(prox, { method:'GET' });
+        var qs=''; try{var u=new URL(url, location.href); qs=u.search.slice(1);}catch(e){qs=''}
+        var prox = getEndpoint() + (getEndpoint().indexOf('?')>=0 ? '&' : '?') + qs;
+        if (!(/[?&]id_token=/.test(prox))) { var tok=getToken(); if (tok) prox += (prox.indexOf('?')>=0?'&':'?') + 'id_token=' + encodeURIComponent(tok); }
+        return _fetch(prox, { method: 'GET' });
       } else {
         var body=(init&&init.body)||''; if (typeof body!=='string'){ try{ if(body&&body.toString) body=body.toString(); }catch(e){ body=''; } }
         var p=new URLSearchParams(String(body||'')); var tok=getToken(); if (tok && !p.get('id_token')) p.set('id_token', tok);
-        return _fetch(endpoint, { method:'POST', headers: {'Content-Type':'application/x-www-form-urlencoded'}, body: p.toString() });
+        return _fetch(getEndpoint(), { method:'POST', headers:{'Content-Type':'application/x-www-form-urlencoded'}, body:p.toString() });
       }
     }
     return _fetch(input, init);
   };
 
-  // Later patch for RUMUS when available
-  function whenRUMUS(cb){
-    if (window.RUMUS) return cb();
-    var tries=0; var iv=setInterval(function(){ tries++; if (window.RUMUS){ clearInterval(iv); cb(); } if(tries>200) clearInterval(iv); }, 50);
-  }
+  // Patch RUMUS
+  function whenRUMUS(cb){ if (window.RUMUS) return cb(); var t=0, iv=setInterval(function(){ t++; if(window.RUMUS){clearInterval(iv); cb();} if(t>200) clearInterval(iv); }, 50); }
+  function truthy(x){ return x===true || String(x).toLowerCase()==='true' || x===1 || String(x)==='1' || String(x).toLowerCase()==='ya'; }
   function normalizeItems(items){
     try{ if (typeof items==='string') items=JSON.parse(items); }catch(e){ return items; }
     if (!Array.isArray(items)) return items;
-    function truthy(x){ return x===true || String(x).toLowerCase()==='true' || x===1 || String(x)==='1'; }
     function normDXTType(v){ v=String(v||'').toUpperCase(); if(/FAST|FBG|PUASA/.test(v))return 'FASTING'; if(/RAND|RBG|RANDOM/.test(v))return 'RANDOM'; return v; }
     function pickStatus(r){
       var s = (r.status||r.kelayakan||r.kel||r.statusKel||'').toString().toUpperCase().trim();
@@ -77,7 +77,7 @@
     }
     return items.map(function(r){
       var status = pickStatus(r);
-      var voucher = truthy(r.voucher)||truthy(r.isVoucher);
+      var voucher = truthy(r.voucher)||truthy(r.isVoucher)||truthy(r.tcaVoucher);
       var apt = (r.appointmentType||r.appointment_type||'').toString().toUpperCase();
       if(!apt) apt = voucher ? 'VOUCHER' : (status==='LAYAK' ? 'PKB40' : (status==='TAK LAYAK' ? 'NONE' : ''));
       return {
@@ -109,13 +109,38 @@
     }
     if (typeof window.RUMUS.post==='function'){
       var _post=window.RUMUS.post.bind(window.RUMUS);
-      window.RUMUS.post=function(action, params){ var p=Object.assign({}, params||{}); var tok=getToken(); if(tok&&!p.id_token)p.id_token=tok;
-        if(action==='saveNadiProgramActivity' && p.items){ var arr=normalizeItems(p.items); p.items=JSON.stringify(arr); }
+      window.RUMUS.post=function(action, params){
+        var p=Object.assign({}, params||{}); var tok=getToken(); if(tok&&!p.id_token)p.id_token=tok;
+        if((action==='saveNadiProgramActivity' || action==='saveNadiActivity') && p.items){
+          var arr=normalizeItems(p.items); p.items=JSON.stringify(arr);
+        }
         return _post(action,p);
       };
     }
   });
+
+  // Last-resort: ensureVoucherICs wrapper
+  (function(){
+    var tries=0, iv=setInterval(function(){
+      tries++;
+      var f = window.ensureVoucherICs || window.buildVoucherICs || null;
+      if (typeof f==='function'){
+        clearInterval(iv);
+        window.ensureVoucherICs = async function(){
+          try{ return await f.apply(this, arguments); }
+          catch(e){
+            console.warn('ensureVoucherICs failed – using fallback builder', e);
+            var payload = await buildVoucherICSetJSON();
+            window.__voucherICS = payload.ics||[];
+            return payload;
+          }
+        };
+      }
+      if (tries>200) clearInterval(iv);
+    }, 50);
+  })();
 })();
+
 </script>
 
   <meta name="gas-endpoint" content="https://broken-dew-0eb2.amiruladlije.workers.dev">
