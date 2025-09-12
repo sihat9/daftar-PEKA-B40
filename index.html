@@ -1,8 +1,6 @@
 <!DOCTYPE html>
 <html lang="ms">
 <head>
-  <meta name="gas-endpoint" content="https://broken-dew-0eb2.amiruladlije.workers.dev"/>
-
 <meta http-equiv="Cross-Origin-Opener-Policy" content="same-origin-allow-popups">
 <!-- Performance resource hints -->
   <link rel="preconnect" href="https://cdn.jsdelivr.net">
@@ -5994,27 +5992,32 @@ function injectTelahHadirButtons(){
   window.TCA_VOUCHER_SET = window.TCA_VOUCHER_SET || new Set();
   window._voucherBuilt = window._voucherBuilt || false;
 
-  async function ensureVoucherICs(limit=40){
-    if (window._voucherBuilt) return;
-    try{
-      const acts = await _getJSON({ action:'getNadiActivities' });
-      if (acts?.status!=='success') return;
-      const list = acts.data || [];
-      const recent = list.slice(0, limit);
-      for (const a of recent){
-        const id = a.activityId; if (!id) continue;
-        const det = await _getJSON({ action:'getNadiActivityDetail', id });
-        if (det?.status!=='success') continue;
-        (det.data||[]).forEach(r=>{
-          const ic = String(r.noIC||'').trim();
-          const hasTCA = String(r.tcaDate||'').trim() || String(r.tcaTime||'').trim();
-          if (ic && hasTCA) window.TCA_VOUCHER_SET.add(ic);
-        });
-      }
-      window._voucherBuilt = true;
-      applyTCABadges();
-    }catch(e){ console.warn('Build voucher set failed', e); }
+  async async function ensureVoucherICs(limit=40){
+  try{
+    const token = localStorage.getItem('id_token') || '';
+    const base = (window.GAS_URL || window.__GAS_URL || (document.querySelector('meta[name="gas-endpoint"]')||{}).content || window.__config?.gasEndpoint || '').trim();
+    const gas = base || (window.GAS && (GAS.api||GAS.url||GAS.endpoint)) || '';
+    const url = (gas?gas:base) ? `${gas}?action=getVoucherICSet&id_token=${encodeURIComponent(token)}&t=${Date.now()}` : `${location.origin}${location.pathname}?action=getVoucherICSet&id_token=${encodeURIComponent(token)}&t=${Date.now()}`;
+    const res = await fetch(url, { mode:'cors', credentials:'omit' }).catch(()=>null);
+    if (!res){ console.warn('voucher set: fetch failed'); return new Set(); }
+    const contentType = (res.headers.get('content-type')||'').toLowerCase();
+    const text = await res.text();
+    let data;
+    if (contentType.includes('application/json') || (/^[\s\t\n]*[{\[]/.test(text))){
+      try{ data = JSON.parse(text); }catch(e){ console.warn('voucher set: bad JSON', e); return new Set(); }
+    } else {
+      console.warn('voucher set: non-JSON upstream', text.slice(0,120));
+      return new Set();
+    }
+    const arr = (data && data.ics) ? data.ics : (Array.isArray(data)?data:[]);
+    window.__VOUCHER_ICS = new Set(arr.map(String));
+    return window.__VOUCHER_ICS;
+  }catch(e){
+    console.error('Build voucher set failed', e);
+    return window.__VOUCHER_ICS || new Set();
   }
+
+}
 
   function applyTCABadges(){
     const tableCandidates = [ document.getElementById('tcaCallTable'), document.getElementById('tcaCallList') ];
@@ -6138,87 +6141,5 @@ function __toVoucherPayload(payload){
   return { activityId, no, tcaDate, tcaTime, remark };
 }
 
-</script>
-<!-- ====== BEGIN: auth+fetch bridge (non-invasive) ====== -->
-<script>
-(function () {
-  const GAS_META = document.querySelector('meta[name="gas-endpoint"]');
-  const GAS_BASE = (GAS_META && GAS_META.content || '').trim();
-  let IDTOKEN = sessionStorage.getItem('id_token') || null;
-
-  // Hook Google Identity callback (if defined later)
-  window.handleCredentialResponse = (function(orig){
-    return function(cred){
-      try{
-        const token = cred && (cred.credential || cred.id_token || cred.token);
-        if (token) {
-          IDTOKEN = token;
-          sessionStorage.setItem('id_token', token);
-          console.log('[auth] id_token stored');
-        }
-      }catch(e){}
-      return typeof orig === 'function' ? orig.apply(this, arguments) : undefined;
-    };
-  })(window.handleCredentialResponse);
-
-  // Wrap fetch to always append id_token when calling GAS/Worker
-  const isGasUrl = (u) => {
-    try{
-      const url = new URL(u, location.href);
-      return /script\.google\.com\/macros\/s\/.*\/exec/i.test(url.href) || /workers\.dev/i.test(url.hostname);
-    }catch(e){ return false; }
-  };
-
-  const origFetch = window.fetch;
-  window.fetch = async function(input, init){
-    try{
-      let url = (typeof input === 'string') ? input : input.url;
-      const method = (init && init.method ? String(init.method) : (typeof input !== 'string' && input.method) || 'GET').toUpperCase();
-      if (IDTOKEN && isGasUrl(url)) {
-        if (method === 'GET') {
-          const u = new URL(url, location.href);
-          if (!u.searchParams.has('id_token')) u.searchParams.set('id_token', IDTOKEN);
-          url = u.toString();
-          if (typeof input !== 'string') input = new Request(url, input);
-          else input = url;
-        } else {
-          init = init || {};
-          const headers = new Headers(init.headers || (typeof input !== 'string' ? input.headers : undefined) || {});
-          const ct = (headers.get('Content-Type') || '').toLowerCase();
-          if (ct.includes('application/json')) {
-            try{
-              const obj = typeof init.body === 'string' ? JSON.parse(init.body || '{}') : (init.body || {});
-              if (!obj.id_token) obj.id_token = IDTOKEN;
-              init.body = JSON.stringify(obj);
-            }catch(e){ /* fallback to form */ }
-          } else {
-            // Use x-www-form-urlencoded
-            let params;
-            if (typeof init.body === 'string') params = new URLSearchParams(init.body);
-            else params = new URLSearchParams();
-            if (!params.has('id_token')) params.set('id_token', IDTOKEN);
-            init.body = params.toString();
-            headers.set('Content-Type', 'application/x-www-form-urlencoded');
-          }
-          init.headers = headers;
-        }
-      }
-    }catch(e){ /* do nothing */ }
-    return origFetch(input, init);
-  };
-
-  // Helper to parse JSON safely for existing code
-  window.safeJson = async function(resp){
-    const text = await resp.text();
-    try { return JSON.parse(text); }
-    catch(e){
-      console.error('UPSTREAM_NOT_JSON preview:', text.slice(0, 400));
-      throw new SyntaxError("UPSTREAM_NOT_JSON");
-    }
-  };
-})();
-</script>
-<!-- ====== END: auth+fetch bridge ====== -->
-
-</body>
+</script></body>
 </html>
