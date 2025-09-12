@@ -1,113 +1,7 @@
 <!DOCTYPE html>
 <html lang="ms">
 <head>
-
-<!-- strict-compat v7: early patches -->
-<meta name="gas-endpoint" content="https://broken-dew-0eb2.amiruladlije.workers.dev">
-<script>
-(function(){'use strict';
-  var META='gas-endpoint';
-  function endpoint(){ try{var m=document.querySelector('meta[name="'+META+'"]'); if(m&&m.content) return m.content.trim();}catch(e){} return ''; }
-  function token(){ try{return (localStorage.getItem('id_token')||'').trim();}catch(e){return ''; } }
-
-  // 0) Robust ensureVoucherICs that calls backend API (new action: getVoucherICSet)
-  window.ensureVoucherICs = window.ensureVoucherICs || (async function(){
-    try{
-      var base = endpoint(); var t = token();
-      var url = base + (base.indexOf('?')>=0?'&':'?') + 'action=getVoucherICSet' + (t?('&id_token='+encodeURIComponent(t)):'');
-      var r = await fetch(url); var j = await r.json();
-      window.__voucherICS = (j && j.ics) || [];
-      return j;
-    } catch(err) {
-      console.warn('voucherICs API failed; returning empty set', err);
-      window.__voucherICS = [];
-      return { ics: [] };
-    }
-  });
-
-  // 1) Intercept fetch to use worker + auto id_token
-  var _fetch = window.fetch.bind(window);
-  function isGAS(url){ try{var u=new URL(url, location.href); return u.hostname==='script.google.com' && /\/macros\/s\//.test(u.pathname);}catch(e){return false;} }
-  window.fetch = async function(input, init){
-    var url = (typeof input==='string') ? input : (input && input.url) || '';
-    if (!url) return _fetch(input, init);
-    if (isGAS(url)){
-      var method = (init && init.method) || 'GET';
-      var base = endpoint(); var t = token();
-      if (method.toUpperCase()==='GET'){
-        var qs=''; try{var u=new URL(url, location.href); qs=u.search.slice(1);}catch(e){qs=''}
-        var prox = base + (base.indexOf('?')>=0?'&':'?') + qs;
-        if (t && !/[?&]id_token=/.test(prox)) prox += (prox.indexOf('?')>=0?'&':'?') + 'id_token='+encodeURIComponent(t);
-        return _fetch(prox, { method:'GET' });
-      } else {
-        var body=(init&&init.body)||''; if (typeof body!=='string'){ try{ if(body&&body.toString) body=body.toString(); }catch(e){ body=''; } }
-        var p=new URLSearchParams(String(body||'')); if (t && !p.get('id_token')) p.set('id_token', t);
-        return _fetch(base, { method:'POST', headers:{'Content-Type':'application/x-www-form-urlencoded'}, body:p.toString() });
-      }
-    }
-    return _fetch(input, init);
-  };
-
-  // 2) Normalize NADI items for both actions
-  function whenRUMUS(cb){ if (window.RUMUS) return cb(); var n=0, iv=setInterval(function(){ n++; if(window.RUMUS){clearInterval(iv); cb();} if(n>200) clearInterval(iv); },50); }
-  function truthy(x){ return x===true || String(x).toLowerCase()==='true' || x===1 || String(x)==='1' || String(x).toLowerCase()==='ya'; }
-  function normItems(items){
-    try{ if (typeof items==='string') items=JSON.parse(items); }catch(e){ return items; }
-    if (!Array.isArray(items)) return items;
-    function normDXT(v){ v=String(v||'').toUpperCase(); if(/FAST|FBG|PUASA/.test(v))return 'FASTING'; if(/RAND|RBG|RANDOM/.test(v))return 'RANDOM'; return v; }
-    function pickStatus(r){
-      var s=(r.status||r.kelayakan||r.kel||'').toString().toUpperCase().trim();
-      if(!s) s = truthy(r.layak)?'LAYAK':(truthy(r.takLayak)?'TAK LAYAK':'');
-      if(/TIDAK\s*LAYAK|TAK\s*LAYAK/.test(s)) return 'TAK LAYAK';
-      if(/LAYAK/.test(s)) return 'LAYAK';
-      return s;
-    }
-    return items.map(function(r){
-      var status = pickStatus(r);
-      var voucher = truthy(r.voucher)||truthy(r.isVoucher)||truthy(r.tcaVoucher);
-      var apt = (r.appointmentType||r.appointment_type||'').toString().toUpperCase();
-      if(!apt) apt = voucher ? 'VOUCHER' : (status==='LAYAK' ? 'PKB40' : (status==='TAK LAYAK' ? 'NONE' : ''));
-      return {
-        nama: r.nama||r.name||r.fullname||'',
-        noIC: r.noIC||r.ic||r.no_kp||r.icNumber||r.nokp||'',
-        umur: r.umur||r.age||'',
-        noTelefon: r.noTelefon||r.telefon||r.noTel||r.msisdn||r.phone||r.tel||'',
-        alamat: r.alamat||r.address||r.addr||'',
-        bp: r.bp||r.bloodPressure||'',
-        pr: r.pr||r.nadi||r.pulse||'',
-        dxt: r.dxt||r.gula||r.bs||r.sugar||'',
-        dxtType: normDXT(r.dxtType||r.dxt_type||r.dxttype),
-        tinggi: r.tinggi||r.height||'',
-        berat: r.berat||r.weight||'',
-        bmi: r.bmi||r.BMI||'',
-        status: status,
-        appointmentType: apt,
-        remark: r.remark||r.catatan||r.notes||r.note||'',
-        tcaDate: r.tcaDate||r.tca_date||r.tca||'',
-        tcaTime: r.tcaTime||r.tca_time||r.masaTCA||'',
-        tcaStaff: r.tcaStaff||r.tca_staff||r.staffTCA||''
-      };
-    });
-  }
-  whenRUMUS(function(){
-    if (typeof RUMUS.post==='function'){
-      var _post = RUMUS.post.bind(RUMUS);
-      RUMUS.post = function(action, params){
-        var p=Object.assign({}, params||{}); var t=token(); if(t&&!p.id_token)p.id_token=t;
-        if((action==='saveNadiProgramActivity'||action==='saveNadiActivity') && p.items) p.items = JSON.stringify(normItems(p.items));
-        return _post(action,p);
-      }
-    }
-    if (typeof RUMUS.get==='function'){
-      var _get = RUMUS.get.bind(RUMUS);
-      RUMUS.get = function(action, params){
-        var p=Object.assign({}, params||{}); var t=token(); if(t&&!p.id_token)p.id_token=t;
-        return _get(action,p);
-      }
-    }
-  });
-})();
-</script>
+  <meta name="gas-endpoint" content="https://broken-dew-0eb2.amiruladlije.workers.dev"/>
 
 <meta http-equiv="Cross-Origin-Opener-Policy" content="same-origin-allow-popups">
 <!-- Performance resource hints -->
@@ -6244,5 +6138,87 @@ function __toVoucherPayload(payload){
   return { activityId, no, tcaDate, tcaTime, remark };
 }
 
-</script></body>
+</script>
+<!-- ====== BEGIN: auth+fetch bridge (non-invasive) ====== -->
+<script>
+(function () {
+  const GAS_META = document.querySelector('meta[name="gas-endpoint"]');
+  const GAS_BASE = (GAS_META && GAS_META.content || '').trim();
+  let IDTOKEN = sessionStorage.getItem('id_token') || null;
+
+  // Hook Google Identity callback (if defined later)
+  window.handleCredentialResponse = (function(orig){
+    return function(cred){
+      try{
+        const token = cred && (cred.credential || cred.id_token || cred.token);
+        if (token) {
+          IDTOKEN = token;
+          sessionStorage.setItem('id_token', token);
+          console.log('[auth] id_token stored');
+        }
+      }catch(e){}
+      return typeof orig === 'function' ? orig.apply(this, arguments) : undefined;
+    };
+  })(window.handleCredentialResponse);
+
+  // Wrap fetch to always append id_token when calling GAS/Worker
+  const isGasUrl = (u) => {
+    try{
+      const url = new URL(u, location.href);
+      return /script\.google\.com\/macros\/s\/.*\/exec/i.test(url.href) || /workers\.dev/i.test(url.hostname);
+    }catch(e){ return false; }
+  };
+
+  const origFetch = window.fetch;
+  window.fetch = async function(input, init){
+    try{
+      let url = (typeof input === 'string') ? input : input.url;
+      const method = (init && init.method ? String(init.method) : (typeof input !== 'string' && input.method) || 'GET').toUpperCase();
+      if (IDTOKEN && isGasUrl(url)) {
+        if (method === 'GET') {
+          const u = new URL(url, location.href);
+          if (!u.searchParams.has('id_token')) u.searchParams.set('id_token', IDTOKEN);
+          url = u.toString();
+          if (typeof input !== 'string') input = new Request(url, input);
+          else input = url;
+        } else {
+          init = init || {};
+          const headers = new Headers(init.headers || (typeof input !== 'string' ? input.headers : undefined) || {});
+          const ct = (headers.get('Content-Type') || '').toLowerCase();
+          if (ct.includes('application/json')) {
+            try{
+              const obj = typeof init.body === 'string' ? JSON.parse(init.body || '{}') : (init.body || {});
+              if (!obj.id_token) obj.id_token = IDTOKEN;
+              init.body = JSON.stringify(obj);
+            }catch(e){ /* fallback to form */ }
+          } else {
+            // Use x-www-form-urlencoded
+            let params;
+            if (typeof init.body === 'string') params = new URLSearchParams(init.body);
+            else params = new URLSearchParams();
+            if (!params.has('id_token')) params.set('id_token', IDTOKEN);
+            init.body = params.toString();
+            headers.set('Content-Type', 'application/x-www-form-urlencoded');
+          }
+          init.headers = headers;
+        }
+      }
+    }catch(e){ /* do nothing */ }
+    return origFetch(input, init);
+  };
+
+  // Helper to parse JSON safely for existing code
+  window.safeJson = async function(resp){
+    const text = await resp.text();
+    try { return JSON.parse(text); }
+    catch(e){
+      console.error('UPSTREAM_NOT_JSON preview:', text.slice(0, 400));
+      throw new SyntaxError("UPSTREAM_NOT_JSON");
+    }
+  };
+})();
+</script>
+<!-- ====== END: auth+fetch bridge ====== -->
+
+</body>
 </html>
