@@ -1,346 +1,355 @@
-
-<!doctype html>
+<!DOCTYPE html>
 <html lang="ms">
 <head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width,initial-scale=1">
-  <title>Saringan — Hotfix (Sejarah & NADI)</title>
-  <style>
-    body { font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif; margin: 0; padding: 16px; background:#f7f7fb; color:#111; }
-    header { display:flex; align-items:center; gap:12px; flex-wrap:wrap; }
-    .card { background:#fff; border:1px solid #eaeaea; border-radius:14px; padding:16px; box-shadow: 0 1px 3px rgba(0,0,0,.04); margin:16px 0; }
-    .row { display:flex; gap:12px; flex-wrap:wrap; align-items:center; }
-    label { font-size: 12px; text-transform: uppercase; letter-spacing: .04em; color:#555; }
-    input[type=text], input[type=url], textarea, select { width:100%; padding:10px 12px; border:1px solid #ddd; border-radius:10px; background:#fff; }
-    textarea { min-height: 80px; }
-    button { padding:10px 14px; border-radius:10px; border:1px solid #d0d0d0; background:#111; color:#fff; cursor:pointer; }
-    button.secondary { background:#fff; color:#111; }
-    .muted { color:#666; font-size:12px; }
-    table { width:100%; border-collapse: collapse; }
-    th, td { border-bottom: 1px solid #eee; padding: 8px 6px; text-align:left; font-size:14px; }
-    th { background:#fafafa; }
-    code, pre { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; }
-    .ok { color: #087443; }
-    .bad { color: #b00020; }
-    .pill { display:inline-block; padding:3px 8px; border-radius:999px; font-size:12px; border:1px solid #eee; background:#f3f3f3; }
-    .grid { display:grid; grid-template-columns: repeat(12, 1fr); gap:12px; }
-    .col-6 { grid-column: span 6; }
-    .col-12{ grid-column: span 12; }
-    @media (max-width: 900px){ .col-6 { grid-column: span 12; } }
-  </style>
-  <script src="https://accounts.google.com/gsi/client" async defer></script>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Saringan — Hotfix/Diagnostik</title>
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@picocss/pico@2/css/pico.min.css">
+<style>
+  body { max-width: 1100px; margin: 24px auto; }
+  .row { display: grid; gap: 12px; grid-template-columns: 1fr 1fr; }
+  .row-3 { display: grid; gap: 12px; grid-template-columns: repeat(3, 1fr); }
+  #logs { height: 200px; overflow:auto; background:#0b0f16; color:#bfe2ff; padding:10px; font: 12px/1.4 ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace; border-radius: 8px; }
+  .kbd { font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace; background:#eee; padding:0 6px; border-radius:4px; }
+  textarea { font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace; }
+  small.mono { font: 12px/1.2 ui-monospace, monospace; color:#6d7784 }
+  .muted { color:#6d7784 }
+</style>
+<script src="https://accounts.google.com/gsi/client" async defer></script>
 </head>
 <body>
-  <header class="row">
-    <h2 style="margin:0;">Saringan — Hotfix</h2>
-    <div id="authStatus" class="pill">Belum log masuk</div>
+  <header>
+    <h2>Saringan — <span class="muted">Hotfix/Diagnostik</span></h2>
+    <p class="muted">Tujuan: uji sambungan Cloudflare Worker → Google Apps Script dengan selamat. <br>
+      <small class="mono">Jika respons bukan JSON (contoh: berisi <code>&lt;!DOCTYPE html&gt;</code>), panel log akan memaparkan <code>UPSTREAM_NOT_JSON</code> berserta petikan HTML supaya kita boleh kenal pasti punca.</small>
+    </p>
   </header>
 
-  <div class="card">
+  <article>
+    <h4>1) Konfigurasi</h4>
     <div class="grid">
-      <div class="col-6">
-        <label>API Base (Cloudflare Worker URL)</label>
-        <input id="apiBase" type="url" placeholder="https://YOUR-WORKER.workers.dev/exec">
-        <div class="muted">Contoh: <code>https://broken-dew-0eb2.amiruladlije.workers.dev/exec</code>. Disimpan ke LocalStorage.</div>
+      <div>
+        <label>API BASE (Cloudflare Worker URL)
+          <input id="apiBase" type="url" placeholder="https://example.workers.dev/exec">
+        </label>
+        <small class="mono">Contoh: <code>https://broken-dew-0eb2.amiruladlije.workers.dev/exec</code></small>
       </div>
-      <div class="col-6">
-        <label>Google Client ID</label>
-        <input id="gClientId" type="text" value="863564124015-838ksbuk27f0kkomm16hnc3bu608pbrr.apps.googleusercontent.com">
-        <div class="muted">Biarkan nilai ini jika sama seperti sebelum ini.</div>
-      </div>
-      <div class="col-12 row" style="justify-content:space-between;">
-        <div id="g_id_onload"
-             data-client_id="863564124015-838ksbuk27f0kkomm16hnc3bu608pbrr.apps.googleusercontent.com"
-             data-callback="handleCredentialResponse"
-             data-auto_prompt="false"></div>
-        <div class="g_id_signin" data-type="standard" data-theme="outline" data-size="large"></div>
-        <div>
-          <button class="secondary" onclick="logout()">Log keluar</button>
-          <button onclick="testWhoAmI()">Uji WhoAmI</button>
-          <button onclick="ensureVoucherICs()">Bina Voucher Set</button>
-        </div>
+      <div>
+        <label>Google Client ID (GSI)
+          <input id="clientId" type="text" placeholder="863564124015-....apps.googleusercontent.com">
+        </label>
+        <small class="mono">Biarkan jika tidak berubah.</small>
       </div>
     </div>
-  </div>
-
-  <div class="card">
-    <h3 style="margin-top:0;">Lihat Sejarah Saringan</h3>
-    <div class="row">
-      <button onclick="loadActivities()">Muatkan Aktiviti</button>
-      <span class="muted">Klik satu aktiviti untuk lihat butiran peserta.</span>
-    </div>
-    <div id="activities"></div>
-    <div id="activityDetail" class="card" style="display:none;"></div>
-  </div>
-
-  <div class="card">
-    <h3 style="margin-top:0;">Simpan Jadual NADI (Demo Minimum)</h3>
     <div class="grid">
-      <div class="col-6">
-        <label>Tajuk Program</label>
-        <input id="title" type="text" placeholder="Program NADI Komuniti">
+      <div>
+        <div id="gsiButton"></div>
+        <button id="btnLogout" class="secondary">Log keluar</button>
+        <small class="mono" id="authState">Belum log masuk</small>
       </div>
-      <div class="col-6">
-        <label>Tarikh Program (YYYY-MM-DD atau DD/MM/YYYY)</label>
-        <input id="date" type="text" placeholder="2025-09-12">
-      </div>
-      <div class="col-12">
-        <label>Items (JSON array)</label>
-        <textarea id="items" placeholder='[{"nama":"Ali","noIC":"900101-10-1234","noTelefon":"0123456789","status":"LAYAK","appointmentType":"PKB40"}]'></textarea>
-      </div>
-      <div class="col-12 row">
-        <button onclick="saveNadi()">Simpan</button>
+      <div class="grid">
+        <button id="btnPing" class="secondary">Uji WhoAmI</button>
+        <button id="btnVoucher" class="secondary">Bina Voucher Set</button>
       </div>
     </div>
-    <div id="saveResult" class="muted"></div>
-  </div>
+  </article>
 
-  <div class="card">
-    <h3 style="margin-top:0;">Log</h3>
-    <pre id="log" style="white-space:pre-wrap;max-height:320px;overflow:auto;background:#0f172a;color:#e2e8f0;padding:12px;border-radius:10px;"></pre>
-  </div>
+  <article>
+    <h4>2) Lihat Sejarah Saringan (AKTIVITI_PROGRAM)</h4>
+    <div class="grid">
+      <button id="btnLoadActivities">Muatkan Aktiviti</button>
+      <small class="mono">Jika berjaya, senarai ringkas dipaparkan di bawah.</small>
+    </div>
+    <details>
+      <summary>Hasil Aktiviti</summary>
+      <pre id="activitiesOut" class="mono"></pre>
+    </details>
+  </article>
+
+  <article>
+    <h4>3) Simpan Jadual NADI (Demo Minimum)</h4>
+    <div class="grid">
+      <label>Tajuk Program
+        <input id="title" type="text" value="Program NADI Komuniti">
+      </label>
+      <label>Tarikh Program (YYYY-MM-DD atau DD/MM/YYYY)
+        <input id="date" type="text" value="2025-09-12">
+      </label>
+    </div>
+    <label>Items (JSON Array)
+      <textarea id="items" rows="5">[{"nama":"Ali","noIC":"900101-10-1234","noTelefon":"0123456789","status":"LAYAK","appointmentType":"PKB40"}]</textarea>
+    </label>
+    <div class="grid">
+      <button id="btnSave">Simpan</button>
+      <small class="mono">Server akan mengisi <span class="kbd">staff</span> menggunakan email akaun yang log masuk.</small>
+    </div>
+  </article>
+
+  <article>
+    <h4>Log</h4>
+    <div id="logs"></div>
+  </article>
 
 <script>
-  // ====== Util asas ======
-  const ls = window.localStorage;
-  const $ = (id)=> document.getElementById(id);
-  const log = (...args)=> {
-    const s = args.map(a => {
-      if (a instanceof Error) return a.stack || a.message;
-      if (typeof a === 'object') return JSON.stringify(a, null, 2);
-      return String(a);
-    }).join(' ');
-    const el = $('log'); el.textContent += s + "\n";
-    el.scrollTop = el.scrollHeight;
-    console.log(...args);
+(function(){
+  const qs = (sel) => document.querySelector(sel);
+  const apiBaseEl = qs('#apiBase');
+  const clientIdEl = qs('#clientId');
+  const logsEl = qs('#logs');
+  const authStateEl = qs('#authState');
+  const activitiesOut = qs('#activitiesOut');
+  const LS = {
+    apiBase: 'saringan.apiBase',
+    clientId: 'saringan.clientId',
+    token: 'saringan.id_token'
   };
 
-  function initFromStorage(){
-    const apiBase = ls.getItem('api_base') || '';
-    const clientId = ls.getItem('g_client_id') || $('gClientId').value;
-    $('apiBase').value = apiBase;
-    $('gClientId').value = clientId;
-    // update GSI config tag if changed
-    try{
-      const gTag = document.getElementById('g_id_onload');
-      if (gTag) gTag.dataset.client_id = clientId;
-    }catch(e){}
-    const token = ls.getItem('id_token') || '';
-    updateAuthStatus(!!token);
-  }
-  function updateAuthStatus(ok){
-    $('authStatus').textContent = ok ? 'Log masuk ✓' : 'Belum log masuk';
-    $('authStatus').className = 'pill ' + (ok ? 'ok' : 'bad');
+  function log(...args){
+    const t = new Date().toISOString();
+    const line = args.map(a => (typeof a === 'string' ? a : JSON.stringify(a, null, 2))).join(' ');
+    logsEl.textContent += '['+t+'] ' + line + '\\n';
+    logsEl.scrollTop = logsEl.scrollHeight;
+    // Mirror to console for convenience
+    console.log('[hotfix]', ...args);
   }
 
-  window.addEventListener('load', ()=>{
-    initFromStorage();
-    $('apiBase').addEventListener('change', e=> ls.setItem('api_base', e.target.value.trim()));
-    $('gClientId').addEventListener('change', e=> ls.setItem('g_client_id', e.target.value.trim()));
+  // ---------- LocalStorage helpers ----------
+  function loadConfig(){
+    apiBaseEl.value = localStorage.getItem(LS.apiBase) || '';
+    clientIdEl.value = localStorage.getItem(LS.clientId) || '';
+    updateAuthState();
+  }
+  function saveConfig(){
+    localStorage.setItem(LS.apiBase, apiBaseEl.value.trim());
+    localStorage.setItem(LS.clientId, clientIdEl.value.trim());
+  }
+  function setToken(tok){
+    if (tok) localStorage.setItem(LS.token, tok);
+    else localStorage.removeItem(LS.token);
+    updateAuthState();
+  }
+  function getToken(){ return localStorage.getItem(LS.token) || ''; }
+
+  function updateAuthState(){
+    const tok = getToken();
+    authStateEl.textContent = tok ? 'Token tersedia' : 'Belum log masuk';
+  }
+
+  // ---------- Google Sign-In ----------
+  window.onGoogleLibraryLoad = function(){
+    try {
+      const clientId = clientIdEl.value.trim() || localStorage.getItem(LS.clientId) || '';
+      if (!clientId) {
+        log('⚠️ Tiada Google Client ID. Masukkan dahulu.');
+        return;
+      }
+      google.accounts.id.initialize({
+        client_id: clientId,
+        callback: (resp) => {
+          if (resp && resp.credential){
+            setToken(resp.credential);
+            log('✅ [auth] id_token received & stored (panjang='+resp.credential.length+')');
+          } else {
+            log('❌ [auth] callback tanpa credential:', resp);
+          }
+        }
+      });
+      google.accounts.id.renderButton(document.getElementById('gsiButton'), { theme: 'outline', size: 'medium' });
+      google.accounts.id.prompt(); // optional
+    } catch(err){
+      log('❌ GSI init error:', err);
+    }
+  };
+
+  // Script loader to re-init when clientId changes
+  function ensureGsiLoaded(){
+    if (window.google && window.google.accounts && window.google.accounts.id) {
+      window.onGoogleLibraryLoad();
+      return;
+    }
+    // If script not ready yet, we will rely on onload
+  }
+
+  window.addEventListener('load', () => {
+    loadConfig();
+    ensureGsiLoaded();
   });
 
-  function apiBase(){
-    let b = $('apiBase').value.trim();
-    if (!b){
-      log('⚠️ API Base kosong. Sila isi URL Cloudflare Worker anda (cth: https://example.workers.dev/exec)');
-      throw new Error('API Base belum diset');
-    }
-    // buang trailing slash selain /exec
-    if (b.endsWith('/')) b = b.slice(0,-1);
-    return b;
-  }
-  function idToken(){
-    const t = ls.getItem('id_token') || '';
-    if (!t) throw new Error('Belum log masuk (id_token kosong)');
-    return t;
+  clientIdEl.addEventListener('change', () => {
+    saveConfig();
+    // re-render button
+    document.getElementById('gsiButton').innerHTML = '';
+    ensureGsiLoaded();
+  });
+  apiBaseEl.addEventListener('change', saveConfig);
+
+  document.getElementById('btnLogout').addEventListener('click', () => {
+    setToken('');
+    log('ℹ️ Token dibersihkan.');
+  });
+
+  // ---------- API helper ----------
+  function normalizeBase(u){
+    u = String(u||'').trim();
+    if (!u) return '';
+    // drop trailing slashes (but keep /exec if present)
+    // if user pasted the GAS URL directly (script.google.com/.../exec), still okay
+    return u.replace(/\\/?$/,''); // remove single trailing slash
   }
 
-  async function apiFetchJSON(action, method='GET', payload=null){
-    const base = apiBase();
-    const token = idToken();
-    const url = new URL(base);
-    if (method === 'GET'){
-      url.searchParams.set('action', action);
-      url.searchParams.set('id_token', token);
+  async function callApi(action, method, params){
+    const base = normalizeBase(apiBaseEl.value);
+    if (!base) throw new Error('API BASE kosong.');
+
+    const idToken = getToken();
+    if (!idToken) throw new Error('Belum log masuk. Sila Sign in terlebih dahulu.');
+
+    // Build URL
+    let url = base;
+    const headers = { };
+    let fetchInit = { method: method || 'GET' };
+
+    if (fetchInit.method.toUpperCase() === 'GET'){
+      const u = new URL(url);
+      u.searchParams.set('action', action);
+      u.searchParams.set('id_token', idToken);
+      // include other query params if provided
+      if (params && typeof params === 'object'){
+        Object.entries(params).forEach(([k,v]) => {
+          if (v !== undefined && v !== null) u.searchParams.set(k, String(v));
+        });
+      }
+      url = u.toString();
+    } else {
+      const body = new URLSearchParams();
+      body.set('action', action);
+      body.set('id_token', idToken);
+      if (params && typeof params === 'object'){
+        Object.entries(params).forEach(([k,v]) => {
+          if (v !== undefined && v !== null){
+            body.set(k, typeof v === 'string' ? v : JSON.stringify(v));
+          }
+        });
+      }
+      headers['Content-Type'] = 'application/x-www-form-urlencoded;charset=UTF-8';
+      fetchInit.body = body.toString();
     }
-    let opt = { method, headers: { 'Accept': 'application/json' } };
-    if (method === 'POST'){
-      const bodyObj = Object.assign({}, payload||{}, { action, id_token: token });
-      opt.headers['Content-Type'] = 'application/json';
-      opt.body = JSON.stringify(bodyObj);
-    }
-    const res = await fetch(url.toString(), opt);
-    const ct = res.headers.get('content-type') || '';
+    fetchInit.headers = headers;
+
+    log('→', fetchInit.method, action, 'URL:', url);
+    const res = await fetch(url, fetchInit);
+    const ct = (res.headers.get('content-type')||'').toLowerCase();
+
     if (ct.includes('application/json')){
       const j = await res.json();
-      return { ok: res.ok, status: res.status, json: j };
+      log('← JSON', j);
+      return j;
     } else {
       const txt = await res.text();
-      // balut sebagai JSON supaya tidak pecahkan app
-      return { ok: false, status: res.status, json: { status:'upstream_error_html', httpStatus: res.status, textStart: txt.slice(0,200) } };
+      // Try to sniff JSON
+      try {
+        const j2 = JSON.parse(txt);
+        log('← JSON(text)', j2);
+        return j2;
+      } catch(_){
+        // Not JSON — show helpful diagnostics
+        const diag = {
+          status: 'error',
+          code: 'UPSTREAM_NOT_JSON',
+          hint: 'Semak Web App GAS: akses "Anyone" dan URL berakhir dengan /exec, serta URL di Worker betul.',
+          upstreamStatus: res.status,
+          body: txt.slice(0, 500)
+        };
+        log('←', diag);
+        return diag;
+      }
     }
   }
 
-  // ====== Google Sign-In (GSI) ======
-  window.handleCredentialResponse = async (resp)=>{
-    try{
-      const token = resp && resp.credential;
-      if (!token){ log('❌ GSI: token kosong'); return; }
-      ls.setItem('id_token', token);
-      updateAuthStatus(true);
-      log('[auth] id_token stored');
-
-      // Uji whoami
-      await testWhoAmI();
-
-      // Auto bina voucher set selepas login
-      await ensureVoucherICs(true);
-    }catch(err){
-      log('❌ handleCredentialResponse', err);
-    }
-  };
-  function logout(){
-    ls.removeItem('id_token');
-    updateAuthStatus(false);
-    log('Keluar akaun (id_token dibersihkan)');
-  }
-
+  // ---------- Feature buttons ----------
   async function testWhoAmI(){
-    try{
-      const r = await apiFetchJSON('whoami', 'GET');
-      log('whoami →', r.json);
-    }catch(e){ log('❌ whoami', e); }
-  }
-
-  // ====== HOTFIX: Bina Voucher IC Set (kalis HTML) ======
-  async function ensureVoucherICs(silent){
-    try{
-      const r = await apiFetchJSON('getVoucherICSet', 'GET');
-      if (!r.json || r.json.status!=='success'){
-        if (r.json && r.json.status === 'upstream_error_html'){
-          log('⚠️ Upstream pulangkan HTML, bukan JSON. First 200 chars:', r.json.textStart);
-          window.__VOUCHER_ICS = [];
-          if (!silent) alert('Gagal bina set voucher (upstream HTML). Lihat Log.');
-          return;
-        }
-        throw new Error((r.json && r.json.message) || 'Gagal');
+    try {
+      const out = await callApi('whoami', 'GET');
+      if (out && out.status === 'success'){
+        log('✅ whoami:', out.email || out);
+      } else {
+        log('❌ whoami gagal:', out);
       }
-      const arr = Array.isArray(r.json.ics) ? r.json.ics : [];
-      window.__VOUCHER_ICS = arr;
-      log('✓ Voucher ICs:', arr.length);
-    }catch(e){
-      window.__VOUCHER_ICS = [];
-      log('❌ ensureVoucherICs', e);
-      if (!silent) alert('Gagal bina set voucher. Lihat Log.');
+    } catch(err){
+      log('❌ ralat whoami:', err);
     }
   }
-
-  // ====== UI: Sejarah Saringan ======
+  async function ensureVoucherICs(){
+    try {
+      const out = await callApi('getVoucherICSet', 'GET');
+      if (out && out.status === 'success'){
+        log('✅ Voucher IC set ada', (out.ics||[]).length, 'IC');
+      } else {
+        log('❌ getVoucherICSet gagal:', out);
+      }
+    } catch(err){
+      log('❌ ralat getVoucherICSet:', err);
+    }
+  }
   async function loadActivities(){
-    try{
-      $('activities').innerHTML = '<div class="muted">Memuatkan…</div>';
-      const r = await apiFetchJSON('getNadiActivities', 'GET');
-      if (r.json.status!=='success'){ throw new Error(r.json.message||'Ralat API'); }
-      const data = r.json.data || [];
-      if (!data.length){ $('activities').innerHTML = '<div class="muted">Tiada aktiviti</div>'; return; }
-      const rows = data.map(a => `
-        <tr data-id="${a.activityId}">
-          <td><a href="#" onclick="return showDetail('${a.activityId}')">${a.title}</a></td>
-          <td>${a.programDate||''}</td>
-          <td class="muted">${a.staff||''}</td>
-          <td>${a.total||''}</td>
-        </tr>
-      `).join('');
-      $('activities').innerHTML = \`
-        <table>
-          <thead><tr><th>Program</th><th>Tarikh</th><th>Staff</th><th>Jumlah</th></tr></thead>
-          <tbody>\${rows}</tbody>
-        </table>\`;
-    }catch(e){
-      $('activities').innerHTML = '<div class="bad">Gagal memuatkan aktiviti.</div>';
-      log('❌ loadActivities', e);
-    }
-  }
-  async function showDetail(activityId){
-    try{
-      $('activityDetail').style.display = 'block';
-      $('activityDetail').innerHTML = '<div class="muted">Memuatkan butiran…</div>';
-      const r = await apiFetchJSON('getNadiActivityDetail', 'GET');
-      // Nota: kebanyakan GAS memerlukan activityId di query. Kita ulang panggilan dengan POST jika GET tanpa param gagal.
-      if (!r.json || r.json.status!=='success' || !Array.isArray(r.json.data)){
-        const r2 = await apiFetchJSON('getNadiActivityDetail', 'POST', { activityId });
-        if (!r2.json || r2.json.status!=='success') throw new Error(r2.json && r2.json.message || 'Ralat');
-        renderDetail(activityId, r2.json.data);
+    try {
+      const out = await callApi('getNadiActivities', 'GET');
+      if (out && out.status === 'success'){
+        const list = (out.data||[]).slice(0, 10);
+        activitiesOut.textContent = JSON.stringify(list, null, 2);
+        log('✅ Aktiviti diterima:', list.length, 'rekod (papar maksimum 10).');
       } else {
-        // Sesetengah implementasi memerlukan ?activityId=… pada GET
-        const r3 = await fetch(apiBase() + '?action=getNadiActivityDetail&id_token=' + encodeURIComponent(idToken()) + '&activityId=' + encodeURIComponent(activityId));
-        const ct = r3.headers.get('content-type')||'';
-        if (ct.includes('application/json')){
-          const j = await r3.json();
-          if (j.status==='success') { renderDetail(activityId, j.data || []); return false; }
-        }
-        // fallback
-        const r2 = await apiFetchJSON('getNadiActivityDetail', 'POST', { activityId });
-        if (!r2.json || r2.json.status!=='success') throw new Error(r2.json && r2.json.message || 'Ralat');
-        renderDetail(activityId, r2.json.data);
+        log('❌ getNadiActivities gagal:', out);
       }
-      return false;
-    }catch(e){
-      $('activityDetail').innerHTML = '<div class="bad">Gagal memuatkan butiran.</div>';
-      log('❌ showDetail', e);
-      return false;
+    } catch(err){
+      log('❌ ralat getNadiActivities:', err);
     }
   }
-  function renderDetail(activityId, rows){
-    const trs = (rows||[]).map(r => \`
-      <tr>
-        <td>\${r.no||''}</td>
-        <td>\${r.nama||''}</td>
-        <td>\${r.noIC||''}</td>
-        <td>\${r.noTelefon||''}</td>
-        <td>\${r.status||''}</td>
-        <td>\${r.appointmentType||''}</td>
-        <td>\${r.tcaDate||''} \${r.tcaTime||''}</td>
-      </tr>\`
-    ).join('');
-    $('activityDetail').innerHTML = \`
-      <div class="row" style="justify-content:space-between; align-items:center;">
-        <h4 style="margin:0;">Butiran Aktiviti <span class="pill">\${activityId}</span></h4>
-        <button class="secondary" onclick="document.getElementById('activityDetail').style.display='none'">Tutup</button>
-      </div>
-      <div style="overflow:auto;">
-        <table>
-          <thead><tr>
-            <th>No</th><th>Nama</th><th>NoIC</th><th>No Telefon</th><th>Status</th><th>Jenis</th><th>TCA</th>
-          </tr></thead>
-          <tbody>\${trs}</tbody>
-        </table>
-      </div>\`;
+  async function saveNadiProgramActivity(){
+    const title = qs('#title').value.trim();
+    const date  = qs('#date').value.trim();
+    let itemsTxt = qs('#items').value.trim();
+    let items;
+    try {
+      items = JSON.parse(itemsTxt);
+      if (!Array.isArray(items) || items.length === 0) throw new Error('Items kosong');
+    } catch(e){
+      log('❌ JSON items tidak sah:', String(e));
+      return;
+    }
+    try {
+      const out = await callApi('saveNadiProgramActivity', 'POST', {
+        programTitle: title,
+        programDate: date,
+        items: JSON.stringify(items)
+      });
+      if (out && out.status === 'success'){
+        log('✅ Simpan berjaya:', out);
+      } else {
+        log('❌ Simpan gagal:', out);
+      }
+    } catch(err){
+      log('❌ ralat simpan:', err);
+    }
   }
 
-  // ====== Simpan NADI (demo minimal) ======
-  async function saveNadi(){
-    try{
-      const title = $('title').value.trim();
-      const date  = $('date').value.trim();
-      const itemsText = $('items').value || '[]';
-      let items;
-      try{ items = JSON.parse(itemsText); }catch(e){ alert('Items bukan JSON sah'); return; }
-      const r = await apiFetchJSON('saveNadiProgramActivity', 'POST', {
-        title, programDate: date, items
-      });
-      $('saveResult').textContent = JSON.stringify(r.json, null, 2);
-      log('saveNadi →', r.json);
-      if (r.json && r.json.status==='success'){
-        alert('Berjaya simpan. activityId: ' + r.json.activityId);
-      } else {
-        alert('Gagal simpan (lihat Log)');
-      }
-    }catch(e){
-      log('❌ saveNadi', e);
-      alert('Gagal simpan. Lihat Log.');
+  // Bind buttons
+  document.getElementById('btnPing').addEventListener('click', testWhoAmI);
+  document.getElementById('btnVoucher').addEventListener('click', ensureVoucherICs);
+  document.getElementById('btnLoadActivities').addEventListener('click', loadActivities);
+  document.getElementById('btnSave').addEventListener('click', saveNadiProgramActivity);
+
+  // Re-init GSI after script loads
+  window.addEventListener('load', () => {
+    if (window.google && window.google.accounts && window.google.accounts.id){
+      window.onGoogleLibraryLoad();
+    } else {
+      // fallback: attach when script fires
+      window.addEventListener('load', window.onGoogleLibraryLoad);
     }
-  }
+  });
+})();
 </script>
 </body>
 </html>
