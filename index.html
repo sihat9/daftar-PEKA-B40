@@ -6245,79 +6245,100 @@ function __toVoucherPayload(payload){
 }
 
 </script>
-<!-- [PATCH] Ensure TCA fields are saved with items -->
+<!-- [PATCH v2] Ensure PR/Tinggi/Berat/Status/AppointmentType + TCA fields are included -->
 <script>
 (function(){
-  if (window.__TCA_PATCH_APPLIED__) return;
-  window.__TCA_PATCH_APPLIED__ = true;
+  if (window.__PATCH_V2_APPLIED__) return;
+  window.__PATCH_V2_APPLIED__ = true;
 
-  function firstVal() {
-    for (var i=0;i<arguments.length;i++){
-      var v = arguments[i];
-      if (v===undefined || v===null) continue;
-      v = (''+v).trim();
-      if (v) return v;
-    }
+  function truthy(v){ return v===true || String(v).toLowerCase()==='true' || String(v)==='1' || v===1; }
+  function val(el){ return el && el.value!=null ? (''+el.value).trim() : ''; }
+  function pick(){ for (var i=0;i<arguments.length;i++){ var s = (arguments[i]||'').toString().trim(); if (s) return s; } return ''; }
+
+  function rowQuery(row, sel){ return row ? row.querySelector(sel) : null; }
+  function rowChecked(row, sel){
+    var el = rowQuery(row, sel);
+    if (!el) return false;
+    if ('checked' in el) return !!el.checked;
+    var v = (el.value||'').toString().trim();
+    return /^(1|true|ya|yes)$/i.test(v);
+  }
+
+  function getStatusFromRow(row){
+    // priority: explicit status field
+    var s = pick(val(rowQuery(row, '.nadi-status, select.nadi-status, [name="status"]'))).toUpperCase();
+    if (s) return s;
+    // derive from checkboxes
+    var layak = rowChecked(row, '.nadi-layak, input.nadi-layak, [name="layak"]');
+    var tak   = rowChecked(row, '.nadi-taklayak, input.nadi-taklayak, [name="takLayak"], [name="tidakLayak"]');
+    if (layak && !tak) return 'LAYAK';
+    if (tak && !layak) return 'TAK LAYAK';
     return '';
   }
 
-  // Try to patch collectNadiItems so it doesn't blank TCA fields
-  try{
-    if (typeof window.collectNadiItems === 'function' && !window.__collectNadiItemsPatched){
-      var __origCollect = window.collectNadiItems;
-      window.collectNadiItems = function(){
-        var items = __origCollect.apply(this, arguments) || [];
-        // Ensure we do NOT zero out TCA fields
-        items = items.map(function(r){ 
-          r = r || {};
-          r.tcaDate  = firstVal(r.tcaDate,  r.tca_date, r.tca,  r.TCADate);
-          r.tcaTime  = firstVal(r.tcaTime,  r.tca_time, r.masaTCA, r.TCATime);
-          r.tcaStaff = firstVal(r.tcaStaff, r.tca_staff, r.staffTCA, r.TCAStaff);
-          return r;
-        });
-        return items;
-      };
-      window.__collectNadiItemsPatched = true;
-    }
-  } catch(e){/*noop*/}
+  function getAppointmentType(row, status){
+    // explicit select
+    var apt = pick(val(rowQuery(row, '.nadi-apt, select.nadi-apt, [name="appointmentType"]'))).toUpperCase();
+    if (apt) return apt;
+    // derive from voucher checkbox
+    var voucher = rowChecked(row, '.nadi-voucher, input.nadi-voucher, [name="isVoucher"], [name="tcaVoucher"]');
+    if (voucher) return 'VOUCHER';
+    if (status==='LAYAK') return 'PKB40';
+    return 'NONE';
+  }
 
-  // Wrap RUMUS.post to merge TCA from DOM rows by index right before submit
+  function mergeRowFields(item, row){
+    // Fields present in UI
+    var pr      = pick(item.pr, val(rowQuery(row, '.nadi-pr, input.nadi-pr, [name="pr"], [name="nadi"]')));
+    var tinggi  = pick(item.tinggi, val(rowQuery(row, '.nadi-tinggi, input.nadi-tinggi, [name="tinggi"], [name="height"], [name="Ht"]')));
+    var berat   = pick(item.berat,  val(rowQuery(row, '.nadi-berat,  input.nadi-berat,  [name="berat"],  [name="weight"], [name="Wt"]')));
+    var bmi     = pick(item.bmi,    val(rowQuery(row, '.nadi-bmi, input.nadi-bmi, [name="bmi"]')));
+    var bp      = pick(item.bp,     val(rowQuery(row, '.nadi-bp, input.nadi-bp, [name="bp"]')));
+    var dxt     = pick(item.dxt,    val(rowQuery(row, '.nadi-dxt, input.nadi-dxt, [name="dxt"], [name="bs"], [name="sugar"]')));
+    var dxtType = pick(item.dxtType,val(rowQuery(row, '.nadi-dxt-type, select.nadi-dxt-type, [name="dxtType"]'))).toUpperCase();
+    if (dxtType && !/^(FASTING|RANDOM)$/.test(dxtType)) dxtType='';
+
+    var tcaDate  = pick(item.tcaDate,  item.tca_date, item.tca,  item.TCADate,  val(rowQuery(row, '.nadi-tca-date, input.nadi-tca-date, [name="tcaDate"]')));
+    var tcaTime  = pick(item.tcaTime,  item.tca_time, item.masaTCA, item.TCATime, val(rowQuery(row, '.nadi-tca-time, input.nadi-tca-time, [name="tcaTime"]')));
+    var tcaStaff = pick(item.tcaStaff, item.tca_staff, item.staffTCA, item.TCAStaff, val(rowQuery(row, '.nadi-staff, input.nadi-staff, [name="tcaStaff"]')));
+
+    var status   = pick((item.status||'').toString().toUpperCase(), getStatusFromRow(row));
+    var aptType  = getAppointmentType(row, status);
+
+    item.pr = pr;
+    item.tinggi = tinggi;
+    item.berat = berat;
+    item.bmi = bmi;
+    item.bp = bp;
+    item.dxt = dxt;
+    item.dxtType = dxtType;
+    item.status = status;
+    item.appointmentType = aptType;
+    item.tcaDate = tcaDate;
+    item.tcaTime = tcaTime;
+    item.tcaStaff = tcaStaff;
+    return item;
+  }
+
   try{
-    if (window.RUMUS && typeof window.RUMUS.post === 'function' && !window.__RUMUS_POST_TCA_PATCHED__){
+    if (window.RUMUS && typeof window.RUMUS.post === 'function' && !window.__RUMUS_POST_PATCH_V2__){
       var __origPost = window.RUMUS.post;
       window.RUMUS.post = async function(url, payload){
         try{
-          if (payload && typeof payload === 'object'){
+          if (payload && typeof payload==='object'){
             var act = (payload.action||'').toString().trim();
-            if (act === 'saveNadiActivity' && Array.isArray(payload.items)){
-              // Try to align items with NADI table rows
-              var rows = Array.prototype.slice.call(document.querySelectorAll('.nadi-row, tr.nadi-row'));
-              // Fallback selector if above not present
+            if (act==='saveNadiActivity' && Array.isArray(payload.items)){
+              var rows = Array.prototype.slice.call(document.querySelectorAll('tr.nadi-row, .nadi-row'));
               if (!rows.length) rows = Array.prototype.slice.call(document.querySelectorAll('tr[data-nadi-row], .row-nadi'));
-              payload.items = payload.items.map(function(r, idx){
-                r = r || {};
-                var tr = rows[idx];
-                var d = '', t = '', s = '';
-                if (tr && tr.querySelector){
-                  var dEl = tr.querySelector('.nadi-tca-date, input.nadi-tca-date, input[name="tcaDate"]');
-                  var tEl = tr.querySelector('.nadi-tca-time, input.nadi-tca-time, input[name="tcaTime"]');
-                  var sEl = tr.querySelector('.nadi-staff, input.nadi-staff, input[name="tcaStaff"]');
-                  d = dEl && dEl.value ? (''+dEl.value).trim() : '';
-                  t = tEl && tEl.value ? (''+tEl.value).trim() : '';
-                  s = sEl && sEl.value ? (''+sEl.value).trim() : '';
-                }
-                // Merge: prefer existing non-empty values, else use DOM
-                r.tcaDate  = firstVal(r.tcaDate,  r.tca_date, r.tca,  r.TCADate,  d);
-                r.tcaTime  = firstVal(r.tcaTime,  r.tca_time, r.masaTCA, r.TCATime, t);
-                r.tcaStaff = firstVal(r.tcaStaff, r.tca_staff, r.staffTCA, r.TCAStaff, s);
-                return r;
+              payload.items = payload.items.map(function(it, idx){
+                return mergeRowFields(it||{}, rows[idx]);
               });
             }
           }
-        }catch(e){/*ignore*/}
+        }catch(e){/*silent*/}
         return __origPost.apply(this, arguments);
       };
-      window.__RUMUS_POST_TCA_PATCHED__ = true;
+      window.__RUMUS_POST_PATCH_V2__ = true;
     }
   }catch(e){/*noop*/}
 })();
