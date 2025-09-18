@@ -6345,6 +6345,129 @@ function __toVoucherPayload(payload){
 </script>
 
 
+
+<!-- [PATCH v4] Wider selectors + console debug for Status/AppointmentType/TCA merge -->
+<script>
+(function(){
+  if (window.__PATCH_V4_APPLIED__) return;
+  window.__PATCH_V4_APPLIED__ = true;
+
+  function pick(){ for (var i=0;i<arguments.length;i++){ var s = arguments[i]; if (s===undefined||s===null) continue; s=(''+s).trim(); if (s) return s; } return ''; }
+  function v(el){ return el && el.value!=null ? (''+el.value).trim() : ''; }
+  function q(root, sel){ try{ return root ? root.querySelector(sel) : document.querySelector(sel); }catch(e){ return null; } }
+  function qa(root, sel){ try{ return Array.prototype.slice.call(root ? root.querySelectorAll(sel) : document.querySelectorAll(sel)); }catch(e){ return []; } }
+  function checked(root, sel){
+    var el = q(root, sel); if (!el) return false;
+    if ('checked' in el) return !!el.checked;
+    var s = v(el); return /^(1|true|yes|ya|on)$/i.test(s);
+  }
+
+  function findNadiRowForItem(item){
+    var ic = pick(item.noIC, item.ic, item.nokp, item.no_kp);
+    if (ic){
+      var tr = document.querySelector('tbody#nadiContainer tr[data-ic="'+ic+'"]')
+            || document.querySelector('tr[data-ic="'+ic+'"]');
+      if (tr) return tr;
+      // try any row with matching .nadi-ic input value
+      var rows = qa(null, 'tbody#nadiContainer tr, tr[data-ic]');
+      for (var i=0;i<rows.length;i++){
+        var valIc = v(q(rows[i], '.nadi-ic, input.nadi-ic, [name="ic"], [name="noIC"], [data-col="NoIC"]'));
+        if (valIc && ic && valIc===ic) return rows[i];
+      }
+    }
+    return null;
+  }
+
+  function deriveStatus(row){
+    // explicit select/text
+    var s = pick(v(q(row, '.nadi-status, select.nadi-status, [name="status"], [data-col="Status"]'))).toUpperCase();
+    if (s) return s;
+    // common checkbox locations
+    var layak = checked(row, '.nadi-layak, input.nadi-layak, [name="layak"], [data-role="layak"], td.col-layak input[type="checkbox"]');
+    var tak   = checked(row, '.nadi-taklayak, input.nadi-taklayak, [name="takLayak"], [name="tidakLayak"], [data-role="takLayak"], td.col-taklayak input[type="checkbox"]');
+    if (layak && !tak) return 'LAYAK';
+    if (tak && !layak) return 'TAK LAYAK';
+    return '';
+  }
+
+  function deriveAppointmentType(row, status){
+    var apt = pick(v(q(row, '.nadi-apt, select.nadi-apt, [name="appointmentType"], [data-col="AppointmentType"]'))).toUpperCase();
+    if (apt) return apt;
+    var voucher = checked(row, '.nadi-voucher, input.nadi-voucher, [name="isVoucher"], [name="tcaVoucher"], [data-role="voucher"], td.col-voucher input[type="checkbox"]');
+    if (voucher) return 'VOUCHER';
+    if (status==='LAYAK') return 'PKB40';
+    return 'NONE';
+  }
+
+  function normalizeDXTType(s){
+    s = (s||'').toString().trim().toUpperCase();
+    if (!s) return '';
+    if (/(FAST|FBG|PUASA)/.test(s)) return 'FASTING';
+    if (/(RAND|RBG|RANDOM)/.test(s)) return 'RANDOM';
+    return s;
+  }
+
+  function readField(row, candidates){
+    for (var i=0;i<candidates.length;i++){
+      var el = q(row, candidates[i]);
+      var val = v(el);
+      if (val) return val;
+    }
+    return '';
+  }
+
+  function mergeFromRow(item, row){
+    if (!row) return item||{};
+    item = item || {};
+
+    item.pr      = pick(item.pr,      readField(row, ['.nadi-pr','input.nadi-pr','[name="pr"]','[name="nadi"]','[data-col="PR"]']));
+    item.tinggi  = pick(item.tinggi,  readField(row, ['.nadi-tinggi','input.nadi-tinggi','[name="tinggi"]','[name="height"]','[name="Ht"]','[data-col="Tinggi"]']));
+    item.berat   = pick(item.berat,   readField(row, ['.nadi-berat','input.nadi-berat','[name="berat"]','[name="weight"]','[name="Wt"]','[data-col="Berat"]']));
+    item.bmi     = pick(item.bmi,     readField(row, ['.nadi-bmi','input.nadi-bmi','[name="bmi"]','[data-col="BMI"]']));
+    item.bp      = pick(item.bp,      readField(row, ['.nadi-bp','input.nadi-bp','[name="bp"]','[data-col="BP"]']));
+    item.dxt     = pick(item.dxt,     readField(row, ['.nadi-dxt','input.nadi-dxt','[name="dxt"]','[name="bs"]','[name="sugar"]','[data-col="DXT"]']));
+    item.dxtType = normalizeDXTType(pick(item.dxtType, readField(row, ['.nadi-dxt-type','select.nadi-dxt-type','[name="dxtType"]','[data-col="DXTType"]'])));
+
+    var status = pick((item.status||'').toString().toUpperCase(), deriveStatus(row));
+    item.status = status;
+    item.appointmentType = pick(item.appointmentType, deriveAppointmentType(row, status));
+
+    item.tcaDate  = pick(item.tcaDate,  item.tca_date, item.tca,  item.TCADate,  readField(row, ['.nadi-tca-date','input.nadi-tca-date','[name="tcaDate"]','[data-col="TCADate"]']));
+    item.tcaTime  = pick(item.tcaTime,  item.tca_time, item.masaTCA, item.TCATime, readField(row, ['.nadi-tca-time','input.nadi-tca-time','[name="tcaTime"]','[data-col="TCATime"]']));
+    item.tcaStaff = pick(item.tcaStaff, item.tca_staff, item.staffTCA, item.TCAStaff, readField(row, ['.nadi-staff','input.nadi-staff','[name="tcaStaff"]','[data-col="TCAStaff"]']));
+
+    // Debug to console (visible in DevTools) to verify mapping for this IC
+    try {
+      var ic = pick(item.noIC, item.ic, item.nokp, item.no_kp);
+      console.debug('[PATCH v4] merged row', {ic, pr:item.pr, tinggi:item.tinggi, berat:item.berat, status:item.status, apt:item.appointmentType, tcaDate:item.tcaDate, tcaTime:item.tcaTime, tcaStaff:item.tcaStaff});
+    } catch(e){}
+
+    return item;
+  }
+
+  try{
+    if (window.RUMUS && typeof window.RUMUS.post === 'function' && !window.__RUMUS_POST_PATCH_V4__){
+      var __origPost = window.RUMUS.post;
+      window.RUMUS.post = async function(url, payload){
+        try{
+          if (payload && typeof payload==='object'){
+            var act = (payload.action||'').toString().trim();
+            if (act==='saveNadiActivity' && Array.isArray(payload.items)){
+              payload.items = payload.items.map(function(it){
+                var row = findNadiRowForItem(it||{});
+                return mergeFromRow(it||{}, row);
+              });
+            }
+          }
+        }catch(e){/*silent*/}
+        return __origPost.apply(this, arguments);
+      };
+      window.__RUMUS_POST_PATCH_V4__ = true;
+    }
+  }catch(e){/*noop*/}
+})();
+</script>
+
 <!-- [PATCH v3] Robust merge by IC to fill PR/Tinggi/Berat/Status/AppointmentType + TCA -->
 <script>
 (function(){
@@ -6440,6 +6563,111 @@ function __toVoucherPayload(payload){
         return __origPost.apply(this, arguments);
       };
       window.__RUMUS_POST_PATCH_V3__ = true;
+    }
+  }catch(e){/*noop*/}
+})();
+</script>
+
+
+<!-- [PATCH v5] HR alias + generic TCA selectors -->
+<script>
+(function(){
+  if (window.__PATCH_V5_APPLIED__) return;
+  window.__PATCH_V5_APPLIED__ = true;
+
+  function pick(){ for (var i=0;i<arguments.length;i++){ var s = arguments[i]; if (s===undefined||s===null) continue; s=(''+s).trim(); if (s) return s; } return ''; }
+  function v(el){ return el && el.value!=null ? (''+el.value).trim() : ''; }
+  function q(root, sel){ try{ return root ? root.querySelector(sel) : document.querySelector(sel); }catch(e){ return null; } }
+  function qa(root, sel){ try{ return Array.prototype.slice.call(root ? root.querySelectorAll(sel) : document.querySelectorAll(sel)); }catch(e){ return []; } }
+  function checked(root, sel){ var el = q(root, sel); if (!el) return false; if ('checked' in el) return !!el.checked; var s=v(el); return /^(1|true|yes|ya|on)$/i.test(s); }
+
+  function findRowByIC(ic){
+    if (!ic) return null;
+    return document.querySelector('tbody#nadiContainer tr[data-ic="'+ic+'"]')
+        || document.querySelector('tr[data-ic="'+ic+'"]')
+        || (function(){
+              var rows = qa(null, 'tbody#nadiContainer tr, tr[data-ic]');
+              for (var i=0;i<rows.length;i++){
+                var valIc = v(q(rows[i], '.nadi-ic, input.nadi-ic, [name="ic"], [name="noIC"], [data-col="NoIC"]'));
+                if (valIc && valIc===ic) return rows[i];
+              }
+              return null;
+            })();
+  }
+
+  function deriveStatus(row){
+    var s = pick(v(q(row, '.nadi-status, select.nadi-status, [name="status"], [data-col="Status"]'))).toUpperCase();
+    if (s) return s;
+    var layak = checked(row, '.nadi-layak, input.nadi-layak, [name="layak"], [data-role="layak"], td.col-layak input[type="checkbox"]');
+    var tak   = checked(row, '.nadi-taklayak, input.nadi-taklayak, [name="takLayak"], [name="tidakLayak"], [data-role="takLayak"], td.col-taklayak input[type="checkbox"]');
+    if (layak && !tak) return 'LAYAK';
+    if (tak && !layak) return 'TAK LAYAK';
+    return '';
+  }
+  function deriveAppointmentType(row, status){
+    var apt = pick(v(q(row, '.nadi-apt, select.nadi-apt, [name="appointmentType"], [data-col="AppointmentType"]'))).toUpperCase();
+    if (apt) return apt;
+    var voucher = checked(row, '.nadi-voucher, input.nadi-voucher, [name="isVoucher"], [name="tcaVoucher"], [data-role="voucher"], td.col-voucher input[type="checkbox"]');
+    if (voucher) return 'VOUCHER';
+    if (status==='LAYAK') return 'PKB40';
+    return 'NONE';
+  }
+  function normalizeDXTType(s){
+    s = (s||'').toString().trim().toUpperCase();
+    if (!s) return '';
+    if (/(FAST|FBG|PUASA)/.test(s)) return 'FASTING';
+    if (/(RAND|RBG|RANDOM)/.test(s)) return 'RANDOM';
+    return s;
+  }
+  function readField(row, candidates){
+    for (var i=0;i<candidates.length;i++){
+      var el = q(row, candidates[i]);
+      var val = v(el);
+      if (val) return val;
+    }
+    return '';
+  }
+
+  // Main wrapper
+  try{
+    if (window.RUMUS && typeof window.RUMUS.post === 'function' && !window.__RUMUS_POST_PATCH_V5__){
+      var __origPost = window.RUMUS.post;
+      window.RUMUS.post = async function(url, payload){
+        try{
+          if (payload && typeof payload==='object' && (payload.action||'').toString().trim()==='saveNadiActivity' && Array.isArray(payload.items)){
+            payload.items = payload.items.map(function(it){
+              it = it || {};
+              var ic = pick(it.noIC, it.ic, it.nokp, it.no_kp);
+              var row = findRowByIC(ic) || null;
+
+              // Read fields (wider selectors, plus HR)
+              var pr = pick(it.pr, readField(row, ['.nadi-pr','input.nadi-pr','[name="pr"]','[name="nadi"]','[name="hr"]','.nadi-hr','input.nadi-hr','[data-col="PR"]']));
+              var tinggi = pick(it.tinggi, readField(row, ['.nadi-tinggi','input.nadi-tinggi','[name="tinggi"]','[name="height"]','[name="Ht"]','[data-col="Tinggi"]']));
+              var berat  = pick(it.berat,  readField(row, ['.nadi-berat','input.nadi-berat','[name="berat"]','[name="weight"]','[name="Wt"]','[data-col="Berat"]']));
+              var bmi    = pick(it.bmi,    readField(row, ['.nadi-bmi','input.nadi-bmi','[name="bmi"]','[data-col="BMI"]']));
+              var bp     = pick(it.bp,     readField(row, ['.nadi-bp','input.nadi-bp','[name="bp"]','[data-col="BP"]']));
+              var dxt    = pick(it.dxt,    readField(row, ['.nadi-dxt','input.nadi-dxt','[name="dxt"]','[name="bs"]','[name="sugar"]','[data-col="DXT"]']));
+              var dxtType= normalizeDXTType(pick(it.dxtType, readField(row, ['.nadi-dxt-type','select.nadi-dxt-type','[name="dxtType"]','[data-col="DXTType"]'])));
+
+              var status = pick((it.status||'').toString().toUpperCase(), deriveStatus(row));
+              var aptType= pick(it.appointmentType, deriveAppointmentType(row, status));
+
+              var tcaDate  = pick(it.tcaDate,  it.tca_date, it.tca,  it.TCADate,  readField(row, ['.nadi-tca-date','input.nadi-tca-date','.tca-date','input.tca-date','[name="tcaDate"]','[data-col="TCADate"]']));
+              var tcaTime  = pick(it.tcaTime,  it.tca_time, it.masaTCA, it.TCATime, readField(row, ['.nadi-tca-time','input.nadi-tca-time','.tca-time','input.tca-time','[name="tcaTime"]','[data-col="TCATime"]']));
+              var tcaStaff = pick(it.tcaStaff, it.tca_staff, it.staffTCA, it.TCAStaff, readField(row, ['.nadi-staff','input.nadi-staff','.tca-staff','input.tca-staff','[name="tcaStaff"]','[data-col="TCAStaff"]']));
+
+              it.pr = pr; it.tinggi=tinggi; it.berat=berat; it.bmi=bmi; it.bp=bp; it.dxt=dxt; it.dxtType=dxtType;
+              it.status = status; it.appointmentType=aptType;
+              it.tcaDate=tcaDate; it.tcaTime=tcaTime; it.tcaStaff=tcaStaff;
+
+              try{ console.debug('[PATCH v5]', {ic, pr, tinggi, berat, status, aptType, tcaDate, tcaTime, tcaStaff}); }catch(e){}
+              return it;
+            });
+          }
+        }catch(e){/*ignore*/}
+        return __origPost.apply(this, arguments);
+      };
+      window.__RUMUS_POST_PATCH_V5__ = true;
     }
   }catch(e){/*noop*/}
 })();
