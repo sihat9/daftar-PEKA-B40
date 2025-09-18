@@ -52,44 +52,64 @@
   function whenRUMUS(cb){ if (window.RUMUS) return cb(); var n=0, iv=setInterval(function(){ n++; if(window.RUMUS){clearInterval(iv); cb();} if(n>200) clearInterval(iv); },50); }
   function truthy(x){ return x===true || String(x).toLowerCase()==='true' || x===1 || String(x)==='1' || String(x).toLowerCase()==='ya'; }
   function normItems(items){
-    try{ if (typeof items==='string') items=JSON.parse(items); }catch(e){ return items; }
-    if (!Array.isArray(items)) return items;
-    function normDXT(v){ v=String(v||'').toUpperCase(); if(/FAST|FBG|PUASA/.test(v))return 'FASTING'; if(/RAND|RBG|RANDOM/.test(v))return 'RANDOM'; return v; }
-    function pickStatus(r){
-      var s=(r.status||r.kelayakan||r.kel||'').toString().toUpperCase().trim();
-      if(!s) s = truthy(r.layak)?'LAYAK':(truthy(r.takLayak)?'TAK LAYAK':'');
-      if(/TIDAK\s*LAYAK|TAK\s*LAYAK/.test(s)) return 'TAK LAYAK';
-      if(/LAYAK/.test(s)) return 'LAYAK';
-      return s;
+  try{ if (typeof items==='string') items=JSON.parse(items); }catch(e){ return items; }
+  if (!Array.isArray(items)) return items;
+
+  function truthy(x){ return x===true || String(x).toLowerCase()==='true' || x===1 || String(x)==='1' || String(x).toLowerCase()==='ya' || String(x).toLowerCase()==='yes'; }
+  function normDXT(v){ v=String(v||'').toUpperCase(); if(/FAST|FBG|PUASA/.test(v))return 'FASTING'; if(/RAND|RBG|RANDOM/.test(v))return 'RANDOM'; return v; }
+  function onlyNumStr(s){ s=String(s||''); const m=s.match(/-?\d+(?:[.,]\d+)?/); return m?m[0].replace(',', '.'):''; }
+
+  return items.map(function(r){
+    // derive status + appointment type
+    var statusRaw = (r.status||r.kelayakan||r.kel||'').toString().toUpperCase().trim();
+    var layakB = truthy(r.layak) || String(r['Layak']||'').toLowerCase()==='yes';
+    var takB   = truthy(r.takLayak) || String(r['Tidak Layak']||'').toLowerCase()==='yes';
+    var vchrB  = truthy(r.voucher) || truthy(r.isVoucher) || truthy(r.tcaVoucher) || String(r['TCA voucher']||'').toLowerCase()==='yes';
+
+    var status = statusRaw;
+    if (!status){
+      if (vchrB) status = 'LAYAK'; // will map apt=VOUCHER below, status kept as LAYAK for simplicity
+      else if (layakB && !takB) status = 'LAYAK';
+      else if (takB && !layakB) status = 'TAK LAYAK';
+      else status = '';
     }
-    return items.map(function(r){
-      var status = pickStatus(r);
-      var voucher = truthy(r.voucher)||truthy(r.isVoucher)||truthy(r.tcaVoucher);
-      var apt = (r.appointmentType||r.appointment_type||'').toString().toUpperCase();
-      if(!apt) apt = voucher ? 'VOUCHER' : (status==='LAYAK' ? 'PKB40' : (status==='TAK LAYAK' ? 'NONE' : ''));
-      return {
-        nama: r.nama||r.name||r.fullname||'',
-        noIC: r.noIC||r.ic||r.no_kp||r.icNumber||r.nokp||'',
-        umur: r.umur||r.age||'',
-        noTelefon: r.noTelefon||r.telefon||r.noTel||r.msisdn||r.phone||r.tel||'',
-        alamat: r.alamat||r.address||r.addr||'',
-        bp: r.bp||r.bloodPressure||'',
-        pr: r.pr||r.nadi||r.pulse||'',
-        dxt: r.dxt||r.gula||r.bs||r.sugar||'',
-        dxtType: normDXT(r.dxtType||r.dxt_type||r.dxttype),
-        tinggi: r.tinggi||r.height||'',
-        berat: r.berat||r.weight||'',
-        bmi: r.bmi||r.BMI||'',
-        status: status,
-        appointmentType: apt,
-        remark: r.remark||r.catatan||r.notes||r.note||'',
-        tcaDate: r.tcaDate||r.tca_date||r.tca||'',
-        tcaTime: r.tcaTime||r.tca_time||r.masaTCA||'',
-        tcaStaff: r.tcaStaff||r.tca_staff||r.staffTCA||''
-      };
+    var apt = (r.appointmentType||r.appointment_type||'').toString().toUpperCase();
+    if (!apt) apt = vchrB ? 'VOUCHER' : (status==='LAYAK' ? 'PKB40' : (status==='TAK LAYAK' ? 'NONE' : ''));
+
+    // TCA date preference: explicit -> voucherDate -> UI label -> others
+    var tcaDateRaw = r.tcaDate || r.voucherDate || r['Tarikh TCA (Voucher)'] || r.tca_date || r.tca || '';
+    var tcaTimeRaw = r.tcaTime || r.tca_time || r.masaTCA || '';
+    var tcaStaffRaw= r.tcaStaff || r.tca_staff || r.staffTCA || '';
+
+    return Object.assign({
+      nama: r.nama||r.name||r.fullname||'',
+      noIC: r.noIC||r.ic||r.no_kp||r.icNumber||r.nokp||'',
+      umur: r.umur||r.age||'',
+      noTelefon: r.noTelefon||r.telefon||r.noTel||r.msisdn||r.phone||r.tel||'',
+      alamat: r.alamat||r.address||r.addr||'',
+      bp: r.bp||r.bloodPressure||'',
+      pr: r.pr||r.nadi||r.pulse||r.hr||'',
+      dxt: r.dxt||r.gula||r.bs||r.sugar||'',
+      dxtType: normDXT(r.dxtType||r.dxt_type||r.dxttype),
+      tinggi: onlyNumStr(r.tinggi||r.height||r.ht||r['Tinggi']||''),
+      berat:  onlyNumStr(r.berat||r.weight||r.wt||r['Berat']||''),
+      bmi: r.bmi||r.BMI||'',
+      status: status,
+      appointmentType: apt,
+      remark: r.remark||r.catatan||r.notes||r.note||'',
+      tcaDate: tcaDateRaw,
+      tcaTime: tcaTimeRaw,
+      tcaStaff: tcaStaffRaw
+    }, {
+      // carry UI keys too (harmless for backend; helps if sheet uses UI headers)
+      'Layak': layakB ? 'YES' : 'No',
+      'Tidak Layak': takB ? 'YES' : 'No',
+      'TCA voucher': vchrB ? 'YES' : 'No',
+      'Tarikh TCA (Voucher)': r['Tarikh TCA (Voucher)'] || (vchrB ? tcaDateRaw : '')
     });
-  }
-  whenRUMUS(function(){
+  });
+}
+whenRUMUS(function(){
     if (typeof RUMUS.post==='function'){
       var _post = RUMUS.post.bind(RUMUS);
       RUMUS.post = function(action, params){
@@ -2604,30 +2624,30 @@ function addNadiRow(){
     </td>
     <td class="nadi-input-cell">
       <div class="view-mode" onclick="editNadiCell(this)"></div>
-      <input class="form-control form-control-sm nadi-nama" placeholder="Nama pesakit" style="display:none" onblur="saveNadiCell(this)" name="nama" />
+      <input class="form-control form-control-sm nadi-nama" placeholder="Nama pesakit" style="display:none" onblur="saveNadiCell(this)" / name="nama">
     </td>
     <td class="nadi-input-cell">
       <div class="view-mode" onclick="editNadiCell(this)"></div>
-      <input class="form-control form-control-sm nadi-ic" placeholder="IC" style="display:none" onblur="saveNadiCell(this)" name="ic" />
+      <input class="form-control form-control-sm nadi-ic" placeholder="IC" style="display:none" onblur="saveNadiCell(this)" / name="ic">
     </td>
     <td class="nadi-input-cell">
       <div class="view-mode nadi-umur-view"></div>
     </td>
     <td class="nadi-input-cell">
       <div class="view-mode" onclick="editNadiCell(this)"></div>
-      <input class="form-control form-control-sm nadi-tel" placeholder="Telefon" style="display:none" onblur="saveNadiCell(this)" name="telefon" />
+      <input class="form-control form-control-sm nadi-tel" placeholder="Telefon" style="display:none" onblur="saveNadiCell(this)" / name="telefon">
     </td>
     <td class="nadi-input-cell">
       <div class="view-mode" onclick="editNadiCell(this)"></div>
-      <input class="form-control form-control-sm nadi-alamat" placeholder="Alamat" style="display:none" onblur="saveNadiCell(this)" name="alamat" />
+      <input class="form-control form-control-sm nadi-alamat" placeholder="Alamat" style="display:none" onblur="saveNadiCell(this)" / name="alamat">
     </td>
     <td class="nadi-input-cell">
       <div class="view-mode" onclick="editNadiCell(this)"></div>
-      <input class="form-control form-control-sm nadi-bp" placeholder="BP" style="display:none" onblur="saveNadiCell(this)" name="bp" />
+      <input class="form-control form-control-sm nadi-bp" placeholder="BP" style="display:none" onblur="saveNadiCell(this)" / name="bp">
     </td>
     <td class="nadi-input-cell">
       <div class="view-mode" onclick="editNadiCell(this)"></div>
-      <input class="form-control form-control-sm nadi-pr" placeholder="PR" style="display:none" onblur="saveNadiCell(this)" name="pr" />
+      <input class="form-control form-control-sm nadi-pr" placeholder="PR" style="display:none" onblur="saveNadiCell(this)" / name="pr">
     </td>
     <td>
       <div class="input-group input-group-sm">
@@ -2636,21 +2656,21 @@ function addNadiRow(){
           <li><a class="dropdown-item" href="#" data-value="Fasting">Fasting</a></li>
           <li><a class="dropdown-item" href="#" data-value="Random">Random</a></li>
         </ul>
-        <input class="form-control nadi-dxt" placeholder="DXT" style="width:100%; min-width:80px" name="dxt" />
-        <input type="hidden" class="nadi-dxt-type" value="Fasting" name="dxtType" />
+        <input class="form-control nadi-dxt" placeholder="DXT" style="width:100%; min-width:80px" / name="dxt">
+        <input type="hidden" class="nadi-dxt-type" value="Fasting" / name="dxt">
       </div>
     </td>
     <td class="nadi-input-cell">
       <div class="view-mode" onclick="editNadiCell(this)"></div>
-      <input class="form-control form-control-sm nadi-tinggi" placeholder="Tinggi" style="display:none" onblur="saveNadiCell(this)" name="tinggi" />
+      <input class="form-control form-control-sm nadi-tinggi" placeholder="Tinggi" style="display:none" onblur="saveNadiCell(this)" / name="tinggi">
     </td>
     <td class="nadi-input-cell">
       <div class="view-mode" onclick="editNadiCell(this)"></div>
-      <input class="form-control form-control-sm nadi-berat" placeholder="Berat" style="display:none" onblur="saveNadiCell(this)" name="berat" />
+      <input class="form-control form-control-sm nadi-berat" placeholder="Berat" style="display:none" onblur="saveNadiCell(this)" / name="berat">
     </td>
     <td class="nadi-input-cell">
       <div class="view-mode" onclick="editNadiCell(this)"></div>
-      <input class="form-control form-control-sm nadi-bmi" placeholder="BMI" disabled style="display:none" onblur="saveNadiCell(this)" name="bmi" />
+      <input class="form-control form-control-sm nadi-bmi" placeholder="BMI" disabled style="display:none" onblur="saveNadiCell(this)" / name="bmi">
     </td>
     <td class="text-center">
       <input class="form-check-input nadi-layak" type="checkbox" name="layak">
@@ -2668,7 +2688,7 @@ function addNadiRow(){
     <!-- Kolum Remark baharu -->
     <td class="nadi-input-cell">
       <div class="view-mode" onclick="editNadiCell(this)"></div>
-      <input class="form-control form-control-sm nadi-remark" placeholder="Catatan / Remark" style="display:none" onblur="saveNadiCell(this)" name="remark" />
+      <input class="form-control form-control-sm nadi-remark" placeholder="Catatan / Remark" style="display:none" onblur="saveNadiCell(this)" / name="remark">
     </td>
     <td>
       <div class="d-flex gap-1">
@@ -3174,72 +3194,66 @@ function collectNadiRowsForActivity(){
 
   const items = [];
 
-  rows.forEach(row => {
-    const val  = (sel) => (row.querySelector(sel)?.value ?? '').trim();
-    const text = (sel) => (row.querySelector(sel)?.textContent ?? '').trim();
+  rows.forEach(r => {
+    const val  = (sel) => (r.querySelector(sel)?.value ?? '').trim();
+    const text = (sel) => (r.querySelector(sel)?.textContent ?? '').trim();
 
     const nama    = val('.nadi-nama');
     const ic      = val('.nadi-ic');
     const tel     = val('.nadi-tel');
     const alamat  = val('.nadi-alamat');
-
+    const wt      = val('.nadi-berat');   // kg
+    const ht      = val('.nadi-tinggi');  // cm
     const bp      = val('.nadi-bp');
-    const pr      = val('.nadi-pr');
-    const dxtType = val('.nadi-dxt-type') || 'Fasting';
-    const dxt     = val('.nadi-dxt');
-    const tinggi  = val('.nadi-tinggi');
-    const berat   = val('.nadi-berat');
-    const bmi     = val('.nadi-bmi');
+    const hr      = val('.nadi-pr');      // PR
     const umurTxt = text('.nadi-umur-view');
+    const bmi     = val('.nadi-bmi');
+    const dxtType = val('.nadi-dxt-type');   // Fasting/Random
+    const dxt     = val('.nadi-dxt');
 
-    const layak    = !!row.querySelector('.nadi-layak')?.checked;
-    const takLayak = !!row.querySelector('.nadi-taklayak')?.checked;
-    const voucher  = !!row.querySelector('.nadi-voucher')?.checked;
+    // Checkboxes + Dates/Time/Staff
+    const layakCB = !!(r.querySelector('.nadi-layak')?.checked);
+    const takCB   = !!(r.querySelector('.nadi-taklayak')?.checked);
+    const vchrCB  = !!(r.querySelector('.nadi-voucher')?.checked);
 
-    let status = '';
-    if (layak) status = 'LAYAK';
-    else if (takLayak) status = 'TAK LAYAK';
+    const tcaDateVoucher = val('.nadi-voucher-date');   // yyyy-MM-dd
+    const tcaDateLayak   = val('.nadi-tca-date');       // yyyy-MM-dd
+    const tcaTime        = val('.nadi-tca-time');       // HH:mm
+    const tcaStaff       = val('.nadi-staff');
 
-    let appointmentType = '';
-    if (voucher) appointmentType = 'VOUCHER';
-    else if (status === 'LAYAK') appointmentType = 'PKB40';
-    else if (status === 'TAK LAYAK') appointmentType = 'NONE';
+    // Decide which TCA date to send
+    const tcaDate = vchrCB ? tcaDateVoucher : (layakCB ? tcaDateLayak : '');
 
-    // Tarikh/Masa/Staff TCA:
-    // - Jika voucher: guna Tarikh TCA (Voucher)
-    // - Jika Layak (PKB40): guna ruangan TCA & Staff
-    let tcaDate = '';
-    let tcaTime = '';
-    let tcaStaff = '';
-    if (voucher){
-      tcaDate = val('.nadi-voucher-date');
-    } else if (layak){
-      tcaDate = val('.nadi-tca-date');
-      tcaTime = val('.nadi-tca-time');
-      tcaStaff= val('.nadi-staff');
-    }
+    // UI 'YES'/'No' strings for the 3 checkboxes
+    const yesNo = (b) => b ? 'YES' : 'No';
 
-    // anggap baris sah jika ada sekurang-kurangnya satu input utama
-    const adaIsi = [nama, ic, tel, alamat, bp, pr, dxt, tinggi, berat, bmi, status, appointmentType, tcaDate].some(Boolean);
+    const remark  = val('.nadi-remark');     // optional
+
+    // Consider "ada isi" if at least one key field exists
+    const adaIsi = [nama, ic, tel, alamat, bp, hr, dxt, ht, wt, bmi, remark, tcaDate].some(Boolean);
 
     if (adaIsi){
       items.push({
-        // canonical keys yang ditelan oleh code.gs (saveNadiActivity_)
-        nama,               // Nama
-        noIC: ic,           // NoIC
-        umur: umurTxt,      // Umur (paparan)
-        noTelefon: tel,     // Telefon
-        alamat,             // Alamat
+        // Core fields
+        nama, ic, tel, alamat,
+        umur: umurTxt,
+        bp, pr: hr, hr, dxtType, dxt,
+        tinggi: ht, berat: wt, bmi,
 
-        bp, pr, dxt, dxtType,
-        tinggi, berat, bmi,
+        // Flags (booleans)
+        layak: layakCB, takLayak: takCB, voucher: vchrCB,
 
-        // status & janji temu
-        status, appointmentType, voucher,
+        // Duplicate UI-friendly flags for future compatibility
+        'Layak': yesNo(layakCB),
+        'Tidak Layak': yesNo(takCB),
+        'TCA voucher': yesNo(vchrCB),
+
+        // TCA
         tcaDate, tcaTime, tcaStaff,
+        'Tarikh TCA (Voucher)': tcaDateVoucher,
 
-        // catatan (optional)
-        remark: val('.nadi-remark')
+        // Notes
+        remark
       });
     }
   });
@@ -6282,316 +6296,5 @@ function __toVoucherPayload(payload){
   return { activityId, no, tcaDate, tcaTime, remark };
 }
 
-</script>
-<script>
-// === NADI strict-compat overrides (v2) ===
-(function(){
-  'use strict';
-  function $qs(sel, root){ return (root||document).querySelector(sel); }
-  function $qsa(sel, root){ return Array.from((root||document).querySelectorAll(sel)); }
-  function yn(v){ return v ? 'YES' : 'NO'; }
-
-  // Build one row
-  window.addNadiRow = window.addNadiRow || function addNadiRow(prefill){
-    const tb = $qs('#nadiContainer'); if(!tb) return;
-    const i = tb.children.length + 1;
-    const tr = document.createElement('tr');
-    tr.innerHTML = `
-      <td class="text-center"><span class="nadi-counter">${i}</span></td>
-      <td class="nadi-input-cell"><input class="form-control form-control-sm inp-nama" placeholder="Nama Pesakit"></td>
-      <td class="nadi-input-cell"><input class="form-control form-control-sm inp-ic" placeholder="No IC"></td>
-      <td class="nadi-input-cell"><input class="form-control form-control-sm inp-umur" type="number" min="0" placeholder="Umur"></td>
-      <td class="nadi-input-cell"><input class="form-control form-control-sm inp-telefon" placeholder="Telefon"></td>
-      <td class="nadi-input-cell"><input class="form-control form-control-sm inp-alamat" placeholder="Alamat"></td>
-      <td class="nadi-input-cell"><input class="form-control form-control-sm inp-bp" placeholder="BP"></td>
-      <td class="nadi-input-cell"><input class="form-control form-control-sm inp-pr" placeholder="PR"></td>
-      <td class="nadi-input-cell"><input class="form-control form-control-sm inp-dxt" placeholder="DXT / Fasting/Random"></td>
-      <td class="nadi-input-cell"><input class="form-control form-control-sm inp-tinggi" type="number" step="0.1" placeholder="cm"></td>
-      <td class="nadi-input-cell"><input class="form-control form-control-sm inp-berat" type="number" step="0.1" placeholder="kg"></td>
-      <td class="nadi-input-cell"><input class="form-control form-control-sm inp-bmi" type="text" placeholder="auto"></td>
-      <td class="nadi-checkbox-cell text-center">
-        <input type="checkbox" class="form-check-input chk-layak" aria-label="Layak">
-      </td>
-      <td class="nadi-checkbox-cell text-center">
-        <input type="checkbox" class="form-check-input chk-tak" aria-label="Tidak Layak">
-      </td>
-      <td class="nadi-checkbox-cell text-center">
-        <input type="checkbox" class="form-check-input chk-vchr" aria-label="TCA voucher">
-      </td>
-      <td class="nadi-input-cell">
-        <input type="date" class="form-control form-control-sm inp-vchr-date" disabled>
-      </td>
-      <td class="nadi-input-cell">
-        <input class="form-control form-control-sm inp-remark" placeholder="Remark">
-      </td>
-      <td class="nadi-input-cell">
-        <div class="row gx-2">
-          <div class="col-5"><input type="date" class="form-control form-control-sm inp-tca-date" disabled></div>
-          <div class="col-3"><input type="time" class="form-control form-control-sm inp-tca-time" disabled></div>
-          <div class="col-4"><input type="text" class="form-control form-control-sm inp-tca-staff" placeholder="Staff" disabled></div>
-        </div>
-      </td>
-      <td class="nadi-actions-cell text-center">
-        <button type="button" class="btn btn-sm btn-outline-danger btn-del"><i class="bi bi-trash"></i></button>
-      </td>
-    `;
-    tb.appendChild(tr);
-
-    // Pre-fill if provided
-    if (prefill && typeof prefill === 'object'){
-      tr.querySelector('.inp-nama').value   = prefill.nama || '';
-      tr.querySelector('.inp-ic').value     = prefill.noIC || prefill.ic || '';
-      tr.querySelector('.inp-umur').value   = prefill.umur || '';
-      tr.querySelector('.inp-telefon').value= prefill.noTelefon || prefill.telefon || prefill.msisdn || '';
-      tr.querySelector('.inp-alamat').value = prefill.alamat || '';
-      tr.querySelector('.inp-bp').value     = prefill.bp || '';
-      tr.querySelector('.inp-pr').value     = prefill.pr || '';
-      tr.querySelector('.inp-dxt').value    = prefill.dxt || '';
-      tr.querySelector('.inp-tinggi').value = prefill.tinggi || '';
-      tr.querySelector('.inp-berat').value  = prefill.berat || '';
-      tr.querySelector('.inp-bmi').value    = prefill.bmi || '';
-      tr.querySelector('.chk-layak').checked= !!(prefill.layak === true || String(prefill.layak).toUpperCase() === 'YES');
-      tr.querySelector('.chk-tak').checked  = !!(prefill.takLayak === true || String(prefill.takLayak).toUpperCase() === 'YES');
-      tr.querySelector('.chk-vchr').checked = !!(prefill.tcaVoucher === true || String(prefill.tcaVoucher).toUpperCase() === 'YES');
-      tr.querySelector('.inp-vchr-date').value = prefill.tcaVoucherDate || prefill.tcaDateVoucher || '';
-      tr.querySelector('.inp-remark').value = prefill.remark || '';
-      tr.querySelector('.inp-tca-date').value = prefill.tcaDate || '';
-      tr.querySelector('.inp-tca-time').value = prefill.tcaTime || '';
-      tr.querySelector('.inp-tca-staff').value= prefill.tcaStaff || '';
-    }
-
-    // BMI auto-calc
-    function calcBMI(){
-      const h = parseFloat(tr.querySelector('.inp-tinggi').value || '0')/100;
-      const w = parseFloat(tr.querySelector('.inp-berat').value || '0');
-      tr.querySelector('.inp-bmi').value = (h>0 && w>0) ? (w/(h*h)).toFixed(1) : '';
-    }
-    tr.querySelector('.inp-tinggi').addEventListener('input', calcBMI);
-    tr.querySelector('.inp-berat').addEventListener('input', calcBMI);
-
-    // Exclusive: Layak vs Tidak Layak
-    const chkLayak = tr.querySelector('.chk-layak');
-    const chkTak   = tr.querySelector('.chk-tak');
-    const chkVchr  = tr.querySelector('.chk-vchr');
-    const vchrDate = tr.querySelector('.inp-vchr-date');
-    const tcaDate  = tr.querySelector('.inp-tca-date');
-    const tcaTime  = tr.querySelector('.inp-tca-time');
-    const tcaStaff = tr.querySelector('.inp-tca-staff');
-
-    function syncEnable(){
-      vchrDate.disabled = !chkVchr.checked;
-      tcaDate.disabled  = !chkLayak.checked;
-      tcaTime.disabled  = !chkLayak.checked;
-      tcaStaff.disabled = !chkLayak.checked;
-    }
-    chkLayak.addEventListener('change', function(){
-      if (this.checked) chkTak.checked = false;
-      syncEnable();
-    });
-    chkTak.addEventListener('change', function(){
-      if (this.checked) chkLayak.checked = false;
-      syncEnable();
-    });
-    chkVchr.addEventListener('change', syncEnable);
-    syncEnable();
-
-    // Delete
-    tr.querySelector('.btn-del').addEventListener('click', function(){
-      tr.remove();
-      // re-number
-      $qsa('#nadiContainer .nadi-counter').forEach((el, idx)=> el.textContent = idx+1);
-    });
-  };
-
-  // Collect items exactly as sheet header wants
-  function collectNadiItems(){
-    const rows = [];
-    $qsa('#nadiContainer > tr').forEach(tr=>{
-      const layak = tr.querySelector('.chk-layak').checked;
-      const tak   = tr.querySelector('.chk-tak').checked;
-      const vchr  = tr.querySelector('.chk-vchr').checked;
-      rows.push({
-        // header-equivalent keys for backend normalizer
-        'nama':               tr.querySelector('.inp-nama').value.trim(),
-        'noIC':               tr.querySelector('.inp-ic').value.trim(),
-        'umur':               tr.querySelector('.inp-umur').value.trim(),
-        'noTelefon':          tr.querySelector('.inp-telefon').value.trim(),
-        'alamat':             tr.querySelector('.inp-alamat').value.trim(),
-        'bp':                 tr.querySelector('.inp-bp').value.trim(),
-        'pr':                 tr.querySelector('.inp-pr').value.trim(),
-        'dxt':                tr.querySelector('.inp-dxt').value.trim(),
-        'tinggi':             tr.querySelector('.inp-tinggi').value.trim(),
-        'berat':              tr.querySelector('.inp-berat').value.trim(),
-        'bmi':                tr.querySelector('.inp-bmi').value.trim(),
-        // checkboxes as YES/NO strings
-        'layak':              yn(layak),
-        'takLayak':           yn(tak),
-        'tcaVoucher':         yn(vchr),
-        // dates & remark
-        'tcaVoucherDate':     tr.querySelector('.inp-vchr-date').value,
-        'remark':             tr.querySelector('.inp-remark').value.trim(),
-        // layak-only TCA fields
-        'tcaDate':            tr.querySelector('.inp-tca-date').value,
-        'tcaTime':            tr.querySelector('.inp-tca-time').value,
-        'tcaStaff':           tr.querySelector('.inp-tca-staff').value.trim()
-      });
-    });
-    return rows;
-  }
-
-  // Wire save button (override to be safe)
-  function wireSave(){
-    const btn = document.getElementById('btnNadiSaveActivity');
-    if (!btn) return;
-    btn.addEventListener('click', async function(){
-      try{
-        const title = (document.getElementById('nadiProgramTitle')?.value || '').trim();
-        const date  = (document.getElementById('nadiProgramDate')?.value || '').trim();
-        if (!title || !date){
-          alert('Sila isi Tajuk Program dan Tarikh Program.'); return;
-        }
-        const items = collectNadiItems();
-        if (!items.length){
-          alert('Sila tambah sekurang-kurangnya satu baris peserta.'); return;
-        }
-        // Post to backend
-        const body = new URLSearchParams();
-        body.set('action', 'saveNadiActivity');
-        body.set('programTitle', title);
-        body.set('programDate', date);
-        body.set('items', JSON.stringify(items));
-
-        // Use fetch wrapper already patched in <head>
-        const res = await fetch('https://script.google.com/macros/s/FAKE/exec', { method:'POST', body });
-        const j = await res.json();
-        if (j && j.status === 'success'){
-          alert('Berjaya: Aktiviti disimpan.');
-        } else {
-          alert('Gagal simpan: ' + (j && j.message ? j.message : 'ralat tidak diketahui'));
-        }
-      }catch(err){
-        console.error(err);
-        alert('Ralat rangkaian: ' + err.message);
-      }
-    }, { once: true }); // avoid duplicate handlers
-  }
-
-  // Auto wire on DOM ready
-  if (document.readyState === 'loading'){
-    document.addEventListener('DOMContentLoaded', function(){
-      if (!$qs('#nadiContainer')) return;
-      wireSave();
-      // if table empty, create one starter row
-      if (!$qs('#nadiContainer > tr')) addNadiRow();
-    });
-  } else {
-    if ($qs('#nadiContainer')){
-      wireSave();
-      if (!$qs('#nadiContainer > tr')) addNadiRow();
-    }
-  }
-})();
-</script>
-
-
-<!-- ===== NADI Payload Builder v6 (DOM → canonical items; wrap postForm) ===== -->
-<script>
-(function(){
-  'use strict';
-  function ynUpper(b){ return b ? 'YES' : 'NO'; }
-  function q(sel, el){ return (el||document).querySelector(sel); }
-  function qq(sel, el){ return Array.from((el||document).querySelectorAll(sel)); }
-  function normPhone(s){
-    s = String(s||'').replace(/\D/g,'');
-    if (!s) return '';
-    if (s.startsWith('00')) s = s.slice(2);
-    if (s.startsWith('60')) return s;
-    if (s.startsWith('0'))  return '60'+s.slice(1);
-    return '60'+s;
-  }
-  function buildItemsFromDOM(){
-    var rows = qq('#nadiContainer > tr');
-    var items = [];
-    rows.forEach(function(tr, idx){
-      var nama   = q('.inp-nama input, .inp-nama', tr)?.value || q('.inp-nama', tr)?.textContent || '';
-      var ic     = q('.inp-ic input, .inp-ic', tr)?.value || q('.inp-ic', tr)?.textContent || '';
-      var umur   = q('.inp-umur input, .inp-umur', tr)?.value || q('.inp-umur', tr)?.textContent || '';
-      var tel    = q('.inp-telefon input, .inp-telefon', tr)?.value || q('.inp-telefon', tr)?.textContent || '';
-      var alamat = q('.inp-alamat input, .inp-alamat', tr)?.value || q('.inp-alamat', tr)?.textContent || '';
-      var bp     = q('.inp-bp input, .inp-bp', tr)?.value || q('.inp-bp', tr)?.textContent || '';
-      var pr     = q('.inp-pr input, .inp-pr', tr)?.value || q('.inp-pr', tr)?.textContent || '';
-      var dxt    = q('.inp-dxt input, .inp-dxt', tr)?.value || q('.inp-dxt', tr)?.textContent || '';
-      var tinggi = q('.inp-tinggi input, .inp-tinggi', tr)?.value || q('.inp-tinggi', tr)?.textContent || '';
-      var berat  = q('.inp-berat input, .inp-berat', tr)?.value || q('.inp-berat', tr)?.textContent || '';
-      var bmi    = q('.inp-bmi input, .inp-bmi', tr)?.value || q('.inp-bmi', tr)?.textContent || '';
-      var remark = q('.inp-remark input, .inp-remark', tr)?.value || q('.inp-remark', tr)?.textContent || '';
-
-      var layak = !!q('.chk-layak', tr)?.checked;
-      var tak   = !!q('.chk-tak', tr)?.checked;
-      var vchr  = !!q('.chk-vchr', tr)?.checked;
-
-      // enforce exclusivity: voucher clears layak; layak clears voucher and tak
-      if (vchr){ layak=false; tak=false; }
-      if (layak){ vchr=false; tak=false; }
-
-      var vchrDate = q('.inp-vchr-date', tr)?.value || '';
-      var tcaDate  = q('.inp-tca-date', tr)?.value || '';
-      var tcaTime  = q('.inp-tca-time', tr)?.value || '';
-      var tcaStaff = q('.inp-tca-staff', tr)?.value || '';
-
-      // apply business rule to fields
-      if (vchr){
-        tcaDate=''; tcaTime=''; tcaStaff='';
-      } else if (layak){
-        vchrDate='';
-      } else {
-        tcaDate=''; tcaTime=''; tcaStaff=''; vchrDate='';
-      }
-
-      items.push({
-        "Nama Pesakit": String(nama||'').trim(),
-        "No IC": String(ic||'').trim(),
-        "Umur": String(umur||'').trim(),
-        "Telefon": normPhone(tel),
-        "Alamat": String(alamat||'').trim(),
-        "BP": String(bp||'').trim(),
-        "PR": String(pr||'').trim(),
-        "DXT": String(dxt||'').trim(),
-        "Tinggi": String(tinggi||'').trim(),
-        "Berat": String(berat||'').trim(),
-        "BMI": String(bmi||'').trim(),
-        "Layak": ynUpper(layak),
-        "Tidak Layak": ynUpper(tak),
-        "TCA voucher": ynUpper(vchr),
-        "Tarikh TCA (Voucher)": vchrDate,
-        "Remark": String(remark||'').trim(),
-        "Tarikh TCA": tcaDate,
-        "Masa TCA": tcaTime,
-        "Staff TCA": String(tcaStaff||'').trim()
-      });
-    });
-    return items;
-  }
-
-  (function wrapPostForm(){
-    if (!window.postForm || window.__nadi_v6_wrapped) return;
-    var _post = window.postForm;
-    window.postForm = async function(params, opts){
-      try{
-        var a = params && params.action;
-        if (a==='saveNadiActivity' || a==='saveNadiProgramActivity' || a==='saveProgramActivity'){
-          // abaikan params.items asal; bina semula dari DOM supaya pasti lengkap
-          var items = buildItemsFromDOM();
-          params.items = JSON.stringify(items);
-        }
-      }catch(e){ console.warn('[NADI v6] DOM build failed', e); }
-      return _post.apply(this, arguments);
-    };
-    window.__nadi_v6_wrapped = true;
-    console.log('[NADI v6] postForm wrapped (DOM-driven).');
-  })();
-})();
-</script>
-
-</body>
+</script></body>
 </html>
