@@ -2,7 +2,7 @@
 <html lang="ms">
 <head>
 
-<!-- strict-compat v7 (export): early patches -->
+<!-- strict-compat v7: early patches -->
 <meta name="gas-endpoint" content="https://broken-dew-0eb2.amiruladlije.workers.dev">
 <script>
 (function(){'use strict';
@@ -6244,5 +6244,149 @@ function __toVoucherPayload(payload){
   return { activityId, no, tcaDate, tcaTime, remark };
 }
 
-</script></body>
+</script>
+<!-- ===== Hotfix patch: robust Worker/GAS routing + legacy function overrides ===== -->
+<script>
+(function(){
+  const KEYS = { API_BASE:'api_base', CLIENT_ID:'client_id', ID_TOKEN:'id_token' };
+
+  function endpoint(){
+    try{
+      const s = (localStorage.getItem(KEYS.API_BASE)||'').trim();
+      if (s) return s;
+    }catch(e){}
+    try{
+      const m = document.querySelector('meta[name="gas-url"]');
+      if (m && m.content && m.content.trim()) return m.content.trim();
+    }catch(e){}
+    try{ if (typeof SCRIPT_URL !== 'undefined' && SCRIPT_URL) return SCRIPT_URL; }catch(e){}
+    return '';
+  }
+  function token(){
+    try{ return (localStorage.getItem(KEYS.ID_TOKEN)||'').trim(); }catch(e){ return ''; }
+  }
+  function buildUrl(action, extra){
+    const base = endpoint();
+    if (!base) throw new Error('API_BASE/SCRIPT_URL not configured');
+    const u = new URL(base);
+    if (action) u.searchParams.set('action', action);
+    const t = token();
+    if (t) u.searchParams.set('id_token', t);
+    Object.entries(extra||{}).forEach(([k,v])=>{
+      if (v !== undefined && v !== null && k !== 'action') u.searchParams.set(k, String(v));
+    });
+    return u.toString();
+  }
+
+  // --- Hard override of low-level helpers used by older code --- //
+  window._getJSON = async function(payload){
+    const url = buildUrl(payload && (payload.action || payload.a) || '', payload);
+    const res = await fetch(url, { method:'GET', credentials:'omit' });
+    const txt = await res.text();
+    try { return JSON.parse(txt); } catch(e) {
+      console.error('GET not JSON', {status: res.status, body: txt.slice(0,300)});
+      throw new Error('UPSTREAM_NOT_JSON');
+    }
+  };
+  window._postForm = async function(payload){
+    const url = buildUrl(payload && (payload.action || payload.a) || '');
+    const form = new URLSearchParams(payload || {});
+    const res = await fetch(url, {
+      method:'POST',
+      headers:{ 'Content-Type':'application/x-www-form-urlencoded' },
+      body: form.toString(),
+      credentials:'omit'
+    });
+    const txt = await res.text();
+    try { return JSON.parse(txt); } catch(e) {
+      console.error('POST not JSON', {status: res.status, body: txt.slice(0,300)});
+      throw new Error('UPSTREAM_NOT_JSON');
+    }
+  };
+
+  // --- Safe voucher IC bootstrap --- //
+  window.ensureVoucherICs = async function(){
+    try {
+      const r = await _getJSON({ action: 'getVoucherICSet' });
+      window.VOUCHER_ICS = new Set((r && r.ics) || []);
+    } catch(err){
+      console.warn('Build voucher set failed', err);
+      window.VOUCHER_ICS = new Set();
+    }
+  };
+
+  // --- Lihat Sejarah: load program list --- //
+  window.loadPrograms = async function(){
+    const badge = document.querySelector('[data-program-count-all]');
+    const listWrap = document.getElementById('programList');
+    try {
+      const r = await _getJSON({ action: 'getNadiActivities' });
+      const items = (r && r.data) || [];
+      if (badge) badge.textContent = items.length;
+      if (typeof renderProgramList === 'function') {
+        renderProgramList(items);
+      } else if (listWrap) {
+        const ul = listWrap.querySelector('ul') || (()=>{ const u=document.createElement('ul'); listWrap.innerHTML=''; listWrap.appendChild(u); return u; })();
+        ul.innerHTML = items.map(it => {
+          const title = it.title || it.programTitle || '(Tanpa tajuk)';
+          const date  = it.programDate || '';
+          return `<li class="program-item" data-id="${it.activityId||''}"><button type="button" class="btn btn-link">${title} — ${date}</button></li>`;
+        }).join('');
+        ul.onclick = (ev)=>{
+          const li = ev.target.closest('.program-item');
+          if (li && li.dataset.id) loadProgramDetail(li.dataset.id);
+        };
+      }
+    } catch(err){
+      console.error('loadPrograms failed', err);
+      // show error badge
+      const errEl = document.querySelector('[data-program-list-status]');
+      if (errEl) errEl.textContent = 'Gagal memuat program.';
+    }
+  };
+
+  // --- Lihat Sejarah: load detail for a selected activity --- //
+  window.loadProgramDetail = async function(activityId){
+    if (!activityId) return;
+    try {
+      const r = await _getJSON({ action: 'getNadiActivityDetail', activityId });
+      const rows = (r && r.data) || [];
+      if (typeof renderProgramDetail === 'function') {
+        renderProgramDetail(rows);
+        return;
+      }
+      const tbody = document.querySelector('#programDetailBody, [data-program-detail-body]');
+      if (!tbody) return;
+      tbody.innerHTML = rows.map((o, i) => {
+        return `<tr>
+          <td>${i+1}</td>
+          <td>${o.nama||''}</td>
+          <td>${o.noIC||''}</td>
+          <td>${o.noTelefon||''}</td>
+          <td>${o.alamat||''}</td>
+          <td>${o.status||''}</td>
+          <td>${o.bp||''}</td>
+          <td>${o.pr||''}</td>
+          <td>${o.dxt||''}</td>
+          <td>${o.bmi||''}</td>
+          <td>${o.tcaDate||''}</td>
+          <td>${o.tcaTime||''}</td>
+          <td>${o.tcaStaff||''}</td>
+          <td>${o.remark||''}</td>
+        </tr>`;
+      }).join('');
+    } catch(err){
+      console.error('loadProgramDetail failed', err);
+    }
+  };
+
+  // optional: auto bootstrap after sign-in if elements are present
+  if (document.getElementById('programList')) {
+    ensureVoucherICs().catch(()=>{});
+    loadPrograms().catch(()=>{});
+  }
+})(); 
+</script>
+<!-- ===== /Hotfix patch ===== -->
+</body>
 </html>
