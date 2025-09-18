@@ -1,381 +1,494 @@
 <!DOCTYPE html>
 <html lang="ms">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <!-- Optional: pre-fill your Worker URL here. It will be overridden by the input box if changed. -->
-  <meta name="gas-endpoint" content="https://broken-dew-0eb2.amiruladlije.workers.dev/exec" />
-  <title>Saringan — Hotfix/Diagnostik</title>
-  <style>
-    :root { --bg:#0f172a; --fg:#111827; --muted:#6b7280; --blue:#2563eb; --green:#059669; --red:#dc2626; }
-    * { box-sizing: border-box; }
-    body { font-family: system-ui, -apple-system, Segoe UI, Roboto, Ubuntu, Cantarell, "Helvetica Neue", Arial, "Noto Sans", "Apple Color Emoji", "Segoe UI Emoji"; margin:0; background:#f8fafc; color:#111827; }
-    header { padding:22px 20px 10px; border-bottom:1px solid #e5e7eb; background:white; position:sticky; top:0; z-index:5; }
-    h1 { margin:0 0 4px; font-size:28px;}
-    small.muted { color:#6b7280; }
-    .container { max-width:1100px; margin:0 auto; padding:18px 16px 80px;}
-    .card { background:#fff; border:1px solid #e5e7eb; border-radius:12px; padding:16px; margin:14px 0; }
-    .row { display:grid; grid-template-columns: 1fr 1fr; gap:12px; }
-    .row-3 { display:grid; grid-template-columns: 1fr 1fr 1fr; gap:12px; }
-    .row-2-3 { display:grid; grid-template-columns: 2fr 3fr; gap:12px; }
-    label { display:block; font-size:13px; color:#374151; margin:6px 0; }
-    input[type=text], input[type=date], textarea, select {
-      width:100%; border:1px solid #d1d5db; border-radius:10px; padding:10px 12px;
-      outline:none; font:inherit; background:white;
-    }
-    textarea { min-height:120px; font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace; }
-    .btn { display:inline-flex; align-items:center; gap:8px; border:1px solid #d1d5db; background:white; color:#111827; padding:9px 14px; border-radius:10px; cursor:pointer; }
-    .btn.primary { background:#111827; border-color:#111827; color:#fff; }
-    .btn.blue { background:#2563eb; border-color:#2563eb; color:#fff; }
-    .btn.green { background:#059669; border-color:#059669; color:#fff; }
-    .btn:disabled { opacity:.6; cursor:not-allowed; }
-    .toolbar { display:flex; gap:8px; align-items:center; flex-wrap:wrap; }
-    .muted { color:#6b7280; }
-    .list { border:1px solid #e5e7eb; border-radius:10px; padding:6px; background:#fff; max-height:360px; overflow:auto; }
-    .list-item { padding:10px 10px; border-radius:8px; border:1px solid transparent; }
-    .list-item:hover { background:#f1f5f9; border-color:#e5e7eb;}
-    table { width:100%; border-collapse:collapse; }
-    thead th { position:sticky; top:0; background:#f8fafc; }
-    th, td { border-bottom:1px solid #edf2f7; padding:8px 10px; font-size:14px; text-align:left; }
-    .right { text-align:right; }
-    .mono { font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace; font-size: 13px; }
-    .log { background:#0b1220; color:#c7d2fe; padding:10px; border-radius:10px; height:150px; overflow:auto; white-space:pre-wrap; }
-    .flex { display:flex; gap:10px; align-items:center; }
-    .grow { flex: 1 1 auto; }
-    .pill { font-size:12px; padding:2px 8px; border-radius:999px; background:#eef2ff; color:#3730a3; border:1px solid #c7d2fe; }
-    .help { font-size:12px; color:#6b7280; }
-    .hr { height:1px; background:#e5e7eb; margin:10px 0; }
-    .gsi-wrap { display:flex; align-items:center; gap:10px; }
-  </style>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Sistem TRacKer PEKA B40 — Lihat Sejarah & NADI</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+  <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" rel="stylesheet">
   <script src="https://accounts.google.com/gsi/client" async defer></script>
+  <style>
+    body{background:#f7fafc}
+    .app-card{background:#fff;border:1px solid #e5e7eb;border-radius:14px;box-shadow:0 1px 2px rgba(0,0,0,.04)}
+    .pill{display:inline-block;border-radius:999px;padding:.1rem .6rem;font-size:.8rem}
+    .pill-green{background:#dcfce7;color:#166534}
+    .pill-red{background:#fee2e2;color:#991b1b}
+    .pill-gray{background:#e5e7eb;color:#111827}
+    .table-sticky thead th{position:sticky;top:0;background:#fff;z-index:1}
+    .log{font-family:ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+         background:#0b1021;color:#d1e9ff;border-radius:10px;min-height:60px;padding:10px;white-space:pre-wrap}
+    .badge-dot{display:inline-flex;align-items:center;gap:.35rem}
+    .badge-dot .dot{width:.6rem;height:.6rem;border-radius:50%}
+    #gsi_btn{position:relative}
+  </style>
 </head>
 <body>
-  <header>
-    <h1>Saringan — <strong>Hotfix/Diagnostik</strong></h1>
-    <small class="muted">Tujuan: uji sambungan Cloudflare Worker → Google Apps Script dengan selamat. Jika respons bukan JSON (contoh: berisi <code>&lt;!DOCTYPE html&gt;</code>), panel log akan memaparkan <code>UPSTREAM_NOT_JSON</code> beserta petikan HTML supaya kita boleh kenal pasti punca.</small>
-  </header>
 
-  <div class="container">
-    <section class="card">
-      <h2>1) Konfigurasi</h2>
-      <div class="row">
-        <div>
-          <label>API BASE (Cloudflare Worker URL)</label>
-          <input id="apiBase" type="text" placeholder="https://your-worker.workers.dev/exec" />
-          <div class="help">Contoh: <span class="mono">https://broken-dew-0eb2.amiruladlije.workers.dev/exec</span></div>
-        </div>
-        <div>
-          <label>Google Client ID (GSI)</label>
-          <input id="clientId" type="text" placeholder="xxxx.apps.googleusercontent.com" />
-          <div class="help">Biarkan nilai ini jika sama seperti sebelum ini.</div>
-        </div>
-      </div>
-      <div style="height:10px"></div>
-      <div class="toolbar">
-        <div class="gsi-wrap">
-          <div id="gsi_btn"></div>
-          <button class="btn" id="btnOut">Log keluar</button>
-        </div>
-        <button class="btn" id="btnWhoAmI">Uji WhoAmI</button>
-        <button class="btn" id="btnVoucher">Bina Voucher Set</button>
-      </div>
-      <div id="loginState" class="help" style="margin-top:8px;">Belum log masuk</div>
-    </section>
+<nav class="navbar navbar-expand-lg bg-white border-bottom">
+  <div class="container-fluid">
+    <a class="navbar-brand fw-semibold" href="#"><i class="fa-solid fa-heart-pulse text-danger me-2"></i>TRacKer PEKA B40</a>
+    <div class="d-flex align-items-center gap-2">
+      <small class="text-muted d-none d-md-inline" id="todayTxt"></small>
+      <div id="gsi_btn"></div>
+      <button class="btn btn-outline-secondary btn-sm" id="btnSignOut" style="display:none">Log keluar</button>
+      <button class="btn btn-outline-primary btn-sm" id="btnCfg"><i class="fa-solid fa-gear me-1"></i>Konfigurasi</button>
+    </div>
+  </div>
+</nav>
 
-    <section class="card">
-      <h2>2) Lihat Sejarah Saringan (<span class="mono">AKTIVITI_PROGRAM</span>)</h2>
-      <div class="toolbar">
-        <button class="btn primary" id="btnLoadAktiviti">Muatkan Aktiviti</button>
-        <span class="help">Jika berjaya, senarai ringkas dipaparkan di bawah.</span>
-      </div>
+<div class="container my-4">
 
-      <div class="row-2-3" style="margin-top:12px">
-        <div>
-          <div class="pill">Senarai Program</div>
-          <div id="aktiviti-list" class="list" aria-live="polite"></div>
+  <!-- ALERT -->
+  <div class="alert alert-info d-flex align-items-center gap-2">
+    <i class="fa-solid fa-circle-info"></i>
+    <div>
+      Pastikan <code>API BASE</code> (Cloudflare Worker <code>/exec</code>) dan <code>Google Client ID</code> telah ditetapkan. 
+      Klik <b>Konfigurasi</b> → isi & simpan. Kemudian <b>Sign in with Google</b>.
+    </div>
+  </div>
+
+  <!-- SEKSYEN LIHAT SEJARAH -->
+  <div class="row g-4">
+    <div class="col-12">
+      <div class="app-card p-3">
+        <div class="d-flex align-items-center justify-content-between">
+          <h5 class="mb-0"><i class="fa-solid fa-clock-rotate-left me-2"></i>Lihat Sejarah Saringan</h5>
+          <div class="d-flex align-items-center gap-2">
+            <span class="badge-dot"><span class="dot" style="background:#16a34a"></span><small id="badgeLayak">0</small></span>
+            <span class="badge-dot"><span class="dot" style="background:#b91c1c"></span><small id="badgeTidak">0</small></span>
+            <span class="badge-dot"><span class="dot" style="background:#64748b"></span><small id="badgeTotal">0</small></span>
+            <button class="btn btn-primary btn-sm" id="btnLoadActivities"><i class="fa-solid fa-rotate me-1"></i>Muatkan Aktiviti</button>
+          </div>
         </div>
-        <div>
-          <div class="pill">Maklumat Program</div>
-          <div class="list" style="padding:0; max-height:360px; overflow:auto;">
-            <table id="jadual-aktiviti-detail">
-              <thead>
-                <tr>
-                  <th>#</th><th>Nama</th><th>IC</th><th>Telefon</th><th>Alamat</th>
-                  <th>BP</th><th>PR</th><th>DXT</th><th>BMI</th><th>Status</th><th>T. Apoint</th><th>Remark</th>
-                </tr>
-              </thead>
-              <tbody></tbody>
-            </table>
+        <hr/>
+        <div class="row g-3">
+          <div class="col-md-4">
+            <div class="app-card p-2">
+              <div class="d-flex align-items-center justify-content-between mb-2">
+                <div class="fw-semibold">Senarai Program</div>
+                <input type="text" class="form-control form-control-sm w-50" placeholder="Tapis tajuk..." id="filterActivities">
+              </div>
+              <div id="activityList" class="list-group small" style="max-height:520px;overflow:auto"></div>
+            </div>
+          </div>
+          <div class="col-md-8">
+            <div class="app-card p-2">
+              <div class="d-flex align-items-center justify-content-between mb-2">
+                <div class="fw-semibold">Maklumat Program</div>
+                <div class="small text-muted" id="currentActivityMeta">Pilih program di sebelah kiri.</div>
+              </div>
+              <div class="table-responsive" style="max-height:520px;overflow:auto">
+                <table class="table table-sm align-middle table-sticky" id="detailTable">
+                  <thead class="table-light">
+                    <tr>
+                      <th style="width:40px">#</th>
+                      <th>Nama</th>
+                      <th>IC</th>
+                      <th>Telefon</th>
+                      <th>Alamat</th>
+                      <th>Status</th>
+                      <th>BP</th>
+                      <th>PR</th>
+                      <th>DXT</th>
+                      <th>DXT Type</th>
+                      <th>Tinggi</th>
+                      <th>Berat</th>
+                      <th>BMI</th>
+                      <th>TCA</th>
+                      <th>Staff</th>
+                      <th>Remark</th>
+                    </tr>
+                  </thead>
+                  <tbody></tbody>
+                </table>
+              </div>
+            </div>
           </div>
         </div>
       </div>
-    </section>
+    </div>
 
-    <section class="card">
-      <h2>3) Simpan Jadual NADI (Demo Minimum)</h2>
-      <div class="row-3">
-        <div>
-          <label>Tajuk Program</label>
-          <input id="progTitle" type="text" value="Program NADI Komuniti" />
+    <!-- SEKSYEN SIMPAN NADI (RINGKAS) -->
+    <div class="col-12">
+      <div class="app-card p-3">
+        <div class="d-flex align-items-center justify-content-between">
+          <h5 class="mb-0"><i class="fa-solid fa-clipboard-list me-2"></i>Program PEKA B40 bersama NADI</h5>
+          <div class="d-flex align-items-center gap-2">
+            <button class="btn btn-outline-success btn-sm" id="btnAddRow"><i class="fa-solid fa-user-plus me-1"></i>Tambah Peserta</button>
+            <button class="btn btn-success btn-sm" id="btnSaveNadi"><i class="fa-solid fa-floppy-disk me-1"></i>Simpan Aktiviti (Semua)</button>
+          </div>
         </div>
-        <div>
-          <label>Tarikh Program (YYYY-MM-DD atau DD/MM/YYYY)</label>
-          <input id="progDate" type="text" value="" />
+        <hr/>
+        <div class="row g-3">
+          <div class="col-md-6">
+            <label class="form-label small">Tajuk Program</label>
+            <input class="form-control" id="nadiTitle" placeholder="cth: Saringan Komuniti Tmn Mawar">
+          </div>
+          <div class="col-md-3">
+            <label class="form-label small">Tarikh Program</label>
+            <input type="date" class="form-control" id="nadiDate">
+          </div>
+          <div class="col-md-3">
+            <label class="form-label small">Staff</label>
+            <input class="form-control" id="nadiStaff" placeholder="Nama Staff">
+          </div>
         </div>
-        <div>
-          <label>&nbsp;</label>
-          <button class="btn blue" id="btnSimpan">Simpan</button>
+        <div class="table-responsive mt-3">
+          <table class="table table-sm align-middle table-sticky" id="nadiTable">
+            <thead class="table-light">
+              <tr>
+                <th>#</th><th>Nama</th><th>IC</th><th>Umur</th><th>Telefon</th><th>Alamat</th>
+                <th>BP</th><th>PR</th><th>DXT</th><th>DXT Type</th><th>Tinggi</th><th>Berat</th><th>BMI</th>
+                <th>Layak</th><th>Tidak Layak</th><th>TCA Tarikh</th><th>TCA Masa</th><th>TCA Staff</th><th>Remark</th>
+                <th></th>
+              </tr>
+            </thead>
+            <tbody></tbody>
+          </table>
         </div>
       </div>
-      <label>Items (JSON Array)</label>
-      <textarea id="itemsJson">[{"nama":"Ali","noIC":"900101-10-1234","noTelefon":"0123456789","status":"LAYAK","appointmentType":"PKB40"}]</textarea>
-    </section>
+    </div>
 
-    <section class="card">
-      <h2>Log</h2>
-      <div id="log" class="log" aria-live="polite"></div>
-    </section>
-  </div>
-
-  <script>
-    // -------------------------- Utiliti UI ---------------------------
-    const logEl = document.getElementById('log');
-    function log(msg, obj) {
-      const ts = new Date().toLocaleTimeString();
-      if (obj !== undefined) {
-        try { msg += ' → ' + JSON.stringify(obj); } catch(_) {}
-      }
-      logEl.textContent += '[' + ts + '] ' + msg + '\\n';
-      logEl.scrollTop = logEl.scrollHeight;
-      console.log('[LOG]', msg, obj);
-    }
-    function esc(s){return String(s||'').replace(/[&<>"']/g, m=>({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' }[m]));}
-
-    // --------------------- Muat naik/persist config ------------------
-    const apiBaseInput = document.getElementById('apiBase');
-    const clientIdInput = document.getElementById('clientId');
-    const META = document.querySelector('meta[name="gas-endpoint"]');
-
-    function normalizeExec(u){
-      if (!u) return '';
-      u = String(u).trim();
-      if (!u) return '';
-      return /\/exec(?:\\?|$)/.test(u) ? u : (u.replace(/\\/+$/, '') + '/exec');
-    }
-
-    function loadConfig() {
-      const defBase = META && META.content ? META.content : '';
-      apiBaseInput.value = localStorage.getItem('PEKA_API_BASE') || defBase;
-      clientIdInput.value = localStorage.getItem('PEKA_GSI_CLIENT_ID') || '863564124015-838ksbuk27f0kkomm16hnc3bu608pbrr.apps.googleusercontent.com';
-      const today = new Date(); document.getElementById('progDate').value = today.toISOString().slice(0,10);
-    }
-    function saveConfig() {
-      localStorage.setItem('PEKA_API_BASE', normalizeExec(apiBaseInput.value));
-      localStorage.setItem('PEKA_GSI_CLIENT_ID', clientIdInput.value.trim());
-    }
-    apiBaseInput.addEventListener('change', saveConfig);
-    clientIdInput.addEventListener('change', () => { saveConfig(); setupGSI(); });
-
-    // -------------------- Google Identity Services -------------------
-    const TOKEN_KEY='PEKA_ID_TOKEN';
-    const getToken=()=> localStorage.getItem(TOKEN_KEY)||'';
-    const setToken=t=> { localStorage.setItem(TOKEN_KEY, t||''); refreshLoginState(); };
-
-    const loginStateEl = document.getElementById('loginState');
-    function refreshLoginState() {
-      const t = getToken();
-      if (t) loginStateEl.textContent = '[auth] id_token disimpan';
-      else   loginStateEl.textContent = 'Belum log masuk';
-    }
-
-    function setupGSI() {
-      const clientId = localStorage.getItem('PEKA_GSI_CLIENT_ID') || clientIdInput.value.trim();
-      const gsiDiv = document.getElementById('gsi_btn');
-      gsiDiv.innerHTML = '';
-      if (!clientId) {
-        log('Client ID kosong.');
-        return;
-      }
-      // Init
-      google.accounts.id.initialize({
-        client_id: clientId,
-        callback: (resp)=>{
-          if (resp && resp.credential) {
-            setToken(resp.credential);
-          }
-        }
-      });
-      google.accounts.id.renderButton(gsiDiv, {
-        theme: 'outline', size: 'medium', text: 'signin_with', shape:'rectangular'
-      });
-      log('GSI sedia.');
-    }
-
-    document.getElementById('btnOut').addEventListener('click', ()=>{
-      localStorage.removeItem(TOKEN_KEY);
-      try { google.accounts.id.disableAutoSelect(); } catch(e){}
-      log('Token dibuang.');
-      refreshLoginState();
-    });
-
-    // --------------------- API wrapper tahan HTML --------------------
-    function apiBase(){ return normalizeExec(localStorage.getItem('PEKA_API_BASE') || apiBaseInput.value); }
-    async function parseJsonOrThrow(res){
-      const txt = await res.text();
-      try { return JSON.parse(txt); }
-      catch(e){
-        console.error('UPSTREAM_NOT_JSON', {status: res.status, preview: txt.slice(0,250)});
-        log('UPSTREAM_NOT_JSON — lihat console untuk previu HTML');
-        throw new Error('UPSTREAM_NOT_JSON');
-      }
-    }
-    async function apiGet(action, params={}){
-      const base = apiBase();
-      if (!base) throw new Error('API_BASE kosong');
-      const url = new URL(base);
-      url.searchParams.set('action', action);
-      url.searchParams.set('id_token', getToken());
-      Object.entries(params).forEach(([k,v]) => url.searchParams.set(k, v==null?'':String(v)));
-      const res = await fetch(url.toString(), { headers:{ 'Accept':'application/json' } });
-      return parseJsonOrThrow(res);
-    }
-    async function apiPost(action, payload={}){
-      const base = apiBase();
-      if (!base) throw new Error('API_BASE kosong');
-      const url = base + '?action=' + encodeURIComponent(action);
-      const body = Object.assign({ id_token: getToken() }, payload||{});
-      const res = await fetch(url, {
-        method:'POST', headers:{ 'Content-Type':'application/json','Accept':'application/json' },
-        body: JSON.stringify(body)
-      });
-      return parseJsonOrThrow(res);
-    }
-
-    // ------------------------ Voucher set ----------------------------
-    window.ensureVoucherICs = async function ensureVoucherICs() {
-      try {
-        const j = await apiGet('getVoucherICSet');
-        if (j.status !== 'success') throw new Error(j.message||'getVoucherICSet gagal');
-        window.__voucherICSet = new Set(j.ics || []);
-        log('Voucher IC set → ' + JSON.stringify(j));
-      } catch (err) {
-        console.error('Build voucher set failed', err);
-        log('Build voucher set failed: ' + (err.message||err));
-      }
-    };
-
-    // ------------------- Lihat sejarah (UI) -------------------------
-    const listHost = document.getElementById('aktiviti-list');
-    const tbody = document.querySelector('#jadual-aktiviti-detail tbody');
-    function renderActivityList(items){
-      if (!listHost) return;
-      if (!Array.isArray(items) || !items.length){
-        listHost.innerHTML = '<div class="muted" style="padding:8px">Tiada aktiviti.</div>';
-        return;
-      }
-      listHost.innerHTML = items.map(x => `
-        <div class="list-item" data-id="${esc(x.activityId)}" title="Klik untuk lihat butiran">
-          <div><strong>${esc(x.programDate)}</strong> — ${esc(x.title)}</div>
-          <div class="muted">Layak: ${esc(x.layakCount||'0')} • Tak Layak: ${esc(x.takLayakCount||'0')} • Jumlah: ${esc(x.total||'')}</div>
+    <!-- LOG PANEL -->
+    <div class="col-12">
+      <div class="app-card p-3">
+        <div class="d-flex align-items-center justify-content-between">
+          <h6 class="mb-0"><i class="fa-solid fa-terminal me-2"></i>Log</h6>
+          <button class="btn btn-outline-secondary btn-sm" id="btnClearLog">Kosongkan</button>
         </div>
-      `).join('');
-      listHost.querySelectorAll('.list-item').forEach(el=>{
-        el.addEventListener('click', () => loadActivityDetail(el.dataset.id));
-      });
-    }
-    function renderActivityDetail(rows){
-      if (!tbody) return;
-      if (!Array.isArray(rows) || !rows.length){
-        tbody.innerHTML = '<tr><td colspan="12" class="muted">Tiada data.</td></tr>';
-        return;
-      }
-      tbody.innerHTML = rows.map((r,i)=>`
-        <tr>
-          <td>${i+1}</td>
-          <td>${esc(r.nama)}</td>
-          <td>${esc(r.noIC)}</td>
-          <td>${esc(r.noTelefon)}</td>
-          <td>${esc(r.alamat)}</td>
-          <td>${esc(r.bp)}</td>
-          <td>${esc(r.pr)}</td>
-          <td>${esc(r.dxt)}</td>
-          <td>${esc(r.bmi)}</td>
-          <td>${esc(r.status)}</td>
-          <td>${esc(r.appointmentType||'')}</td>
-          <td>${esc(r.remark||'')}</td>
-        </tr>
-      `).join('');
-    }
+        <div id="log" class="log mt-2"></div>
+      </div>
+    </div>
+  </div>
+</div>
 
-    window.loadActivities = async function loadActivities(){
-      try {
-        const list = await apiGet('getNadiActivities');
-        const items = (list && list.data) || [];
-        renderActivityList(items);
-        log('Aktiviti dimuat: ' + items.length);
-        if (items.length) {
-          await loadActivityDetail(items[0].activityId);
-        }
-      } catch (e) {
-        console.error(e);
-        log('Gagal muat aktiviti: ' + (e.message||e));
-        renderActivityList([]);
-      }
+<!-- Konfigurasi Modal -->
+<div class="modal fade" id="cfgModal" tabindex="-1">
+  <div class="modal-dialog modal-lg">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title"><i class="fa-solid fa-gear me-2"></i>Konfigurasi</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body">
+        <div class="mb-3">
+          <label class="form-label">API BASE (Cloudflare Worker /exec)</label>
+          <input class="form-control" id="cfgApiBase" placeholder="https://<subdomain>.workers.dev/exec">
+          <div class="form-text">Masukkan URL Worker yang mem-proxy ke Google Apps Script (mesti diakhiri <code>/exec</code>).</div>
+        </div>
+        <div class="mb-3">
+          <label class="form-label">Google Client ID (GSI)</label>
+          <input class="form-control" id="cfgClientId" placeholder="xxxxxxxxxx-xxxx.apps.googleusercontent.com">
+          <div class="form-text">Client ID untuk Google Identity Services.</div>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-secondary" data-bs-dismiss="modal">Tutup</button>
+        <button class="btn btn-primary" id="btnSaveCfg"><i class="fa-solid fa-floppy-disk me-1"></i>Simpan</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+<script>
+/* ==================== UTIL & STATE ==================== */
+const $ = (sel, el=document) => el.querySelector(sel);
+const $$ = (sel, el=document) => Array.from(el.querySelectorAll(sel));
+const tz = Intl.DateTimeFormat().resolvedOptions().timeZone || 'Asia/Kuala_Lumpur';
+
+function nowFmt(){
+  const d = new Date();
+  return d.toLocaleString('ms-MY', { dateStyle:'full' }) + ' • ' +
+         d.toLocaleTimeString('ms-MY', { hour:'2-digit', minute:'2-digit' });
+}
+$('#todayTxt').textContent = nowFmt();
+
+function logLn(msg){
+  const el = $('#log');
+  const ts = new Date().toLocaleTimeString('ms-MY', { hour:'2-digit', minute:'2-digit', second:'2-digit' });
+  el.textContent += `[${ts}] ${msg}\\n`;
+  el.scrollTop = el.scrollHeight;
+}
+$('#btnClearLog').addEventListener('click', ()=> $('#log').textContent='');
+
+/* ==================== KONFIG & AUTH ==================== */
+let API_BASE = (localStorage.getItem('API_BASE') || '').replace(/\\/+$/,'');
+let GSI_CLIENT_ID = (localStorage.getItem('GSI_CLIENT_ID') || '');
+let ID_TOKEN = localStorage.getItem('ID_TOKEN') || '';
+
+const cfgModal = new bootstrap.Modal('#cfgModal');
+$('#btnCfg').addEventListener('click', ()=>{
+  $('#cfgApiBase').value = API_BASE;
+  $('#cfgClientId').value = GSI_CLIENT_ID;
+  cfgModal.show();
+});
+$('#btnSaveCfg').addEventListener('click', ()=>{
+  API_BASE = ($('#cfgApiBase').value||'').trim().replace(/\\/+$/,'');
+  GSI_CLIENT_ID = ($('#cfgClientId').value||'').trim();
+  localStorage.setItem('API_BASE', API_BASE);
+  localStorage.setItem('GSI_CLIENT_ID', GSI_CLIENT_ID);
+  cfgModal.hide();
+  logLn('Konfigurasi disimpan.');
+});
+
+function setToken(tok){
+  ID_TOKEN = tok || '';
+  if (ID_TOKEN) localStorage.setItem('ID_TOKEN', ID_TOKEN);
+  else localStorage.removeItem('ID_TOKEN');
+}
+
+function initGSI(){
+  if (!window.google || !google.accounts || !GSI_CLIENT_ID){ 
+    logLn('GSI belum sedia atau Client ID kosong.');
+    return;
+  }
+  google.accounts.id.initialize({
+    client_id: GSI_CLIENT_ID,
+    callback: ({credential})=>{
+      if (!credential) return;
+      setToken(credential);
+      $('#btnSignOut').style.display = '';
+      logLn('[auth] id_token disimpan');
+      whoAmI().catch(()=>{});
+      ensureVoucherICs().catch(()=>{});
+    },
+    ux_mode: 'popup',
+    auto_select: true
+  });
+  google.accounts.id.renderButton($('#gsi_btn'), { theme:'outline', size:'medium' });
+  $('#btnSignOut').onclick = ()=>{
+    setToken('');
+    google.accounts.id.disableAutoSelect();
+    $('#btnSignOut').style.display = 'none';
+    logLn('Log keluar.');
+  };
+}
+window.addEventListener('load', initGSI);
+
+/* ==================== FETCH WRAPPER ==================== */
+async function apiFetch(action, method='GET', payload={}){
+  if (!API_BASE) throw new Error('API_BASE kosong');
+  const isGet = method.toUpperCase()==='GET';
+  const url = new URL(API_BASE);
+  url.searchParams.set('action', action||'');
+  if (isGet){
+    if (ID_TOKEN) url.searchParams.set('id_token', ID_TOKEN);
+    for (const [k,v] of Object.entries(payload||{})){ url.searchParams.set(k,String(v)); }
+  }
+  const opt = isGet?{method:'GET'}:{
+    method:'POST',
+    headers:{'Content-Type':'application/x-www-form-urlencoded'},
+    body: new URLSearchParams(Object.assign({}, payload||{}, ID_TOKEN?{id_token:ID_TOKEN}:{}, { action }))
+  };
+  const resp = await fetch(url.toString(), opt);
+  const text = await resp.text();
+  try { return JSON.parse(text); }
+  catch(e){
+    const hint = { status:'error', code:'UPSTREAM_NOT_JSON', upstreamStatus: resp.status, body: text.slice(0,300) };
+    logLn('UPSTREAM_NOT_JSON → ' + JSON.stringify(hint));
+    throw Object.assign(new Error('UPSTREAM_NOT_JSON'), hint);
+  }
+}
+
+/* ==================== API HELPERS ==================== */
+async function whoAmI(){
+  if (!ID_TOKEN){ logLn('NO_TOKEN. Sila Sign in.'); return {status:'unauthorized'}; }
+  const r = await apiFetch('whoami','GET');
+  logLn('WHOAMI → ' + JSON.stringify(r));
+  return r;
+}
+async function ensureVoucherICs(){
+  const r = await apiFetch('getVoucherICSet','GET');
+  window.__VOUCHER_ICS__ = new Set((r.ics||[]).map(String));
+  logLn('Voucher IC set → ' + JSON.stringify(r));
+  return r;
+}
+async function loadActivities(){
+  const r = await apiFetch('getNadiActivities','GET');
+  renderActivityList(r.data||[]);
+  logLn('Aktiviti dimuat: ' + (r.data||[]).length);
+  return r;
+}
+async function loadActivityDetail(id){
+  const r = await apiFetch('getNadiActivityDetail','GET',{ id });
+  renderDetailTable(r.data||[], id);
+  return r;
+}
+function normPhoneMY(raw){
+  let s=String(raw||'').replace(/\\D/g,'');
+  if (!s) return ''; if (s.startsWith('00')) s=s.slice(2);
+  if (s.startsWith('60')) return s; if (s.startsWith('0')) return '60'+s.slice(1);
+  return '60'+s;
+}
+function toIso(ddmmyyyy){
+  const m=/^(\\d{2})\\/(\\d{2})\\/(\\d{4})$/.exec(String(ddmmyyyy||'').trim());
+  return m?`${m[3]}-${m[2]}-${m[1]}`:String(ddmmyyyy||'').trim();
+}
+async function saveNadiActivity(payload){
+  const res = await apiFetch('saveNadiProgramActivity','POST', payload);
+  logLn('Simpan OK → ' + JSON.stringify(res));
+  return res;
+}
+
+/* ==================== RENDER — LIHAT SEJARAH ==================== */
+let ACTS_CACHE = [];
+function renderActivityList(data){
+  ACTS_CACHE = data.slice();
+  const filter = ($('#filterActivities').value||'').toLowerCase().trim();
+  const host = $('#activityList'); host.innerHTML = '';
+  let layak=0, tidak=0, total=0;
+  data.filter(it => !filter || (it.title||'').toLowerCase().includes(filter)).forEach(item => {
+    const a = document.createElement('a');
+    a.href = 'javascript:void(0)';
+    a.className = 'list-group-item list-group-item-action';
+    a.innerHTML = `<div class="fw-semibold">${item.title||'-'}</div>
+                   <div class="small text-muted">${item.programDate||''} &middot; Aktiviti ID: ${item.activityId||''}</div>`;
+    a.onclick = ()=> loadActivityDetail(item.activityId);
+    host.appendChild(a);
+    // anggaran ringkas (jika ada), total ikut item.total
+    total += Number(item.total||0);
+    layak += Number(item.layakCount||0);
+    tidak += Number(item.takLayakCount||0);
+  });
+  $('#badgeLayak').textContent = layak;
+  $('#badgeTidak').textContent = tidak;
+  $('#badgeTotal').textContent = total;
+}
+$('#filterActivities').addEventListener('input', ()=> renderActivityList(ACTS_CACHE));
+
+function renderDetailTable(rows, activityId){
+  $('#currentActivityMeta').textContent = `ID: ${activityId} • Baris: ${rows.length}`;
+  const tb = $('#detailTable tbody'); tb.innerHTML='';
+  let n=1;
+  rows.forEach(r=>{
+    const tr = document.createElement('tr');
+    const tca = [r.tcaDate||'', r.tcaTime||''].filter(Boolean).join(' ');
+    tr.innerHTML = `
+      <td>${n++}</td>
+      <td>${esc(r.nama)}</td>
+      <td>${esc(r.noIC)}</td>
+      <td>${esc(r.noTelefon)}</td>
+      <td>${esc(r.alamat)}</td>
+      <td>${esc(r.status)}</td>
+      <td>${esc(r.bp)}</td>
+      <td>${esc(r.pr)}</td>
+      <td>${esc(r.dxt)}</td>
+      <td>${esc(r.dxtType||'')}</td>
+      <td>${esc(r.tinggi)}</td>
+      <td>${esc(r.berat)}</td>
+      <td>${esc(r.bmi)}</td>
+      <td>${esc(tca)}</td>
+      <td>${esc(r.tcaStaff||'')}</td>
+      <td>${esc(r.remark)}</td>`;
+    tb.appendChild(tr);
+  });
+}
+function esc(s){ return String(s??'').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
+
+$('#btnLoadActivities').addEventListener('click', ()=>{
+  if (!ID_TOKEN) { logLn('Sila log masuk dahulu.'); return; }
+  loadActivities().catch(err => {
+    logLn('Ralat memuat aktiviti: ' + (err.message||err));
+  });
+});
+
+/* ==================== NADI TABLE — INPUT RINGKAS ==================== */
+function addRow(preset={}){
+  const tb = $('#nadiTable tbody');
+  const tr = document.createElement('tr');
+  tr.innerHTML = `
+    <td class="row-no"></td>
+    <td><input class="form-control form-control-sm" value="${esc(preset.nama||'')}" /></td>
+    <td><input class="form-control form-control-sm" value="${esc(preset.noIC||'')}" /></td>
+    <td><input class="form-control form-control-sm" value="${esc(preset.umur||'')}" /></td>
+    <td><input class="form-control form-control-sm" value="${esc(preset.noTelefon||'')}" /></td>
+    <td><input class="form-control form-control-sm" value="${esc(preset.alamat||'')}" /></td>
+    <td><input class="form-control form-control-sm" value="${esc(preset.bp||'')}" /></td>
+    <td><input class="form-control form-control-sm" value="${esc(preset.pr||'')}" /></td>
+    <td><input class="form-control form-control-sm" value="${esc(preset.dxt||'')}" /></td>
+    <td>
+      <select class="form-select form-select-sm">
+        <option value=""></option>
+        <option value="FASTING">FASTING</option>
+        <option value="RANDOM">RANDOM</option>
+      </select>
+    </td>
+    <td><input class="form-control form-control-sm" value="${esc(preset.tinggi||'')}" /></td>
+    <td><input class="form-control form-control-sm" value="${esc(preset.berat||'')}" /></td>
+    <td><input class="form-control form-control-sm" value="${esc(preset.bmi||'')}" /></td>
+    <td class="text-center"><input type="checkbox" ${preset.layak?'checked':''} /></td>
+    <td class="text-center"><input type="checkbox" ${preset.takLayak?'checked':''} /></td>
+    <td><input class="form-control form-control-sm" placeholder="yyyy-mm-dd / dd/mm/yyyy" value="${esc(preset.tcaDate||'')}" /></td>
+    <td><input class="form-control form-control-sm" placeholder="HH:mm" value="${esc(preset.tcaTime||'')}" /></td>
+    <td><input class="form-control form-control-sm" value="${esc(preset.tcaStaff||'')}" /></td>
+    <td><input class="form-control form-control-sm" value="${esc(preset.remark||'')}" /></td>
+    <td><button class="btn btn-outline-danger btn-sm"><i class="fa-solid fa-xmark"></i></button></td>
+  `;
+  tb.appendChild(tr);
+  tr.querySelector('td:last-child button').onclick = ()=>{ tr.remove(); renumberRows(); };
+  renumberRows();
+}
+function renumberRows(){
+  $$('#nadiTable tbody tr').forEach((tr,idx)=> tr.querySelector('.row-no').textContent = String(idx+1));
+}
+$('#btnAddRow').addEventListener('click', ()=> addRow());
+
+$('#btnSaveNadi').addEventListener('click', async ()=>{
+  if (!ID_TOKEN){ logLn('Sila log masuk dahulu.'); return; }
+  const title = ($('#nadiTitle').value||'').trim();
+  const date  = ($('#nadiDate').value||'').trim();
+  if (!title || !date){ logLn('Tajuk/Tarikh diperlukan.'); return; }
+  const staff = ($('#nadiStaff').value||'').trim();
+
+  const items = $$('#nadiTable tbody tr').map(tr => {
+    const cells = tr.querySelectorAll('td');
+    const val = (i)=> cells[i].querySelector('input')?.value || cells[i].querySelector('select')?.value || '';
+    const chk = (i)=> !!cells[i].querySelector('input')?.checked;
+    return {
+      nama: val(1), noIC: val(2), umur: val(3),
+      noTelefon: val(4), alamat: val(5),
+      bp: val(6), pr: val(7), dxt: val(8),
+      dxtType: val(9), tinggi: val(10), berat: val(11), bmi: val(12),
+      layak: chk(13), takLayak: chk(14),
+      tcaDate: val(15), tcaTime: val(16), tcaStaff: val(17), remark: val(18)
     };
-    async function loadActivityDetail(id){
-      try {
-        const det = await apiGet('getNadiActivityDetail', { id });
-        renderActivityDetail((det && det.data) || []);
-      } catch (e) {
-        console.error(e);
-        log('Gagal muat butiran aktiviti: ' + (e.message||e));
-        renderActivityDetail([]);
-      }
-    }
+  });
 
-    // ------------------ Simpan Jadual NADI Demo ---------------------
-    const btnSimpan = document.getElementById('btnSimpan');
-    btnSimpan.addEventListener('click', async ()=>{
-      try{
-        const title = document.getElementById('progTitle').value.trim();
-        const date  = document.getElementById('progDate').value.trim();
-        let items;
-        try { items = JSON.parse(document.getElementById('itemsJson').value); }
-        catch(e){ alert('Items bukan JSON sah'); return; }
-        if (!Array.isArray(items) || !items.length){ alert('Items kosong'); return; }
-        const resp = await apiPost('saveNadiActivity', { programTitle:title, programDate:date, items });
-        log('Simpan OK → ' + JSON.stringify(resp));
-      }catch(e){
-        log('Simpan gagal: ' + (e.message||e));
-      }
-    });
+  try{
+    const payload = {
+      staff, programTitle: title, programDate: toIso(date),
+      items: JSON.stringify(items.map(r => ({
+        nama: r.nama, noIC: r.noIC, umur: String(r.umur||'').replace(/\\D+/g,''),
+        noTelefon: normPhoneMY(r.noTelefon), alamat: r.alamat,
+        bp: r.bp, pr: r.pr, dxt: r.dxt, dxtType: (r.dxtType||'').toUpperCase(),
+        tinggi: r.tinggi, berat: r.berat, bmi: r.bmi,
+        status: r.layak ? 'LAYAK' : (r.takLayak ? 'TAK LAYAK' : ''),
+        appointmentType: r.layak ? 'PKB40' : (r.takLayak ? 'NONE' : ''),
+        tcaDate: r.tcaDate, tcaTime: r.tcaTime, tcaStaff: r.tcaStaff, remark: r.remark
+      })))
+    };
+    await saveNadiActivity(payload);
+  }catch(err){
+    logLn('Ralat simpan: ' + (err.message||err));
+  }
+});
 
-    // ------------------------- Hook butang --------------------------
-    document.getElementById('btnWhoAmI').addEventListener('click', async ()=>{
-      try {
-        const j = await apiGet('whoami');
-        log('WHOAMI → ' + JSON.stringify(j));
-      } catch(e){ log('WHOAMI gagal: ' + (e.message||e)); }
-    });
-    document.getElementById('btnVoucher').addEventListener('click', ()=> ensureVoucherICs());
-    document.getElementById('btnLoadAktiviti').addEventListener('click', ()=> loadActivities());
+/* ==================== PATCH SINTAKS (", catch(" → ".catch(") ==================== */
+(function fixBrokenCatch(){
+  document.querySelectorAll('script').forEach(s=>{
+    if (!s.textContent || !/,\\s*catch\\s*\\(/.test(s.textContent)) return;
+    try{
+      const fixed = s.textContent.replace(/,\\s*catch\\s*\\(/g, '.catch(');
+      const ns = document.createElement('script'); ns.textContent = fixed;
+      s.replaceWith(ns);
+      logLn('Patched a broken ", catch(" chain.');
+    }catch(_){}
+  });
+})();
 
-    // ------------------------- Bootstrap ----------------------------
-    loadConfig();
-    saveConfig(); // normalise /exec
-    refreshLoginState();
-    window.addEventListener('load', ()=> {
-      if (window.google && google.accounts && google.accounts.id) setupGSI();
-      else {
-        let tries = 0;
-        const t = setInterval(()=>{
-          tries++;
-          if (window.google && google.accounts && google.accounts.id) {
-            clearInterval(t); setupGSI();
-          } else if (tries>50) clearInterval(t);
-        }, 100);
-      }
-    });
-  </script>
+// Pre-fill one empty row for convenience
+addRow();
+</script>
 </body>
 </html>
