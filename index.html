@@ -6344,5 +6344,106 @@ function __toVoucherPayload(payload){
 })();
 </script>
 
+
+<!-- [PATCH v3] Robust merge by IC to fill PR/Tinggi/Berat/Status/AppointmentType + TCA -->
+<script>
+(function(){
+  if (window.__PATCH_V3_APPLIED__) return;
+  window.__PATCH_V3_APPLIED__ = true;
+
+  function pick(){ for (var i=0;i<arguments.length;i++){ var s = arguments[i]; if (s===undefined||s===null) continue; s=(''+s).trim(); if (s) return s; } return ''; }
+  function v(el){ return el && el.value!=null ? (''+el.value).trim() : ''; }
+  function q(root, sel){ try{ return root ? root.querySelector(sel) : document.querySelector(sel); }catch(e){ return null; } }
+  function checked(root, sel){
+    var el = q(root, sel); if (!el) return false;
+    if ('checked' in el) return !!el.checked;
+    var s = v(el); return /^(1|true|yes|ya)$/i.test(s);
+  }
+
+  function findNadiRowForItem(item){
+    var ic = pick(item.noIC, item.ic, item.nokp, item.no_kp);
+    if (ic){
+      var tr = document.querySelector('tbody#nadiContainer tr[data-ic="'+ic+'"]')
+            || document.querySelector('tr[data-ic="'+ic+'"]');
+      if (tr) return tr;
+    }
+    // fallback: first tr inside nadiContainer that has an input .nadi-ic with same value
+    var rows = Array.prototype.slice.call(document.querySelectorAll('tbody#nadiContainer tr, tr[data-ic]'));
+    for (var i=0;i<rows.length;i++){
+      var valIc = v(q(rows[i], '.nadi-ic, input.nadi-ic'));
+      if (valIc && ic && valIc===ic) return rows[i];
+    }
+    // last fallback: align by order
+    return rows[0] || null;
+  }
+
+  function deriveStatus(row){
+    var s = pick(v(q(row, '.nadi-status, select.nadi-status, [name="status"]'))).toUpperCase();
+    if (s) return s;
+    var layak = checked(row, '.nadi-layak, input.nadi-layak, [name="layak"]');
+    var tak   = checked(row, '.nadi-taklayak, input.nadi-taklayak, [name="takLayak"], [name="tidakLayak"]');
+    if (layak && !tak) return 'LAYAK';
+    if (tak && !layak) return 'TAK LAYAK';
+    return '';
+  }
+  function deriveAppointmentType(row, status){
+    var apt = pick(v(q(row, '.nadi-apt, select.nadi-apt, [name="appointmentType"]'))).toUpperCase();
+    if (apt) return apt;
+    var voucher = checked(row, '.nadi-voucher, input.nadi-voucher, [name="isVoucher"], [name="tcaVoucher"]');
+    if (voucher) return 'VOUCHER';
+    if (status==='LAYAK') return 'PKB40';
+    return 'NONE';
+  }
+
+  function normalizeDXTType(s){
+    s = (s||'').toString().trim().toUpperCase();
+    if (!s) return '';
+    if (/(FAST|FBG|PUASA)/.test(s)) return 'FASTING';
+    if (/(RAND|RBG|RANDOM)/.test(s)) return 'RANDOM';
+    return s;
+  }
+
+  function mergeFromRow(item, row){
+    if (!row) return item||{};
+    item = item || {};
+    item.pr      = pick(item.pr, v(q(row, '.nadi-pr, input.nadi-pr, [name="pr"], [name="nadi"]')));
+    item.tinggi  = pick(item.tinggi, v(q(row, '.nadi-tinggi, input.nadi-tinggi, [name="tinggi"], [name="height"], [name="Ht"]')));
+    item.berat   = pick(item.berat,  v(q(row, '.nadi-berat,  input.nadi-berat,  [name="berat"],  [name="weight"], [name="Wt"]')));
+    item.bmi     = pick(item.bmi,    v(q(row, '.nadi-bmi, input.nadi-bmi, [name="bmi"]')));
+    item.bp      = pick(item.bp,     v(q(row, '.nadi-bp, input.nadi-bp, [name="bp"]')));
+    item.dxt     = pick(item.dxt,    v(q(row, '.nadi-dxt, input.nadi-dxt, [name="dxt"], [name="bs"], [name="sugar"]')));
+    item.dxtType = normalizeDXTType(pick(item.dxtType, v(q(row, '.nadi-dxt-type, select.nadi-dxt-type, [name="dxtType"]'))));
+    var status   = pick((item.status||'').toString().toUpperCase(), deriveStatus(row));
+    item.status  = status;
+    item.appointmentType = pick(item.appointmentType, deriveAppointmentType(row, status));
+    item.tcaDate  = pick(item.tcaDate,  item.tca_date, item.tca,  item.TCADate,  v(q(row, '.nadi-tca-date, input.nadi-tca-date, [name="tcaDate"]')));
+    item.tcaTime  = pick(item.tcaTime,  item.tca_time, item.masaTCA, item.TCATime, v(q(row, '.nadi-tca-time, input.nadi-tca-time, [name="tcaTime"]')));
+    item.tcaStaff = pick(item.tcaStaff, item.tca_staff, item.staffTCA, item.TCAStaff, v(q(row, '.nadi-staff, input.nadi-staff, [name="tcaStaff"]')));
+    return item;
+  }
+
+  try{
+    if (window.RUMUS && typeof window.RUMUS.post === 'function' && !window.__RUMUS_POST_PATCH_V3__){
+      var __origPost = window.RUMUS.post;
+      window.RUMUS.post = async function(url, payload){
+        try{
+          if (payload && typeof payload==='object'){
+            var act = (payload.action||'').toString().trim();
+            if (act==='saveNadiActivity' && Array.isArray(payload.items)){
+              payload.items = payload.items.map(function(it){
+                var row = findNadiRowForItem(it||{});
+                return mergeFromRow(it||{}, row);
+              });
+            }
+          }
+        }catch(e){/*silent*/}
+        return __origPost.apply(this, arguments);
+      };
+      window.__RUMUS_POST_PATCH_V3__ = true;
+    }
+  }catch(e){/*noop*/}
+})();
+</script>
+
 </body>
 </html>
