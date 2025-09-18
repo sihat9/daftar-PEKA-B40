@@ -1,353 +1,363 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="ms">
 <head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Saringan — Hotfix/Diagnostik (PKB40)</title>
 
-  <!-- 🔧 Update these if needed -->
-  <meta name="gas-endpoint" content="https://broken-dew-0eb2.amiruladlije.workers.dev/exec" />
-  <meta name="google-signin-client_id" content="863564124015-838ksbuk27f0kkomm16hnc3bu608pbrr.apps.googleusercontent.com" />
+  <!-- Tetapan lalai (boleh ubah dalam UI) -->
+  <meta name="gas-endpoint" content="https://broken-dew-0eb2.amiruladlije.workers.dev/exec">
+  <meta name="google-signin-client_id" content="863564124015-838ksbuk27f0kkomm16hnc3bu608pbrr.apps.googleusercontent.com">
 
-  <title>daftar-PEKA-B40</title>
-  <!-- Keep your original CSS includes here if you have them -->
-  <style>
-    /* Minimal styles so we don't disturb your original layout */
-    #gsi-area { display:flex; gap:8px; align-items:center; }
-    #auth-info { font: 12px/1.4 system-ui, -apple-system, Segoe UI, Roboto, Arial; opacity:.8; }
-    #debug-log {
-      position: fixed; right: 8px; bottom: 8px; width: 360px; max-height: 45vh; overflow:auto;
-      font: 11px/1.35 ui-monospace, SFMono-Regular, Menlo, Consolas, "Liberation Mono", monospace;
-      background: #0b1020; color: #cfe6ff; border:1px solid #213; border-radius:8px; padding:8px;
-      box-shadow: 0 8px 24px rgba(0,0,0,.24); z-index: 9999;
-    }
-    #debug-log .line { white-space: pre-wrap; margin: 0 0 .35rem 0; }
-    #debug-log .ts { opacity:.65; }
-    #debug-log .ok { color:#8ff19f; }
-    #debug-log .err { color:#ff9ca4; }
-    #debug-log .muted { color:#97a4b1; }
-    .hidden { display:none !important;}
-  </style>
-
-  <!-- Google Identity Services -->
+  <!-- Google Identity -->
   <script src="https://accounts.google.com/gsi/client" async defer></script>
+
+  <style>
+    :root{--bg:#0b1020;--ink:#e6f0ff;--muted:#91a1c1;--accent:#1f6fff;--ok:#26c281;--bad:#ff4d4f}
+    *{box-sizing:border-box}
+    body{margin:0;font:14px/1.45 system-ui,-apple-system,Segoe UI,Roboto,Ubuntu,Cantarell,Noto Sans,"Helvetica Neue",Arial,"Apple Color Emoji","Segoe UI Emoji";color:#0b1225;background:#f7f9fc}
+    h1,h2{margin:.6rem 0 1rem}
+    h1{font-size:28px}
+    h2{font-size:20px}
+    .wrap{max-width:1100px;margin:24px auto;padding:0 16px}
+    .card{background:#fff;border:1px solid #e8eef8;border-radius:12px;box-shadow:0 2px 8px rgba(16,24,40,.04);padding:16px 16px}
+    .row{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+    label{display:block;font-weight:600;color:#253155;margin:.25rem 0}
+    input[type="text"],input[type="date"],textarea{width:100%;padding:10px 12px;border:1px solid #d6deee;border-radius:8px;font:inherit;background:#fbfdff}
+    textarea{min-height:120px;resize:vertical}
+    .btn{display:inline-flex;align-items:center;gap:8px;height:40px;padding:0 14px;border-radius:8px;border:1px solid #cbd6ee;background:#fff;cursor:pointer;user-select:none}
+    .btn.primary{background:var(--accent);border-color:var(--accent);color:#fff}
+    .btn.ghost{background:#fff}
+    .btn:disabled{opacity:.55;cursor:not-allowed}
+    .stack{display:flex;gap:10px;flex-wrap:wrap}
+    .muted{color:#66799e}
+    .pill{padding:2px 8px;border-radius:999px;font-size:12px;border:1px solid #d6deee;color:#3b4d74;background:#f3f7ff}
+    .hr{height:1px;background:#eef2fa;margin:10px 0 14px}
+    .hide{display:none !important}
+
+    /* Log panel */
+    .logpanel{position:fixed;right:14px;bottom:14px;width:420px;max-height:210px;background:#0c1327;border:1px solid #2c3963;border-radius:10px;overflow:auto;color:#cde2ff;font:12px/1.35 ui-monospace,SFMono-Regular,Menlo,Monaco,Consolas,"Liberation Mono","Courier New",monospace}
+    .logpanel pre{margin:0;padding:8px 10px;white-space:pre-wrap;word-break:break-word}
+    .logpanel pre:nth-child(odd){background:#0f1733}
+    .ok{color:#9cffb1}
+    .err{color:#ffc9c9}
+    .tag{display:inline-block;margin-right:6px;padding:1px 6px;border-radius:6px;background:#172147;border:1px solid #2a3a76;color:#cde2ff}
+    .flex{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+    .gsi{display:flex;align-items:center;gap:12px}
+  </style>
 </head>
 <body>
+  <div class="wrap">
+    <h1>Saringan — <b>Hotfix/Diagnostik</b></h1>
+    <p class="muted">Tujuan: uji sambungan <b>Cloudflare Worker</b> → <b>Google Apps Script</b> + aliran log masuk Google yang sama seperti sistem sebenar. Jika respons bukan JSON (contoh: berisi <code>&lt;!DOCTYPE html&gt;</code>), panel log akan paparkan <span class="pill">UPSTREAM_NOT_JSON</span> bersama petikan HTML supaya punca boleh dikenalpasti.</p>
 
-  <!-- ✅ Sign-In area (keeps layout minimal) -->
-  <div id="gsi-area" style="padding:10px;">
-    <div id="gsi-btn"></div>
-    <div id="auth-info" class="hidden"></div>
-    <button id="btn-signout" class="hidden" type="button">Sign out</button>
+    <section class="card" id="sec-auth">
+      <h2>1) Konfigurasi</h2>
+      <div class="row">
+        <div>
+          <label>API BASE (Cloudflare Worker URL)</label>
+          <input id="apiBase" type="text" placeholder="https://xxx.workers.dev/exec">
+          <div class="muted" style="margin-top:6px">Contoh: <code>https://broken-dew-0eb2.amiruladlije.workers.dev/exec</code></div>
+        </div>
+        <div>
+          <label>Google Client ID (GSI)</label>
+          <input id="gsiClient" type="text" placeholder="xxxxxxxxx.apps.googleusercontent.com">
+          <div class="muted" style="margin-top:6px">Biarkan jika tidak berubah.</div>
+        </div>
+      </div>
+      <div class="hr"></div>
+      <div class="flex">
+        <div id="gsi-btn" class="gsi"></div>
+        <button class="btn" id="btnLogout">Log keluar</button>
+        <span class="muted" id="authInfo">Belum log masuk</span>
+        <span class="pill" id="authEmail" style="display:none"></span>
+        <div class="stack" style="margin-left:auto">
+          <button class="btn ghost" id="btnWhoami">Uji WhoAmI</button>
+          <button class="btn ghost" id="btnVoucher">Bina Voucher Set</button>
+        </div>
+      </div>
+    </section>
+
+    <section class="card" id="sec-history" style="margin-top:16px">
+      <h2>2) Lihat Sejarah Saringan (AKTIVITI_PROGRAM)</h2>
+      <div class="stack">
+        <button class="btn primary" id="btnLoadActs">Muatkan Aktiviti</button>
+        <span class="muted">Jika berjaya, senarai ringkas dipaparkan di bawah.</span>
+      </div>
+      <div class="hr"></div>
+      <div id="actsOut" class="muted">Hasil Aktiviti</div>
+    </section>
+
+    <section class="card" id="sec-save" style="margin-top:16px">
+      <h2>3) Simpan Jadual NADI (Demo Minimum)</h2>
+      <div class="row">
+        <div>
+          <label>Tajuk Program</label>
+          <input id="title" type="text" value="Program NADI Komuniti">
+        </div>
+        <div>
+          <label>Tarikh Program (YYYY-MM-DD atau DD/MM/YYYY)</label>
+          <input id="date" type="text" value="2025-09-12">
+        </div>
+      </div>
+      <div style="margin-top:10px">
+        <label>Items (JSON Array)</label>
+        <textarea id="items">[{"nama":"Ali","noIC":"900101-10-1234","noTelefon":"0123456789","status":"LAYAK","appointmentType":"PKB40"}]</textarea>
+      </div>
+      <div class="hr"></div>
+      <button class="btn primary" id="btnSave">Simpan</button>
+    </section>
   </div>
 
-  <!-- Your existing app markup stays as-is below this line.
-       If you already have #gsi-btn/#auth-info/#btn-signout, this will reuse them. -->
-
-  <!-- 🧪 Tiny debug overlay you can close if you want -->
-  <div id="debug-log" class="hidden"></div>
+  <div class="logpanel" id="log"><pre>Menunggu...</pre></div>
 
   <script>
   (function(){
-    // ===== Config =====
-    const GAS_ENDPOINT = (document.querySelector('meta[name="gas-endpoint"]')?.content || '').replace(/\/+$/, '') || '';
-    const CLIENT_ID    = document.querySelector('meta[name="google-signin-client_id"]')?.content || '';
-    const STATE_KEY    = 'pkb40_id_token';
-    const LOG_ON       = true; // set false to hide log widget
+    const $ = (sel)=>document.querySelector(sel);
+    const $$ = (sel)=>Array.from(document.querySelectorAll(sel));
+    const LS = {
+      get: (k,d='')=>{ try{const v=localStorage.getItem(k); return v==null?d:v;}catch(e){return d}},
+      set: (k,v)=>{ try{localStorage.setItem(k,v)}catch(e){} },
+      del: (k)=>{ try{localStorage.removeItem(k)}catch(e){} }
+    };
+    const META = (name)=>{
+      const el=document.querySelector(`meta[name="${name}"]`);
+      return el?el.content.trim():'';
+    };
 
-    const $log = document.getElementById('debug-log');
-    function ts(){ return new Date().toLocaleTimeString(); }
-    function log(msg, cls){
-      if (!LOG_ON) return;
-      if ($log.classList.contains('hidden')) $log.classList.remove('hidden');
-      const div = document.createElement('div');
-      div.className = 'line ' + (cls||'');
-      div.innerHTML = '<span class="ts">['+ts()+']</span> ' + msg;
-      $log.appendChild(div);
-      $log.scrollTop = $log.scrollHeight;
+    const logEl = document.getElementById('log');
+    function log(msg, ok){
+      const ts = new Date().toLocaleTimeString();
+      const pre = document.createElement('pre');
+      pre.innerHTML = `[${ts}] ${msg}`;
+      pre.className = ok===true?'ok':(ok===false?'err':'');
+      if (!logEl.firstChild) logEl.appendChild(pre); else logEl.append(pre);
+      logEl.scrollTop = logEl.scrollHeight;
     }
+    function j(obj){ try{return JSON.stringify(obj)}catch(e){return String(obj)} }
 
-    function statusBadge(ok){ return ok ? '<span class="ok">OK</span>' : '<span class="err">GAGAL</span>'; }
+    // -------- Settings bootstrap
+    const apiBaseInp = $('#apiBase');
+    const gsiInp = $('#gsiClient');
+    const defBase = META('gas-endpoint') || '';
+    const defGSI  = META('google-signin-client_id') || '';
+    apiBaseInp.value = LS.get('GAS_ENDPOINT', defBase);
+    gsiInp.value     = LS.get('GSI_CLIENT_ID', defGSI);
+    apiBaseInp.addEventListener('change', ()=>LS.set('GAS_ENDPOINT', apiBaseInp.value.trim()));
+    gsiInp.addEventListener('change', ()=>LS.set('GSI_CLIENT_ID', gsiInp.value.trim()));
 
-    // ===== Auth State =====
-    let idToken = localStorage.getItem(STATE_KEY) || '';
-    let profile = null;
-    const $gsiBtn    = document.getElementById('gsi-btn');
-    const $authInfo  = document.getElementById('auth-info');
-    const $btnOut    = document.getElementById('btn-signout');
+    // -------- Auth (GSI)
+    const authInfo = $('#authInfo');
+    const authEmail = $('#authEmail');
+    const tokenKey = 'id_token';
 
-    function setSignedInUI(ok){
-      if (ok){
-        $authInfo.classList.remove('hidden');
-        $btnOut.classList.remove('hidden');
-      } else {
-        $authInfo.classList.add('hidden');
-        $btnOut.classList.add('hidden');
-      }
-    }
+    window.PKB40 = {
+      get endpoint(){ return (apiBaseInp.value||'').trim().replace(/\/+$/,''); },
+      get token(){ return LS.get(tokenKey,''); },
+      set token(v){ v?LS.set(tokenKey, v):LS.del(tokenKey); },
+      apiGet,
+      apiPost
+    };
 
-    // ===== Google Sign-In =====
-    function initGSI(){
-      if (!window.google || !google.accounts || !CLIENT_ID){
-        log('Client ID kosong.', 'err');
+    function ensureGSI(){
+      if (!window.google || !google.accounts || !google.accounts.id){
+        setTimeout(ensureGSI, 250);
         return;
       }
+      const clientId = (gsiInp.value || defGSI || '').trim();
+      if (!clientId){ log('Client ID kosong.', false); return; }
       google.accounts.id.initialize({
-        client_id: CLIENT_ID,
-        callback: handleCredentialResponse,
-        auto_select: false
+        client_id: clientId,
+        auto_select: true,
+        callback: (resp)=>{
+          const token = resp && resp.credential;
+          if (token){ PKB40.token = token; authInfo.textContent='Log masuk'; log('[auth] id_token disimpan', true); testWhoAmI(); ensureVoucherICs(); }
+        }
       });
-      try {
-        google.accounts.id.renderButton($gsiBtn, { theme: 'outline', size: 'medium', text: 'signin_with' });
-        log('GSI sedia.', 'muted');
-      } catch(e){ log('GSI gagal render: '+e, 'err'); }
+      google.accounts.id.renderButton($('#gsi-btn'), { theme:'outline', size:'medium', text: 'signin_with' });
+      log('GSI sedia.', true);
+    }
+    window.addEventListener('load', ensureGSI);
+
+    $('#btnLogout').addEventListener('click', ()=>{ PKB40.token=''; authInfo.textContent='Belum log masuk'; authEmail.style.display='none'; log('Token dibuang.', true); });
+
+    // -------- API helpers (JSON-safe)
+    async function _fetch(url, opts={}){
+      const res = await fetch(url, opts);
+      const ctype = (res.headers.get('content-type')||'').toLowerCase();
+      if (ctype.includes('application/json')) return res.json();
+      const body = await res.text();
+      // Cloudflare/Apps Script error that returns HTML
+      if (/^\s*</.test(body)){
+        log('UPSTREAM_NOT_JSON → petikan: '+ body.slice(0,160).replace(/\n/g,' ') + ' ...', false);
+        return { status:'error', code:'UPSTREAM_NOT_JSON', upstreamStatus: res.status, body };
+      }
+      try{ return JSON.parse(body); }catch(e){ return { status:'error', code:'NOT_JSON', body }; }
+    }
+    function qs(obj={}){
+      const sp = new URLSearchParams();
+      Object.entries(obj).forEach(([k,v])=>{ if (v!==undefined && v!==null) sp.set(k, String(v)); });
+      return sp.toString();
+    }
+    function withToken(params={}){
+      const p = Object.assign({}, params);
+      if (!p.id_token) p.id_token = PKB40.token || '';
+      return p;
+    }
+    function base(){ return PKB40.endpoint || ''; }
+
+    function urlFor(action, params={}){
+      const b = base(); if (!b) throw new Error('GAS_ENDPOINT kosong.');
+      const u = b + (b.includes('?')?'&':'?') + qs(withToken(Object.assign({ action }, params)));
+      return u;
     }
 
-    async function handleCredentialResponse(resp){
+    async function apiGet(action, params={}){
       try{
-        idToken = String(resp?.credential || '').trim();
-        if (!idToken){ log('[auth] tiada credential diterima', 'err'); return; }
-        localStorage.setItem(STATE_KEY, idToken);
-        log('[auth] id_token disimpan', 'muted');
-        await afterLogin();
-      }catch(e){
-        log('[auth] ralat: '+e, 'err');
+        const u = urlFor(action, params);
+        const out = await _fetch(u, { method:'GET', mode:'cors' });
+        return out;
+      }catch(err){ return { status:'error', message: String(err) }; }
+    }
+
+    async function apiPost(action, payload={}){
+      try{
+        const u = urlFor(action, {});
+        const body = qs(withToken(Object.assign({ action }, payload)));
+        const out = await _fetch(u, {
+          method:'POST',
+          mode:'cors',
+          headers:{ 'Content-Type': 'application/x-www-form-urlencoded;charset=UTF-8' },
+          body
+        });
+        return out;
+      }catch(err){ return { status:'error', message: String(err) }; }
+    }
+
+    // -------- Tests
+    async function testWhoAmI(){
+      const r = await apiPost('whoami', {});
+      if (r && r.status==='success'){
+        authInfo.textContent = 'Log masuk sebagai';
+        authEmail.textContent = r.email || '';
+        authEmail.style.display='inline-block';
+        log('WHOAMI → '+j(r), true);
+      } else {
+        authEmail.style.display='none';
+        log('WHOAMI → '+j(r), false);
       }
     }
+    $('#btnWhoami').addEventListener('click', testWhoAmI);
 
-    function signOut(){
-      idToken='';
-      localStorage.removeItem(STATE_KEY);
-      if (google?.accounts?.id) { try { google.accounts.id.disableAutoSelect(); }catch(e){} }
-      setSignedInUI(false);
-      $authInfo.textContent = '';
-      log('Token dibuang.', 'muted');
+    // -------- Voucher IC Set (untuk preloading)
+    async function ensureVoucherICs(){
+      const r = await apiGet('getVoucherICSet', {});
+      if (r && r.status==='success'){ window.__VOUCHER_ICS__ = (r.ics||[]); log('Voucher IC set → '+j(r), true); }
+      else log('Voucher IC set → '+j(r), false);
     }
-    $btnOut.addEventListener('click', signOut);
+    $('#btnVoucher').addEventListener('click', ensureVoucherICs);
 
-    // ===== Fetch Shim (inject id_token + route via Worker) =====
-    const ORIG_FETCH = window.fetch.bind(window);
-
-    function isAppsScriptLike(url){
-      return /script\.google\.com\/macros\/s\/.+\/exec/i.test(url);
+    // -------- Load activities (history)
+    async function loadActivities(){
+      const outEl = $('#actsOut');
+      const r = await apiGet('getNadiActivities', {});
+      if (r && r.status==='success' && Array.isArray(r.data)){
+        const list = r.data;
+        log('Aktiviti dimuat: '+ list.length, true);
+        if (!list.length){ outEl.textContent='Tiada aktiviti.'; return; }
+        const frag = document.createDocumentFragment();
+        list.slice(0, 30).forEach((it, i)=>{
+          const d = document.createElement('div');
+          d.className='muted'; d.style.margin='6px 0';
+          d.innerHTML = `<span class="tag">#${i+1}</span> <b>${escapeHtml(it.title||'')}</b> <span class="pill">${escapeHtml(it.programDate||'')}</span> <span class="muted">ID:</span> ${escapeHtml(it.activityId||'')}`;
+          frag.appendChild(d);
+        });
+        outEl.innerHTML='';
+        outEl.appendChild(frag);
+        // expose untuk UI asal jika mahu consume
+        window.__NADI_ACTIVITIES__ = list;
+        document.dispatchEvent(new CustomEvent('nadi:activitiesLoaded', { detail:list }));
+      } else {
+        outEl.textContent='Gagal memuat aktiviti.';
+        log('getNadiActivities → '+j(r), false);
+      }
     }
-    function isWorkerLike(url){
-      return /workers\.dev\/exec/i.test(url);
-    }
-    function hasJson(contentType){
-      return /application\/json/i.test(String(contentType||''));
-    }
+    $('#btnLoadActs').addEventListener('click', loadActivities);
 
-    function normalizeItems(items){
-      // Accept array of rows; coerce to keys our Apps Script expects.
-      // This is defensive — it won't change your layout; only the outgoing payload.
-      const toBool = v => v===true || String(v).toLowerCase()==='true' || String(v).trim()==='1' || /ya/i.test(String(v));
-      const norm = (r) => {
-        const o = r || {};
-        const pick = (...keys) => {
-          for (const k of keys){
-            if (o.hasOwnProperty(k) && o[k] !== undefined && o[k] !== null && String(o[k])!=='') return o[k];
-          }
-          return '';
-        };
-        const dxtTypeRaw = String(pick('dxtType','dxt_type','DXTType','gulaType','randomFasting')).toUpperCase();
-        let dxtType = '';
-        if (/FAST|FBG|PUASA/.test(dxtTypeRaw)) dxtType='FASTING';
-        else if (/RAND|RBG|RANDOM/.test(dxtTypeRaw)) dxtType='RANDOM';
-
-        let status = String(pick('status','kelayakan','kel','layakTak','Layak?')).toUpperCase();
-        const layak     = toBool(pick('layak','eligible'));
-        const takLayak  = toBool(pick('takLayak','tidakLayak','notEligible'));
+    // -------- Normalize & Save
+    function normPhone(raw){
+      let s = String(raw||'').replace(/\D/g,'');
+      if (!s) return '';
+      if (s.startsWith('00')) s=s.slice(2);
+      if (s.startsWith('60')) return s;
+      if (s.startsWith('0')) return '60'+s.slice(1);
+      return '60'+s;
+    }
+    function normalizeItems(arr){
+      const toBool = (v)=> v===true || String(v).toLowerCase()==='true' || String(v).toUpperCase()==='YA' || String(v)==='1';
+      const normDXTType = (raw)=>{
+        const s = String(raw||'').trim().toUpperCase();
+        if (!s) return '';
+        if (/(FAST|FBG|PUASA)/.test(s)) return 'FASTING';
+        if (/(RAND|RBG|RANDOM)/.test(s)) return 'RANDOM';
+        return s;
+      };
+      return (arr||[]).map((r)=>{
+        const o = r||{};
+        const nama      = o.nama || o.name || o.fullname || '';
+        const noIC      = o.noIC || o.ic || o.no_kp || o.icNumber || o.nokp || o.NoIC || '';
+        const umur      = o.umur || o.age || '';
+        const noTelefon = normPhone(o.noTelefon || o.telefon || o.noTel || o.phone || o.msisdn || o.tel || '');
+        const alamat    = o.alamat || o.address || o.addr || '';
+        const bp        = o.bp || o.bloodPressure || '';
+        const pr        = o.pr || o.nadi || o.pulse || '';
+        const dxt       = o.dxt || o.gula || o.dxtValue || o.bs || o.sugar || '';
+        const dxtType   = normDXTType(o.dxtType || o.dxt_type || o.dxttype);
+        const tinggi    = o.tinggi || o.height || '';
+        const berat     = o.berat || o.weight || '';
+        const bmi       = o.bmi || o.BMI || '';
+        let status      = String(o.status||'').toUpperCase();
+        const layak     = toBool(o.layak);
+        const takLayak  = toBool(o.takLayak) || /TAK\s*LAYAK|TIDAK\s*LAYAK/i.test(status);
         if (!status) status = layak ? 'LAYAK' : (takLayak ? 'TAK LAYAK' : '');
 
-        // Appointment type decision (client-side hint only; server still decides safely).
-        let appointmentType = String(pick('appointmentType','appointment_type','jenis')).toUpperCase();
-        const voucherFlag = toBool(pick('voucher','isVoucher','tcaVoucher'));
+        let appointmentType = String(o.appointmentType || o.appointment_type || o.jenis || '').toUpperCase();
+        const voucherFlag = toBool(o.voucher) || toBool(o.tcaVoucher);
         if (!appointmentType){
           if (status==='LAYAK') appointmentType='PKB40';
           else if (voucherFlag) appointmentType='VOUCHER';
           else appointmentType='NONE';
         }
+        const tcaDate   = o.tcaDate || o.tca_date || o.tca || '';
+        const tcaTime   = o.tcaTime || o.tca_time || o.masaTCA || '';
+        const tcaStaff  = o.tcaStaff || o.tca_staff || o.staffTCA || '';
+        const remark    = o.remark || o.catatan || o.notes || o.note || '';
 
-        const tcaDate = pick('tcaDate','tca_date','tca','TarikhTCA','TCADate');
-        const tcaTime = pick('tcaTime','tca_time','masaTCA','TCATime');
+        return { nama,noIC,umur,noTelefon,alamat,BP:bp,PR:pr,DXT:dxt,DXTType:dxtType,tinggi,berat,BMI:bmi,status,appointmentType,remark,tcaDate,tcaTime,tcaStaff };
+      });
+    }
 
-        return {
-          nama:       pick('nama','name','fullname','Nama'),
-          noIC:       pick('noIC','ic','no_kp','icNumber','nokp','NoIC'),
-          umur:       pick('umur','age','Umur'),
-          noTelefon:  pick('noTelefon','telefon','noTel','phone','msisdn','tel','NoTelefon'),
-          alamat:     pick('alamat','address','addr','Alamat'),
-          bp:         pick('bp','bloodPressure','BP'),
-          pr:         pick('pr','nadi','pulse','HR','PR'),
-          dxt:        pick('dxt','gula','dxtValue','bs','sugar','DXT'),
-          dxtType,
-          tinggi:     pick('tinggi','height','Tinggi'),
-          berat:      pick('berat','weight','Berat'),
-          bmi:        pick('bmi','BMI'),
-          status,
-          appointmentType,
-          remark:     pick('remark','catatan','notes','note','Remark'),
-          tcaDate,
-          tcaTime,
-          tcaStaff:   pick('tcaStaff','staffTCA','TCAStaff'),
-          voucher:    voucherFlag,
-          layak,
-          takLayak
-        };
+    async function doSave(){
+      let itemsRaw = $('#items').value.trim();
+      let items = [];
+      try{ items = JSON.parse(itemsRaw); }catch(e){ log('Items bukan JSON sah', false); return; }
+      const payload = {
+        title: $('#title').value.trim(),
+        date: $('#date').value.trim(),
+        items: JSON.stringify(normalizeItems(items))
       };
-      try { return (items||[]).map(norm); } catch(e){ return items||[]; }
+      const r = await apiPost('saveNadiProgramActivity', payload);
+      log('Simpan OK → '+j(r), r && r.status==='success');
     }
+    $('#btnSave').addEventListener('click', doSave);
 
-    async function smartFetch(input, init={}){
-      let url = typeof input === 'string' ? input : (input?.url || '');
-      if (!url) return ORIG_FETCH(input, init);
+    // Auto init (kalau token sudah ada dari sesi lepas)
+    if (PKB40.token){ testWhoAmI(); ensureVoucherICs(); }
+    // Option: auto-muat aktiviti selepas 1s
+    setTimeout(()=>{ if (PKB40.token) loadActivities(); }, 1200);
 
-      // If caller hits Apps Script or our Worker but without token,
-      // re-route to Worker and append id_token
-      const u = new URL(url, location.href);
-      const isAS  = isAppsScriptLike(u.href);
-      const isW   = isWorkerLike(u.href);
-      const isOur = u.href.startsWith(GAS_ENDPOINT);
-
-      if (isAS || isW || isOur){
-        if (!GAS_ENDPOINT){
-          log('GAS_ENDPOINT kosong – tetapkan meta[name="gas-endpoint"]', 'err');
-        }
-        // Normalize to Worker
-        const base = GAS_ENDPOINT || u.origin + (u.pathname.endsWith('/exec') ? '/exec' : u.pathname);
-        const out = new URL(base);
-        // Preserve action & params
-        u.searchParams.forEach((v,k)=> out.searchParams.set(k,v));
-        // Inject id_token
-        if (idToken) out.searchParams.set('id_token', idToken);
-        // Force CORS-friendly options
-        const opt = Object.assign({}, init||{});
-        opt.mode = 'cors';
-        opt.credentials = 'omit';
-        opt.headers = Object.assign({}, opt.headers||{});
-
-        // If posting form/json, also ensure id_token exists there (compat with legacy servers)
-        let ctype = '';
-        if (opt.body && typeof opt.body === 'string'){
-          ctype = String(opt.headers['Content-Type'] || opt.headers['content-type'] || '');
-          if (/application\/x-www-form-urlencoded/i.test(ctype)){
-            const params = new URLSearchParams(opt.body);
-            if (!params.get('id_token') && idToken) params.set('id_token', idToken);
-
-            // 🔧 Normalize NADI items if present
-            const action = params.get('action') || '';
-            if ((action==='saveNadiActivity' || action==='saveNadiProgramActivity') && params.get('items')){
-              try{
-                const arr = JSON.parse(params.get('items'));
-                params.set('items', JSON.stringify(normalizeItems(arr)));
-              }catch(e){ /* ignore */ }
-            }
-            opt.body = params.toString();
-          } else if (/application\/json/i.test(ctype)){
-            try{
-              const obj = JSON.parse(opt.body || '{}');
-              if (idToken && !obj.id_token) obj.id_token = idToken;
-              const action = obj.action || '';
-              if ((action==='saveNadiActivity' || action==='saveNadiProgramActivity') && Array.isArray(obj.items)){
-                obj.items = normalizeItems(obj.items);
-              }
-              opt.body = JSON.stringify(obj);
-            }catch(e){ /* ignore */ }
-          }
-        }
-
-        const res = await ORIG_FETCH(out.href, opt);
-        // Try to detect accidental HTML
-        const ctypeRes = res.headers.get('content-type') || '';
-        if (!hasJson(ctypeRes)){
-          const text = await res.text();
-          log('⚠️ Respons bukan JSON ('+res.status+') – mungkin token/endpoint salah. Pratonton 200 aksara:\n' + text.slice(0,200), 'err');
-          throw new Error('Respons bukan JSON');
-        }
-        return res;
-      }
-      // Not our GAS/Worker → pass-through
-      return ORIG_FETCH(input, init);
-    }
-    window.fetch = smartFetch;
-
-    // ===== API helpers =====
-    async function apiGet(action, params={}){
-      const url = new URL(GAS_ENDPOINT);
-      url.searchParams.set('action', action);
-      if (idToken) url.searchParams.set('id_token', idToken);
-      Object.entries(params||{}).forEach(([k,v])=> url.searchParams.set(k,String(v)));
-      const r = await smartFetch(url.href, { method: 'GET' });
-      return r.json();
-    }
-    async function apiPost(action, bodyObj){
-      const body = new URLSearchParams();
-      body.set('action', action);
-      if (idToken) body.set('id_token', idToken);
-      Object.entries(bodyObj||{}).forEach(([k,v])=>{
-        if (v===undefined || v===null) return;
-        if (typeof v === 'object') body.set(k, JSON.stringify(v));
-        else body.set(k, String(v));
-      });
-      const r = await smartFetch(GAS_ENDPOINT, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/x-www-form-urlencoded;charset=UTF-8' },
-        body: body.toString()
-      });
-      return r.json();
-    }
-
-    // ===== After Login =====
-    async function afterLogin(){
-      try{
-        const me = await apiPost('whoami', {});
-        log('WHOAMI → '+JSON.stringify(me), me?.status==='success'?'ok':'err');
-        if (me?.status==='success'){
-          profile = me;
-          $authInfo.textContent = me.email || '';
-          setSignedInUI(true);
-          // Preload voucher ICs (used by some UIs)
-          try{
-            const vo = await apiGet('getVoucherICSet');
-            log('Voucher IC set → '+JSON.stringify(vo), vo?.status==='success'?'ok':'err');
-            window.__VOUCHER_IC_SET__ = (vo?.ics || []);
-          }catch(e){ log('Voucher IC set gagal: '+e, 'err'); }
-          // (Optional) Load history list to unblock your "Lihat Sejarah Saringan"
-          try{
-            const acts = await apiGet('getNadiActivities');
-            log('Aktiviti dimuat: '+(acts?.data?.length||0), 'muted');
-            // If you already have your own renderer, it will pick this up.
-            window.__NADI_ACTIVITIES__ = acts?.data || [];
-            document.dispatchEvent(new CustomEvent('nadi:activitiesLoaded', { detail: window.__NADI_ACTIVITIES__ }));
-          }catch(e){ log('Gagal muat aktiviti: '+e, 'err'); }
-        } else {
-          setSignedInUI(false);
-        }
-      }catch(e){
-        log('WHOAMI gagal: '+e, 'err');
-      }
-    }
-
-    // ===== Public helpers (optional for your existing code) =====
-    window.PKB40 = {
-      apiGet, apiPost,
-      get token(){ return idToken; },
-      get endpoint(){ return GAS_ENDPOINT; },
-      normalizeItems,
-      log
-    };
-
-    // ===== Init =====
-    window.addEventListener('load', function(){
-      if (CLIENT_ID){
-        initGSI();
-      } else {
-        log('Client ID kosong.', 'err');
-      }
-      if (idToken){
-        afterLogin();
-      }
-    });
+    // Util
+    function escapeHtml(s){ return String(s||'').replace(/[&<>"']/g, m=>({ "&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","'":"&#039;" }[m])); }
   })();
   </script>
 </body>
