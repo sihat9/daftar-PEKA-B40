@@ -6282,5 +6282,216 @@ function __toVoucherPayload(payload){
   return { activityId, no, tcaDate, tcaTime, remark };
 }
 
-</script></body>
+</script>
+<script>
+// === NADI strict-compat overrides (v2) ===
+(function(){
+  'use strict';
+  function $qs(sel, root){ return (root||document).querySelector(sel); }
+  function $qsa(sel, root){ return Array.from((root||document).querySelectorAll(sel)); }
+  function yn(v){ return v ? 'YES' : 'NO'; }
+
+  // Build one row
+  window.addNadiRow = window.addNadiRow || function addNadiRow(prefill){
+    const tb = $qs('#nadiContainer'); if(!tb) return;
+    const i = tb.children.length + 1;
+    const tr = document.createElement('tr');
+    tr.innerHTML = `
+      <td class="text-center"><span class="nadi-counter">${i}</span></td>
+      <td class="nadi-input-cell"><input class="form-control form-control-sm inp-nama" placeholder="Nama Pesakit"></td>
+      <td class="nadi-input-cell"><input class="form-control form-control-sm inp-ic" placeholder="No IC"></td>
+      <td class="nadi-input-cell"><input class="form-control form-control-sm inp-umur" type="number" min="0" placeholder="Umur"></td>
+      <td class="nadi-input-cell"><input class="form-control form-control-sm inp-telefon" placeholder="Telefon"></td>
+      <td class="nadi-input-cell"><input class="form-control form-control-sm inp-alamat" placeholder="Alamat"></td>
+      <td class="nadi-input-cell"><input class="form-control form-control-sm inp-bp" placeholder="BP"></td>
+      <td class="nadi-input-cell"><input class="form-control form-control-sm inp-pr" placeholder="PR"></td>
+      <td class="nadi-input-cell"><input class="form-control form-control-sm inp-dxt" placeholder="DXT / Fasting/Random"></td>
+      <td class="nadi-input-cell"><input class="form-control form-control-sm inp-tinggi" type="number" step="0.1" placeholder="cm"></td>
+      <td class="nadi-input-cell"><input class="form-control form-control-sm inp-berat" type="number" step="0.1" placeholder="kg"></td>
+      <td class="nadi-input-cell"><input class="form-control form-control-sm inp-bmi" type="text" placeholder="auto"></td>
+      <td class="nadi-checkbox-cell text-center">
+        <input type="checkbox" class="form-check-input chk-layak" aria-label="Layak">
+      </td>
+      <td class="nadi-checkbox-cell text-center">
+        <input type="checkbox" class="form-check-input chk-tak" aria-label="Tidak Layak">
+      </td>
+      <td class="nadi-checkbox-cell text-center">
+        <input type="checkbox" class="form-check-input chk-vchr" aria-label="TCA voucher">
+      </td>
+      <td class="nadi-input-cell">
+        <input type="date" class="form-control form-control-sm inp-vchr-date" disabled>
+      </td>
+      <td class="nadi-input-cell">
+        <input class="form-control form-control-sm inp-remark" placeholder="Remark">
+      </td>
+      <td class="nadi-input-cell">
+        <div class="row gx-2">
+          <div class="col-5"><input type="date" class="form-control form-control-sm inp-tca-date" disabled></div>
+          <div class="col-3"><input type="time" class="form-control form-control-sm inp-tca-time" disabled></div>
+          <div class="col-4"><input type="text" class="form-control form-control-sm inp-tca-staff" placeholder="Staff" disabled></div>
+        </div>
+      </td>
+      <td class="nadi-actions-cell text-center">
+        <button type="button" class="btn btn-sm btn-outline-danger btn-del"><i class="bi bi-trash"></i></button>
+      </td>
+    `;
+    tb.appendChild(tr);
+
+    // Pre-fill if provided
+    if (prefill && typeof prefill === 'object'){
+      tr.querySelector('.inp-nama').value   = prefill.nama || '';
+      tr.querySelector('.inp-ic').value     = prefill.noIC || prefill.ic || '';
+      tr.querySelector('.inp-umur').value   = prefill.umur || '';
+      tr.querySelector('.inp-telefon').value= prefill.noTelefon || prefill.telefon || prefill.msisdn || '';
+      tr.querySelector('.inp-alamat').value = prefill.alamat || '';
+      tr.querySelector('.inp-bp').value     = prefill.bp || '';
+      tr.querySelector('.inp-pr').value     = prefill.pr || '';
+      tr.querySelector('.inp-dxt').value    = prefill.dxt || '';
+      tr.querySelector('.inp-tinggi').value = prefill.tinggi || '';
+      tr.querySelector('.inp-berat').value  = prefill.berat || '';
+      tr.querySelector('.inp-bmi').value    = prefill.bmi || '';
+      tr.querySelector('.chk-layak').checked= !!(prefill.layak === true || String(prefill.layak).toUpperCase() === 'YES');
+      tr.querySelector('.chk-tak').checked  = !!(prefill.takLayak === true || String(prefill.takLayak).toUpperCase() === 'YES');
+      tr.querySelector('.chk-vchr').checked = !!(prefill.tcaVoucher === true || String(prefill.tcaVoucher).toUpperCase() === 'YES');
+      tr.querySelector('.inp-vchr-date').value = prefill.tcaVoucherDate || prefill.tcaDateVoucher || '';
+      tr.querySelector('.inp-remark').value = prefill.remark || '';
+      tr.querySelector('.inp-tca-date').value = prefill.tcaDate || '';
+      tr.querySelector('.inp-tca-time').value = prefill.tcaTime || '';
+      tr.querySelector('.inp-tca-staff').value= prefill.tcaStaff || '';
+    }
+
+    // BMI auto-calc
+    function calcBMI(){
+      const h = parseFloat(tr.querySelector('.inp-tinggi').value || '0')/100;
+      const w = parseFloat(tr.querySelector('.inp-berat').value || '0');
+      tr.querySelector('.inp-bmi').value = (h>0 && w>0) ? (w/(h*h)).toFixed(1) : '';
+    }
+    tr.querySelector('.inp-tinggi').addEventListener('input', calcBMI);
+    tr.querySelector('.inp-berat').addEventListener('input', calcBMI);
+
+    // Exclusive: Layak vs Tidak Layak
+    const chkLayak = tr.querySelector('.chk-layak');
+    const chkTak   = tr.querySelector('.chk-tak');
+    const chkVchr  = tr.querySelector('.chk-vchr');
+    const vchrDate = tr.querySelector('.inp-vchr-date');
+    const tcaDate  = tr.querySelector('.inp-tca-date');
+    const tcaTime  = tr.querySelector('.inp-tca-time');
+    const tcaStaff = tr.querySelector('.inp-tca-staff');
+
+    function syncEnable(){
+      vchrDate.disabled = !chkVchr.checked;
+      tcaDate.disabled  = !chkLayak.checked;
+      tcaTime.disabled  = !chkLayak.checked;
+      tcaStaff.disabled = !chkLayak.checked;
+    }
+    chkLayak.addEventListener('change', function(){
+      if (this.checked) chkTak.checked = false;
+      syncEnable();
+    });
+    chkTak.addEventListener('change', function(){
+      if (this.checked) chkLayak.checked = false;
+      syncEnable();
+    });
+    chkVchr.addEventListener('change', syncEnable);
+    syncEnable();
+
+    // Delete
+    tr.querySelector('.btn-del').addEventListener('click', function(){
+      tr.remove();
+      // re-number
+      $qsa('#nadiContainer .nadi-counter').forEach((el, idx)=> el.textContent = idx+1);
+    });
+  };
+
+  // Collect items exactly as sheet header wants
+  function collectNadiItems(){
+    const rows = [];
+    $qsa('#nadiContainer > tr').forEach(tr=>{
+      const layak = tr.querySelector('.chk-layak').checked;
+      const tak   = tr.querySelector('.chk-tak').checked;
+      const vchr  = tr.querySelector('.chk-vchr').checked;
+      rows.push({
+        // header-equivalent keys for backend normalizer
+        'nama':               tr.querySelector('.inp-nama').value.trim(),
+        'noIC':               tr.querySelector('.inp-ic').value.trim(),
+        'umur':               tr.querySelector('.inp-umur').value.trim(),
+        'noTelefon':          tr.querySelector('.inp-telefon').value.trim(),
+        'alamat':             tr.querySelector('.inp-alamat').value.trim(),
+        'bp':                 tr.querySelector('.inp-bp').value.trim(),
+        'pr':                 tr.querySelector('.inp-pr').value.trim(),
+        'dxt':                tr.querySelector('.inp-dxt').value.trim(),
+        'tinggi':             tr.querySelector('.inp-tinggi').value.trim(),
+        'berat':              tr.querySelector('.inp-berat').value.trim(),
+        'bmi':                tr.querySelector('.inp-bmi').value.trim(),
+        // checkboxes as YES/NO strings
+        'layak':              yn(layak),
+        'takLayak':           yn(tak),
+        'tcaVoucher':         yn(vchr),
+        // dates & remark
+        'tcaVoucherDate':     tr.querySelector('.inp-vchr-date').value,
+        'remark':             tr.querySelector('.inp-remark').value.trim(),
+        // layak-only TCA fields
+        'tcaDate':            tr.querySelector('.inp-tca-date').value,
+        'tcaTime':            tr.querySelector('.inp-tca-time').value,
+        'tcaStaff':           tr.querySelector('.inp-tca-staff').value.trim()
+      });
+    });
+    return rows;
+  }
+
+  // Wire save button (override to be safe)
+  function wireSave(){
+    const btn = document.getElementById('btnNadiSaveActivity');
+    if (!btn) return;
+    btn.addEventListener('click', async function(){
+      try{
+        const title = (document.getElementById('nadiProgramTitle')?.value || '').trim();
+        const date  = (document.getElementById('nadiProgramDate')?.value || '').trim();
+        if (!title || !date){
+          alert('Sila isi Tajuk Program dan Tarikh Program.'); return;
+        }
+        const items = collectNadiItems();
+        if (!items.length){
+          alert('Sila tambah sekurang-kurangnya satu baris peserta.'); return;
+        }
+        // Post to backend
+        const body = new URLSearchParams();
+        body.set('action', 'saveNadiActivity');
+        body.set('programTitle', title);
+        body.set('programDate', date);
+        body.set('items', JSON.stringify(items));
+
+        // Use fetch wrapper already patched in <head>
+        const res = await fetch('https://script.google.com/macros/s/FAKE/exec', { method:'POST', body });
+        const j = await res.json();
+        if (j && j.status === 'success'){
+          alert('Berjaya: Aktiviti disimpan.');
+        } else {
+          alert('Gagal simpan: ' + (j && j.message ? j.message : 'ralat tidak diketahui'));
+        }
+      }catch(err){
+        console.error(err);
+        alert('Ralat rangkaian: ' + err.message);
+      }
+    }, { once: true }); // avoid duplicate handlers
+  }
+
+  // Auto wire on DOM ready
+  if (document.readyState === 'loading'){
+    document.addEventListener('DOMContentLoaded', function(){
+      if (!$qs('#nadiContainer')) return;
+      wireSave();
+      // if table empty, create one starter row
+      if (!$qs('#nadiContainer > tr')) addNadiRow();
+    });
+  } else {
+    if ($qs('#nadiContainer')){
+      wireSave();
+      if (!$qs('#nadiContainer > tr')) addNadiRow();
+    }
+  }
+})();
+</script>
+
+</body>
 </html>
