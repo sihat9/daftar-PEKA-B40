@@ -6673,5 +6673,119 @@ function __toVoucherPayload(payload){
 })();
 </script>
 
+
+<!-- [PATCH v6] Normalize IC + contenteditable fallback -->
+<script>
+(function(){
+  if (window.__PATCH_V6_APPLIED__) return;
+  window.__PATCH_V6_APPLIED__ = true;
+
+  function pick(){ for (var i=0;i<arguments.length;i++){ var s = arguments[i]; if (s===undefined||s===null) continue; s=(''+s).trim(); if (s) return s; } return ''; }
+  function valOrText(el){
+    if (!el) return '';
+    if (el.value!=null && (''+el.value).trim()) return (''+el.value).trim();
+    var t = (el.textContent||'').trim();
+    return t;
+  }
+  function q(root, sel){ try{ return root ? root.querySelector(sel) : document.querySelector(sel); }catch(e){ return null; } }
+  function qa(root, sel){ try{ return Array.prototype.slice.call(root ? root.querySelectorAll(sel) : document.querySelectorAll(sel)); }catch(e){ return []; } }
+  function checked(root, sel){ var el=q(root,sel); if(!el) return false; if ('checked' in el) return !!el.checked; var s=valOrText(el); return /^(1|true|yes|ya|on)$/i.test(s); }
+  function digits(s){ return (''+(s||'')).replace(/\D+/g,''); }
+
+  function readField(row, candidates){
+    for (var i=0;i<candidates.length;i++){
+      var el = q(row, candidates[i]);
+      var v = valOrText(el);
+      if (v) return v;
+    }
+    return '';
+  }
+
+  function findRowByIC(icRaw){
+    var ic = digits(icRaw);
+    if (!ic) return null;
+    // exact data-ic match with any formatting
+    var rows = qa(null, 'tbody#nadiContainer tr, tr[data-ic]');
+    for (var i=0;i<rows.length;i++){
+      var attr = rows[i].getAttribute && rows[i].getAttribute('data-ic');
+      if (attr && digits(attr) === ic) return rows[i];
+    }
+    // match by input value inside row
+    for (var j=0;j<rows.length;j++){
+      var iv = readField(rows[j], ['.nadi-ic','input.nadi-ic','[name="ic"]','[name="noIC"]','[data-col="NoIC"]']);
+      if (digits(iv) === ic) return rows[j];
+    }
+    return null;
+  }
+
+  function deriveStatus(row){
+    var s = pick(readField(row, ['.nadi-status','select.nadi-status','[name="status"]','[data-col="Status"]'])).toUpperCase();
+    if (s) return s;
+    var layak = checked(row, '.nadi-layak, input.nadi-layak, [name="layak"], [data-role="layak"], td.col-layak input[type="checkbox"]');
+    var tak   = checked(row, '.nadi-taklayak, input.nadi-taklayak, [name="takLayak"], [name="tidakLayak"], [data-role="takLayak"], td.col-taklayak input[type="checkbox"]');
+    if (layak && !tak) return 'LAYAK';
+    if (tak && !layak) return 'TAK LAYAK';
+    return '';
+  }
+  function deriveAppointmentType(row, status){
+    var apt = pick(readField(row, ['.nadi-apt','select.nadi-apt','[name="appointmentType"]','[data-col="AppointmentType"]'])).toUpperCase();
+    if (apt) return apt;
+    var voucher = checked(row, '.nadi-voucher, input.nadi-voucher, [name="isVoucher"], [name="tcaVoucher"], [data-role="voucher"], td.col-voucher input[type="checkbox"]');
+    if (voucher) return 'VOUCHER';
+    if (status==='LAYAK') return 'PKB40';
+    return 'NONE';
+  }
+  function normalizeDXTType(s){
+    s=(''+(s||'')).trim().toUpperCase();
+    if (!s) return '';
+    if (/(FAST|FBG|PUASA)/.test(s)) return 'FASTING';
+    if (/(RAND|RBG|RANDOM)/.test(s)) return 'RANDOM';
+    return s;
+  }
+
+  try{
+    if (window.RUMUS && typeof window.RUMUS.post === 'function' && !window.__RUMUS_POST_PATCH_V6__){
+      var __origPost = window.RUMUS.post;
+      window.RUMUS.post = async function(url, payload){
+        try{
+          if (payload && typeof payload==='object' && (payload.action||'').toString().trim()==='saveNadiActivity' && Array.isArray(payload.items)){
+            payload.items = payload.items.map(function(it){
+              it = it || {};
+              var ic = pick(it.noIC, it.ic, it.nokp, it.no_kp);
+              var row = findRowByIC(ic) || null;
+
+              // Read fields with contenteditable fallback and HR alias
+              var pr   = pick(it.pr, readField(row, ['.nadi-pr','input.nadi-pr','[name="pr"]','[name="hr"]','.nadi-hr','input.nadi-hr','[name="nadi"]','[name="pulse"]','[data-col="PR"]']));
+              var tinggi = pick(it.tinggi,  readField(row, ['.nadi-tinggi','input.nadi-tinggi','[name="tinggi"]','[name="height"]','[name="Ht"]','[data-col="Tinggi"]']));
+              var berat  = pick(it.berat,   readField(row, ['.nadi-berat','input.nadi-berat','[name="berat"]','[name="weight"]','[name="Wt"]','[data-col="Berat"]']));
+              var bmi    = pick(it.bmi,     readField(row, ['.nadi-bmi','input.nadi-bmi','[name="bmi"]','[data-col="BMI"]']));
+              var bp     = pick(it.bp,      readField(row, ['.nadi-bp','input.nadi-bp','[name="bp"]','[data-col="BP"]']));
+              var dxt    = pick(it.dxt,     readField(row, ['.nadi-dxt','input.nadi-dxt','[name="dxt"]','[name="bs"]','[name="sugar"]','[data-col="DXT"]']));
+              var dxtType= normalizeDXTType(pick(it.dxtType, readField(row, ['.nadi-dxt-type','select.nadi-dxt-type','[name="dxtType"]','[data-col="DXTType"]'])));
+
+              var status = pick((it.status||'').toString().toUpperCase(), deriveStatus(row));
+              var aptType= pick(it.appointmentType, deriveAppointmentType(row, status));
+
+              var tcaDate  = pick(it.tcaDate,  it.tca_date, it.tca,  it.TCADate,  readField(row, ['.nadi-tca-date','input.nadi-tca-date','.tca-date','input.tca-date','[name="tcaDate"]','[data-col="TCADate"]']));
+              var tcaTime  = pick(it.tcaTime,  it.tca_time, it.masaTCA, it.TCATime, readField(row, ['.nadi-tca-time','input.nadi-tca-time','.tca-time','input.tca-time','[name="tcaTime"]','[data-col="TCATime"]']));
+              var tcaStaff = pick(it.tcaStaff, it.tca_staff, it.staffTCA, it.TCAStaff, readField(row, ['.nadi-staff','input.nadi-staff','.tca-staff','input.tca-staff','[name="tcaStaff"]','[data-col="TCAStaff"]']));
+
+              it.pr = pr; it.tinggi=tinggi; it.berat=berat; it.bmi=bmi; it.bp=bp; it.dxt=dxt; it.dxtType=dxtType;
+              it.status = status; it.appointmentType=aptType;
+              it.tcaDate=tcaDate; it.tcaTime=tcaTime; it.tcaStaff=tcaStaff;
+
+              try{ console.debug('[PATCH v6]', {ic, pr, tinggi, berat, status, aptType, tcaDate, tcaTime, tcaStaff}); }catch(e){}
+              return it;
+            });
+          }
+        }catch(e){/*ignore*/}
+        return __origPost.apply(this, arguments);
+      };
+      window.__RUMUS_POST_PATCH_V6__ = true;
+    }
+  }catch(e){/*noop*/}
+})();
+</script>
+
 </body>
 </html>
