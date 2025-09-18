@@ -52,64 +52,44 @@
   function whenRUMUS(cb){ if (window.RUMUS) return cb(); var n=0, iv=setInterval(function(){ n++; if(window.RUMUS){clearInterval(iv); cb();} if(n>200) clearInterval(iv); },50); }
   function truthy(x){ return x===true || String(x).toLowerCase()==='true' || x===1 || String(x)==='1' || String(x).toLowerCase()==='ya'; }
   function normItems(items){
-  try{ if (typeof items==='string') items=JSON.parse(items); }catch(e){ return items; }
-  if (!Array.isArray(items)) return items;
-
-  function truthy(x){ return x===true || String(x).toLowerCase()==='true' || x===1 || String(x)==='1' || String(x).toLowerCase()==='ya' || String(x).toLowerCase()==='yes'; }
-  function normDXT(v){ v=String(v||'').toUpperCase(); if(/FAST|FBG|PUASA/.test(v))return 'FASTING'; if(/RAND|RBG|RANDOM/.test(v))return 'RANDOM'; return v; }
-  function onlyNumStr(s){ s=String(s||''); const m=s.match(/-?\d+(?:[.,]\d+)?/); return m?m[0].replace(',', '.'):''; }
-
-  return items.map(function(r){
-    // derive status + appointment type
-    var statusRaw = (r.status||r.kelayakan||r.kel||'').toString().toUpperCase().trim();
-    var layakB = truthy(r.layak) || String(r['Layak']||'').toLowerCase()==='yes';
-    var takB   = truthy(r.takLayak) || String(r['Tidak Layak']||'').toLowerCase()==='yes';
-    var vchrB  = truthy(r.voucher) || truthy(r.isVoucher) || truthy(r.tcaVoucher) || String(r['TCA voucher']||'').toLowerCase()==='yes';
-
-    var status = statusRaw;
-    if (!status){
-      if (vchrB) status = 'LAYAK'; // will map apt=VOUCHER below, status kept as LAYAK for simplicity
-      else if (layakB && !takB) status = 'LAYAK';
-      else if (takB && !layakB) status = 'TAK LAYAK';
-      else status = '';
+    try{ if (typeof items==='string') items=JSON.parse(items); }catch(e){ return items; }
+    if (!Array.isArray(items)) return items;
+    function normDXT(v){ v=String(v||'').toUpperCase(); if(/FAST|FBG|PUASA/.test(v))return 'FASTING'; if(/RAND|RBG|RANDOM/.test(v))return 'RANDOM'; return v; }
+    function pickStatus(r){
+      var s=(r.status||r.kelayakan||r.kel||'').toString().toUpperCase().trim();
+      if(!s) s = truthy(r.layak)?'LAYAK':(truthy(r.takLayak)?'TAK LAYAK':'');
+      if(/TIDAK\s*LAYAK|TAK\s*LAYAK/.test(s)) return 'TAK LAYAK';
+      if(/LAYAK/.test(s)) return 'LAYAK';
+      return s;
     }
-    var apt = (r.appointmentType||r.appointment_type||'').toString().toUpperCase();
-    if (!apt) apt = vchrB ? 'VOUCHER' : (status==='LAYAK' ? 'PKB40' : (status==='TAK LAYAK' ? 'NONE' : ''));
-
-    // TCA date preference: explicit -> voucherDate -> UI label -> others
-    var tcaDateRaw = r.tcaDate || r.voucherDate || r['Tarikh TCA (Voucher)'] || r.tca_date || r.tca || '';
-    var tcaTimeRaw = r.tcaTime || r.tca_time || r.masaTCA || '';
-    var tcaStaffRaw= r.tcaStaff || r.tca_staff || r.staffTCA || '';
-
-    return Object.assign({
-      nama: r.nama||r.name||r.fullname||'',
-      noIC: r.noIC||r.ic||r.no_kp||r.icNumber||r.nokp||'',
-      umur: r.umur||r.age||'',
-      noTelefon: r.noTelefon||r.telefon||r.noTel||r.msisdn||r.phone||r.tel||'',
-      alamat: r.alamat||r.address||r.addr||'',
-      bp: r.bp||r.bloodPressure||'',
-      pr: r.pr||r.nadi||r.pulse||r.hr||'',
-      dxt: r.dxt||r.gula||r.bs||r.sugar||'',
-      dxtType: normDXT(r.dxtType||r.dxt_type||r.dxttype),
-      tinggi: onlyNumStr(r.tinggi||r.height||r.ht||r['Tinggi']||''),
-      berat:  onlyNumStr(r.berat||r.weight||r.wt||r['Berat']||''),
-      bmi: r.bmi||r.BMI||'',
-      status: status,
-      appointmentType: apt,
-      remark: r.remark||r.catatan||r.notes||r.note||'',
-      tcaDate: tcaDateRaw,
-      tcaTime: tcaTimeRaw,
-      tcaStaff: tcaStaffRaw
-    }, {
-      // carry UI keys too (harmless for backend; helps if sheet uses UI headers)
-      'Layak': layakB ? 'YES' : 'No',
-      'Tidak Layak': takB ? 'YES' : 'No',
-      'TCA voucher': vchrB ? 'YES' : 'No',
-      'Tarikh TCA (Voucher)': r['Tarikh TCA (Voucher)'] || (vchrB ? tcaDateRaw : '')
+    return items.map(function(r){
+      var status = pickStatus(r);
+      var voucher = truthy(r.voucher)||truthy(r.isVoucher)||truthy(r.tcaVoucher);
+      var apt = (r.appointmentType||r.appointment_type||'').toString().toUpperCase();
+      if(!apt) apt = voucher ? 'VOUCHER' : (status==='LAYAK' ? 'PKB40' : (status==='TAK LAYAK' ? 'NONE' : ''));
+      return {
+        nama: r.nama||r.name||r.fullname||'',
+        noIC: r.noIC||r.ic||r.no_kp||r.icNumber||r.nokp||'',
+        umur: r.umur||r.age||'',
+        noTelefon: r.noTelefon||r.telefon||r.noTel||r.msisdn||r.phone||r.tel||'',
+        alamat: r.alamat||r.address||r.addr||'',
+        bp: r.bp||r.bloodPressure||'',
+        pr: r.pr||r.nadi||r.pulse||'',
+        dxt: r.dxt||r.gula||r.bs||r.sugar||'',
+        dxtType: normDXT(r.dxtType||r.dxt_type||r.dxttype),
+        tinggi: r.tinggi||r.height||'',
+        berat: r.berat||r.weight||'',
+        bmi: r.bmi||r.BMI||'',
+        status: status,
+        appointmentType: apt,
+        remark: r.remark||r.catatan||r.notes||r.note||'',
+        tcaDate: r.tcaDate||r.tca_date||r.tca||'',
+        tcaTime: r.tcaTime||r.tca_time||r.masaTCA||'',
+        tcaStaff: r.tcaStaff||r.tca_staff||r.staffTCA||''
+      };
     });
-  });
-}
-whenRUMUS(function(){
+  }
+  whenRUMUS(function(){
     if (typeof RUMUS.post==='function'){
       var _post = RUMUS.post.bind(RUMUS);
       RUMUS.post = function(action, params){
@@ -2593,6 +2573,75 @@ function calculateAgeFromIC(ic) {
   return `${age}t ${months}b ${days}h`;
 }
 
+
+function nadiUpdateControls(tr){
+  if (!tr) return;
+  const layak   = !!(tr.querySelector('.nadi-layak')?.checked);
+  const tak     = !!(tr.querySelector('.nadi-taklayak')?.checked);
+  const voucher = !!(tr.querySelector('.nadi-voucher')?.checked);
+
+  // Mutual exclusion: layak vs tak layak
+  if (layak && tak){
+    // prioritize the one that triggered latest; we'll clean up in event handler
+  }
+
+  const tcaDate   = tr.querySelector('.nadi-tca-date');
+  const tcaTime   = tr.querySelector('.nadi-tca-time');
+  const tcaStaff  = tr.querySelector('.nadi-staff');
+  const vDate     = tr.querySelector('.nadi-voucher-date');
+
+  // Layak PEKA → enable TCA (date/time/staff)
+  if (tcaDate && tcaTime && tcaStaff){
+    if (layak){
+      tcaDate.disabled = false; tcaTime.disabled = false; tcaStaff.disabled = false;
+    } else {
+      tcaDate.value = ''; tcaTime.value = ''; tcaStaff.value = '';
+      tcaDate.disabled = true; tcaTime.disabled = true; tcaStaff.disabled = true;
+    }
+  }
+
+  // Voucher → enable voucher date only
+  if (vDate){
+    if (voucher){
+      vDate.disabled = false;
+    } else {
+      vDate.value = '';
+      vDate.disabled = true;
+    }
+  }
+}
+
+function bindNadiRowEvents(tr){
+  if (!tr) return;
+  const layak   = tr.querySelector('.nadi-layak');
+  const tak     = tr.querySelector('.nadi-taklayak');
+  const voucher = tr.querySelector('.nadi-voucher');
+
+  if (layak){
+    layak.addEventListener('change', function(){
+      if (layak.checked && tak) tak.checked = false;
+      nadiUpdateControls(tr);
+      updateNadiSummary?.();
+    });
+  }
+  if (tak){
+    tak.addEventListener('change', function(){
+      if (tak.checked && layak) layak.checked = false;
+      // If tak layak is checked, turn off voucher too (optional)
+      nadiUpdateControls(tr);
+      updateNadiSummary?.();
+    });
+  }
+  if (voucher){
+    voucher.addEventListener('change', function(){
+      nadiUpdateControls(tr);
+    });
+  }
+
+  // Initial state
+  nadiUpdateControls(tr);
+}
+
 function updateNadiSummary() {
   let layakCount = 0;
   let takLayakCount = 0;
@@ -2705,6 +2754,8 @@ function addNadiRow(){
       </div>
     </td>
   `;
+  bindNadiRowEvents(row);
+
 
   container.appendChild(row);
 
@@ -3194,9 +3245,12 @@ function collectNadiRowsForActivity(){
 
   const items = [];
 
+  const yesNo = (b)=> b ? 'YES' : 'No';
+
   rows.forEach(r => {
     const val  = (sel) => (r.querySelector(sel)?.value ?? '').trim();
     const text = (sel) => (r.querySelector(sel)?.textContent ?? '').trim();
+    const chk  = (sel) => !!(r.querySelector(sel)?.checked);
 
     const nama    = val('.nadi-nama');
     const ic      = val('.nadi-ic');
@@ -3205,56 +3259,58 @@ function collectNadiRowsForActivity(){
     const wt      = val('.nadi-berat');   // kg
     const ht      = val('.nadi-tinggi');  // cm
     const bp      = val('.nadi-bp');
-    const hr      = val('.nadi-pr');      // PR
+    const pr      = val('.nadi-pr');      // PR / Nadi
     const umurTxt = text('.nadi-umur-view');
     const bmi     = val('.nadi-bmi');
-    const dxtType = val('.nadi-dxt-type');   // Fasting/Random
+    const dxtType = val('.nadi-dxt-type');   // Fasting/Random (hidden)
     const dxt     = val('.nadi-dxt');
 
-    // Checkboxes + Dates/Time/Staff
-    const layakCB = !!(r.querySelector('.nadi-layak')?.checked);
-    const takCB   = !!(r.querySelector('.nadi-taklayak')?.checked);
-    const vchrCB  = !!(r.querySelector('.nadi-voucher')?.checked);
+    const layakCB = chk('.nadi-layak');
+    const takCB   = chk('.nadi-taklayak');
+    const vchrCB  = chk('.nadi-voucher');
 
-    const tcaDateVoucher = val('.nadi-voucher-date');   // yyyy-MM-dd
-    const tcaDateLayak   = val('.nadi-tca-date');       // yyyy-MM-dd
-    const tcaTime        = val('.nadi-tca-time');       // HH:mm
-    const tcaStaff       = val('.nadi-staff');
+    const voucherDate = val('.nadi-voucher-date');     // yyyy-MM-dd
+    const tcaDateLayak= val('.nadi-tca-date');         // yyyy-MM-dd
+    const tcaTime     = val('.nadi-tca-time');         // HH:mm
+    const tcaStaff    = val('.nadi-staff');
 
-    // Decide which TCA date to send
-    const tcaDate = vchrCB ? tcaDateVoucher : (layakCB ? tcaDateLayak : '');
-
-    // UI 'YES'/'No' strings for the 3 checkboxes
-    const yesNo = (b) => b ? 'YES' : 'No';
-
-    const remark  = val('.nadi-remark');     // optional
+    const tcaDate = vchrCB ? voucherDate : (layakCB ? tcaDateLayak : '');
 
     // Consider "ada isi" if at least one key field exists
-    const adaIsi = [nama, ic, tel, alamat, bp, hr, dxt, ht, wt, bmi, remark, tcaDate].some(Boolean);
+    const adaIsi = [nama, ic, tel, alamat, bp, pr, dxt, ht, wt, bmi, voucherDate, tcaDateLayak, tcaTime, tcaStaff].some(Boolean);
 
     if (adaIsi){
-      items.push({
-        // Core fields
-        nama, ic, tel, alamat,
-        umur: umurTxt,
-        bp, pr: hr, hr, dxtType, dxt,
-        tinggi: ht, berat: wt, bmi,
-
-        // Flags (booleans)
+      const rec = {
+        // For summary
+        tarikh,
+        // Canonical keys expected by backend (best-effort)
+        nama, noIC: ic, noTelefon: tel, alamat,
+        berat: wt, tinggi: ht, bp, pr, umur: umurTxt, bmi,
+        dxtType, dxt,
         layak: layakCB, takLayak: takCB, voucher: vchrCB,
-
-        // Duplicate UI-friendly flags for future compatibility
-        'Layak': yesNo(layakCB),
-        'Tidak Layak': yesNo(takCB),
-        'TCA voucher': yesNo(vchrCB),
-
-        // TCA
         tcaDate, tcaTime, tcaStaff,
-        'Tarikh TCA (Voucher)': tcaDateVoucher,
+        remark: val('.nadi-remark')
+      };
 
-        // Notes
-        remark
-      });
+      // Also include STRICT UI header keys (exact column names)
+      rec['Nama Pesakit']           = nama;
+      rec['No IC']                  = ic;
+      rec['Umur']                   = umurTxt;
+      rec['Telefon']                = tel;
+      rec['Alamat']                 = alamat;
+      rec['BP']                     = bp;
+      rec['PR']                     = pr;
+      rec['DXT']                    = dxt;
+      rec['Tinggi']                 = ht;
+      rec['Berat']                  = wt;
+      rec['BMI']                    = bmi;
+      rec['Layak']                  = yesNo(layakCB);
+      rec['Tidak Layak']            = yesNo(takCB);
+      rec['TCA voucher']            = yesNo(vchrCB);
+      rec['Tarikh TCA (Voucher)']   = vchrCB ? voucherDate : (layakCB ? tcaDateLayak : '');
+      rec['Remark']                 = rec.remark;
+
+      items.push(rec);
     }
   });
 
