@@ -6493,5 +6493,136 @@ function __toVoucherPayload(payload){
 })();
 </script>
 
+
+<!-- ===== NADI Save Compatibility Patch v3 (kejar layout asal, baiki YES/NO & TCA routing) ===== -->
+<script>
+(function(){
+  'use strict';
+
+  // Helper: lebih longgar (terima YES/YA/TRUE/1)
+  function asBool(v){
+    if (v === true) return true;
+    if (v === false) return false;
+    var s = String(v||'').trim().toLowerCase();
+    return s === 'yes' || s === 'ya' || s === 'true' || s === '1' || s === 'y';
+  }
+  // Coerce "YES"/"NO" ↔ boolean untuk serasi backend
+  function ynToBool(v){
+    if (typeof v === 'boolean') return v;
+    var s = String(v||'').trim().toUpperCase();
+    if (s === 'YES') return true;
+    if (s === 'NO') return false;
+    return asBool(v);
+  }
+
+  // Ambil nilai sel yang mungkin disimpan dengan pelbagai nama kunci
+  function grab(obj, keys, def){
+    if (!obj) return def;
+    for (var i=0;i<keys.length;i++){
+      var k = keys[i];
+      if (k in obj && obj[k] != null && String(obj[k]).trim() !== '') return obj[k];
+    }
+    return def;
+  }
+
+  // Bina item baharu bersih untuk Action saveNadiActivity
+  function normalizeRow(r){
+    // Data asas
+    var nama       = grab(r, ['nama','name','Nama','Nama Pesakit','fullname'], '');
+    var noIC       = grab(r, ['noIC','ic','NoIC','No IC','icNumber','nokp'], '');
+    var umur       = grab(r, ['umur','age','Umur'], '');
+    var noTelefon  = grab(r, ['noTelefon','telefon','NoTelefon','Telefon','phone','tel'], '');
+    var alamat     = grab(r, ['alamat','address','Alamat'], '');
+    var bp         = grab(r, ['bp','BP'], '');
+    var pr         = grab(r, ['pr','nadi','PR','Pulse'], '');
+    var dxt        = grab(r, ['dxt','gula','DXT','Sugar','BS'], '');
+    var tinggi     = grab(r, ['tinggi','height','Tinggi'], '');
+    var berat      = grab(r, ['berat','weight','Berat'], '');
+    var bmi        = grab(r, ['bmi','BMI'], '');
+    var remark     = grab(r, ['remark','catatan','notes','note','Remark'], '');
+
+    // Checkbox yang UI rekod sebagai "YES"/"NO" (atau boolean)
+    var layakRaw   = grab(r, ['layak','Layak'], '');
+    var takRaw     = grab(r, ['takLayak','Tidak Layak','tidakLayak'], '');
+    var vRaw       = grab(r, ['voucher','isVoucher','tcaVoucher','TCA voucher'], '');
+
+    var layak = ynToBool(layakRaw);
+    var tak   = ynToBool(takRaw);
+    var vch   = ynToBool(vRaw);
+
+    // Eksklusif: jika voucher YES → anggap bukan layak/tak (ikut perbincangan)
+    if (vch){ layak=false; tak=false; }
+
+    var status = layak ? 'LAYAK' : (tak ? 'TAK LAYAK' : '');
+    var appointmentType = vch ? 'VOUCHER' : (layak ? 'PKB40' : (tak ? 'NONE' : ''));
+
+    // TCA (Layak) vs TCA (Voucher)
+    var tcaDateLayak  = grab(r, ['tcaDate','Tarikh TCA','tca_date'], '');
+    var tcaTimeLayak  = grab(r, ['tcaTime','Masa TCA','tca_time'], '');
+    var tcaStaffLayak = grab(r, ['tcaStaff','Staff TCA','tca_staff','staffTCA'], '');
+    var tcaDateVoucher= grab(r, ['voucherTcaDate','tcaVoucherDate','Tarikh TCA (Voucher)','tca_voucher_date'], '');
+
+    // Peraturan:
+    // - Jika VOUCHER=YES → simpan TCA (Voucher) SAHAJA, kosongkan TCA Layak
+    // - Jika LAYAK=YES   → simpan TCA Layak SAHAJA, TCA (Voucher) kosong
+    if (vch){
+      tcaDateLayak=''; tcaTimeLayak=''; tcaStaffLayak='';
+    } else if (layak){
+      tcaDateVoucher='';
+    } else {
+      // tiada apa-apa: kosong kedua-duanya
+      tcaDateLayak=''; tcaTimeLayak=''; tcaStaffLayak=''; tcaDateVoucher='';
+    }
+
+    return {
+      // kunci utama yang backend (code.gs) faham
+      nama:nama, noIC:noIC, umur:umur, noTelefon:noTelefon, alamat:alamat,
+      bp:bp, pr:pr, dxt:dxt, tinggi:tinggi, berat:berat, bmi:bmi,
+      layak: (layak?'YES':'NO'), takLayak: (tak?'YES':'NO'), tcaVoucher: (vch?'YES':'NO'),
+      status: status, appointmentType: appointmentType,
+      remark: remark,
+      tcaDate: tcaDateLayak, tcaTime: tcaTimeLayak, tcaStaff: tcaStaffLayak,
+      // simpan tarikh voucher dalam alias pelbagai — backend kita sudah pintar pilih ikut appointmentType
+      tcaVoucherDate: tcaDateVoucher
+    };
+  }
+
+  // Pasang wrapper untuk RUMUS.post → action saveNadiActivity
+  function installPostWrapper(){
+    if (!window.RUMUS || typeof RUMUS.post !== 'function') return false;
+    if (RUMUS.__patchedSaveNadiV3) return true; // elak double-patch
+    var _post = RUMUS.post.bind(RUMUS);
+    RUMUS.post = function(action, params){
+      var p = Object.assign({}, params||{});
+      if (action==='saveNadiActivity' || action==='saveNadiProgramActivity'){
+        try{
+          var items = p.items;
+          if (typeof items === 'string') items = JSON.parse(items);
+          if (Array.isArray(items)){
+            var out = items.map(normalizeRow);
+            p.items = JSON.stringify(out);
+          }
+        }catch(err){
+          console.warn('[NADI Patch v3] gagal normalisasi items:', err);
+        }
+      }
+      return _post(action, p);
+    };
+    RUMUS.__patchedSaveNadiV3 = true;
+    console.log('[NADI Patch v3] saveNadiActivity wrapper aktif.');
+    return true;
+  }
+
+  // Cuba pasang segera, jika RUMUS belum ada, cuba lagi seketika
+  if (!installPostWrapper()){
+    var tries = 0;
+    var iv = setInterval(function(){
+      tries++;
+      if (installPostWrapper() || tries > 40) clearInterval(iv);
+    }, 150);
+  }
+})();
+</script>
+
 </body>
 </html>
