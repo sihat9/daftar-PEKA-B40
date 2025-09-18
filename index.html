@@ -6494,133 +6494,102 @@ function __toVoucherPayload(payload){
 </script>
 
 
-<!-- ===== NADI Save Compatibility Patch v3 (kejar layout asal, baiki YES/NO & TCA routing) ===== -->
+<!-- ===== NADI Payload Builder v6 (DOM → canonical items; wrap postForm) ===== -->
 <script>
 (function(){
   'use strict';
-
-  // Helper: lebih longgar (terima YES/YA/TRUE/1)
-  function asBool(v){
-    if (v === true) return true;
-    if (v === false) return false;
-    var s = String(v||'').trim().toLowerCase();
-    return s === 'yes' || s === 'ya' || s === 'true' || s === '1' || s === 'y';
+  function ynUpper(b){ return b ? 'YES' : 'NO'; }
+  function q(sel, el){ return (el||document).querySelector(sel); }
+  function qq(sel, el){ return Array.from((el||document).querySelectorAll(sel)); }
+  function normPhone(s){
+    s = String(s||'').replace(/\D/g,'');
+    if (!s) return '';
+    if (s.startsWith('00')) s = s.slice(2);
+    if (s.startsWith('60')) return s;
+    if (s.startsWith('0'))  return '60'+s.slice(1);
+    return '60'+s;
   }
-  // Coerce "YES"/"NO" ↔ boolean untuk serasi backend
-  function ynToBool(v){
-    if (typeof v === 'boolean') return v;
-    var s = String(v||'').trim().toUpperCase();
-    if (s === 'YES') return true;
-    if (s === 'NO') return false;
-    return asBool(v);
-  }
+  function buildItemsFromDOM(){
+    var rows = qq('#nadiContainer > tr');
+    var items = [];
+    rows.forEach(function(tr, idx){
+      var nama   = q('.inp-nama input, .inp-nama', tr)?.value || q('.inp-nama', tr)?.textContent || '';
+      var ic     = q('.inp-ic input, .inp-ic', tr)?.value || q('.inp-ic', tr)?.textContent || '';
+      var umur   = q('.inp-umur input, .inp-umur', tr)?.value || q('.inp-umur', tr)?.textContent || '';
+      var tel    = q('.inp-telefon input, .inp-telefon', tr)?.value || q('.inp-telefon', tr)?.textContent || '';
+      var alamat = q('.inp-alamat input, .inp-alamat', tr)?.value || q('.inp-alamat', tr)?.textContent || '';
+      var bp     = q('.inp-bp input, .inp-bp', tr)?.value || q('.inp-bp', tr)?.textContent || '';
+      var pr     = q('.inp-pr input, .inp-pr', tr)?.value || q('.inp-pr', tr)?.textContent || '';
+      var dxt    = q('.inp-dxt input, .inp-dxt', tr)?.value || q('.inp-dxt', tr)?.textContent || '';
+      var tinggi = q('.inp-tinggi input, .inp-tinggi', tr)?.value || q('.inp-tinggi', tr)?.textContent || '';
+      var berat  = q('.inp-berat input, .inp-berat', tr)?.value || q('.inp-berat', tr)?.textContent || '';
+      var bmi    = q('.inp-bmi input, .inp-bmi', tr)?.value || q('.inp-bmi', tr)?.textContent || '';
+      var remark = q('.inp-remark input, .inp-remark', tr)?.value || q('.inp-remark', tr)?.textContent || '';
 
-  // Ambil nilai sel yang mungkin disimpan dengan pelbagai nama kunci
-  function grab(obj, keys, def){
-    if (!obj) return def;
-    for (var i=0;i<keys.length;i++){
-      var k = keys[i];
-      if (k in obj && obj[k] != null && String(obj[k]).trim() !== '') return obj[k];
-    }
-    return def;
-  }
+      var layak = !!q('.chk-layak', tr)?.checked;
+      var tak   = !!q('.chk-tak', tr)?.checked;
+      var vchr  = !!q('.chk-vchr', tr)?.checked;
 
-  // Bina item baharu bersih untuk Action saveNadiActivity
-  function normalizeRow(r){
-    // Data asas
-    var nama       = grab(r, ['nama','name','Nama','Nama Pesakit','fullname'], '');
-    var noIC       = grab(r, ['noIC','ic','NoIC','No IC','icNumber','nokp'], '');
-    var umur       = grab(r, ['umur','age','Umur'], '');
-    var noTelefon  = grab(r, ['noTelefon','telefon','NoTelefon','Telefon','phone','tel'], '');
-    var alamat     = grab(r, ['alamat','address','Alamat'], '');
-    var bp         = grab(r, ['bp','BP'], '');
-    var pr         = grab(r, ['pr','nadi','PR','Pulse'], '');
-    var dxt        = grab(r, ['dxt','gula','DXT','Sugar','BS'], '');
-    var tinggi     = grab(r, ['tinggi','height','Tinggi'], '');
-    var berat      = grab(r, ['berat','weight','Berat'], '');
-    var bmi        = grab(r, ['bmi','BMI'], '');
-    var remark     = grab(r, ['remark','catatan','notes','note','Remark'], '');
+      // enforce exclusivity: voucher clears layak; layak clears voucher and tak
+      if (vchr){ layak=false; tak=false; }
+      if (layak){ vchr=false; tak=false; }
 
-    // Checkbox yang UI rekod sebagai "YES"/"NO" (atau boolean)
-    var layakRaw   = grab(r, ['layak','Layak'], '');
-    var takRaw     = grab(r, ['takLayak','Tidak Layak','tidakLayak'], '');
-    var vRaw       = grab(r, ['voucher','isVoucher','tcaVoucher','TCA voucher'], '');
+      var vchrDate = q('.inp-vchr-date', tr)?.value || '';
+      var tcaDate  = q('.inp-tca-date', tr)?.value || '';
+      var tcaTime  = q('.inp-tca-time', tr)?.value || '';
+      var tcaStaff = q('.inp-tca-staff', tr)?.value || '';
 
-    var layak = ynToBool(layakRaw);
-    var tak   = ynToBool(takRaw);
-    var vch   = ynToBool(vRaw);
-
-    // Eksklusif: jika voucher YES → anggap bukan layak/tak (ikut perbincangan)
-    if (vch){ layak=false; tak=false; }
-
-    var status = layak ? 'LAYAK' : (tak ? 'TAK LAYAK' : '');
-    var appointmentType = vch ? 'VOUCHER' : (layak ? 'PKB40' : (tak ? 'NONE' : ''));
-
-    // TCA (Layak) vs TCA (Voucher)
-    var tcaDateLayak  = grab(r, ['tcaDate','Tarikh TCA','tca_date'], '');
-    var tcaTimeLayak  = grab(r, ['tcaTime','Masa TCA','tca_time'], '');
-    var tcaStaffLayak = grab(r, ['tcaStaff','Staff TCA','tca_staff','staffTCA'], '');
-    var tcaDateVoucher= grab(r, ['voucherTcaDate','tcaVoucherDate','Tarikh TCA (Voucher)','tca_voucher_date'], '');
-
-    // Peraturan:
-    // - Jika VOUCHER=YES → simpan TCA (Voucher) SAHAJA, kosongkan TCA Layak
-    // - Jika LAYAK=YES   → simpan TCA Layak SAHAJA, TCA (Voucher) kosong
-    if (vch){
-      tcaDateLayak=''; tcaTimeLayak=''; tcaStaffLayak='';
-    } else if (layak){
-      tcaDateVoucher='';
-    } else {
-      // tiada apa-apa: kosong kedua-duanya
-      tcaDateLayak=''; tcaTimeLayak=''; tcaStaffLayak=''; tcaDateVoucher='';
-    }
-
-    return {
-      // kunci utama yang backend (code.gs) faham
-      nama:nama, noIC:noIC, umur:umur, noTelefon:noTelefon, alamat:alamat,
-      bp:bp, pr:pr, dxt:dxt, tinggi:tinggi, berat:berat, bmi:bmi,
-      layak: (layak?'YES':'NO'), takLayak: (tak?'YES':'NO'), tcaVoucher: (vch?'YES':'NO'),
-      status: status, appointmentType: appointmentType,
-      remark: remark,
-      tcaDate: tcaDateLayak, tcaTime: tcaTimeLayak, tcaStaff: tcaStaffLayak,
-      // simpan tarikh voucher dalam alias pelbagai — backend kita sudah pintar pilih ikut appointmentType
-      tcaVoucherDate: tcaDateVoucher
-    };
-  }
-
-  // Pasang wrapper untuk RUMUS.post → action saveNadiActivity
-  function installPostWrapper(){
-    if (!window.RUMUS || typeof RUMUS.post !== 'function') return false;
-    if (RUMUS.__patchedSaveNadiV3) return true; // elak double-patch
-    var _post = RUMUS.post.bind(RUMUS);
-    RUMUS.post = function(action, params){
-      var p = Object.assign({}, params||{});
-      if (action==='saveNadiActivity' || action==='saveNadiProgramActivity'){
-        try{
-          var items = p.items;
-          if (typeof items === 'string') items = JSON.parse(items);
-          if (Array.isArray(items)){
-            var out = items.map(normalizeRow);
-            p.items = JSON.stringify(out);
-          }
-        }catch(err){
-          console.warn('[NADI Patch v3] gagal normalisasi items:', err);
-        }
+      // apply business rule to fields
+      if (vchr){
+        tcaDate=''; tcaTime=''; tcaStaff='';
+      } else if (layak){
+        vchrDate='';
+      } else {
+        tcaDate=''; tcaTime=''; tcaStaff=''; vchrDate='';
       }
-      return _post(action, p);
-    };
-    RUMUS.__patchedSaveNadiV3 = true;
-    console.log('[NADI Patch v3] saveNadiActivity wrapper aktif.');
-    return true;
+
+      items.push({
+        "Nama Pesakit": String(nama||'').trim(),
+        "No IC": String(ic||'').trim(),
+        "Umur": String(umur||'').trim(),
+        "Telefon": normPhone(tel),
+        "Alamat": String(alamat||'').trim(),
+        "BP": String(bp||'').trim(),
+        "PR": String(pr||'').trim(),
+        "DXT": String(dxt||'').trim(),
+        "Tinggi": String(tinggi||'').trim(),
+        "Berat": String(berat||'').trim(),
+        "BMI": String(bmi||'').trim(),
+        "Layak": ynUpper(layak),
+        "Tidak Layak": ynUpper(tak),
+        "TCA voucher": ynUpper(vchr),
+        "Tarikh TCA (Voucher)": vchrDate,
+        "Remark": String(remark||'').trim(),
+        "Tarikh TCA": tcaDate,
+        "Masa TCA": tcaTime,
+        "Staff TCA": String(tcaStaff||'').trim()
+      });
+    });
+    return items;
   }
 
-  // Cuba pasang segera, jika RUMUS belum ada, cuba lagi seketika
-  if (!installPostWrapper()){
-    var tries = 0;
-    var iv = setInterval(function(){
-      tries++;
-      if (installPostWrapper() || tries > 40) clearInterval(iv);
-    }, 150);
-  }
+  (function wrapPostForm(){
+    if (!window.postForm || window.__nadi_v6_wrapped) return;
+    var _post = window.postForm;
+    window.postForm = async function(params, opts){
+      try{
+        var a = params && params.action;
+        if (a==='saveNadiActivity' || a==='saveNadiProgramActivity' || a==='saveProgramActivity'){
+          // abaikan params.items asal; bina semula dari DOM supaya pasti lengkap
+          var items = buildItemsFromDOM();
+          params.items = JSON.stringify(items);
+        }
+      }catch(e){ console.warn('[NADI v6] DOM build failed', e); }
+      return _post.apply(this, arguments);
+    };
+    window.__nadi_v6_wrapped = true;
+    console.log('[NADI v6] postForm wrapped (DOM-driven).');
+  })();
 })();
 </script>
 
