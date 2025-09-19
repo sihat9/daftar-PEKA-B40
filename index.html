@@ -3,19 +3,15 @@
 <head>
 
   <script>
-  // Global JSON parser (safe) – available before any other scripts
   (function(){
-    if (window.jsonSafe) return; // guard if already defined later
+    if (window.jsonSafe) return;
     window.jsonSafe = async function(res){
-      try{
-        return await res.clone().json();
-      }catch(e){
+      try{ return await res.clone().json(); }
+      catch(e){
         try{
           const txt = await res.text();
           const trimmed = txt.replace(/^\)\]\}'\n/, '').trim();
-          if (trimmed && (trimmed[0] === '{' || trimmed[0] === '[')){
-            return JSON.parse(trimmed);
-          }
+          if (trimmed && (trimmed[0]==='{' || trimmed[0]==='[')) return JSON.parse(trimmed);
           console.warn('jsonSafe: non-JSON response', trimmed.slice(0,120));
           return { status:'error', message:'Non-JSON response', raw: trimmed.slice(0,500) };
         }catch(err){
@@ -32,26 +28,6 @@
 (function(){
   'use strict';
   var _fetch = window.fetch ? window.fetch.bind(window) : null;
-
-  // Robust JSON parser that will not throw if server returns HTML/error body
-  async function jsonSafe(res){
-    try{
-      return await res.clone().json();
-    }catch(e){
-      try{
-        const txt = await res.text();
-        const trimmed = txt.replace(/^\)\]\}'\n/, '').trim();
-        if (trimmed && (trimmed[0] === '{' || trimmed[0] === '[')){
-          return JSON.parse(trimmed);
-        }
-        console.warn('jsonSafe: non-JSON response', trimmed.slice(0,120));
-        return { status:'error', message:'Non-JSON response', raw: trimmed.slice(0,500) };
-      }catch(err){
-        console.warn('jsonSafe: failed to read body', err);
-        return { status:'error', message:String(err) };
-      }
-    }
-  }
   if (!_fetch) return;
 
   function getIdToken(){
@@ -6684,7 +6660,6 @@ function __toVoucherPayload(payload){
 </script>
 
 <script>
-// ---- Auto-render Sejarah Saringan list without needing manual sort ----
 (function(){
   function safe(fn){ try{ fn && fn(); }catch(e){} }
   function ensureFirstActive(){
@@ -6702,18 +6677,51 @@ function __toVoucherPayload(payload){
       });
     }
   }
-  if (!window.__loadProgramsWrapped && typeof window.loadPrograms === 'function'){
-    window.__loadProgramsWrapped = true;
+  function hasItems(){
+    var list = document.getElementById('programList');
+    if (!list) return false;
+    return !!list.querySelector('.list-group-item, li, [role="listitem"]');
+  }
+  function trySort(strategy){
+    try{
+      if (typeof window.sortPrograms === 'function'){
+        window.sortPrograms(strategy || 'date-desc'); return true;
+      }
+      var sel = document.getElementById('programSort') || document.querySelector('select[name="programSort"], select[data-role="program-sort"]');
+      if (sel){
+        var wanted = (strategy === 'date-asc') ? 'date-asc' : 'date-desc';
+        if ([...sel.options].some(o => o.value === wanted)){
+          sel.value = wanted; sel.dispatchEvent(new Event('change', {bubbles:true})); return true;
+        }
+      }
+      var btn = document.querySelector('[data-sort="date-desc"], [data-sort-key="date"], .sort-date-desc, .sort-date');
+      if (btn){ btn.click(); return true; }
+      var wrap = document.querySelector('#sejarahCard, .sejarah-card, .program-history, .history-wrapper') || document;
+      var any = wrap.querySelector('[data-sort], .dropdown-menu [role="menuitem"], .dropdown-item, .sort-control, [data-action="sort"]');
+      if (any){ any.click(); return true; }
+    }catch(e){}
+    return false;
+  }
+  function ensureList(){
+    var tries = 0;
+    var iv = setInterval(function(){
+      tries++;
+      if (hasItems()){ clearInterval(iv); return; }
+      safe(function(){ if (typeof window.renderProgramList === 'function') window.renderProgramList(); });
+      if (!hasItems()){ trySort('date-desc'); }
+      if (hasItems()){ ensureFirstActive(); clearInterval(iv); return; }
+      if (tries > 8) clearInterval(iv);
+    }, 500);
+  }
+  if (!window.__loadProgramsWrapped2 && typeof window.loadPrograms === 'function'){
+    window.__loadProgramsWrapped2 = true;
     const _orig = window.loadPrograms;
     window.loadPrograms = async function(){
-      let ret;
-      try{ ret = _orig.apply(this, arguments); }catch(e){ ret = undefined; }
-      try{ await Promise.resolve(ret); }catch(e){}
-      safe(function(){
-        if (typeof window.renderProgramList === 'function') window.renderProgramList();
-      });
-      ensureFirstActive();
-      return ret;
+      let r; try{ r = _orig.apply(this, arguments); }catch(e){ r = undefined; }
+      try{ await Promise.resolve(r); }catch(e){}
+      safe(function(){ if (typeof window.renderProgramList === 'function') window.renderProgramList(); });
+      ensureList(); ensureFirstActive();
+      return r;
     };
   }
   function autoSejarah(){
@@ -6722,18 +6730,10 @@ function __toVoucherPayload(payload){
     if (typeof window.loadPrograms === 'function'){
       try{
         const done = window.loadPrograms();
-        Promise.resolve(done).finally(function(){
-          safe(function(){
-            if (typeof window.renderProgramList === 'function') window.renderProgramList();
-          });
-          ensureFirstActive();
-        });
-      }catch(e){
-        safe(function(){
-          if (typeof window.renderProgramList === 'function') window.renderProgramList();
-        });
-        ensureFirstActive();
-      }
+        Promise.resolve(done).finally(function(){ ensureList(); ensureFirstActive(); });
+      }catch(e){ ensureList(); ensureFirstActive(); }
+    } else {
+      ensureList(); ensureFirstActive();
     }
   }
   document.addEventListener('DOMContentLoaded', autoSejarah);
@@ -6744,10 +6744,7 @@ function __toVoucherPayload(payload){
       tries++;
       var tok = sessionStorage.getItem('id_token') || sessionStorage.getItem('ID_TOKEN') ||
                 localStorage.getItem('id_token')  || localStorage.getItem('ID_TOKEN');
-      if (tok){
-        autoSejarah();
-        clearInterval(iv);
-      }
+      if (tok){ autoSejarah(); clearInterval(iv); }
       if (tries > 10) clearInterval(iv);
     }, 500);
   })();
