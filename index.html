@@ -116,8 +116,7 @@
   var _fetch = window.fetch.bind(window);
   function isGAS(url){ try{var u=new URL(url, location.href); return u.hostname==='script.google.com' && /\/macros\/s\//.test(u.pathname);}catch(e){return false;} }
   
-/* Duplicate fetch override disabled to prevent conflicts */
-// (Using the primary interceptor above)
+/* Duplicate fetch override disabled (using primary interceptor) */
 ;
 
   // 2) Normalize NADI items for both actions
@@ -4607,7 +4606,7 @@ const saveNadiStateDebounced = debounce(saveNadiState, 400);
           <td>${r.status||''}</td><td>${r.bp||''}</td><td>${r.pr||''}</td><td>${r.dxt||''}</td><td>${r.bmi||''}</td>
           <td>${r.tcaDate||''} ${r.tcaTime||''}</td><td>${r.tcaStaff||''}</td><td>${r.remark||''}</td>
         </tr>
-      `).join('') || '<tr><td colspan="13" class="text-center text-muted">Tiada padanan carian.</td></tr>'; });
+      `).join('') || '<tr><td colspan="13" class="text-center text-muted">Tiada padanan carian.</td></tr>';
     }catch(e){
       tbody.innerHTML = '<tr><td colspan="13" class="text-center text-danger">Ralat memuat maklumat.</td></tr>';
     }
@@ -5354,8 +5353,6 @@ if (btn) {
         titleEl.textContent = activeBtn ? activeBtn.textContent.trim() : 'Sejarah Saringan';
       }
 
-      window.__sejarahRaf && cancelAnimationFrame(window.__sejarahRaf);
-    window.__sejarahRaf = requestAnimationFrame(function(){
       tbody.innerHTML = rows.map((r, i)=>`
         <tr>
           <td>${i+1}</td>
@@ -5372,7 +5369,7 @@ if (btn) {
           <td>${escapeHtml(r.tcaStaff||'')}</td>
           <td>${escapeHtml(r.remark||'')}</td>
         </tr>
-      `).join('') || '<tr><td colspan="13" class="text-center text-muted">Tiada padanan carian.</td></tr>'; });
+      `).join('') || '<tr><td colspan="13" class="text-center text-muted">Tiada padanan carian.</td></tr>';
     }catch(e){
       tbody.innerHTML = `<tr><td colspan="13" class="text-center text-danger">Ralat memuat maklumat: ${escapeHtml(e.message||e)}</td></tr>`;
     }
@@ -5617,7 +5614,7 @@ if (btn) {
         <td class="col-staff ${col.staff?'':'hide'}">${fmt.esc(r.tcaStaff||'')}</td>
         <td class="col-remark ${col.remark?'':'hide'}">${fmt.esc(r.remark||'')}</td>
       </tr>`;
-    }).join('') || '<tr><td colspan="13" class="text-center text-muted">Tiada padanan carian.</td></tr>'; });
+    }).join('') || '<tr><td colspan="13" class="text-center text-muted">Tiada padanan carian.</td></tr>';
   }
 
   // ===== Export CSV =====
@@ -6602,10 +6599,9 @@ function __toVoucherPayload(payload){
 <script>
 document.addEventListener('DOMContentLoaded', function(){
   try{
-    var sejarahTab = document.querySelector('#sejarah, [data-tab="sejarah"]');
     var list = document.getElementById('programList');
-    if ((location.hash && location.hash.indexOf('#sejarah')===0) || list || sejarahTab){
-      if (typeof window.loadPrograms === 'function') { window.loadPrograms(); }
+    if ((location.hash && location.hash.indexOf('#sejarah')===0) || list){
+      if (typeof window.loadPrograms === 'function') window.loadPrograms();
     }
   }catch(e){}
 });
