@@ -6751,5 +6751,88 @@ function __toVoucherPayload(payload){
 })();
 </script>
 
+
+<script>
+// ---- Sort-pulse to force initial population even if app waits for manual change ----
+(function(){
+  function $(sel){ return document.querySelector(sel); }
+  function programListHasItems(){
+    var list = document.getElementById('programList');
+    return !!(list && (list.querySelector('.list-group-item, li, [role="listitem"]')));
+  }
+  function pulseSelect(sel){
+    try{
+      if (!sel) return false;
+      var orig = sel.value;
+      // pick alternative option
+      var opts = Array.from(sel.options||[]);
+      var alt = null;
+      for (var i=0;i<opts.length;i++){
+        if (opts[i].value && opts[i].value !== orig){ alt = opts[i].value; break; }
+      }
+      if (!alt && opts.length>1){ alt = opts[1].value; }
+      if (!alt) alt = orig;
+      // change to alt then back to orig to trigger listeners
+      if (alt !== orig){
+        sel.value = alt;
+        sel.dispatchEvent(new Event('change', {bubbles:true}));
+      }
+      sel.value = orig;
+      sel.dispatchEvent(new Event('change', {bubbles:true}));
+      return true;
+    }catch(e){ return false; }
+  }
+  function tryPulse(){
+    var sel = document.getElementById('programSort') ||
+              $('select[name="programSort"]') ||
+              $('select[data-role="program-sort"]') ||
+              $('select.sort-control');
+    // try pulse select
+    var did = pulseSelect(sel);
+    // try click a dropdown item too, in case UI uses buttons
+    if (!did){
+      var btn = $('[data-sort="date-desc"], [data-sort-key="date"], .sort-date-desc, .sort-date, [data-action="sort"]');
+      if (btn){ try{ btn.click(); did = true; }catch(e){} }
+    }
+    return did;
+  }
+  function ensureOnSejarah(){
+    return (location.hash||'').indexOf('#sejarah')===0 ||
+           !!document.getElementById('programList') ||
+           !!document.querySelector('.sejarah-card, #sejarahCard');
+  }
+  function kick(){
+    if (!ensureOnSejarah()) return;
+    // If list already has items, don't pulse.
+    if (programListHasItems()) return;
+    // Pulse once now
+    tryPulse();
+    // Keep pulsing a few times until items appear
+    var tries = 0;
+    var iv = setInterval(function(){
+      tries++;
+      if (programListHasItems()){ clearInterval(iv); return; }
+      tryPulse();
+      if (tries > 8) clearInterval(iv); // ~4s
+    }, 500);
+  }
+  document.addEventListener('DOMContentLoaded', kick);
+  window.addEventListener('hashchange', kick);
+  // Also kick after loadPrograms (if defined)
+  (function hook(){
+    if (window.__sortPulseHooked) return; window.__sortPulseHooked = true;
+    var orig = window.loadPrograms;
+    if (typeof orig === 'function'){
+      window.loadPrograms = async function(){
+        let r; try{ r = orig.apply(this, arguments); }catch(e){ r = undefined; }
+        try{ await Promise.resolve(r); }catch(e){}
+        kick();
+        return r;
+      };
+    }
+  })();
+})();
+</script>
+
 </body>
 </html>
