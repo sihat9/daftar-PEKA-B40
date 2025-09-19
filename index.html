@@ -1,6 +1,32 @@
 <!DOCTYPE html>
 <html lang="ms">
 <head>
+
+  <script>
+  // Global JSON parser (safe) – available before any other scripts
+  (function(){
+    if (window.jsonSafe) return; // guard if already defined later
+    window.jsonSafe = async function(res){
+      try{
+        return await res.clone().json();
+      }catch(e){
+        try{
+          const txt = await res.text();
+          const trimmed = txt.replace(/^\)\]\}'\n/, '').trim();
+          if (trimmed && (trimmed[0] === '{' || trimmed[0] === '[')){
+            return JSON.parse(trimmed);
+          }
+          console.warn('jsonSafe: non-JSON response', trimmed.slice(0,120));
+          return { status:'error', message:'Non-JSON response', raw: trimmed.slice(0,500) };
+        }catch(err){
+          console.warn('jsonSafe: failed to read body', err);
+          return { status:'error', message:String(err) };
+        }
+      }
+    };
+  })();
+  </script>
+
 <!-- Injected: Robust fetch interceptor (adds id_token; coerces HTML errors to JSON to avoid SyntaxError) -->
 <script>
 (function(){
