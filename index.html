@@ -1,6 +1,28 @@
 <!DOCTYPE html>
 <html lang="ms">
 <head>
+
+  <script>
+  (function(){
+    if (window.jsonSafe) return;
+    window.jsonSafe = async function(res){
+      try{ return await res.clone().json(); }
+      catch(e){
+        try{
+          const txt = await res.text();
+          const trimmed = txt.replace(/^\)\]\}'\n/, '').trim();
+          if (trimmed && (trimmed[0]==='{' || trimmed[0]==='[')) return JSON.parse(trimmed);
+          console.warn('jsonSafe: non-JSON response', trimmed.slice(0,120));
+          return { status:'error', message:'Non-JSON response', raw: trimmed.slice(0,500) };
+        }catch(err){
+          console.warn('jsonSafe: failed to read body', err);
+          return { status:'error', message:String(err) };
+        }
+      }
+    };
+  })();
+  </script>
+
 <!-- Injected: Robust fetch interceptor (adds id_token; coerces HTML errors to JSON to avoid SyntaxError) -->
 <script>
 (function(){
@@ -102,7 +124,7 @@
     try{
       var base = endpoint(); var t = token();
       var url = base + (base.indexOf('?')>=0?'&':'?') + 'action=getVoucherICSet' + (t?('&id_token='+encodeURIComponent(t)):'');
-      var r = await fetch(url); var j = await r.json();
+      var r = await fetch(url); var j = await jsonSafe(r);
       window.__voucherICS = (j && j.ics) || [];
       return j;
     } catch(err) {
@@ -538,6 +560,13 @@
   text-transform:uppercase; vertical-align: middle; line-height:1;
 }
 </style>
+
+<style>
+.sejarah-loading{display:flex;align-items:center;gap:.5rem;font-size:.9rem;color:#6b7280}
+.sejarah-spinner{width:14px;height:14px;border:2px solid #cbd5e1;border-top-color:#3b82f6;border-radius:50%;animation:spin .8s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+</style>
+
 </head>
 <body>
   <!-- Global Loader -->
@@ -761,10 +790,8 @@
         <button class="btn btn-outline-secondary" type="button" id="btnRefreshSessions"><i class="fa-solid fa-rotate-right"></i> Segar</button>
         <button class="btn btn-primary" type="button" id="btnUseSession"><i class="fa-solid fa-link"></i> Guna</button>
       </div>
-      <div class="form-text">Sesi ditentukan oleh <b>Tajuk Program</b> + <b>\1
-<button id="refreshSejarahBtn" class="btn btn-sm btn-outline-secondary" style="margin-left:8px" title="Muat semula senarai program">
-  &#x21bb;
-</button>
+      <div class="form-text">Sesi ditentukan oleh <b>Tajuk Program</b> + <b>Tarikh</b>
+<button id="refreshSejarahBtn" class="btn btn-sm btn-outline-secondary" style="margin-left:8px" title="Muat semula senarai program">↻</button>
 . Guna pilihan ini untuk kongsi jadual antara laptop A & B.</div>
     </div>
     <div class="col-md-5 text-md-end">
@@ -1814,7 +1841,7 @@ async function handleCredentialResponse(resp){
     headers:{ 'Content-Type':'application/x-www-form-urlencoded' },
     body: new URLSearchParams({ action:'whoami', id_token: ID_TOKEN })
   });
-  const j = await r.json();
+  const j = await jsonSafe(r);
   if (j.status === 'success'){
     STAFF_EMAIL = j.email || '';
     document.getElementById('staffBadge').classList.remove('d-none');
@@ -1860,7 +1887,7 @@ async function getJSON(params={}, {silent=false, msg='Memuat data…'}={}){
       fetch(url, { method:'GET' }),
       new Promise((_,rej)=> setTimeout(()=>rej(new Error('Timeout')), 12000))
     ]);
-    return await r.json();
+    return await jsonSafe(r);
   } finally { if (!silent) hideLoader(); }
 }
 
@@ -1876,7 +1903,7 @@ async function postForm(params={}, {silent=false, msg='Menyimpan data…'}={}){
       }),
       new Promise((_,rej)=> setTimeout(()=>rej(new Error('Timeout')), 12000))
     ]);
-    return await r.json();
+    return await jsonSafe(r);
   } finally { if (!silent) hideLoader(); }
 }
 
@@ -4088,7 +4115,7 @@ async function uploadPDPA(){
         fileBase64: pure64, fileName: file.name, fileType: file.type || 'application/octet-stream'
       })
     });
-    const json = await res.json();
+    const json = await jsonSafe(res);
     if (json.status === 'success'){
       pdpaModal.hide();
       toast('Berjaya','PDPA dimuat naik','success');
@@ -4543,7 +4570,7 @@ const saveNadiStateDebounced = debounce(saveNadiState, 400);
           form.set('tarikhTCA', r.voucherDate || programDate || '');
           form.set('masaTCA', masa);
           const res = await fetch(SCRIPT_URL, { method:'POST', body: form });
-          const j = await res.json().catch(()=>({}));
+          const j = await jsonSafe(res).catch(()=>({}));
           if (j && j.status === 'success') {
             if (typeof toast === 'function') toast('Berjaya', `Voucher TCA didaftarkan untuk ${r.nama || r.ic}`, 'success');
           } else {
@@ -4577,7 +4604,7 @@ const saveNadiStateDebounced = debounce(saveNadiState, 400);
     try{
       const qs = new URLSearchParams({ action:'getNadiActivities', id_token: (window.ID_TOKEN||'') });
       const res = await fetch(`${window.SCRIPT_URL}?${qs.toString()}`);
-      const j = await res.json();
+      const j = await jsonSafe(res);
       if (!j || j.status!=='success') throw new Error(j && (j.message||j.code) || 'Gagal ambil program');
       const data = Array.isArray(j.data) ? j.data : [];
       list.innerHTML = data.map(item=>{
@@ -4604,7 +4631,7 @@ const saveNadiStateDebounced = debounce(saveNadiState, 400);
     try{
       const qs = new URLSearchParams({ action:'getNadiActivityDetail', id: activityId, id_token: (window.ID_TOKEN||'') });
       const res = await fetch(`${window.SCRIPT_URL}?${qs.toString()}`);
-      const j = await res.json();
+      const j = await jsonSafe(res);
       if (!j || j.status!=='success') throw new Error(j && (j.message||j.code) || 'Gagal ambil detail');
       const rows = Array.isArray(j.data) ? j.data : [];
       if (!rows.length){ tbody.innerHTML = '<tr><td colspan="13" class="text-center text-muted">Tiada data.</td></tr>'; return; }
@@ -5184,7 +5211,7 @@ if (btn) {
     try{
       const qs = new URLSearchParams({ action:'getNadiActivities', id_token: (window.ID_TOKEN||'') });
       const res = await fetch(`${window.SCRIPT_URL}?${qs.toString()}`, { credentials:'omit' });
-      const j = await res.json();
+      const j = await jsonSafe(res);
       if (!j || j.status!=='success') throw new Error((j && (j.message||j.code)) || 'Gagal ambil program');
       const data = Array.isArray(j.data) ? j.data : [];
       if (!data.length){
@@ -5224,7 +5251,7 @@ if (btn) {
     try{
       const qs = new URLSearchParams({ action:'getNadiActivityDetail', id: activityId, id_token: (window.ID_TOKEN||'') });
       const res = await fetch(`${window.SCRIPT_URL}?${qs.toString()}`, { credentials:'omit' });
-      const j = await res.json();
+      const j = await jsonSafe(res);
       if (!j || j.status!=='success') throw new Error((j && (j.message||j.code)) || 'Gagal ambil detail');
       const rows = Array.isArray(j.data) ? j.data : [];
       if (!rows.length){
@@ -5286,7 +5313,7 @@ if (btn) {
     const t = setTimeout(()=>ctl.abort(), timeoutMs);
     try{
       const res = await fetch(url, { ...opt, signal: ctl.signal, credentials:'omit' });
-      return await res.json().catch(()=>({status:'error'}));
+      return await jsonSafe(res).catch(()=>({status:'error'}));
     } finally { clearTimeout(t); }
   }
   function ensureGlobals(){
@@ -5505,7 +5532,7 @@ if (btn) {
     const ctl = new AbortController(); const t = setTimeout(()=>ctl.abort(), 20000);
     try{
       const res = await fetch(url, { signal: ctl.signal, credentials:'omit' });
-      return await res.json();
+      return await jsonSafe(res);
     } finally { clearTimeout(t); }
   }
 
@@ -5784,7 +5811,7 @@ if (btn) {
     const q=new URLSearchParams({...params, id_token: ID_TOKEN});
     const res = await fetch(`${SCRIPT_URL}?${q}`, { method:'GET' });
     if(!res.ok) throw new Error(`HTTP ${res.status}`);
-    return res.json();
+    return jsonSafe(res);
   }
 
   function renderList(items){
@@ -6251,11 +6278,11 @@ function injectTelahHadirButtons(){
   async function _postForm(payload){ try{ if (typeof postForm==='function') return await postForm(payload); }catch(e){} 
     const form = new URLSearchParams(); Object.entries(payload||{}).forEach(([k,v])=>form.append(k, v));
     const res = await fetch(location.href, { method:'POST', headers:{'Content-Type':'application/x-www-form-urlencoded'}, body: form.toString() });
-    return await res.json();
+    return await jsonSafe(res);
   }
   async function _getJSON(payload){ try{ if (typeof getJSON==='function') return await getJSON(payload); }catch(e){}
     const params = new URLSearchParams(payload||{}); const res = await fetch(location.pathname + '?' + params.toString());
-    return await res.json();
+    return await jsonSafe(res);
   }
 
   // Permanent Delete for Arkib page
@@ -6466,7 +6493,7 @@ function __toVoucherPayload(payload){
       var t = (window.ID_TOKEN || localStorage.getItem('id_token') || localStorage.getItem('ID_TOKEN') || '').trim();
       if (t && !q.get('id_token')) q.set('id_token', t);
     }catch(e){}
-    return fetch(window.SCRIPT_URL + '?' + q.toString(), { method:'GET' }).then(function(r){ return r.json(); });
+    return fetch(window.SCRIPT_URL + '?' + q.toString(), { method:'GET' }).then(function(r){ return jsonSafe(r); });
   }
 
   var __rows = [];
@@ -6618,18 +6645,110 @@ function __toVoucherPayload(payload){
 
 <script>
 (function(){
-  function reloadSejarah(){
+  function byId(id){ return document.getElementById(id); }
+  function q(sel){ return document.querySelector(sel); }
+  function isSejarah(){ return (location.hash||'').indexOf('#sejarah')===0 || !!byId('programList'); }
+
+  function mountLoader(where){
     try{
-      if (typeof window.loadPrograms === 'function'){
-        window.loadPrograms();
-      } else {
-        location.reload();
-      }
-    }catch(e){ location.reload(); }
+      if (!where || where.__loaderMounted) return;
+      var wrap = document.createElement('div');
+      wrap.className = 'sejarah-loading';
+      wrap.innerHTML = '<span class="sejarah-spinner"></span><span>Memuat data…</span>';
+      where.__loaderMounted = wrap;
+      if (where.children.length===0) where.textContent='';
+      where.appendChild(wrap);
+    }catch(e){}
   }
+  function unmountLoader(where){
+    try{ if (where && where.__loaderMounted){ where.__loaderMounted.remove(); where.__loaderMounted=null; } }catch(e){}
+  }
+  function programListPane(){
+    return byId('programList') || q('#programListContainer') || q('[data-role="program-list"]') || q('#sejarahCard .card-body');
+  }
+  function detailPane(){
+    return byId('programDetail') || q('#programDetailContainer') || q('[data-role="program-detail"]') || q('#programTable');
+  }
+
+  async function loadSejarahOnce(){
+    const listEl = programListPane();
+    const detEl  = detailPane();
+    mountLoader(listEl); mountLoader(detEl);
+    try{
+      if (typeof window.loadPrograms === 'function'){ await Promise.resolve(window.loadPrograms()); }
+      if (typeof window.renderProgramList === 'function'){ window.renderProgramList(); }
+      const list = byId('programList');
+      if (list){
+        const active = list.querySelector('.list-group-item.active');
+        const first  = list.querySelector('.list-group-item');
+        if (!active && first && typeof first.click === 'function'){ first.click(); }
+      }
+    } finally {
+      unmountLoader(programListPane());
+      unmountLoader(detailPane());
+    }
+  }
+
+  function triggerSejarahLoad(){
+    if (!isSejarah()) return;
+    if (window.__sejarahLoadedAfterAuth) return;
+    window.__sejarahLoadedAfterAuth = true;
+    loadSejarahOnce().catch(console.warn);
+  }
+
+  // 5a) Wrap Google Sign-In callback to fire an 'auth-ready' event
+  (function wrapAuth(){
+    function install(){
+      if (window.__authWrapInstalled) return;
+      if (typeof window.handleCredentialResponse === 'function'){
+        var orig = window.handleCredentialResponse;
+        window.handleCredentialResponse = async function(){
+          var r; try{ r = orig.apply(this, arguments); }catch(e){ r=undefined; }
+          try{ await Promise.resolve(r); }catch(e){}
+          document.dispatchEvent(new CustomEvent('auth-ready'));
+          return r;
+        };
+        window.__authWrapInstalled = true;
+      }
+    }
+    // Try now and a few times after, in case GSI loads late
+    install();
+    var checks = 0;
+    var iv = setInterval(function(){
+      if (window.__authWrapInstalled){ clearInterval(iv); return; }
+      install();
+      checks++;
+      if (checks > 20) clearInterval(iv);
+    }, 250);
+  })();
+
+  // 5b) Also detect token presence as a fallback
+  (function watchToken(){
+    var seen = false, tries = 0;
+    var iv = setInterval(function(){
+      tries++;
+      var tok = sessionStorage.getItem('id_token') || sessionStorage.getItem('ID_TOKEN') ||
+                localStorage.getItem('id_token')  || localStorage.getItem('ID_TOKEN');
+      if (tok && !seen){
+        seen = true;
+        document.dispatchEvent(new CustomEvent('auth-ready'));
+      }
+      if (seen || tries > 30) clearInterval(iv);
+    }, 300);
+  })();
+
+  // 5c) When auth is ready, auto-load Sejarah if that tab is open
+  document.addEventListener('auth-ready', triggerSejarahLoad);
+
+  // 6) Manual refresh button (fallback)
   document.addEventListener('DOMContentLoaded', function(){
-    var btn = document.getElementById('refreshSejarahBtn');
-    if (btn){ btn.addEventListener('click', reloadSejarah); }
+    var btn = byId('refreshSejarahBtn');
+    if (btn){
+      btn.addEventListener('click', function(){
+        window.__sejarahLoadedAfterAuth = false; // allow calling again
+        triggerSejarahLoad();
+      });
+    }
   });
 })();
 </script>
