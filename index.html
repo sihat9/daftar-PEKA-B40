@@ -6,27 +6,6 @@
 (function(){
   'use strict';
   var _fetch = window.fetch ? window.fetch.bind(window) : null;
-
-  // Robust JSON parser that handles HTML/error bodies safely
-  async function jsonSafe(res){
-    try{
-      return await res.clone().json();
-    }catch(e){
-      try{
-        const txt = await res.text();
-        // Try strip XSSI prefix if present
-        const trimmed = txt.replace(/^\)\]\}'\n/, '').trim();
-        if (trimmed[0] === '{' || trimmed[0] === '['){
-          return JSON.parse(trimmed);
-        }
-        console.warn('jsonSafe: non-JSON response', trimmed.slice(0,120));
-        return { status:'error', message:'Non-JSON response', raw: trimmed.slice(0,500) };
-      }catch(err){
-        console.warn('jsonSafe: failed to read body', err);
-        return { status:'error', message:String(err) };
-      }
-    }
-  }
   if (!_fetch) return;
 
   function getIdToken(){
@@ -123,7 +102,9 @@
     try{
       var base = endpoint(); var t = token();
       var url = base + (base.indexOf('?')>=0?'&':'?') + 'action=getVoucherICSet' + (t?('&id_token='+encodeURIComponent(t)):'');
-      var r = await fetch(url); var j = await jsonSafe(r);
+      var r = await fetch(url);
+      var __txt = await r.text();
+      var j; try{ j = JSON.parse(__txt); }catch(e){ console.warn('Build voucher set failed', e, __txt.slice(0,120)); j = { ics: [] }; }
       window.__voucherICS = (j && j.ics) || [];
       return j;
     } catch(err) {
@@ -237,8 +218,8 @@
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css">
 
   <!-- Chart.js + Datalabels -->
-  <script defer src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
-  <script defer src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2"></script>
 
   <!-- SheetJS (Excel) via CDN -->
 <!-- XLSX robust loader + override (SIAP TAMPAL DI <head>
@@ -291,22 +272,10 @@
 </script>
 
   <!-- Google Identity Services (Sign-In) -->
-  <script>
-  (function(){
-    try{
-      var tok = sessionStorage.getItem('id_token') || sessionStorage.getItem('ID_TOKEN') || localStorage.getItem('id_token') || localStorage.getItem('ID_TOKEN');
-      if (!tok){
-        var s = document.createElement('script');
-        s.src = 'https://accounts.google.com/gsi/client';
-        s.async = true; s.defer = true;
-        document.head.appendChild(s);
-      }
-    }catch(e){}
-  })();
-  </script>
+  <script src="https://accounts.google.com/gsi/client" async defer></script>
 
   <!-- html2canvas untuk tangkap preview → imej (BARU) -->
-  <script defer src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
 
 <style>
   :root{ --primary:#2c3e50; --secondary:#3498db; --success:#27ae60; --warning:#f39c12; --danger:#e74c3c; --light:#ecf0f1; --dark:#34495e; --muted:#95a5a6; }
@@ -575,7 +544,6 @@
 <body>
   <!-- Global Loader -->
   <div id="appLoader" aria-hidden="true">
-    <div class="visually-hidden" aria-live="polite"></div>
     <div class="loader-card">
       <div class="spinner-premium"></div>
       <div class="fw-bold">Sila tunggu…</div>
@@ -1315,7 +1283,7 @@
     </div></div>
   </footer>
 
-  <script defer src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
   <script>
 /* =======================
    KONFIG (EDIT INI SAHAJA)
@@ -1844,7 +1812,7 @@ async function handleCredentialResponse(resp){
     headers:{ 'Content-Type':'application/x-www-form-urlencoded' },
     body: new URLSearchParams({ action:'whoami', id_token: ID_TOKEN })
   });
-  const j = await jsonSafe(r);
+  const j = await r.json();
   if (j.status === 'success'){
     STAFF_EMAIL = j.email || '';
     document.getElementById('staffBadge').classList.remove('d-none');
@@ -1890,7 +1858,7 @@ async function getJSON(params={}, {silent=false, msg='Memuat data…'}={}){
       fetch(url, { method:'GET' }),
       new Promise((_,rej)=> setTimeout(()=>rej(new Error('Timeout')), 12000))
     ]);
-    return await jsonSafe(r);
+    return await r.json();
   } finally { if (!silent) hideLoader(); }
 }
 
@@ -1906,7 +1874,7 @@ async function postForm(params={}, {silent=false, msg='Menyimpan data…'}={}){
       }),
       new Promise((_,rej)=> setTimeout(()=>rej(new Error('Timeout')), 12000))
     ]);
-    return await jsonSafe(r);
+    return await r.json();
   } finally { if (!silent) hideLoader(); }
 }
 
@@ -4118,7 +4086,7 @@ async function uploadPDPA(){
         fileBase64: pure64, fileName: file.name, fileType: file.type || 'application/octet-stream'
       })
     });
-    const json = await jsonSafe(res);
+    const json = await res.json();
     if (json.status === 'success'){
       pdpaModal.hide();
       toast('Berjaya','PDPA dimuat naik','success');
@@ -4573,7 +4541,7 @@ const saveNadiStateDebounced = debounce(saveNadiState, 400);
           form.set('tarikhTCA', r.voucherDate || programDate || '');
           form.set('masaTCA', masa);
           const res = await fetch(SCRIPT_URL, { method:'POST', body: form });
-          const j = await jsonSafe(res).catch(()=>({}));
+          const j = await res.json().catch(()=>({}));
           if (j && j.status === 'success') {
             if (typeof toast === 'function') toast('Berjaya', `Voucher TCA didaftarkan untuk ${r.nama || r.ic}`, 'success');
           } else {
@@ -4607,7 +4575,7 @@ const saveNadiStateDebounced = debounce(saveNadiState, 400);
     try{
       const qs = new URLSearchParams({ action:'getNadiActivities', id_token: (window.ID_TOKEN||'') });
       const res = await fetch(`${window.SCRIPT_URL}?${qs.toString()}`);
-      const j = await jsonSafe(res);
+      const j = await res.json();
       if (!j || j.status!=='success') throw new Error(j && (j.message||j.code) || 'Gagal ambil program');
       const data = Array.isArray(j.data) ? j.data : [];
       list.innerHTML = data.map(item=>{
@@ -4634,7 +4602,7 @@ const saveNadiStateDebounced = debounce(saveNadiState, 400);
     try{
       const qs = new URLSearchParams({ action:'getNadiActivityDetail', id: activityId, id_token: (window.ID_TOKEN||'') });
       const res = await fetch(`${window.SCRIPT_URL}?${qs.toString()}`);
-      const j = await jsonSafe(res);
+      const j = await res.json();
       if (!j || j.status!=='success') throw new Error(j && (j.message||j.code) || 'Gagal ambil detail');
       const rows = Array.isArray(j.data) ? j.data : [];
       if (!rows.length){ tbody.innerHTML = '<tr><td colspan="13" class="text-center text-muted">Tiada data.</td></tr>'; return; }
@@ -5214,7 +5182,7 @@ if (btn) {
     try{
       const qs = new URLSearchParams({ action:'getNadiActivities', id_token: (window.ID_TOKEN||'') });
       const res = await fetch(`${window.SCRIPT_URL}?${qs.toString()}`, { credentials:'omit' });
-      const j = await jsonSafe(res);
+      const j = await res.json();
       if (!j || j.status!=='success') throw new Error((j && (j.message||j.code)) || 'Gagal ambil program');
       const data = Array.isArray(j.data) ? j.data : [];
       if (!data.length){
@@ -5254,7 +5222,7 @@ if (btn) {
     try{
       const qs = new URLSearchParams({ action:'getNadiActivityDetail', id: activityId, id_token: (window.ID_TOKEN||'') });
       const res = await fetch(`${window.SCRIPT_URL}?${qs.toString()}`, { credentials:'omit' });
-      const j = await jsonSafe(res);
+      const j = await res.json();
       if (!j || j.status!=='success') throw new Error((j && (j.message||j.code)) || 'Gagal ambil detail');
       const rows = Array.isArray(j.data) ? j.data : [];
       if (!rows.length){
@@ -5316,7 +5284,7 @@ if (btn) {
     const t = setTimeout(()=>ctl.abort(), timeoutMs);
     try{
       const res = await fetch(url, { ...opt, signal: ctl.signal, credentials:'omit' });
-      return await jsonSafe(res).catch(()=>({status:'error'}));
+      return await res.json().catch(()=>({status:'error'}));
     } finally { clearTimeout(t); }
   }
   function ensureGlobals(){
@@ -5535,7 +5503,7 @@ if (btn) {
     const ctl = new AbortController(); const t = setTimeout(()=>ctl.abort(), 20000);
     try{
       const res = await fetch(url, { signal: ctl.signal, credentials:'omit' });
-      return await jsonSafe(res);
+      return await res.json();
     } finally { clearTimeout(t); }
   }
 
@@ -5779,19 +5747,7 @@ if (btn) {
 
 
 <!-- Google Identity (wajib untuk id_token) -->
-<script>
-  (function(){
-    try{
-      var tok = sessionStorage.getItem('id_token') || sessionStorage.getItem('ID_TOKEN') || localStorage.getItem('id_token') || localStorage.getItem('ID_TOKEN');
-      if (!tok){
-        var s = document.createElement('script');
-        s.src = 'https://accounts.google.com/gsi/client';
-        s.async = true; s.defer = true;
-        document.head.appendChild(s);
-      }
-    }catch(e){}
-  })();
-  </script>
+<script src="https://accounts.google.com/gsi/client" async defer></script>
 <script>
 (() => {
   'use strict';
@@ -5826,7 +5782,7 @@ if (btn) {
     const q=new URLSearchParams({...params, id_token: ID_TOKEN});
     const res = await fetch(`${SCRIPT_URL}?${q}`, { method:'GET' });
     if(!res.ok) throw new Error(`HTTP ${res.status}`);
-    return jsonSafe(res);
+    return res.json();
   }
 
   function renderList(items){
@@ -6293,11 +6249,11 @@ function injectTelahHadirButtons(){
   async function _postForm(payload){ try{ if (typeof postForm==='function') return await postForm(payload); }catch(e){} 
     const form = new URLSearchParams(); Object.entries(payload||{}).forEach(([k,v])=>form.append(k, v));
     const res = await fetch(location.href, { method:'POST', headers:{'Content-Type':'application/x-www-form-urlencoded'}, body: form.toString() });
-    return await jsonSafe(res);
+    return await res.json();
   }
   async function _getJSON(payload){ try{ if (typeof getJSON==='function') return await getJSON(payload); }catch(e){}
     const params = new URLSearchParams(payload||{}); const res = await fetch(location.pathname + '?' + params.toString());
-    return await jsonSafe(res);
+    return await res.json();
   }
 
   // Permanent Delete for Arkib page
@@ -6508,7 +6464,7 @@ function __toVoucherPayload(payload){
       var t = (window.ID_TOKEN || sessionStorage.getItem('id_token') || sessionStorage.getItem('ID_TOKEN') || localStorage.getItem('id_token') || localStorage.getItem('ID_TOKEN') || '').trim();
       if (t && !q.get('id_token')) q.set('id_token', t);
     }catch(e){}
-    return fetch(window.SCRIPT_URL + '?' + q.toString(), { method:'GET' }).then(function(r){ return jsonSafe(r); });
+    return fetch(window.SCRIPT_URL + '?' + q.toString(), { method:'GET' }).then(function(r){ return r.json(); });
   }
 
   var __rows = [];
