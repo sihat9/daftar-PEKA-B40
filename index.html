@@ -7,16 +7,26 @@
   'use strict';
   var _fetch = window.fetch ? window.fetch.bind(window) : null;
 
-  // Global CORS helper (safe no-op if same-origin)
-  window.withCorsProxy = function(url){
+  // Robust JSON parser that handles HTML/error bodies safely
+  async function jsonSafe(res){
     try{
-      var u = new URL(url, location.href);
-      if (u.hostname.indexOf('script.google.com')>=0 || u.hostname.indexOf('googleusercontent.com')>=0){
-        return 'https://cors.isomorphic-git.org/' + url;
+      return await res.clone().json();
+    }catch(e){
+      try{
+        const txt = await res.text();
+        // Try strip XSSI prefix if present
+        const trimmed = txt.replace(/^\)\]\}'\n/, '').trim();
+        if (trimmed[0] === '{' || trimmed[0] === '['){
+          return JSON.parse(trimmed);
+        }
+        console.warn('jsonSafe: non-JSON response', trimmed.slice(0,120));
+        return { status:'error', message:'Non-JSON response', raw: trimmed.slice(0,500) };
+      }catch(err){
+        console.warn('jsonSafe: failed to read body', err);
+        return { status:'error', message:String(err) };
       }
-    }catch(e){}
-    return url;
-  };
+    }
+  }
   if (!_fetch) return;
 
   function getIdToken(){
@@ -113,7 +123,7 @@
     try{
       var base = endpoint(); var t = token();
       var url = base + (base.indexOf('?')>=0?'&':'?') + 'action=getVoucherICSet' + (t?('&id_token='+encodeURIComponent(t)):'');
-      var r = await fetch(url); var j = await r.json();
+      var r = await fetch(url); var j = await jsonSafe(r);
       window.__voucherICS = (j && j.ics) || [];
       return j;
     } catch(err) {
@@ -128,7 +138,7 @@
   function isGAS(url){ try{var u=new URL(url, location.href); return u.hostname==='script.google.com' && /\/macros\/s\//.test(u.pathname);}catch(e){return false;} }
   window.fetch = async function(input, init){
     var url = (typeof input==='string') ? input : (input && input.url) || '';
-    if (!url) if (typeof input==='string'){ return _fetch((window.withCorsProxy?window.withCorsProxy(input):input), init); } return _fetch(input, init);
+    if (!url) return _fetch(input, init);
     if (isGAS(url)){
       var method = (init && init.method) || 'GET';
       var base = endpoint(); var t = token();
@@ -136,14 +146,14 @@
         var qs=''; try{var u=new URL(url, location.href); qs=u.search.slice(1);}catch(e){qs=''}
         var prox = base + (base.indexOf('?')>=0?'&':'?') + qs;
         if (t && !/[?&]id_token=/.test(prox)) prox += (prox.indexOf('?')>=0?'&':'?') + 'id_token='+encodeURIComponent(t);
-        return _fetch((window.withCorsProxy?window.withCorsProxy(prox):prox), { method:'GET' });
+        return _fetch(prox, { method:'GET' });
       } else {
         var body=(init&&init.body)||''; if (typeof body!=='string'){ try{ if(body&&body.toString) body=body.toString(); }catch(e){ body=''; } }
         var p=new URLSearchParams(String(body||'')); if (t && !p.get('id_token')) p.set('id_token', t);
         return _fetch(base, { method:'POST', headers:{'Content-Type':'application/x-www-form-urlencoded'}, body:p.toString() });
       }
     }
-    if (typeof input==='string'){ return _fetch((window.withCorsProxy?window.withCorsProxy(input):input), init); } return _fetch(input, init);
+    return _fetch(input, init);
   };
 
   // 2) Normalize NADI items for both actions
@@ -1834,7 +1844,7 @@ async function handleCredentialResponse(resp){
     headers:{ 'Content-Type':'application/x-www-form-urlencoded' },
     body: new URLSearchParams({ action:'whoami', id_token: ID_TOKEN })
   });
-  const j = await r.json();
+  const j = await jsonSafe(r);
   if (j.status === 'success'){
     STAFF_EMAIL = j.email || '';
     document.getElementById('staffBadge').classList.remove('d-none');
@@ -1880,7 +1890,7 @@ async function getJSON(params={}, {silent=false, msg='Memuat data…'}={}){
       fetch(url, { method:'GET' }),
       new Promise((_,rej)=> setTimeout(()=>rej(new Error('Timeout')), 12000))
     ]);
-    return await r.json();
+    return await jsonSafe(r);
   } finally { if (!silent) hideLoader(); }
 }
 
@@ -1896,7 +1906,7 @@ async function postForm(params={}, {silent=false, msg='Menyimpan data…'}={}){
       }),
       new Promise((_,rej)=> setTimeout(()=>rej(new Error('Timeout')), 12000))
     ]);
-    return await r.json();
+    return await jsonSafe(r);
   } finally { if (!silent) hideLoader(); }
 }
 
@@ -4108,7 +4118,7 @@ async function uploadPDPA(){
         fileBase64: pure64, fileName: file.name, fileType: file.type || 'application/octet-stream'
       })
     });
-    const json = await res.json();
+    const json = await jsonSafe(res);
     if (json.status === 'success'){
       pdpaModal.hide();
       toast('Berjaya','PDPA dimuat naik','success');
@@ -4563,7 +4573,7 @@ const saveNadiStateDebounced = debounce(saveNadiState, 400);
           form.set('tarikhTCA', r.voucherDate || programDate || '');
           form.set('masaTCA', masa);
           const res = await fetch(SCRIPT_URL, { method:'POST', body: form });
-          const j = await res.json().catch(()=>({}));
+          const j = await jsonSafe(res).catch(()=>({}));
           if (j && j.status === 'success') {
             if (typeof toast === 'function') toast('Berjaya', `Voucher TCA didaftarkan untuk ${r.nama || r.ic}`, 'success');
           } else {
@@ -4597,7 +4607,7 @@ const saveNadiStateDebounced = debounce(saveNadiState, 400);
     try{
       const qs = new URLSearchParams({ action:'getNadiActivities', id_token: (window.ID_TOKEN||'') });
       const res = await fetch(`${window.SCRIPT_URL}?${qs.toString()}`);
-      const j = await res.json();
+      const j = await jsonSafe(res);
       if (!j || j.status!=='success') throw new Error(j && (j.message||j.code) || 'Gagal ambil program');
       const data = Array.isArray(j.data) ? j.data : [];
       list.innerHTML = data.map(item=>{
@@ -4624,7 +4634,7 @@ const saveNadiStateDebounced = debounce(saveNadiState, 400);
     try{
       const qs = new URLSearchParams({ action:'getNadiActivityDetail', id: activityId, id_token: (window.ID_TOKEN||'') });
       const res = await fetch(`${window.SCRIPT_URL}?${qs.toString()}`);
-      const j = await res.json();
+      const j = await jsonSafe(res);
       if (!j || j.status!=='success') throw new Error(j && (j.message||j.code) || 'Gagal ambil detail');
       const rows = Array.isArray(j.data) ? j.data : [];
       if (!rows.length){ tbody.innerHTML = '<tr><td colspan="13" class="text-center text-muted">Tiada data.</td></tr>'; return; }
@@ -5204,7 +5214,7 @@ if (btn) {
     try{
       const qs = new URLSearchParams({ action:'getNadiActivities', id_token: (window.ID_TOKEN||'') });
       const res = await fetch(`${window.SCRIPT_URL}?${qs.toString()}`, { credentials:'omit' });
-      const j = await res.json();
+      const j = await jsonSafe(res);
       if (!j || j.status!=='success') throw new Error((j && (j.message||j.code)) || 'Gagal ambil program');
       const data = Array.isArray(j.data) ? j.data : [];
       if (!data.length){
@@ -5244,7 +5254,7 @@ if (btn) {
     try{
       const qs = new URLSearchParams({ action:'getNadiActivityDetail', id: activityId, id_token: (window.ID_TOKEN||'') });
       const res = await fetch(`${window.SCRIPT_URL}?${qs.toString()}`, { credentials:'omit' });
-      const j = await res.json();
+      const j = await jsonSafe(res);
       if (!j || j.status!=='success') throw new Error((j && (j.message||j.code)) || 'Gagal ambil detail');
       const rows = Array.isArray(j.data) ? j.data : [];
       if (!rows.length){
@@ -5306,7 +5316,7 @@ if (btn) {
     const t = setTimeout(()=>ctl.abort(), timeoutMs);
     try{
       const res = await fetch(url, { ...opt, signal: ctl.signal, credentials:'omit' });
-      return await res.json().catch(()=>({status:'error'}));
+      return await jsonSafe(res).catch(()=>({status:'error'}));
     } finally { clearTimeout(t); }
   }
   function ensureGlobals(){
@@ -5525,7 +5535,7 @@ if (btn) {
     const ctl = new AbortController(); const t = setTimeout(()=>ctl.abort(), 20000);
     try{
       const res = await fetch(url, { signal: ctl.signal, credentials:'omit' });
-      return await res.json();
+      return await jsonSafe(res);
     } finally { clearTimeout(t); }
   }
 
@@ -5816,7 +5826,7 @@ if (btn) {
     const q=new URLSearchParams({...params, id_token: ID_TOKEN});
     const res = await fetch(`${SCRIPT_URL}?${q}`, { method:'GET' });
     if(!res.ok) throw new Error(`HTTP ${res.status}`);
-    return res.json();
+    return jsonSafe(res);
   }
 
   function renderList(items){
@@ -6283,11 +6293,11 @@ function injectTelahHadirButtons(){
   async function _postForm(payload){ try{ if (typeof postForm==='function') return await postForm(payload); }catch(e){} 
     const form = new URLSearchParams(); Object.entries(payload||{}).forEach(([k,v])=>form.append(k, v));
     const res = await fetch(location.href, { method:'POST', headers:{'Content-Type':'application/x-www-form-urlencoded'}, body: form.toString() });
-    return await res.json();
+    return await jsonSafe(res);
   }
   async function _getJSON(payload){ try{ if (typeof getJSON==='function') return await getJSON(payload); }catch(e){}
     const params = new URLSearchParams(payload||{}); const res = await fetch(location.pathname + '?' + params.toString());
-    return await res.json();
+    return await jsonSafe(res);
   }
 
   // Permanent Delete for Arkib page
@@ -6498,7 +6508,7 @@ function __toVoucherPayload(payload){
       var t = (window.ID_TOKEN || sessionStorage.getItem('id_token') || sessionStorage.getItem('ID_TOKEN') || localStorage.getItem('id_token') || localStorage.getItem('ID_TOKEN') || '').trim();
       if (t && !q.get('id_token')) q.set('id_token', t);
     }catch(e){}
-    return fetch(window.SCRIPT_URL + '?' + q.toString(), { method:'GET' }).then(function(r){ return r.json(); });
+    return fetch(window.SCRIPT_URL + '?' + q.toString(), { method:'GET' }).then(function(r){ return jsonSafe(r); });
   }
 
   var __rows = [];
