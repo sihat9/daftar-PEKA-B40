@@ -238,8 +238,8 @@
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css">
 
   <!-- Chart.js + Datalabels -->
-  <script defer src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
-  <script defer src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2"></script>
 
   <!-- SheetJS (Excel) via CDN -->
 <!-- XLSX robust loader + override (SIAP TAMPAL DI <head>
@@ -307,7 +307,7 @@
   </script>
 
   <!-- html2canvas untuk tangkap preview → imej (BARU) -->
-  <script defer src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
 
 <style>
   :root{ --primary:#2c3e50; --secondary:#3498db; --success:#27ae60; --warning:#f39c12; --danger:#e74c3c; --light:#ecf0f1; --dark:#34495e; --muted:#95a5a6; }
@@ -572,11 +572,17 @@
   text-transform:uppercase; vertical-align: middle; line-height:1;
 }
 </style>
+
+<style>
+.sejarah-loading{display:flex;align-items:center;gap:.5rem;font-size:.9rem;color:#6b7280}
+.sejarah-spinner{width:14px;height:14px;border:2px solid #cbd5e1;border-top-color:#3b82f6;border-radius:50%;animation:spin .8s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+</style>
+
 </head>
 <body>
   <!-- Global Loader -->
   <div id="appLoader" aria-hidden="true">
-    <div class="visually-hidden" aria-live="polite"></div>
     <div class="loader-card">
       <div class="spinner-premium"></div>
       <div class="fw-bold">Sila tunggu…</div>
@@ -1316,7 +1322,7 @@
     </div></div>
   </footer>
 
-  <script defer src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
   <script>
 /* =======================
    KONFIG (EDIT INI SAHAJA)
@@ -6661,176 +6667,66 @@ function __toVoucherPayload(payload){
 
 <script>
 (function(){
-  function safe(fn){ try{ fn && fn(); }catch(e){} }
-  function ensureFirstActive(){
-    var list = document.getElementById('programList');
-    if (!list) return;
-    var active = list.querySelector('.list-group-item.active');
-    var first  = list.querySelector('.list-group-item');
-    if (!active && first){
-      first.classList.add('active');
-      if (typeof first.click === 'function') { try{ first.click(); }catch(e){} }
-      safe(function(){
-        if (typeof window.loadProgramDetail === 'function' && first.dataset && first.dataset.id){
-          window.loadProgramDetail(first.dataset.id);
-        }
-      });
-    }
-  }
-  function hasItems(){
-    var list = document.getElementById('programList');
-    if (!list) return false;
-    return !!list.querySelector('.list-group-item, li, [role="listitem"]');
-  }
-  function trySort(strategy){
+  function q(sel){ return document.querySelector(sel); }
+  function byId(id){ return document.getElementById(id); }
+  function on(dom,ev,fn){ dom&&dom.addEventListener(ev,fn,{passive:true}); }
+  function isSejarah(){ return (location.hash||'').indexOf('#sejarah')===0 || !!byId('programList'); }
+
+  function mountLoader(where){
     try{
-      if (typeof window.sortPrograms === 'function'){
-        window.sortPrograms(strategy || 'date-desc'); return true;
-      }
-      var sel = document.getElementById('programSort') || document.querySelector('select[name="programSort"], select[data-role="program-sort"]');
-      if (sel){
-        var wanted = (strategy === 'date-asc') ? 'date-asc' : 'date-desc';
-        if ([...sel.options].some(o => o.value === wanted)){
-          sel.value = wanted; sel.dispatchEvent(new Event('change', {bubbles:true})); return true;
-        }
-      }
-      var btn = document.querySelector('[data-sort="date-desc"], [data-sort-key="date"], .sort-date-desc, .sort-date');
-      if (btn){ btn.click(); return true; }
-      var wrap = document.querySelector('#sejarahCard, .sejarah-card, .program-history, .history-wrapper') || document;
-      var any = wrap.querySelector('[data-sort], .dropdown-menu [role="menuitem"], .dropdown-item, .sort-control, [data-action="sort"]');
-      if (any){ any.click(); return true; }
+      if (!where || where.__loaderMounted) return;
+      var wrap = document.createElement('div');
+      wrap.className = 'sejarah-loading';
+      wrap.innerHTML = '<span class="sejarah-spinner"></span><span>Memuat data…</span>';
+      where.__loaderMounted = wrap;
+      if (where.children.length===0) where.textContent='';
+      where.appendChild(wrap);
     }catch(e){}
-    return false;
   }
-  function ensureList(){
-    var tries = 0;
-    var iv = setInterval(function(){
-      tries++;
-      if (hasItems()){ clearInterval(iv); return; }
-      safe(function(){ if (typeof window.renderProgramList === 'function') window.renderProgramList(); });
-      if (!hasItems()){ trySort('date-desc'); }
-      if (hasItems()){ ensureFirstActive(); clearInterval(iv); return; }
-      if (tries > 8) clearInterval(iv);
-    }, 500);
+  function unmountLoader(where){
+    try{ if (where && where.__loaderMounted){ where.__loaderMounted.remove(); where.__loaderMounted=null; } }catch(e){}
   }
-  if (!window.__loadProgramsWrapped2 && typeof window.loadPrograms === 'function'){
-    window.__loadProgramsWrapped2 = true;
-    const _orig = window.loadPrograms;
-    window.loadPrograms = async function(){
-      let r; try{ r = _orig.apply(this, arguments); }catch(e){ r = undefined; }
-      try{ await Promise.resolve(r); }catch(e){}
-      safe(function(){ if (typeof window.renderProgramList === 'function') window.renderProgramList(); });
-      ensureList(); ensureFirstActive();
-      return r;
-    };
+  function programListPane(){
+    return byId('programList') || q('#programListContainer') || q('[data-role="program-list"]') || q('#sejarahCard .card-body');
   }
-  function autoSejarah(){
-    var isSejarah = (location.hash||'').indexOf('#sejarah')===0 || !!document.getElementById('programList');
-    if (!isSejarah) return;
-    if (typeof window.loadPrograms === 'function'){
-      try{
-        const done = window.loadPrograms();
-        Promise.resolve(done).finally(function(){ ensureList(); ensureFirstActive(); });
-      }catch(e){ ensureList(); ensureFirstActive(); }
-    } else {
-      ensureList(); ensureFirstActive();
-    }
+  function detailPane(){
+    return byId('programDetail') || q('#programDetailContainer') || q('[data-role="program-detail"]') || q('#programTable');
   }
-  document.addEventListener('DOMContentLoaded', autoSejarah);
-  window.addEventListener('hashchange', autoSejarah);
-  (function observeToken(){
-    var tries = 0;
-    var iv = setInterval(function(){
-      tries++;
-      var tok = sessionStorage.getItem('id_token') || sessionStorage.getItem('ID_TOKEN') ||
-                localStorage.getItem('id_token')  || localStorage.getItem('ID_TOKEN');
-      if (tok){ autoSejarah(); clearInterval(iv); }
-      if (tries > 10) clearInterval(iv);
-    }, 500);
-  })();
-})();
-</script>
 
+  async function loadOnce(){
+    const needToken = !(sessionStorage.getItem('id_token')||sessionStorage.getItem('ID_TOKEN')||localStorage.getItem('id_token')||localStorage.getItem('ID_TOKEN'));
+    if (needToken){ await new Promise(r=>setTimeout(r, 600)); }
 
-<script>
-// ---- Sort-pulse to force initial population even if app waits for manual change ----
-(function(){
-  function $(sel){ return document.querySelector(sel); }
-  function programListHasItems(){
-    var list = document.getElementById('programList');
-    return !!(list && (list.querySelector('.list-group-item, li, [role="listitem"]')));
-  }
-  function pulseSelect(sel){
+    const listEl = programListPane();
+    const detEl  = detailPane();
+    mountLoader(listEl); mountLoader(detEl);
+
     try{
-      if (!sel) return false;
-      var orig = sel.value;
-      // pick alternative option
-      var opts = Array.from(sel.options||[]);
-      var alt = null;
-      for (var i=0;i<opts.length;i++){
-        if (opts[i].value && opts[i].value !== orig){ alt = opts[i].value; break; }
+      if (typeof window.loadPrograms === 'function'){ await Promise.resolve(window.loadPrograms()); }
+      if (typeof window.renderProgramList === 'function'){ window.renderProgramList(); }
+
+      // pilih item pertama jika tiada yang aktif
+      const list = byId('programList');
+      if (list){
+        const active = list.querySelector('.list-group-item.active');
+        const first  = list.querySelector('.list-group-item');
+        if (!active && first){ if (typeof first.click === 'function') first.click(); }
       }
-      if (!alt && opts.length>1){ alt = opts[1].value; }
-      if (!alt) alt = orig;
-      // change to alt then back to orig to trigger listeners
-      if (alt !== orig){
-        sel.value = alt;
-        sel.dispatchEvent(new Event('change', {bubbles:true}));
-      }
-      sel.value = orig;
-      sel.dispatchEvent(new Event('change', {bubbles:true}));
-      return true;
-    }catch(e){ return false; }
-  }
-  function tryPulse(){
-    var sel = document.getElementById('programSort') ||
-              $('select[name="programSort"]') ||
-              $('select[data-role="program-sort"]') ||
-              $('select.sort-control');
-    // try pulse select
-    var did = pulseSelect(sel);
-    // try click a dropdown item too, in case UI uses buttons
-    if (!did){
-      var btn = $('[data-sort="date-desc"], [data-sort-key="date"], .sort-date-desc, .sort-date, [data-action="sort"]');
-      if (btn){ try{ btn.click(); did = true; }catch(e){} }
+    } finally {
+      unmountLoader(programListPane());
+      unmountLoader(detailPane());
     }
-    return did;
   }
-  function ensureOnSejarah(){
-    return (location.hash||'').indexOf('#sejarah')===0 ||
-           !!document.getElementById('programList') ||
-           !!document.querySelector('.sejarah-card, #sejarahCard');
+
+  function bootstrap(){
+    if (!isSejarah()) return;
+    if (window.__sejarahBooted) return;
+    window.__sejarahBooted = true;
+    loadOnce().catch(function(e){ console.warn('Sejarah load error', e); });
   }
-  function kick(){
-    if (!ensureOnSejarah()) return;
-    // If list already has items, don't pulse.
-    if (programListHasItems()) return;
-    // Pulse once now
-    tryPulse();
-    // Keep pulsing a few times until items appear
-    var tries = 0;
-    var iv = setInterval(function(){
-      tries++;
-      if (programListHasItems()){ clearInterval(iv); return; }
-      tryPulse();
-      if (tries > 8) clearInterval(iv); // ~4s
-    }, 500);
-  }
-  document.addEventListener('DOMContentLoaded', kick);
-  window.addEventListener('hashchange', kick);
-  // Also kick after loadPrograms (if defined)
-  (function hook(){
-    if (window.__sortPulseHooked) return; window.__sortPulseHooked = true;
-    var orig = window.loadPrograms;
-    if (typeof orig === 'function'){
-      window.loadPrograms = async function(){
-        let r; try{ r = orig.apply(this, arguments); }catch(e){ r = undefined; }
-        try{ await Promise.resolve(r); }catch(e){}
-        kick();
-        return r;
-      };
-    }
-  })();
+
+  on(document,'DOMContentLoaded', bootstrap);
+  on(window,'hashchange', function(){ if (isSejarah()){ window.__sejarahBooted=false; bootstrap(); } });
 })();
 </script>
 
