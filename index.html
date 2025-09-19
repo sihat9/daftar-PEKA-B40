@@ -6,6 +6,17 @@
 (function(){
   'use strict';
   var _fetch = window.fetch ? window.fetch.bind(window) : null;
+
+  // Global CORS helper (safe no-op if same-origin)
+  window.withCorsProxy = function(url){
+    try{
+      var u = new URL(url, location.href);
+      if (u.hostname.indexOf('script.google.com')>=0 || u.hostname.indexOf('googleusercontent.com')>=0){
+        return 'https://cors.isomorphic-git.org/' + url;
+      }
+    }catch(e){}
+    return url;
+  };
   if (!_fetch) return;
 
   function getIdToken(){
@@ -117,7 +128,7 @@
   function isGAS(url){ try{var u=new URL(url, location.href); return u.hostname==='script.google.com' && /\/macros\/s\//.test(u.pathname);}catch(e){return false;} }
   window.fetch = async function(input, init){
     var url = (typeof input==='string') ? input : (input && input.url) || '';
-    if (!url) return _fetch(input, init);
+    if (!url) if (typeof input==='string'){ return _fetch((window.withCorsProxy?window.withCorsProxy(input):input), init); } return _fetch(input, init);
     if (isGAS(url)){
       var method = (init && init.method) || 'GET';
       var base = endpoint(); var t = token();
@@ -125,14 +136,14 @@
         var qs=''; try{var u=new URL(url, location.href); qs=u.search.slice(1);}catch(e){qs=''}
         var prox = base + (base.indexOf('?')>=0?'&':'?') + qs;
         if (t && !/[?&]id_token=/.test(prox)) prox += (prox.indexOf('?')>=0?'&':'?') + 'id_token='+encodeURIComponent(t);
-        return _fetch(withCorsProxy(prox), { method:'GET' });
+        return _fetch((window.withCorsProxy?window.withCorsProxy(prox):prox), { method:'GET' });
       } else {
         var body=(init&&init.body)||''; if (typeof body!=='string'){ try{ if(body&&body.toString) body=body.toString(); }catch(e){ body=''; } }
         var p=new URLSearchParams(String(body||'')); if (t && !p.get('id_token')) p.set('id_token', t);
         return _fetch(base, { method:'POST', headers:{'Content-Type':'application/x-www-form-urlencoded'}, body:p.toString() });
       }
     }
-    return _fetch(input, init);
+    if (typeof input==='string'){ return _fetch((window.withCorsProxy?window.withCorsProxy(input):input), init); } return _fetch(input, init);
   };
 
   // 2) Normalize NADI items for both actions
@@ -273,7 +284,7 @@
   <script>
   (function(){
     try{
-      var tok = sessionStorage.getItem('id_token') || sessionStorage.getItem('ID_TOKEN') || sessionStorage.getItem('id_token') || sessionStorage.getItem('ID_TOKEN') || localStorage.getItem('id_token') || localStorage.getItem('ID_TOKEN');
+      var tok = sessionStorage.getItem('id_token') || sessionStorage.getItem('ID_TOKEN') || localStorage.getItem('id_token') || localStorage.getItem('ID_TOKEN');
       if (!tok){
         var s = document.createElement('script');
         s.src = 'https://accounts.google.com/gsi/client';
@@ -5761,7 +5772,7 @@ if (btn) {
 <script>
   (function(){
     try{
-      var tok = sessionStorage.getItem('id_token') || sessionStorage.getItem('ID_TOKEN') || sessionStorage.getItem('id_token') || sessionStorage.getItem('ID_TOKEN') || localStorage.getItem('id_token') || localStorage.getItem('ID_TOKEN');
+      var tok = sessionStorage.getItem('id_token') || sessionStorage.getItem('ID_TOKEN') || localStorage.getItem('id_token') || localStorage.getItem('ID_TOKEN');
       if (!tok){
         var s = document.createElement('script');
         s.src = 'https://accounts.google.com/gsi/client';
@@ -5799,19 +5810,7 @@ if (btn) {
     }catch(e){ return {}; }
   }
 
-  
-  const CORS_PROXY = 'https://cors.isomorphic-git.org/';
-  function withCorsProxy(url){
-    try{
-      const u = new URL(url, location.href);
-      if (u.hostname.includes('script.google.com') || u.hostname.includes('googleusercontent.com')){
-        // Always proxy cross-origin GAS calls to avoid CORS noise
-        return CORS_PROXY + url;
-      }
-    }catch(e){}
-    return url;
-  }
-async function apiGet(params){
+  async function apiGet(params){
     if(!SCRIPT_URL || SCRIPT_URL.startsWith('PASTE_')) throw new Error('SCRIPT_URL belum ditetapkan');
     if(!ID_TOKEN) throw new Error('Belum log masuk');
     const q=new URLSearchParams({...params, id_token: ID_TOKEN});
