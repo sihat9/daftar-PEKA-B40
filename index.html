@@ -1,6 +1,93 @@
 <!DOCTYPE html>
 <html lang="ms">
 <head>
+<!-- Injected: Robust fetch interceptor (adds id_token; coerces HTML errors to JSON to avoid SyntaxError) -->
+<script>
+(function(){
+  'use strict';
+  var _fetch = window.fetch ? window.fetch.bind(window) : null;
+  if (!_fetch) return;
+
+  function getIdToken(){
+    try {
+      return (window.ID_TOKEN || localStorage.getItem('id_token') || localStorage.getItem('ID_TOKEN') || '').trim();
+    } catch(e){ return ''; }
+  }
+  function needsToken(url){
+    try{
+      var u = new URL(url, location.href);
+      if (/script\.google\.com\/macros\/s\//.test(u.href)) return true;
+      var meta = document.querySelector('meta[name="gas-endpoint"]');
+      if (meta && meta.content && u.href.indexOf(meta.content)===0) return true;
+      if (window.SCRIPT_URL && u.href.indexOf(String(window.SCRIPT_URL))===0) return true;
+      return false;
+    }catch(e){ return false; }
+  }
+  function addTokenToUrl(url){
+    try{
+      var u = new URL(url, location.href);
+      var t = getIdToken();
+      if (t && !u.searchParams.get('id_token')){
+        u.searchParams.set('id_token', t);
+      }
+      return u.toString();
+    }catch(e){ return url; }
+  }
+  function addTokenToBody(body){
+    try{
+      var t = getIdToken();
+      var p;
+      if (typeof body === 'string') {
+        p = new URLSearchParams(body);
+      } else if (body instanceof URLSearchParams) {
+        p = body;
+      } else {
+        // unsupported – leave as-is
+        return body;
+      }
+      if (t && !p.get('id_token')) p.set('id_token', t);
+      return p.toString();
+    }catch(e){ return body; }
+  }
+
+  window.fetch = function(input, init){
+    init = init || {};
+    var url = (typeof input==='string') ? input : (input && input.url) || '';
+    var method = (init.method || 'GET').toUpperCase();
+    try{
+      if (url && needsToken(url)){
+        if (method === 'GET'){
+          url = addTokenToUrl(url);
+          input = url;
+        } else {
+          init.headers = init.headers || {};
+          init.headers['Content-Type'] = 'application/x-www-form-urlencoded';
+          init.body = addTokenToBody(init.body || '');
+        }
+      }
+    }catch(e){}
+
+    return _fetch(input, init).then(function(res){
+      try {
+        var ct = res.headers.get('content-type') || '';
+        if (ct.indexOf('application/json') >= 0) return res;
+        // If HTML came back (e.g., auth page) and caller will call res.json(),
+        // return a synthetic JSON response to prevent "Unexpected token <".
+        return res.clone().text().then(function(txt){
+          if (txt && txt.trim().charAt(0) === '<'){
+            var stub = JSON.stringify({ status:'unauthorized', code:'HTML_RESPONSE', message:'Auth/HTML response intercepted' });
+            return new Response(stub, { status:200, headers:{ 'Content-Type':'application/json' } });
+          }
+          return res; // non-HTML text; leave as-is
+        });
+      } catch(e) {
+        return res;
+      }
+    });
+  };
+})();
+</script>
+
 
 <!-- strict-compat v7 (export): early patches -->
 <meta name="gas-endpoint" content="https://broken-dew-0eb2.amiruladlije.workers.dev">
@@ -6353,7 +6440,7 @@ function __toVoucherPayload(payload){
 }
 
 </script>
-<!-- === SEJARAH SARINGAN PATCH (override minimal, kekal layout asal) === -->
+<!-- Injected: Sejarah Saringan patch (expose functions; safe rendering) -->
 <script>
 (function(){
   'use strict';
@@ -6361,172 +6448,168 @@ function __toVoucherPayload(payload){
   window.__SEJARAH_PATCH_APPLIED__ = true;
 
   function $(s, r){ return (r||document).querySelector(s); }
-  function $all(s, r){ return Array.from((r||document).querySelectorAll(s)); }
-  function esc(v){ return String(v ?? '').replace(/[&<>"']/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',\"'\":'&#39;'}[m])); }
+  function esc(v){ return String(v==null?'':v).replace(/[&<>"']/g, function(m){ return ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'})[m]; }); }
+  function listEl(){ return document.getElementById('programList') || document.getElementById('sejarahList'); }
+  function tbodyEl(){ return document.getElementById('sejarahTable') || (document.getElementById('sejarahDetail')?document.getElementById('sejarahDetail').querySelector('tbody'):null); }
+  function filterEl(){ return document.getElementById('programFilter'); }
+  function sortEl(){ return document.getElementById('programSort'); }
+  function searchEl(){ return document.getElementById('sejarahSearch'); }
 
-  // --- API helper (GET) ---
-  async function apiGet(params){
-    if (!window.SCRIPT_URL) throw new Error('SCRIPT_URL tidak ditetapkan');
-    const q = new URLSearchParams(Object.assign({}, params, { id_token: (window.ID_TOKEN||'') }));
-    const res = await fetch(window.SCRIPT_URL + '?' + q.toString(), { method:'GET' });
-    if (!res.ok) throw new Error('HTTP '+res.status);
-    const j = await res.json();
-    if (!j || j.status !== 'success') throw new Error((j && (j.message||j.code)) || 'Ralat pelayan');
-    return j;
+  function apiGet(params){
+    if (!window.SCRIPT_URL) return Promise.reject(new Error('SCRIPT_URL tidak ditetapkan'));
+    var q = new URLSearchParams(params||{});
+    try{
+      var t = (window.ID_TOKEN || localStorage.getItem('id_token') || localStorage.getItem('ID_TOKEN') || '').trim();
+      if (t && !q.get('id_token')) q.set('id_token', t);
+    }catch(e){}
+    return fetch(window.SCRIPT_URL + '?' + q.toString(), { method:'GET' }).then(function(r){ return r.json(); });
   }
 
-  function listEl(){ return document.getElementById('programList') || document.getElementById('sejarahList'); }
-  function detailTbody(){ return document.getElementById('sejarahTable') || document.querySelector('#sejarahDetail tbody'); }
-  function getFilterInput(){ return document.getElementById('programFilter'); }
-  function getSearchInput(){ return document.getElementById('sejarahSearch'); }
-  function getSortSel(){ return document.getElementById('programSort'); }
+  var __rows = [];
+  var __activeId = '';
 
-  // Simpan rows terkini untuk re-render pantas semasa carian
-  let __currentRows = [];
-  let __currentActivityId = '';
+  function toDateVal(disp){
+    var m = /^(\d{2})\/(\d{2})\/(\d{4})$/.exec(String(disp||''));
+    return m ? (new Date(+m[3], +m[2]-1, +m[1]).getTime()) : 0;
+  }
 
-  // =============== LOAD PROGRAMS (kiri) ===============
-  async function loadPrograms(){
-    const list = listEl(); if (!list) return;
-    if (!window.ID_TOKEN){
-      try{ window.ID_TOKEN = (localStorage.getItem('id_token')||localStorage.getItem('ID_TOKEN')||'').trim(); }catch(_){}
-    }
-    if (!window.ID_TOKEN){
-      list.innerHTML = '<div class="alert alert-warning m-2">Sila log masuk dahulu.</div>';
+  function renderPrograms(data){
+    var list = listEl(); if (!list) return;
+    if (!data || !data.length){
+      list.innerHTML = '<div class="text-center text-muted p-3">Tiada rekod.</div>';
       return;
     }
-
-    list.innerHTML = '<div class="text-muted text-center p-3">Memuat program…</div>';
-    try{
-      const j = await apiGet({ action:'getNadiActivities' });
-      const data = Array.isArray(j.data) ? j.data : [];
-      if (!data.length){
-        list.innerHTML = '<div class="text-center text-muted p-3">Tiada rekod.</div>';
-        const tb = detailTbody(); if (tb) tb.innerHTML = '<tr><td colspan="13" class="text-center text-muted">—</td></tr>';
-        return;
-      }
-
-      // Sorting & filtering jika elemen wujud
-      const sortSel = getSortSel(); const filterBox = getFilterInput();
-      const toDate = s => { const m=/^(\d{2})\/(\d{2})\/(\d{4})$/.exec(String(s||'')); if(!m) return 0; return new Date(+m[3],+m[2]-1,+m[1]).getTime(); };
-      let arr = data.slice();
-      if (sortSel){
-        const sort = sortSel.value || 'date_desc';
-        if (sort==='date_asc')  arr.sort((a,b)=> toDate(a.programDate)-toDate(b.programDate));
-        else if (sort==='title_asc') arr.sort((a,b)=> (a.title||'').localeCompare(b.title||''));
-        else if (sort==='title_desc') arr.sort((a,b)=> (b.title||'').localeCompare(a.title||''));
-        else arr.sort((a,b)=> toDate(b.programDate)-toDate(a.programDate));
-      }
-      if (filterBox && filterBox.value){
-        const q = filterBox.value.toLowerCase();
-        arr = arr.filter(r => (r.title+' '+(r.programDate||'')).toLowerCase().includes(q));
-      }
-
-      list.innerHTML = arr.map(r=>{
-        const id = esc(r.activityId||''); const ttl = esc(r.title||'-'); const dt = esc(r.programDate||''); const tot = esc(r.total||'0');
-        const meta = (ttl + ' ' + dt).toLowerCase();
-        return `<button type="button" class="list-group-item list-group-item-action d-flex justify-content-between align-items-center"
-                  data-activity-id="${id}" data-meta="${esc(meta)}">
-                  <span class="fw-semibold">${ttl}</span>
-                  <span class="small ms-2">${dt}</span>
-                  <span class="badge bg-primary rounded-pill">${tot}</span>
-                </button>`;
-      }).join('');
-
-      // Event click (delegation) – sekali sahaja
-      if (!list.__wired){
-        list.__wired = true;
-        list.addEventListener('click', e=>{
-          const btn = e.target.closest('.list-group-item[data-activity-id]'); if (!btn) return;
-          $all('.list-group-item.active', list).forEach(el=>el.classList.remove('active'));
-          btn.classList.add('active'); loadProgramDetail(btn.getAttribute('data-activity-id'));
-        });
-      }
-
-      // Auto pilih yang pertama (atau kekalkan aktif jika ada)
-      let active = list.querySelector('.list-group-item.active');
-      if (!active) active = list.querySelector('.list-group-item');
-      if (active){ active.classList.add('active'); await loadProgramDetail(active.getAttribute('data-activity-id')); }
-    }catch(e){
-      list.innerHTML = `<div class="alert alert-danger m-2">Gagal memuat program: ${esc(e.message||e)}</div>`;
+    var arr = data.slice();
+    var sEl = sortEl(), fEl = filterEl();
+    if (sEl){
+      var mode = sEl.value || 'date_desc';
+      arr.sort(function(a,b){
+        if (mode==='date_asc')  return toDateVal(a.programDate)-toDateVal(b.programDate);
+        if (mode==='title_asc') return String(a.title||'').localeCompare(String(b.title||''));
+        if (mode==='title_desc')return String(b.title||'').localeCompare(String(a.title||''));
+        return toDateVal(b.programDate)-toDateVal(a.programDate);
+      });
     }
+    if (fEl && fEl.value){
+      var q = fEl.value.toLowerCase();
+      arr = arr.filter(function(r){ return (String(r.title||'')+' '+String(r.programDate||'')).toLowerCase().indexOf(q)>=0; });
+    }
+    var html = '';
+    for (var i=0;i<arr.length;i++){
+      var r = arr[i];
+      var id = esc(r.activityId||'');
+      var ttl = esc(r.title||'-');
+      var dt  = esc(r.programDate||'');
+      var tot = esc(r.total||'0');
+      html += '<button type="button" class="list-group-item list-group-item-action d-flex justify-content-between align-items-center"'
+           + ' data-activity-id="'+id+'"><span class="fw-semibold">'+ttl+'</span>'
+           + '<span class="small ms-2">'+dt+'</span><span class="badge bg-primary rounded-pill">'+tot+'</span></button>';
+    }
+    list.innerHTML = html;
+
+    if (!list.__wired){
+      list.__wired = true;
+      list.addEventListener('click', function(e){
+        var btn = e.target.closest('.list-group-item[data-activity-id]'); if (!btn) return;
+        var act = btn.getAttribute('data-activity-id');
+        Array.prototype.forEach.call(list.querySelectorAll('.list-group-item.active'), function(el){ el.classList.remove('active'); });
+        btn.classList.add('active');
+        loadProgramDetail(act);
+      });
+    }
+
+    var first = list.querySelector('.list-group-item');
+    if (first){ first.classList.add('active'); loadProgramDetail(first.getAttribute('data-activity-id')); }
   }
 
-  // =============== LOAD DETAIL (kanan) ===============
-  async function loadProgramDetail(activityId){
-    __currentActivityId = String(activityId||'');
-    const tbody = detailTbody(); if (!tbody) return;
+  function renderRows(rows){
+    var tb = tbodyEl(); if (!tb) return;
+    var q = (searchEl() && searchEl().value || '').toLowerCase();
+    var out = [];
+    var idx = 0;
+    for (var i=0;i<rows.length;i++){
+      var r = rows[i];
+      var hay = (String(r.nama||'')+' '+String(r.noIC||'')+' '+String(r.noTelefon||'')+' '+String(r.alamat||'')+' '+String(r.status||'')).toLowerCase();
+      if (q && hay.indexOf(q)<0) continue;
+      var tcaDate = r.tcaDate || r.TCADate || r['Tarikh TCA (Voucher)'] || '';
+      var tcaTime = r.tcaTime || r.TCATime || '';
+      var tcaStaff= r.tcaStaff || r.TCAStaff || '';
 
-    tbody.innerHTML = '<tr><td colspan="13" class="text-center text-muted">Memuat perincian…</td></tr>';
-    try{
-      const j = await apiGet({ action:'getNadiActivityDetail', id: activityId });
-      const rows = Array.isArray(j.data) ? j.data : (Array.isArray(j.items)?j.items:[]);
-      __currentRows = rows.slice();
-
-      // kiraan ringkas utk badge
-      let layak=0, tak=0;
-      rows.forEach(r=>{ const s=String(r.status||'').toUpperCase(); if (s==='LAYAK') layak++; else if (/TAK|TIDAK/.test(s)) tak++; });
-      const tot = rows.length;
-      const sumL = document.getElementById('sumLayak'); if (sumL) sumL.textContent = layak;
-      const sumT = document.getElementById('sumTakLayak'); if (sumT) sumT.textContent = tak;
-      const sumA = document.getElementById('sumTotal');  if (sumA) sumA.textContent = tot;
-
-      renderDetailRows(rows);
-    }catch(e){
-      tbody.innerHTML = `<tr><td colspan="13" class="text-center text-danger">Gagal: ${esc(e.message||e)}</td></tr>`;
+      out.push(
+        '<tr>'
+        + '<td>'+ (++idx) +'</td>'
+        + '<td>'+ esc(r.nama||'') +'</td>'
+        + '<td>'+ esc(r.noIC||'') +'</td>'
+        + '<td>'+ esc(r.noTelefon||'') +'</td>'
+        + '<td>'+ esc(r.alamat||'') +'</td>'
+        + '<td>'+ esc(r.status||'') +'</td>'
+        + '<td>'+ esc(r.bp||'') +'</td>'
+        + '<td>'+ esc(r.pr||'') +'</td>'
+        + '<td>'+ esc(r.dxt||'') +'</td>'
+        + '<td>'+ esc(r.bmi||'') +'</td>'
+        + '<td>'+ esc((tcaDate||'') + (tcaTime?(' '+tcaTime):'')) +'</td>'
+        + '<td>'+ esc(tcaStaff||'') +'</td>'
+        + '<td>'+ esc(r.remark||'') +'</td>'
+        + '</tr>'
+      );
     }
+    tb.innerHTML = out.length ? out.join('') : '<tr><td colspan="13" class="text-center text-muted">Tiada data.</td></tr>';
   }
 
-  function renderDetailRows(rows){
-    const tbody = detailTbody(); if (!tbody) return;
-    const q = (getSearchInput()?.value||'').toLowerCase();
+  function updateBadges(rows){
+    var layak=0, tak=0;
+    for (var i=0;i<rows.length;i++){
+      var s = String(rows[i].status||'').toUpperCase();
+      if (s==='LAYAK') layak++;
+      else if (s.indexOf('TAK')>=0 || s.indexOf('TIDAK')>=0) tak++;
+    }
+    var tot = rows.length;
+    var L = document.getElementById('sumLayak'); if (L) L.textContent = layak;
+    var T = document.getElementById('sumTakLayak'); if (T) T.textContent = tak;
+    var A = document.getElementById('sumTotal');  if (A) A.textContent = tot;
+  }
 
-    const out = [];
-    let idx=0;
-    rows.forEach(r=>{
-      // carian
-      const hay = [r.nama,r.noIC,r.noTelefon,r.alamat,r.status,r.bp,r.pr,r.dxt,r.bmi,r.remark].map(v=>String(v||'').toLowerCase()).join(' ');
-      if (q && !hay.includes(q)) return;
-
-      const tcaDate = r.tcaDate || r.TCADate || r['Tarikh TCA (Voucher)'] || '';
-      const tcaTime = r.tcaTime || r.TCATime || '';
-      const tcaStaff= r.tcaStaff || r.TCAStaff || '';
-
-      out.push(`<tr>
-        <td>${++idx}</td>
-        <td>${esc(r.nama||'')}</td>
-        <td>${esc(r.noIC||'')}</td>
-        <td>${esc(r.noTelefon||'')}</td>
-        <td>${esc(r.alamat||'')}</td>
-        <td>${esc(r.status||'')}</td>
-        <td>${esc(r.bp||'')}</td>
-        <td>${esc(r.pr||'')}</td>
-        <td>${esc(r.dxt||'')}</td>
-        <td>${esc(r.bmi||'')}</td>
-        <td>${esc((tcaDate||'') + (tcaTime?(' '+tcaTime):''))}</td>
-        <td>${esc(tcaStaff)}</td>
-        <td>${esc(r.remark||'')}</td>
-      </tr>`);
+  function loadProgramDetail(aid){
+    __activeId = String(aid||'');
+    var tb = tbodyEl(); if (tb) tb.innerHTML = '<tr><td colspan="13" class="text-center text-muted">Memuat perincian…</td></tr>';
+    apiGet({ action:'getNadiActivityDetail', id: __activeId }).then(function(j){
+      var rows = Array.isArray(j.data) ? j.data : (Array.isArray(j.items)?j.items:[]);
+      __rows = rows.slice();
+      renderRows(__rows);
+      updateBadges(__rows);
+    }).catch(function(err){
+      if (tb) tb.innerHTML = '<tr><td colspan="13" class="text-center text-danger">Gagal memuat maklumat.</td></tr>';
+      console.error('Sejarah detail error:', err && err.message || err);
     });
-
-    tbody.innerHTML = out.length ? out.join('') : '<tr><td colspan="13" class="text-center text-muted">Tiada data.</td></tr>';
   }
 
-  // Expose supaya handler sedia ada boleh guna
+  function loadPrograms(){
+    var list = listEl(); if (list) list.innerHTML = '<div class="text-muted text-center p-3">Memuat program…</div>';
+    apiGet({ action:'getNadiActivities' }).then(function(j){
+      renderPrograms(Array.isArray(j.data)?j.data:[]);
+    }).catch(function(err){
+      var list = listEl(); if (list) list.innerHTML = '<div class="alert alert-danger m-2">Gagal memuat program.</div>';
+      console.error('Sejarah list error:', err && err.message || err);
+    });
+  }
+
+  // Expose supaya kod asal boleh panggil
   window.loadPrograms = loadPrograms;
   window.loadProgramDetail = loadProgramDetail;
 
-  // Wire carian/penapis jika wujud
-  const pf = getFilterInput(); if (pf && !pf.__wired){ pf.__wired=true; pf.addEventListener('input', loadPrograms); }
-  const ps = getSortSel();    if (ps && !ps.__wired){ ps.__wired=true;  ps.addEventListener('change', loadPrograms); }
-  const qs = getSearchInput();if (qs && !qs.__wired){ qs.__wired=true;  qs.addEventListener('input', ()=> renderDetailRows(__currentRows)); }
+  // Wire input
+  var f = filterEl(); if (f && !f.__wired){ f.__wired=true; f.addEventListener('input', loadPrograms); }
+  var s = sortEl();   if (s && !s.__wired){ s.__wired=true; s.addEventListener('change', loadPrograms); }
+  var q = searchEl(); if (q && !q.__wired){ q.__wired=true; q.addEventListener('input', function(){ renderRows(__rows); }); }
 
-  // Auto-load bila masuk ke #sejarah
-  function onHash(){ if (location.hash==='#sejarah' || location.hash.startsWith('#sejarah')) loadPrograms(); }
+  function onHash(){
+    var h = location.hash || '';
+    if (h === '#sejarah' || h.indexOf('#sejarah') === 0){ loadPrograms(); }
+  }
   window.addEventListener('hashchange', onHash);
-  if (document.readyState==='loading'){ document.addEventListener('DOMContentLoaded', onHash); } else { onHash(); }
+  if (document.readyState === 'loading'){ document.addEventListener('DOMContentLoaded', onHash); }
+  else { onHash(); }
 })();
 </script>
-<!-- === END SEJARAH PATCH === -->
 </body>
 </html>
