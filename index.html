@@ -10,7 +10,7 @@
 
   function getIdToken(){
     try {
-      return (window.ID_TOKEN || localStorage.getItem('id_token') || localStorage.getItem('ID_TOKEN') || '').trim();
+      return (window.ID_TOKEN || sessionStorage.getItem('id_token') || sessionStorage.getItem('ID_TOKEN') || localStorage.getItem('id_token') || localStorage.getItem('ID_TOKEN') || '').trim();
     } catch(e){ return ''; }
   }
   function needsToken(url){
@@ -115,25 +115,10 @@
   // 1) Intercept fetch to use worker + auto id_token
   var _fetch = window.fetch.bind(window);
   function isGAS(url){ try{var u=new URL(url, location.href); return u.hostname==='script.google.com' && /\/macros\/s\//.test(u.pathname);}catch(e){return false;} }
-  window.fetch = async function(input, init){
-    var url = (typeof input==='string') ? input : (input && input.url) || '';
-    if (!url) return _fetch(input, init);
-    if (isGAS(url)){
-      var method = (init && init.method) || 'GET';
-      var base = endpoint(); var t = token();
-      if (method.toUpperCase()==='GET'){
-        var qs=''; try{var u=new URL(url, location.href); qs=u.search.slice(1);}catch(e){qs=''}
-        var prox = base + (base.indexOf('?')>=0?'&':'?') + qs;
-        if (t && !/[?&]id_token=/.test(prox)) prox += (prox.indexOf('?')>=0?'&':'?') + 'id_token='+encodeURIComponent(t);
-        return _fetch(prox, { method:'GET' });
-      } else {
-        var body=(init&&init.body)||''; if (typeof body!=='string'){ try{ if(body&&body.toString) body=body.toString(); }catch(e){ body=''; } }
-        var p=new URLSearchParams(String(body||'')); if (t && !p.get('id_token')) p.set('id_token', t);
-        return _fetch(base, { method:'POST', headers:{'Content-Type':'application/x-www-form-urlencoded'}, body:p.toString() });
-      }
-    }
-    return _fetch(input, init);
-  };
+  
+/* Duplicate fetch override disabled to prevent conflicts */
+// (Using the primary interceptor above)
+;
 
   // 2) Normalize NADI items for both actions
   function whenRUMUS(cb){ if (window.RUMUS) return cb(); var n=0, iv=setInterval(function(){ n++; if(window.RUMUS){clearInterval(iv); cb();} if(n>200) clearInterval(iv); },50); }
@@ -216,8 +201,8 @@
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css">
 
   <!-- Chart.js + Datalabels -->
-  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2"></script>
+  <script defer src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+  <script defer src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2"></script>
 
   <!-- SheetJS (Excel) via CDN -->
 <!-- XLSX robust loader + override (SIAP TAMPAL DI <head>
@@ -273,7 +258,7 @@
   <script src="https://accounts.google.com/gsi/client" async defer></script>
 
   <!-- html2canvas untuk tangkap preview → imej (BARU) -->
-  <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
+  <script defer src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
 
 <style>
   :root{ --primary:#2c3e50; --secondary:#3498db; --success:#27ae60; --warning:#f39c12; --danger:#e74c3c; --light:#ecf0f1; --dark:#34495e; --muted:#95a5a6; }
@@ -542,6 +527,7 @@
 <body>
   <!-- Global Loader -->
   <div id="appLoader" aria-hidden="true">
+    <div class="visually-hidden" aria-live="polite"></div>
     <div class="loader-card">
       <div class="spinner-premium"></div>
       <div class="fw-bold">Sila tunggu…</div>
@@ -1281,7 +1267,7 @@
     </div></div>
   </footer>
 
-  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+  <script defer src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
   <script>
 /* =======================
    KONFIG (EDIT INI SAHAJA)
@@ -1488,7 +1474,7 @@ async function refreshMonitorNow(){
 }
 
 async function loadMonitor(dateStr) {
-  const container = document.getElementById('monitorAllContainer');
+  const container = document.getElementById('monitorCards');
   if (!container) return;
 
   // Tarikh dari input jika tidak diberi
@@ -4621,7 +4607,7 @@ const saveNadiStateDebounced = debounce(saveNadiState, 400);
           <td>${r.status||''}</td><td>${r.bp||''}</td><td>${r.pr||''}</td><td>${r.dxt||''}</td><td>${r.bmi||''}</td>
           <td>${r.tcaDate||''} ${r.tcaTime||''}</td><td>${r.tcaStaff||''}</td><td>${r.remark||''}</td>
         </tr>
-      `).join('') || '<tr><td colspan="13" class="text-center text-muted">Tiada padanan carian.</td></tr>';
+      `).join('') || '<tr><td colspan="13" class="text-center text-muted">Tiada padanan carian.</td></tr>'; });
     }catch(e){
       tbody.innerHTML = '<tr><td colspan="13" class="text-center text-danger">Ralat memuat maklumat.</td></tr>';
     }
@@ -5168,7 +5154,7 @@ if (btn) {
 
   // 3) Patch loader "Sejarah Saringan" jika wujud
   var _origLoadPrograms = window.loadPrograms;
-  window.loadPrograms = async function(){
+  window._legacy_loadPrograms = async function(){
     const list = document.getElementById('programList');
     if (!list) { if (typeof _origLoadPrograms === 'function') return _origLoadPrograms(); else return; }
     list.innerHTML = '<div class="text-muted text-center p-3">Memuat program…</div>';
@@ -5368,6 +5354,8 @@ if (btn) {
         titleEl.textContent = activeBtn ? activeBtn.textContent.trim() : 'Sejarah Saringan';
       }
 
+      window.__sejarahRaf && cancelAnimationFrame(window.__sejarahRaf);
+    window.__sejarahRaf = requestAnimationFrame(function(){
       tbody.innerHTML = rows.map((r, i)=>`
         <tr>
           <td>${i+1}</td>
@@ -5384,7 +5372,7 @@ if (btn) {
           <td>${escapeHtml(r.tcaStaff||'')}</td>
           <td>${escapeHtml(r.remark||'')}</td>
         </tr>
-      `).join('') || '<tr><td colspan="13" class="text-center text-muted">Tiada padanan carian.</td></tr>';
+      `).join('') || '<tr><td colspan="13" class="text-center text-muted">Tiada padanan carian.</td></tr>'; });
     }catch(e){
       tbody.innerHTML = `<tr><td colspan="13" class="text-center text-danger">Ralat memuat maklumat: ${escapeHtml(e.message||e)}</td></tr>`;
     }
@@ -5393,8 +5381,8 @@ if (btn) {
   // Override global (simpanan asal, jika perlu)
   window._origLoadPrograms = window.loadPrograms;
   window._origLoadProgramDetail = window.loadProgramDetail;
-  window.loadPrograms = loadPrograms;
-  window.loadProgramDetail = loadProgramDetail;
+  window._legacy_loadPrograms = loadPrograms;
+  window._legacy_loadProgramDetail = loadProgramDetail;
 
   // Interaksi
   document.addEventListener('click', (e)=>{
@@ -5629,7 +5617,7 @@ if (btn) {
         <td class="col-staff ${col.staff?'':'hide'}">${fmt.esc(r.tcaStaff||'')}</td>
         <td class="col-remark ${col.remark?'':'hide'}">${fmt.esc(r.remark||'')}</td>
       </tr>`;
-    }).join('') || '<tr><td colspan="13" class="text-center text-muted">Tiada padanan carian.</td></tr>';
+    }).join('') || '<tr><td colspan="13" class="text-center text-muted">Tiada padanan carian.</td></tr>'; });
   }
 
   // ===== Export CSV =====
@@ -5738,8 +5726,8 @@ if (btn) {
   if (document.readyState === 'loading'){ document.addEventListener('DOMContentLoaded', onHash); } else { onHash(); }
 
   // Expose globals expected by other code (compatibility)
-  window.loadPrograms = loadPrograms;
-  window.loadProgramDetail = loadProgramDetail;
+  window._legacy_loadPrograms = loadPrograms;
+  window._legacy_loadProgramDetail = loadProgramDetail;
 })();
 </script>
 
@@ -6459,7 +6447,7 @@ function __toVoucherPayload(payload){
     if (!window.SCRIPT_URL) return Promise.reject(new Error('SCRIPT_URL tidak ditetapkan'));
     var q = new URLSearchParams(params||{});
     try{
-      var t = (window.ID_TOKEN || localStorage.getItem('id_token') || localStorage.getItem('ID_TOKEN') || '').trim();
+      var t = (window.ID_TOKEN || sessionStorage.getItem('id_token') || sessionStorage.getItem('ID_TOKEN') || localStorage.getItem('id_token') || localStorage.getItem('ID_TOKEN') || '').trim();
       if (t && !q.get('id_token')) q.set('id_token', t);
     }catch(e){}
     return fetch(window.SCRIPT_URL + '?' + q.toString(), { method:'GET' }).then(function(r){ return r.json(); });
@@ -6610,6 +6598,18 @@ function __toVoucherPayload(payload){
   if (document.readyState === 'loading'){ document.addEventListener('DOMContentLoaded', onHash); }
   else { onHash(); }
 })();
+</script>
+<script>
+document.addEventListener('DOMContentLoaded', function(){
+  try{
+    var sejarahTab = document.querySelector('#sejarah, [data-tab="sejarah"]');
+    var list = document.getElementById('programList');
+    if ((location.hash && location.hash.indexOf('#sejarah')===0) || list || sejarahTab){
+      if (typeof window.loadPrograms === 'function') { window.loadPrograms(); }
+    }
+  }catch(e){}
+});
+
 </script>
 </body>
 </html>
