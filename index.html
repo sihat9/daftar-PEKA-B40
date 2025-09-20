@@ -6922,67 +6922,98 @@ function __toVoucherPayload(payload){
 
 
 
-<!-- === Patch v5: Robust filter binding (auto-detect tbody near the search field), ES5-safe === -->
+
+<!-- === Patch v6: Robust participant-table filter (auto-detect Maklumat Program table), ES5-safe === -->
 <script>
 (function(){
   function onReady(fn){ if(document.readyState!=='loading') fn(); else document.addEventListener('DOMContentLoaded', fn); }
   onReady(function(){
-    // detect search inputs (both): programFilter and sejarahSearch
+    // 1) Detect search inputs
     var inputs = [];
-    var ss = document.getElementById('sejarahSearch'); if (ss) inputs.push(ss);
-    var pf = document.getElementById('programFilter'); if (pf && inputs.indexOf(pf)===-1) inputs.push(pf);
+    var ids = ['programFilter','sejarahSearch','searchPeserta','pesertaFilter'];
+    for (var i=0;i<ids.length;i++){
+      var el = document.getElementById(ids[i]);
+      if (el && inputs.indexOf(el)===-1) inputs.push(el);
+    }
+    // fallback: first input right under the Sejarah section
+    if (!inputs.length){
+      var guess = document.querySelector('#tab-sejarah input[type="text"], #tab-sejarah input.search, input[placeholder*="jadual peserta"]');
+      if (guess) inputs.push(guess);
+    }
     if (!inputs.length) return;
 
-    // Find tbody: prefer #sejarahTable, else nearest tbody inside same card/section as programFilter
-    var tbody = document.getElementById('sejarahTable');
-    if (!tbody && pf){
-      var scoped = null;
-      var node = pf;
-      // climb up to a card/container
-      for (var i=0;i<6 && node; i++){ // limit climb
-        scoped = node.querySelector ? node.querySelector('tbody') : null;
-        if (scoped) break;
-        node = node.parentElement;
-      }
-      if (scoped) tbody = scoped;
-    }
-    if (!tbody){
-      // fallback to first visible tbody on page (Maklumat Program biasanya yang pertama selepas filter)
-      var allTb = document.querySelectorAll('table tbody');
-      if (allTb && allTb.length) tbody = allTb[0];
-    }
-    if (!tbody) return;
+    // 2) Find the "Maklumat Program" table body robustly
+    function findParticipantsTbody(){
+      // a) Explicit id
+      var tb = document.getElementById('sejarahTable');
+      if (tb) return tb;
 
-    // helper
-    function rowText(row){
-      if (row.__haystack) return row.__haystack;
-      var t = (row.textContent || '').toLowerCase();
-      row.__haystack = t; return t;
+      // b) table under a heading that contains "Maklumat Program"
+      var cards = document.querySelectorAll('.card, .card-body, section, .container');
+      for (var i=0;i<cards.length;i++){
+        var c = cards[i];
+        if ((c.textContent||'').trim().slice(0,200).toLowerCase().indexOf('maklumat program')>=0){
+          var t = c.querySelector('table tbody');
+          if (t) return t;
+        }
+      }
+
+      // c) Table that looks like the peserta table (has header with Nama/IC/Telefon)
+      var cand = document.querySelectorAll('table');
+      var score=0, best=null;
+      for (var j=0;j<cand.length;j++){
+        var t = cand[j];
+        var ths = t.querySelectorAll('thead th');
+        if (!ths.length) continue;
+        var heads = [];
+        for (var k=0;k<ths.length;k++){ heads.push((ths[k].textContent||'').toLowerCase()); }
+        var hit = 0;
+        if (heads.join('|').indexOf('nama')>=0) hit++;
+        if (heads.join('|').indexOf('ic')>=0 || heads.join('|').indexOf('no ic')>=0) hit++;
+        if (heads.join('|').indexOf('telefon')>=0 || heads.join('|').indexOf('no telefon')>=0) hit++;
+        if (hit>=2){
+          var body = t.querySelector('tbody');
+          if (body){ best = body; score = hit; break; }
+        }
+      }
+      if (best) return best;
+
+      // d) fallback to first visible tbody
+      var all = document.querySelectorAll('table tbody');
+      return all.length ? all[0] : null;
     }
+
     function isPlaceholderRow(r){
       if (!r || !r.children) return false;
-      if (r.id === 'sejarahNoMatchRow') return true;
-      // consider rows with one cell + colspan as placeholder
+      if (r.id==='sejarahNoMatchRow') return true;
+      // rows with single cell-colspan usually loaders/empty
       var c = r.children.length===1 ? r.querySelector('td[colspan]') : null;
       return !!c;
     }
-    function ensureNoMatchRow(){
+    function rowText(r){
+      if (r.__haystack) return r.__haystack;
+      var t = (r.textContent||'').toLowerCase();
+      r.__haystack = t; return t;
+    }
+    function ensureNoMatchRow(tbody){
       var row = document.getElementById('sejarahNoMatchRow');
       if (!row){
         row = document.createElement('tr'); row.id='sejarahNoMatchRow';
-        var td = document.createElement('td'); td.setAttribute('colspan','99'); td.className='text-center text-muted';
+        var td = document.createElement('td');
+        td.setAttribute('colspan','99');
+        td.className='text-center text-muted';
         td.appendChild(document.createTextNode('Tiada padanan carian.'));
         row.appendChild(td);
       }
       return row;
     }
-    function visibleCount(){
+    function visibleCount(tbody){
       var rows = tbody.querySelectorAll('tr');
       var n=0;
       for (var i=0;i<rows.length;i++){
         var r=rows[i];
         if (isPlaceholderRow(r)) continue;
-        if (!r.classList.contains('sejarah-hide-row')) n++;
+        if (r.style.display!=='none' && !r.classList.contains('sejarah-hide-row')) n++;
       }
       return n;
     }
@@ -6990,7 +7021,10 @@ function __toVoucherPayload(payload){
     var rafId=null;
     function applyFilter(){
       rafId=null;
-      // pick first non-empty among inputs; if both empty -> show all
+      var tbody = findParticipantsTbody();
+      if (!tbody) return;
+
+      // pick first non-empty input text
       var q='';
       for (var i=0;i<inputs.length;i++){
         var v = (inputs[i].value||'').trim();
@@ -7003,35 +7037,30 @@ function __toVoucherPayload(payload){
         var r=rows[i];
         if (isPlaceholderRow(r)) continue;
         var match = !q || rowText(r).indexOf(q) >= 0;
-        if (match) r.classList.remove('sejarah-hide-row');
-        else r.classList.add('sejarah-hide-row');
+        // use style.display to be resilient to other classes
+        r.style.display = match ? '' : 'none';
       }
       var nm = document.getElementById('sejarahNoMatchRow');
-      if (visibleCount()===0){
-        if (!nm){ nm = ensureNoMatchRow(); }
+      if (visibleCount(tbody)===0){
+        if (!nm){ nm = ensureNoMatchRow(tbody); }
         if (!nm.parentNode){ tbody.appendChild(nm); }
+        nm.style.display='';
       } else {
-        if (nm && nm.parentNode){ nm.parentNode.removeChild(nm); }
+        if (nm){ nm.style.display='none'; }
       }
     }
     function schedule(){ if (rafId) cancelAnimationFrame(rafId); rafId = requestAnimationFrame(applyFilter); }
 
-    function stopper(e){ e.stopImmediatePropagation(); }
-
+    // Bind to both inputs
     for (var i=0;i<inputs.length;i++){
-      inputs[i].addEventListener('input', stopper, true);   // block backend reloads
-      inputs[i].addEventListener('input', schedule, false);  // filter only
+      inputs[i].addEventListener('input', schedule, false);
     }
 
-    // re-apply after table updates (e.g., program selection)
-    var mo = new MutationObserver(function(){
-      var rows = tbody.querySelectorAll('tr');
-      for (var i=0;i<rows.length;i++){ rows[i].__haystack=null; }
-      schedule();
-    });
-    mo.observe(tbody, { childList:true, subtree:true });
+    // Reapply after DOM updates (program selection reloads table)
+    var mo = new MutationObserver(function(){ schedule(); });
+    mo.observe(document.body, { childList:true, subtree:true });
 
-    // initial run
+    // Initial run
     schedule();
   });
 })();
