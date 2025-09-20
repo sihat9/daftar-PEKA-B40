@@ -6141,10 +6141,16 @@ if (btn) {
       // 1) Upload PDPA
       const up = await postForm({ action:'uploadPDPA', noIC, fileName:f.name, fileType:(f.type||'application/octet-stream'), fileBase64:b64 }, { msg:'Memuat naik PDPA…' });
       if (!up || up.status!=='success') throw new Error(up && (up.message||up.code)||'Gagal upload PDPA');
-      // 2) Tandakan Telah Hadir (tarikh sebenar) + cabang makmal
-      const r = await postForm({ action:'markTelahHadir', noIC, firstVisitDate: dateIso, labDone: labDone ? 'YES' : 'NO' }, { msg:'Mengemaskini status…' });
-      if (!r || r.status!=='success') throw new Error(r && (r.message||r.code)||'Gagal kemas kini status');
-      bootstrap.Modal.getInstance(document.getElementById('telahHadirModal'))?.hide();
+      
+      // 2) Tandakan Telah Hadir (tarikh sebenar) + kemaskini lab jika perlu
+      // Selaras backend: updateStatus(op:'firstVisit') dan jika labDone → updateLabStatus('DONE')
+      const r1 = await postForm({ action:'updateStatus', noIC, op:'firstVisit' }, { msg:'Mengemaskini status…' });
+      if (!r1 || r1.status!=='success') throw new Error((r1 && (r1.message||r1.code)) || 'Gagal kemas kini status (first visit)');
+      if (labDone){
+        const r2 = await postForm({ action:'updateLabStatus', noIC, status:'DONE' }, { msg:'Menanda status lab…' });
+        if (!r2 || r2.status!=='success') throw new Error((r2 && (r2.message||r2.code)) || 'Gagal menanda status lab');
+      }
+
       toast('Ditandakan Telah Hadir');
       // Refresh & navigasi
       window.loadFirstVisitData && window.loadFirstVisitData();
