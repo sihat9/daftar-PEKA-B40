@@ -36,7 +36,36 @@
       }
     };
   })();
-  </script>
+  window.__sejarahRowsCache = window.__sejarahRowsCache || {};
+
+function renderSejarahRows(rows, q){
+  const tbody = document.getElementById('sejarahTable'); if (!tbody) return;
+  const filtered = (rows||[]).filter(r=>{
+    const s = ((r.nama||'') + ' ' + (r.noIC||'') + ' ' + (r.noTelefon||'') + ' ' + (r.alamat||'') + ' ' + (r.status||'')).toLowerCase();
+    return !q || s.includes(q);
+  });
+  tbody.innerHTML = filtered.map((r,i)=>`
+    <tr>
+      <td>${i+1}</td><td>${r.nama||''}</td><td>${r.noIC||''}</td><td>${r.noTelefon||''}</td><td>${r.alamat||''}</td>
+      <td>${r.status||''}</td><td>${r.bp||''}</td><td>${r.pr||''}</td><td>${r.dxt||''}</td><td>${r.bmi||''}</td>
+      <td>${r.tcaDate||''} ${r.tcaTime||''}</td><td>${r.tcaStaff||''}</td><td>${r.remark||''}</td>
+    </tr>
+  `).join('') || '<tr><td colspan="13" class="text-center text-muted">Tiada padanan carian.</td></tr>';
+}
+let __sejarahSearchDebounce;
+function filterSejarahTable(){
+  clearTimeout(__sejarahSearchDebounce);
+  __sejarahSearchDebounce = setTimeout(()=>{
+    const q = (document.getElementById('sejarahSearch')?.value || '').toLowerCase();
+    const current = document.querySelector('#programList .list-group-item.active') || document.querySelector('#programList .list-group-item');
+    if (!current) return;
+    const aid = current.getAttribute('data-activity-id');
+    const rows = (window.__sejarahRowsCache||{})[aid] || [];
+    renderSejarahRows(rows, q);
+  }, 120);
+}
+
+</script>
 
 <!-- Injected: Robust fetch interceptor (adds id_token; coerces HTML errors to JSON to avoid SyntaxError) -->
 <script>
@@ -4650,6 +4679,25 @@ const saveNadiStateDebounced = debounce(saveNadiState, 400);
       const j = await jsonSafe(res);
       if (!j || j.status!=='success') throw new Error(j && (j.message||j.code) || 'Gagal ambil detail');
       const rows = Array.isArray(j.data) ? j.data : [];
+      window.__sejarahRowsCache = window.__sejarahRowsCache || {};
+      window.__sejarahRowsCache[activityId] = rows; // cache
+      if (!rows.length){ tbody.innerHTML = '<tr><td colspan="13" class="text-center text-muted">Tiada data.</td></tr>'; return; }
+      const btn = document.querySelector(`[data-activity-id="${activityId}"]`);
+      if (btn){
+        titleLabel.textContent = btn.querySelector('.fw-semibold')?.textContent || 'Maklumat Program';
+        dateLabel.textContent = (btn.querySelector('.small')?.textContent || '').split('·')[0].trim();
+      }
+      const q = (document.getElementById('sejarahSearch')?.value || '').toLowerCase();
+      renderSejarahRows(rows, q);
+    }catch(e){
+      tbody.innerHTML = '<tr><td colspan="13" class="text-center text-danger">Ralat memuat maklumat.</td></tr>';
+    }
+}
+);
+      const res = await fetch(`${window.SCRIPT_URL}?${qs.toString()}`);
+      const j = await jsonSafe(res);
+      if (!j || j.status!=='success') throw new Error(j && (j.message||j.code) || 'Gagal ambil detail');
+      const rows = Array.isArray(j.data) ? j.data : [];
       if (!rows.length){ tbody.innerHTML = '<tr><td colspan="13" class="text-center text-muted">Tiada data.</td></tr>'; return; }
       // Set tajuk & tarikh (kita tak dapat terus; ambil dari butang terpilih)
       const btn = document.querySelector(`[data-activity-id="${activityId}"]`);
@@ -6686,7 +6734,7 @@ function __toVoucherPayload(payload){
     return byId('programDetail') || q('#programDetailContainer') || q('[data-role="program-detail"]') || q('#programTable');
   }
 
-  async function loadSejarahOnce(){
+  async async function loadSejarahOnce(){
     const listEl = programListPane();
     const detEl  = detailPane();
     mountLoader(listEl); mountLoader(detEl);
@@ -6805,7 +6853,7 @@ function __toVoucherPayload(payload){
     try{ if (where && where.__loaderMounted){ where.__loaderMounted.remove(); where.__loaderMounted=null; } }catch(e){}
   }
 
-  async function loadSejarahOnce(){
+  async async function loadSejarahOnce(){
     const listEl = programListPane();
     const detEl  = detailPane();
     mountLoader(listEl); mountLoader(detEl);
@@ -6916,111 +6964,6 @@ function __toVoucherPayload(payload){
       return res;
     };
   })();
-})();
-</script>
-
-
-
-<!-- === Patch v2: Ultra-stable live filter for Sejarah table === -->
-<style>
-/* Stabilize during filtering to avoid layout jumps */
-.sejarah-lock-height { min-height: 240px; } /* adjust if needed */
-.sejarah-filtering * { transition: none !important; animation: none !important; }
-.sejarah-hide-row { visibility: collapse; } /* keeps layout for table rows without repaint storms */
-@supports not (visibility: collapse) {
-  .sejarah-hide-row { display: none; }
-}
-.table-fixed-layout { table-layout: fixed; width: 100%; }
-</style>
-<script>
-(function(){
-  function onReady(fn){ if(document.readyState!=='loading') fn(); else document.addEventListener('DOMContentLoaded', fn); }
-  onReady(function(){
-    var inp   = document.getElementById('sejarahSearch');
-    var tbody = document.getElementById('sejarahTable');
-    if(!inp || !tbody) return;
-
-    // If table element exists, enforce fixed layout to reduce repaint
-    try{
-      var table = tbody.closest('table');
-      if (table) table.classList.add('table-fixed-layout');
-      var cardBody = tbody.closest('.card-body') || tbody.parentElement;
-      if (cardBody) cardBody.classList.add('sejarah-lock-height');
-    }catch(e){}
-
-    var rafId = null;
-    var filtering = false;
-    var stopExternal = function(ev){
-      // Block other input listeners that might rebuild the DOM while we're filtering.
-      // This avoids flicker when external code calls render() on every keypress.
-      ev.stopImmediatePropagation();
-    };
-
-    function normIC(s){ return String(s||'').toLowerCase(); } // keep generic text compare here
-
-    function rowText(row){
-      if (row.__haystack) return row.__haystack;
-      // Build a stable cache using textContent only once
-      var t = (row.textContent || '').toLowerCase();
-      row.__haystack = t;
-      return t;
-    }
-
-    function applyFilter(){
-      rafId = null;
-      var q = normIC(inp.value || '').trim();
-      var rows = tbody.querySelectorAll('tr');
-      for (var i=0; i<rows.length; i++){
-        var r = rows[i];
-        // skip placeholder rows (single cell with colspan)
-        if (r.children && r.children.length === 1 && r.querySelector('td[colspan]')) continue;
-        var match = !q || rowText(r).indexOf(q) >= 0;
-        var hidden = r.classList.contains('sejarah-hide-row');
-        if (match && hidden){ r.classList.remove('sejarah-hide-row'); }
-        else if (!match && !hidden){ r.classList.add('sejarah-hide-row'); }
-      }
-    }
-
-    function debounced(){
-      if (rafId) cancelAnimationFrame(rafId);
-      rafId = requestAnimationFrame(applyFilter);
-    }
-
-    // Mutation observer: when external code repaints tbody, refresh caches but
-    // avoid recursive flicker; also re-apply current filter
-    var mo = new MutationObserver(function(muts){
-      var rows = tbody.querySelectorAll('tr');
-      for (var i=0; i<rows.length; i++){ rows[i].__haystack = null; }
-      debounced();
-    });
-    mo.observe(tbody, { childList: true, subtree: true });
-
-    // When user types, enter "filtering" mode which also suppresses other oninput handlers
-    function beginFiltering(){
-      if (filtering) return;
-      filtering = true;
-      document.body.classList.add('sejarah-filtering');
-      // prevent other listeners from firing while we type (common source of flicker)
-      inp.addEventListener('input', stopExternal, true);
-      inp.addEventListener('keydown', stopExternal, true);
-      inp.addEventListener('keyup', stopExternal, true);
-    }
-    function endFilteringSoon(){
-      // allow small idle window; if no more typing after 150ms, release control
-      if (endFilteringSoon._t) clearTimeout(endFilteringSoon._t);
-      endFilteringSoon._t = setTimeout(function(){
-        filtering = false;
-        document.body.classList.remove('sejarah-filtering');
-        inp.removeEventListener('input', stopExternal, true);
-        inp.removeEventListener('keydown', stopExternal, true);
-        inp.removeEventListener('keyup', stopExternal, true);
-      }, 150);
-    }
-
-    inp.addEventListener('input', function(e){ beginFiltering(); debounced(); endFilteringSoon(); });
-    // Apply once in case there's pre-filled query
-    debounced();
-  });
 })();
 </script>
 
