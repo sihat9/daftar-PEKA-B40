@@ -6920,123 +6920,115 @@ function __toVoucherPayload(payload){
 </script>
 
 
-<!-- === Patch v3: No-reload search filter + Sejarah autoload after sign-in (ES5 safe) === -->
+
+<!-- === Patch v4: Bind filter to BOTH #sejarahSearch and #programFilter; no-reload, real filtering, ES5-safe === -->
 <style>
   .sejarah-hide-row { display: none; }
   .sejarah-lock-height { min-height: 220px; }
+  .text-muted { opacity: .75; }
 </style>
 <script>
 (function(){
-  // DOM ready helper
   function onReady(fn){ if(document.readyState!=='loading') fn(); else document.addEventListener('DOMContentLoaded', fn); }
-
   onReady(function(){
-    var search = document.getElementById('sejarahSearch');
-    var tbody  = document.getElementById('sejarahTable');
+    var inputs = [];
+    var ss = document.getElementById('sejarahSearch');
+    if (ss) inputs.push(ss);
+    var pf = document.getElementById('programFilter'); // field "Cari dalam jadual peserta"
+    if (pf && inputs.indexOf(pf)===-1) inputs.push(pf);
 
-    // Stabilize card height (optional)
+    var tbody = document.getElementById('sejarahTable');
+    if (!tbody || !inputs.length) return;
+
     try{
-      var cardBody = tbody ? (tbody.closest('.card-body') || tbody.parentElement) : null;
+      var cardBody = tbody.closest ? (tbody.closest('.card-body') || tbody.parentElement) : tbody.parentElement;
       if (cardBody) cardBody.classList.add('sejarah-lock-height');
     }catch(_e){}
 
-    // --------- 1) Prevent reloads on search input; filter only current rows ---------
-    if (search && tbody){
-      var rafId = null;
-      var lastTypeAt = 0;
-
-      function rowText(row){
-        // cache haystack to reduce work
-        if (row.__haystack) return row.__haystack;
-        var t = (row.textContent || '').toLowerCase();
-        row.__haystack = t;
-        return t;
+    // A single placeholder row to show "Tiada padanan carian"
+    function ensureNoMatchRow(){
+      var row = document.getElementById('sejarahNoMatchRow');
+      if (!row){
+        row = document.createElement('tr');
+        row.id = 'sejarahNoMatchRow';
+        var td = document.createElement('td');
+        td.setAttribute('colspan','13');
+        td.className = 'text-center text-muted';
+        td.appendChild(document.createTextNode('Tiada padanan carian.'));
+        row.appendChild(td);
       }
-      function applyFilter(){
-        rafId = null;
-        var q = (search.value || '').toLowerCase().trim();
-        var rows = tbody.querySelectorAll('tr');
-        for (var i=0; i<rows.length; i++){
-          var r = rows[i];
-          // skip placeholder/loader rows
-          if (r.children && r.children.length===1 && r.querySelector('td[colspan]')) continue;
-          var match = !q || rowText(r).indexOf(q) >= 0;
-          if (match){
-            if (r.classList.contains('sejarah-hide-row')) r.classList.remove('sejarah-hide-row');
-          } else {
-            if (!r.classList.contains('sejarah-hide-row')) r.classList.add('sejarah-hide-row');
-          }
-        }
+      return row;
+    }
+
+    function countVisible(){
+      var rows = tbody.querySelectorAll('tr');
+      var n = 0;
+      for (var i=0;i<rows.length;i++){
+        var r=rows[i];
+        if (r.id==='sejarahNoMatchRow') continue;
+        // treat row as visible if not hidden AND not a loader/placeholder row
+        var isPlaceholder = (r.children && r.children.length===1 && r.querySelector('td[colspan]') && r.id!=='sejarahNoMatchRow');
+        if (isPlaceholder) continue;
+        if (!r.classList.contains('sejarah-hide-row')) n++;
       }
-      function schedule(){
-        lastTypeAt = Date.now();
-        if (rafId) cancelAnimationFrame(rafId);
-        rafId = requestAnimationFrame(applyFilter);
+      return n;
+    }
+
+    function rowText(row){
+      if (row.__haystack) return row.__haystack;
+      var t = (row.textContent || '').toLowerCase();
+      row.__haystack = t; return t;
+    }
+
+    var rafId = null;
+    function applyFilter(){
+      rafId = null;
+      // build current query (use the last non-empty among inputs; else join terms)
+      var q = '';
+      for (var i=0;i<inputs.length;i++){
+        var v = (inputs[i].value || '').trim();
+        if (v){ q = v; break; }
       }
+      q = q.toLowerCase();
 
-      // Capture-phase listener to stop other handlers from triggering backend reloads
-      var stopper = function(ev){ ev.stopImmediatePropagation(); };
-      search.addEventListener('input', stopper, true);
-      search.addEventListener('input', function(){ schedule(); }, false);
+      var rows = tbody.querySelectorAll('tr');
+      for (var i=0;i<rows.length;i++){
+        var r = rows[i];
+        if (r.id==='sejarahNoMatchRow') continue;
+        // skip loader rows
+        if (r.children && r.children.length===1 && r.querySelector('td[colspan]')) continue;
+        var match = !q || rowText(r).indexOf(q) >= 0;
+        if (match){ r.classList.remove('sejarah-hide-row'); }
+        else { r.classList.add('sejarah-hide-row'); }
+      }
+      var nm = document.getElementById('sejarahNoMatchRow');
+      if (countVisible()===0){
+        if (!nm){ nm = ensureNoMatchRow(); }
+        if (!nm.parentNode){ tbody.appendChild(nm); }
+      } else {
+        if (nm && nm.parentNode){ nm.parentNode.removeChild(nm); }
+      }
+    }
+    function schedule(){ if (rafId) cancelAnimationFrame(rafId); rafId = requestAnimationFrame(applyFilter); }
 
-      // Rebuild cache when tbody changes (sort/refresh)
-      var mo = new MutationObserver(function(){
-        var rows = tbody.querySelectorAll('tr');
-        for (var i=0;i<rows.length;i++){ rows[i].__haystack = null; }
-        schedule();
-      });
-      mo.observe(tbody, { childList:true, subtree:true });
+    // Stop other handlers (yang memanggil fetch/refresh) pada fasa capture
+    function stopper(e){ e.stopImmediatePropagation(); }
 
-      // Initial run (in case of pre-filled query)
+    for (var i=0;i<inputs.length;i++){
+      inputs[i].addEventListener('input', stopper, true);   // capture phase
+      inputs[i].addEventListener('input', schedule, false);  // bubble phase
+    }
+
+    // Observe tbody change → rebuild cache + re-apply filter
+    var mo = new MutationObserver(function(){
+      var rows = tbody.querySelectorAll('tr');
+      for (var i=0;i<rows.length;i++){ rows[i].__haystack = null; }
       schedule();
+    });
+    mo.observe(tbody, { childList:true, subtree:true });
 
-      // Expose a flag so other scripts can avoid refetch during active typing
-      window.__sejarahSearchLastTypeAt = function(){ return lastTypeAt; };
-    }
-
-    // --------- 2) Autoload Sejarah after sign-in ---------
-    var triedAuto = false;
-    function isTyping(){ return (typeof window.__sejarahSearchLastTypeAt==='function') && ((Date.now() - window.__sejarahSearchLastTypeAt()) < 500); }
-    function pickFirstProgram(){
-      try{
-        var first = document.querySelector('#programList .list-group-item');
-        if (first && first.click){ first.click(); }
-      }catch(_e){}
-    }
-    function triggerSejarah(){
-      if (triedAuto) return; triedAuto = true;
-      try {
-        if (typeof window.triggerSejarahLoad === 'function'){ window.triggerSejarahLoad(); }
-        else if (typeof window.autoSejarah === 'function'){ window.autoSejarah(); }
-        else if (typeof window.loadSejarahOnce === 'function'){ window.loadSejarahOnce(); }
-        else {
-          var tab = document.querySelector('[data-bs-target="#tab-sejarah"], #tab-sejarah-link, a[href="#tab-sejarah"]');
-          if (tab && tab.click) tab.click();
-        }
-        setTimeout(pickFirstProgram, 400);
-      } catch(_e){}
-    }
-
-    // Hook handleCredentialResponse safely (no async)
-    if (typeof window.handleCredentialResponse === 'function'){
-      var __origHandle = window.handleCredentialResponse;
-      window.handleCredentialResponse = function(){
-        try { return __origHandle.apply(this, arguments); }
-        finally { triggerSejarah(); }
-      };
-    }
-
-    // If already signed in (token present), autoload
-    if (window.ID_TOKEN){ setTimeout(triggerSejarah, 300); }
-
-    // --------- 3) Gentle auto-refresh programs list (only when idle & visible) ---------
-    setInterval(function(){
-      if (document.hidden) return;
-      if (isTyping()) return;
-      try{
-        if (typeof window.triggerSejarahLoad === 'function'){ window.triggerSejarahLoad(); }
-      }catch(_e){}
-    }, 45000);
+    // Initial run
+    schedule();
   });
 })();
 </script>
