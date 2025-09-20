@@ -6921,88 +6921,93 @@ function __toVoucherPayload(payload){
 
 
 
-<!-- === Patch v4: Bind filter to BOTH #sejarahSearch and #programFilter; no-reload, real filtering, ES5-safe === -->
-<style>
-  .sejarah-hide-row { display: none; }
-  .sejarah-lock-height { min-height: 220px; }
-  .text-muted { opacity: .75; }
-</style>
+
+<!-- === Patch v5: Robust filter binding (auto-detect tbody near the search field), ES5-safe === -->
 <script>
 (function(){
   function onReady(fn){ if(document.readyState!=='loading') fn(); else document.addEventListener('DOMContentLoaded', fn); }
   onReady(function(){
+    // detect search inputs (both): programFilter and sejarahSearch
     var inputs = [];
-    var ss = document.getElementById('sejarahSearch');
-    if (ss) inputs.push(ss);
-    var pf = document.getElementById('programFilter'); // field "Cari dalam jadual peserta"
-    if (pf && inputs.indexOf(pf)===-1) inputs.push(pf);
+    var ss = document.getElementById('sejarahSearch'); if (ss) inputs.push(ss);
+    var pf = document.getElementById('programFilter'); if (pf && inputs.indexOf(pf)===-1) inputs.push(pf);
+    if (!inputs.length) return;
 
+    // Find tbody: prefer #sejarahTable, else nearest tbody inside same card/section as programFilter
     var tbody = document.getElementById('sejarahTable');
-    if (!tbody || !inputs.length) return;
-
-    try{
-      var cardBody = tbody.closest ? (tbody.closest('.card-body') || tbody.parentElement) : tbody.parentElement;
-      if (cardBody) cardBody.classList.add('sejarah-lock-height');
-    }catch(_e){}
-
-    // A single placeholder row to show "Tiada padanan carian"
-    function ensureNoMatchRow(){
-      var row = document.getElementById('sejarahNoMatchRow');
-      if (!row){
-        row = document.createElement('tr');
-        row.id = 'sejarahNoMatchRow';
-        var td = document.createElement('td');
-        td.setAttribute('colspan','13');
-        td.className = 'text-center text-muted';
-        td.appendChild(document.createTextNode('Tiada padanan carian.'));
-        row.appendChild(td);
+    if (!tbody && pf){
+      var scoped = null;
+      var node = pf;
+      // climb up to a card/container
+      for (var i=0;i<6 && node; i++){ // limit climb
+        scoped = node.querySelector ? node.querySelector('tbody') : null;
+        if (scoped) break;
+        node = node.parentElement;
       }
-      return row;
+      if (scoped) tbody = scoped;
     }
-
-    function countVisible(){
-      var rows = tbody.querySelectorAll('tr');
-      var n = 0;
-      for (var i=0;i<rows.length;i++){
-        var r=rows[i];
-        if (r.id==='sejarahNoMatchRow') continue;
-        // treat row as visible if not hidden AND not a loader/placeholder row
-        var isPlaceholder = (r.children && r.children.length===1 && r.querySelector('td[colspan]') && r.id!=='sejarahNoMatchRow');
-        if (isPlaceholder) continue;
-        if (!r.classList.contains('sejarah-hide-row')) n++;
-      }
-      return n;
+    if (!tbody){
+      // fallback to first visible tbody on page (Maklumat Program biasanya yang pertama selepas filter)
+      var allTb = document.querySelectorAll('table tbody');
+      if (allTb && allTb.length) tbody = allTb[0];
     }
+    if (!tbody) return;
 
+    // helper
     function rowText(row){
       if (row.__haystack) return row.__haystack;
       var t = (row.textContent || '').toLowerCase();
       row.__haystack = t; return t;
     }
+    function isPlaceholderRow(r){
+      if (!r || !r.children) return false;
+      if (r.id === 'sejarahNoMatchRow') return true;
+      // consider rows with one cell + colspan as placeholder
+      var c = r.children.length===1 ? r.querySelector('td[colspan]') : null;
+      return !!c;
+    }
+    function ensureNoMatchRow(){
+      var row = document.getElementById('sejarahNoMatchRow');
+      if (!row){
+        row = document.createElement('tr'); row.id='sejarahNoMatchRow';
+        var td = document.createElement('td'); td.setAttribute('colspan','99'); td.className='text-center text-muted';
+        td.appendChild(document.createTextNode('Tiada padanan carian.'));
+        row.appendChild(td);
+      }
+      return row;
+    }
+    function visibleCount(){
+      var rows = tbody.querySelectorAll('tr');
+      var n=0;
+      for (var i=0;i<rows.length;i++){
+        var r=rows[i];
+        if (isPlaceholderRow(r)) continue;
+        if (!r.classList.contains('sejarah-hide-row')) n++;
+      }
+      return n;
+    }
 
-    var rafId = null;
+    var rafId=null;
     function applyFilter(){
-      rafId = null;
-      // build current query (use the last non-empty among inputs; else join terms)
-      var q = '';
+      rafId=null;
+      // pick first non-empty among inputs; if both empty -> show all
+      var q='';
       for (var i=0;i<inputs.length;i++){
-        var v = (inputs[i].value || '').trim();
-        if (v){ q = v; break; }
+        var v = (inputs[i].value||'').trim();
+        if (v){ q=v; break; }
       }
       q = q.toLowerCase();
 
       var rows = tbody.querySelectorAll('tr');
       for (var i=0;i<rows.length;i++){
-        var r = rows[i];
-        if (r.id==='sejarahNoMatchRow') continue;
-        // skip loader rows
-        if (r.children && r.children.length===1 && r.querySelector('td[colspan]')) continue;
+        var r=rows[i];
+        if (isPlaceholderRow(r)) continue;
         var match = !q || rowText(r).indexOf(q) >= 0;
-        if (match){ r.classList.remove('sejarah-hide-row'); }
-        else { r.classList.add('sejarah-hide-row'); }
+        if (match) r.classList.remove('sejarah-hide-row');
+        else r.classList.add('sejarah-hide-row');
       }
       var nm = document.getElementById('sejarahNoMatchRow');
-      if (countVisible()===0){
+      if (visibleCount()===0){
         if (!nm){ nm = ensureNoMatchRow(); }
         if (!nm.parentNode){ tbody.appendChild(nm); }
       } else {
@@ -7011,23 +7016,22 @@ function __toVoucherPayload(payload){
     }
     function schedule(){ if (rafId) cancelAnimationFrame(rafId); rafId = requestAnimationFrame(applyFilter); }
 
-    // Stop other handlers (yang memanggil fetch/refresh) pada fasa capture
     function stopper(e){ e.stopImmediatePropagation(); }
 
     for (var i=0;i<inputs.length;i++){
-      inputs[i].addEventListener('input', stopper, true);   // capture phase
-      inputs[i].addEventListener('input', schedule, false);  // bubble phase
+      inputs[i].addEventListener('input', stopper, true);   // block backend reloads
+      inputs[i].addEventListener('input', schedule, false);  // filter only
     }
 
-    // Observe tbody change → rebuild cache + re-apply filter
+    // re-apply after table updates (e.g., program selection)
     var mo = new MutationObserver(function(){
       var rows = tbody.querySelectorAll('tr');
-      for (var i=0;i<rows.length;i++){ rows[i].__haystack = null; }
+      for (var i=0;i<rows.length;i++){ rows[i].__haystack=null; }
       schedule();
     });
     mo.observe(tbody, { childList:true, subtree:true });
 
-    // Initial run
+    // initial run
     schedule();
   });
 })();
