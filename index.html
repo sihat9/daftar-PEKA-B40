@@ -3852,7 +3852,13 @@ async function loadFirstVisitData(){
     const tbody = document.getElementById('firstVisitList');
     tbody.innerHTML = '';
     if (data.status==='success' && data.data.length>0){
-      data.data.forEach(p=>{
+      // Tapis: Jangan paparkan peserta saringan VOUCHER di First Visit
+      const rows = (data.data||[]).filter(p => (String(p.appointmentType||'').toUpperCase()!=='VOUCHER'));
+      if (rows.length===0){
+        tbody.innerHTML = `<tr><td colspan="7" class="text-center text-muted">Tiada data untuk dipaparkan</td></tr>`;
+        return;
+      }
+      rows.forEach(p=>{
         const hadir = p.status==='HADIR';
         const within = isWithin24hOfDate(p.tarikhTCA);
         const msisdn = normalizeMsisdnMY(p.noTelefon||'');
