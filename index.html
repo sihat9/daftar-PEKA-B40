@@ -36,7 +36,36 @@
       }
     };
   })();
-  </script>
+  window.__sejarahRowsCache = window.__sejarahRowsCache || {};
+
+function renderSejarahRows(rows, q){
+  const tbody = document.getElementById('sejarahTable'); if (!tbody) return;
+  const filtered = (rows||[]).filter(r=>{
+    const s = ((r.nama||'') + ' ' + (r.noIC||'') + ' ' + (r.noTelefon||'') + ' ' + (r.alamat||'') + ' ' + (r.status||'')).toLowerCase();
+    return !q || s.includes(q);
+  });
+  tbody.innerHTML = filtered.map((r,i)=>`
+    <tr>
+      <td>${i+1}</td><td>${r.nama||''}</td><td>${r.noIC||''}</td><td>${r.noTelefon||''}</td><td>${r.alamat||''}</td>
+      <td>${r.status||''}</td><td>${r.bp||''}</td><td>${r.pr||''}</td><td>${r.dxt||''}</td><td>${r.bmi||''}</td>
+      <td>${r.tcaDate||''} ${r.tcaTime||''}</td><td>${r.tcaStaff||''}</td><td>${r.remark||''}</td>
+    </tr>
+  `).join('') || '<tr><td colspan="13" class="text-center text-muted">Tiada padanan carian.</td></tr>';
+}
+let __sejarahSearchDebounce;
+function filterSejarahTable(){
+  clearTimeout(__sejarahSearchDebounce);
+  __sejarahSearchDebounce = setTimeout(()=>{
+    const q = (document.getElementById('sejarahSearch')?.value || '').toLowerCase();
+    const current = document.querySelector('#programList .list-group-item.active') || document.querySelector('#programList .list-group-item');
+    if (!current) return;
+    const aid = current.getAttribute('data-activity-id');
+    const rows = (window.__sejarahRowsCache||{})[aid] || [];
+    renderSejarahRows(rows, q);
+  }, 120);
+}
+
+</script>
 
 <!-- Injected: Robust fetch interceptor (adds id_token; coerces HTML errors to JSON to avoid SyntaxError) -->
 <script>
@@ -4650,6 +4679,25 @@ const saveNadiStateDebounced = debounce(saveNadiState, 400);
       const j = await jsonSafe(res);
       if (!j || j.status!=='success') throw new Error(j && (j.message||j.code) || 'Gagal ambil detail');
       const rows = Array.isArray(j.data) ? j.data : [];
+      window.__sejarahRowsCache = window.__sejarahRowsCache || {};
+      window.__sejarahRowsCache[activityId] = rows; // cache
+      if (!rows.length){ tbody.innerHTML = '<tr><td colspan="13" class="text-center text-muted">Tiada data.</td></tr>'; return; }
+      const btn = document.querySelector(`[data-activity-id="${activityId}"]`);
+      if (btn){
+        titleLabel.textContent = btn.querySelector('.fw-semibold')?.textContent || 'Maklumat Program';
+        dateLabel.textContent = (btn.querySelector('.small')?.textContent || '').split('·')[0].trim();
+      }
+      const q = (document.getElementById('sejarahSearch')?.value || '').toLowerCase();
+      renderSejarahRows(rows, q);
+    }catch(e){
+      tbody.innerHTML = '<tr><td colspan="13" class="text-center text-danger">Ralat memuat maklumat.</td></tr>';
+    }
+}
+);
+      const res = await fetch(`${window.SCRIPT_URL}?${qs.toString()}`);
+      const j = await jsonSafe(res);
+      if (!j || j.status!=='success') throw new Error(j && (j.message||j.code) || 'Gagal ambil detail');
+      const rows = Array.isArray(j.data) ? j.data : [];
       if (!rows.length){ tbody.innerHTML = '<tr><td colspan="13" class="text-center text-muted">Tiada data.</td></tr>'; return; }
       // Set tajuk & tarikh (kita tak dapat terus; ambil dari butang terpilih)
       const btn = document.querySelector(`[data-activity-id="${activityId}"]`);
@@ -6686,7 +6734,7 @@ function __toVoucherPayload(payload){
     return byId('programDetail') || q('#programDetailContainer') || q('[data-role="program-detail"]') || q('#programTable');
   }
 
-  async function loadSejarahOnce(){
+  async async function loadSejarahOnce(){
     const listEl = programListPane();
     const detEl  = detailPane();
     mountLoader(listEl); mountLoader(detEl);
@@ -6805,7 +6853,7 @@ function __toVoucherPayload(payload){
     try{ if (where && where.__loaderMounted){ where.__loaderMounted.remove(); where.__loaderMounted=null; } }catch(e){}
   }
 
-  async function loadSejarahOnce(){
+  async async function loadSejarahOnce(){
     const listEl = programListPane();
     const detEl  = detailPane();
     mountLoader(listEl); mountLoader(detEl);
@@ -6916,133 +6964,6 @@ function __toVoucherPayload(payload){
       return res;
     };
   })();
-})();
-</script>
-
-
-
-
-
-
-<!-- === Patch v7: No-flicker search (blocks reload handlers) + robust tbody tracking, ES5-safe === -->
-<script>
-(function(){
-  function onReady(fn){ if(document.readyState!=='loading') fn(); else document.addEventListener('DOMContentLoaded', fn); }
-  onReady(function(){
-    // 1) detect inputs
-    var inputs=[], idc=['programFilter','sejarahSearch','searchPeserta','pesertaFilter'];
-    for (var i=0;i<idc.length;i++){ var el=document.getElementById(idc[i]); if (el && inputs.indexOf(el)===-1) inputs.push(el); }
-    if (!inputs.length){
-      var guess = document.querySelector('#tab-sejarah input[type="text"], #tab-sejarah input.search, input[placeholder*="jadual peserta"]');
-      if (guess) inputs.push(guess);
-    }
-    if (!inputs.length) return;
-
-    // 2) tbody finder (robust)
-    function findTbody(){
-      var tb = document.getElementById('sejarahTable');
-      if (tb) return tb;
-      // Maklumat Program section
-      var containers = document.querySelectorAll('.card, .card-body, section, .container');
-      for (var i=0;i<containers.length;i++){
-        var c = containers[i];
-        var txt = (c.querySelector('h5,h4,h3,h2') || {}).textContent || c.textContent || '';
-        if (txt.toLowerCase().indexOf('maklumat program')>=0){
-          var t = c.querySelector('table tbody'); if (t) return t;
-        }
-      }
-      // heuristic by headers
-      var tables = document.querySelectorAll('table');
-      for (var j=0;j<tables.length;j++){
-        var ths=tables[j].querySelectorAll('thead th'); if (!ths.length) continue;
-        var h=''; for (var k=0;k<ths.length;k++){ h+=(ths[k].textContent||'').toLowerCase()+'|'; }
-        if ((h.indexOf('nama')>=0) && (h.indexOf('ic')>=0 || h.indexOf('no ic')>=0)){
-          var b=tables[j].querySelector('tbody'); if (b) return b;
-        }
-      }
-      var any = document.querySelector('table tbody'); return any || null;
-    }
-
-    // 3) helpers
-    function isPlaceholderRow(r){
-      if (!r || !r.children) return false;
-      if (r.id==='sejarahNoMatchRow') return true;
-      var oneCell = r.children.length===1 && r.querySelector('td[colspan]');
-      return !!oneCell;
-    }
-    function rowText(r){
-      if (r.__haystack) return r.__haystack;
-      var t=(r.textContent||'').toLowerCase();
-      r.__haystack=t; return t;
-    }
-    function ensureNoMatchRow(tbody){
-      var row=document.getElementById('sejarahNoMatchRow');
-      if (!row){
-        row=document.createElement('tr'); row.id='sejarahNoMatchRow';
-        var td=document.createElement('td'); td.setAttribute('colspan','99'); td.className='text-center text-muted';
-        td.appendChild(document.createTextNode('Tiada padanan carian.'));
-        row.appendChild(td);
-      }
-      return row;
-    }
-    function visibleCount(tbody){
-      var rows=tbody.querySelectorAll('tr'), n=0;
-      for (var i=0;i<rows.length;i++){
-        var r=rows[i];
-        if (isPlaceholderRow(r)) continue;
-        if (!r.classList.contains('sejarah-hide-row')) n++;
-      }
-      return n;
-    }
-
-    // 4) filter logic (no flicker; only DOM class toggle)
-    var rafId=null;
-    function currentQuery(){
-      for (var i=0;i<inputs.length;i++){ var v=(inputs[i].value||'').trim(); if (v) return v.toLowerCase(); }
-      return '';
-    }
-    function applyFilter(){
-      rafId=null;
-      var tbody = findTbody(); if (!tbody) return;
-      var q = currentQuery();
-      var rows=tbody.querySelectorAll('tr');
-      for (var i=0;i<rows.length;i++){
-        var r=rows[i]; if (isPlaceholderRow(r)) continue;
-        var match = !q || rowText(r).indexOf(q)>=0;
-        if (match) r.classList.remove('sejarah-hide-row'); else r.classList.add('sejarah-hide-row');
-      }
-      var nm=document.getElementById('sejarahNoMatchRow');
-      if (visibleCount(tbody)===0){ nm = ensureNoMatchRow(tbody); if (!nm.parentNode) tbody.appendChild(nm); nm.classList.remove('sejarah-hide-row'); }
-      else if (nm && nm.parentNode){ nm.classList.add('sejarah-hide-row'); }
-    }
-    function schedule(){ if (rafId) cancelAnimationFrame(rafId); rafId=requestAnimationFrame(applyFilter); }
-
-    // 5) Stop other input handlers from causing reloads (ini punca berkedip)
-    function stopper(e){ try{ e.stopImmediatePropagation(); e.stopPropagation(); }catch(_e){} }
-    for (var i=0;i<inputs.length;i++){
-      inputs[i].addEventListener('input', stopper, true); // capture phase → block fetchers
-      inputs[i].addEventListener('input', schedule, false);
-    }
-
-    // 6) Observe ONLY tbody for changes; if tbody replaced, rebind observer (interval ringan)
-    var observedTbody=null, mo=null;
-    function bindObserver(){
-      var tb=findTbody();
-      if (!tb || tb===observedTbody) return;
-      observedTbody=tb;
-      if (mo) mo.disconnect();
-      mo = new MutationObserver(function(){
-        // reset caches and re-apply filter without triggering network
-        var rows=observedTbody.querySelectorAll('tr');
-        for (var i=0;i<rows.length;i++){ rows[i].__haystack=null; }
-        schedule();
-      });
-      mo.observe(observedTbody, { childList:true, subtree:true });
-      schedule();
-    }
-    bindObserver();
-    setInterval(bindObserver, 1000); // detect replacement smoothly without heavy work
-  });
 })();
 </script>
 
