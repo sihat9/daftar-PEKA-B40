@@ -6919,5 +6919,56 @@ function __toVoucherPayload(payload){
 })();
 </script>
 
+
+<!-- === Patch: Flicker-free live filter for Sejarah table (debounced, no re-render) === -->
+<script>
+(function(){
+  function onReady(fn){ if(document.readyState!=='loading') fn(); else document.addEventListener('DOMContentLoaded', fn); }
+  onReady(function(){
+    var inp = document.getElementById('sejarahSearch');
+    var tbody = document.getElementById('sejarahTable');
+    if(!inp || !tbody) return;
+
+    var rafId = null;
+
+    function rowText(row){
+      if (row.__haystack) return row.__haystack;
+      var txt = (row.textContent || '').toLowerCase();
+      row.__haystack = txt;
+      return txt;
+    }
+    function applyFilter(){
+      rafId = null;
+      var q = (inp.value || '').trim().toLowerCase();
+      var rows = Array.prototype.slice.call(tbody.querySelectorAll('tr'));
+      for (var i=0; i<rows.length; i++){
+        var r = rows[i];
+        if (r.children && r.children.length === 1 && r.querySelector('td[colspan]')) continue;
+        var match = !q || rowText(r).indexOf(q) >= 0;
+        if (match) {
+          if (r.style.display === 'none') r.style.display = '';
+        } else {
+          if (r.style.display !== 'none') r.style.display = 'none';
+        }
+      }
+    }
+    function debounced(){
+      if (rafId) cancelAnimationFrame(rafId);
+      rafId = requestAnimationFrame(applyFilter);
+    }
+
+    var mo = new MutationObserver(function(){
+      var rows = tbody.querySelectorAll('tr');
+      for (var i=0; i<rows.length; i++){ rows[i].__haystack = null; }
+      debounced();
+    });
+    mo.observe(tbody, { childList: true, subtree: true });
+
+    inp.addEventListener('input', debounced);
+    debounced();
+  });
+})();
+</script>
+
 </body>
 </html>
