@@ -6920,51 +6920,105 @@ function __toVoucherPayload(payload){
 </script>
 
 
-<!-- === Patch: Flicker-free live filter for Sejarah table (debounced, no re-render) === -->
+
+<!-- === Patch v2: Ultra-stable live filter for Sejarah table === -->
+<style>
+/* Stabilize during filtering to avoid layout jumps */
+.sejarah-lock-height { min-height: 240px; } /* adjust if needed */
+.sejarah-filtering * { transition: none !important; animation: none !important; }
+.sejarah-hide-row { visibility: collapse; } /* keeps layout for table rows without repaint storms */
+@supports not (visibility: collapse) {
+  .sejarah-hide-row { display: none; }
+}
+.table-fixed-layout { table-layout: fixed; width: 100%; }
+</style>
 <script>
 (function(){
   function onReady(fn){ if(document.readyState!=='loading') fn(); else document.addEventListener('DOMContentLoaded', fn); }
   onReady(function(){
-    var inp = document.getElementById('sejarahSearch');
+    var inp   = document.getElementById('sejarahSearch');
     var tbody = document.getElementById('sejarahTable');
     if(!inp || !tbody) return;
 
+    // If table element exists, enforce fixed layout to reduce repaint
+    try{
+      var table = tbody.closest('table');
+      if (table) table.classList.add('table-fixed-layout');
+      var cardBody = tbody.closest('.card-body') || tbody.parentElement;
+      if (cardBody) cardBody.classList.add('sejarah-lock-height');
+    }catch(e){}
+
     var rafId = null;
+    var filtering = false;
+    var stopExternal = function(ev){
+      // Block other input listeners that might rebuild the DOM while we're filtering.
+      // This avoids flicker when external code calls render() on every keypress.
+      ev.stopImmediatePropagation();
+    };
+
+    function normIC(s){ return String(s||'').toLowerCase(); } // keep generic text compare here
 
     function rowText(row){
       if (row.__haystack) return row.__haystack;
-      var txt = (row.textContent || '').toLowerCase();
-      row.__haystack = txt;
-      return txt;
+      // Build a stable cache using textContent only once
+      var t = (row.textContent || '').toLowerCase();
+      row.__haystack = t;
+      return t;
     }
+
     function applyFilter(){
       rafId = null;
-      var q = (inp.value || '').trim().toLowerCase();
-      var rows = Array.prototype.slice.call(tbody.querySelectorAll('tr'));
+      var q = normIC(inp.value || '').trim();
+      var rows = tbody.querySelectorAll('tr');
       for (var i=0; i<rows.length; i++){
         var r = rows[i];
+        // skip placeholder rows (single cell with colspan)
         if (r.children && r.children.length === 1 && r.querySelector('td[colspan]')) continue;
         var match = !q || rowText(r).indexOf(q) >= 0;
-        if (match) {
-          if (r.style.display === 'none') r.style.display = '';
-        } else {
-          if (r.style.display !== 'none') r.style.display = 'none';
-        }
+        var hidden = r.classList.contains('sejarah-hide-row');
+        if (match && hidden){ r.classList.remove('sejarah-hide-row'); }
+        else if (!match && !hidden){ r.classList.add('sejarah-hide-row'); }
       }
     }
+
     function debounced(){
       if (rafId) cancelAnimationFrame(rafId);
       rafId = requestAnimationFrame(applyFilter);
     }
 
-    var mo = new MutationObserver(function(){
+    // Mutation observer: when external code repaints tbody, refresh caches but
+    // avoid recursive flicker; also re-apply current filter
+    var mo = new MutationObserver(function(muts){
       var rows = tbody.querySelectorAll('tr');
       for (var i=0; i<rows.length; i++){ rows[i].__haystack = null; }
       debounced();
     });
     mo.observe(tbody, { childList: true, subtree: true });
 
-    inp.addEventListener('input', debounced);
+    // When user types, enter "filtering" mode which also suppresses other oninput handlers
+    function beginFiltering(){
+      if (filtering) return;
+      filtering = true;
+      document.body.classList.add('sejarah-filtering');
+      // prevent other listeners from firing while we type (common source of flicker)
+      inp.addEventListener('input', stopExternal, true);
+      inp.addEventListener('keydown', stopExternal, true);
+      inp.addEventListener('keyup', stopExternal, true);
+    }
+    function endFilteringSoon(){
+      // allow small idle window; if no more typing after 150ms, release control
+      if (endFilteringSoon._t) clearTimeout(endFilteringSoon._t);
+      endFilteringSoon._t = setTimeout(function(){
+        filtering = false;
+        document.body.classList.remove('sejarah-filtering');
+        inp.removeEventListener('input', stopExternal, true);
+        inp.removeEventListener('keydown', stopExternal, true);
+        inp.removeEventListener('keyup', stopExternal, true);
+      }, 150);
+    }
+
+    inp.addEventListener('input', function(e){ beginFiltering(); debounced(); endFilteringSoon(); });
+    // Apply once in case there's pre-filled query
     debounced();
   });
 })();
