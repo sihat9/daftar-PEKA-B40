@@ -6923,145 +6923,125 @@ function __toVoucherPayload(payload){
 
 
 
-<!-- === Patch v6: Robust participant-table filter (auto-detect Maklumat Program table), ES5-safe === -->
+
+<!-- === Patch v7: No-flicker search (blocks reload handlers) + robust tbody tracking, ES5-safe === -->
 <script>
 (function(){
   function onReady(fn){ if(document.readyState!=='loading') fn(); else document.addEventListener('DOMContentLoaded', fn); }
   onReady(function(){
-    // 1) Detect search inputs
-    var inputs = [];
-    var ids = ['programFilter','sejarahSearch','searchPeserta','pesertaFilter'];
-    for (var i=0;i<ids.length;i++){
-      var el = document.getElementById(ids[i]);
-      if (el && inputs.indexOf(el)===-1) inputs.push(el);
-    }
-    // fallback: first input right under the Sejarah section
+    // 1) detect inputs
+    var inputs=[], idc=['programFilter','sejarahSearch','searchPeserta','pesertaFilter'];
+    for (var i=0;i<idc.length;i++){ var el=document.getElementById(idc[i]); if (el && inputs.indexOf(el)===-1) inputs.push(el); }
     if (!inputs.length){
       var guess = document.querySelector('#tab-sejarah input[type="text"], #tab-sejarah input.search, input[placeholder*="jadual peserta"]');
       if (guess) inputs.push(guess);
     }
     if (!inputs.length) return;
 
-    // 2) Find the "Maklumat Program" table body robustly
-    function findParticipantsTbody(){
-      // a) Explicit id
+    // 2) tbody finder (robust)
+    function findTbody(){
       var tb = document.getElementById('sejarahTable');
       if (tb) return tb;
-
-      // b) table under a heading that contains "Maklumat Program"
-      var cards = document.querySelectorAll('.card, .card-body, section, .container');
-      for (var i=0;i<cards.length;i++){
-        var c = cards[i];
-        if ((c.textContent||'').trim().slice(0,200).toLowerCase().indexOf('maklumat program')>=0){
-          var t = c.querySelector('table tbody');
-          if (t) return t;
+      // Maklumat Program section
+      var containers = document.querySelectorAll('.card, .card-body, section, .container');
+      for (var i=0;i<containers.length;i++){
+        var c = containers[i];
+        var txt = (c.querySelector('h5,h4,h3,h2') || {}).textContent || c.textContent || '';
+        if (txt.toLowerCase().indexOf('maklumat program')>=0){
+          var t = c.querySelector('table tbody'); if (t) return t;
         }
       }
-
-      // c) Table that looks like the peserta table (has header with Nama/IC/Telefon)
-      var cand = document.querySelectorAll('table');
-      var score=0, best=null;
-      for (var j=0;j<cand.length;j++){
-        var t = cand[j];
-        var ths = t.querySelectorAll('thead th');
-        if (!ths.length) continue;
-        var heads = [];
-        for (var k=0;k<ths.length;k++){ heads.push((ths[k].textContent||'').toLowerCase()); }
-        var hit = 0;
-        if (heads.join('|').indexOf('nama')>=0) hit++;
-        if (heads.join('|').indexOf('ic')>=0 || heads.join('|').indexOf('no ic')>=0) hit++;
-        if (heads.join('|').indexOf('telefon')>=0 || heads.join('|').indexOf('no telefon')>=0) hit++;
-        if (hit>=2){
-          var body = t.querySelector('tbody');
-          if (body){ best = body; score = hit; break; }
+      // heuristic by headers
+      var tables = document.querySelectorAll('table');
+      for (var j=0;j<tables.length;j++){
+        var ths=tables[j].querySelectorAll('thead th'); if (!ths.length) continue;
+        var h=''; for (var k=0;k<ths.length;k++){ h+=(ths[k].textContent||'').toLowerCase()+'|'; }
+        if ((h.indexOf('nama')>=0) && (h.indexOf('ic')>=0 || h.indexOf('no ic')>=0)){
+          var b=tables[j].querySelector('tbody'); if (b) return b;
         }
       }
-      if (best) return best;
-
-      // d) fallback to first visible tbody
-      var all = document.querySelectorAll('table tbody');
-      return all.length ? all[0] : null;
+      var any = document.querySelector('table tbody'); return any || null;
     }
 
+    // 3) helpers
     function isPlaceholderRow(r){
       if (!r || !r.children) return false;
       if (r.id==='sejarahNoMatchRow') return true;
-      // rows with single cell-colspan usually loaders/empty
-      var c = r.children.length===1 ? r.querySelector('td[colspan]') : null;
-      return !!c;
+      var oneCell = r.children.length===1 && r.querySelector('td[colspan]');
+      return !!oneCell;
     }
     function rowText(r){
       if (r.__haystack) return r.__haystack;
-      var t = (r.textContent||'').toLowerCase();
-      r.__haystack = t; return t;
+      var t=(r.textContent||'').toLowerCase();
+      r.__haystack=t; return t;
     }
     function ensureNoMatchRow(tbody){
-      var row = document.getElementById('sejarahNoMatchRow');
+      var row=document.getElementById('sejarahNoMatchRow');
       if (!row){
-        row = document.createElement('tr'); row.id='sejarahNoMatchRow';
-        var td = document.createElement('td');
-        td.setAttribute('colspan','99');
-        td.className='text-center text-muted';
+        row=document.createElement('tr'); row.id='sejarahNoMatchRow';
+        var td=document.createElement('td'); td.setAttribute('colspan','99'); td.className='text-center text-muted';
         td.appendChild(document.createTextNode('Tiada padanan carian.'));
         row.appendChild(td);
       }
       return row;
     }
     function visibleCount(tbody){
-      var rows = tbody.querySelectorAll('tr');
-      var n=0;
+      var rows=tbody.querySelectorAll('tr'), n=0;
       for (var i=0;i<rows.length;i++){
         var r=rows[i];
         if (isPlaceholderRow(r)) continue;
-        if (r.style.display!=='none' && !r.classList.contains('sejarah-hide-row')) n++;
+        if (!r.classList.contains('sejarah-hide-row')) n++;
       }
       return n;
     }
 
+    // 4) filter logic (no flicker; only DOM class toggle)
     var rafId=null;
+    function currentQuery(){
+      for (var i=0;i<inputs.length;i++){ var v=(inputs[i].value||'').trim(); if (v) return v.toLowerCase(); }
+      return '';
+    }
     function applyFilter(){
       rafId=null;
-      var tbody = findParticipantsTbody();
-      if (!tbody) return;
-
-      // pick first non-empty input text
-      var q='';
-      for (var i=0;i<inputs.length;i++){
-        var v = (inputs[i].value||'').trim();
-        if (v){ q=v; break; }
-      }
-      q = q.toLowerCase();
-
-      var rows = tbody.querySelectorAll('tr');
+      var tbody = findTbody(); if (!tbody) return;
+      var q = currentQuery();
+      var rows=tbody.querySelectorAll('tr');
       for (var i=0;i<rows.length;i++){
-        var r=rows[i];
-        if (isPlaceholderRow(r)) continue;
-        var match = !q || rowText(r).indexOf(q) >= 0;
-        // use style.display to be resilient to other classes
-        r.style.display = match ? '' : 'none';
+        var r=rows[i]; if (isPlaceholderRow(r)) continue;
+        var match = !q || rowText(r).indexOf(q)>=0;
+        if (match) r.classList.remove('sejarah-hide-row'); else r.classList.add('sejarah-hide-row');
       }
-      var nm = document.getElementById('sejarahNoMatchRow');
-      if (visibleCount(tbody)===0){
-        if (!nm){ nm = ensureNoMatchRow(tbody); }
-        if (!nm.parentNode){ tbody.appendChild(nm); }
-        nm.style.display='';
-      } else {
-        if (nm){ nm.style.display='none'; }
-      }
+      var nm=document.getElementById('sejarahNoMatchRow');
+      if (visibleCount(tbody)===0){ nm = ensureNoMatchRow(tbody); if (!nm.parentNode) tbody.appendChild(nm); nm.classList.remove('sejarah-hide-row'); }
+      else if (nm && nm.parentNode){ nm.classList.add('sejarah-hide-row'); }
     }
-    function schedule(){ if (rafId) cancelAnimationFrame(rafId); rafId = requestAnimationFrame(applyFilter); }
+    function schedule(){ if (rafId) cancelAnimationFrame(rafId); rafId=requestAnimationFrame(applyFilter); }
 
-    // Bind to both inputs
+    // 5) Stop other input handlers from causing reloads (ini punca berkedip)
+    function stopper(e){ try{ e.stopImmediatePropagation(); e.stopPropagation(); }catch(_e){} }
     for (var i=0;i<inputs.length;i++){
+      inputs[i].addEventListener('input', stopper, true); // capture phase → block fetchers
       inputs[i].addEventListener('input', schedule, false);
     }
 
-    // Reapply after DOM updates (program selection reloads table)
-    var mo = new MutationObserver(function(){ schedule(); });
-    mo.observe(document.body, { childList:true, subtree:true });
-
-    // Initial run
-    schedule();
+    // 6) Observe ONLY tbody for changes; if tbody replaced, rebind observer (interval ringan)
+    var observedTbody=null, mo=null;
+    function bindObserver(){
+      var tb=findTbody();
+      if (!tb || tb===observedTbody) return;
+      observedTbody=tb;
+      if (mo) mo.disconnect();
+      mo = new MutationObserver(function(){
+        // reset caches and re-apply filter without triggering network
+        var rows=observedTbody.querySelectorAll('tr');
+        for (var i=0;i<rows.length;i++){ rows[i].__haystack=null; }
+        schedule();
+      });
+      mo.observe(observedTbody, { childList:true, subtree:true });
+      schedule();
+    }
+    bindObserver();
+    setInterval(bindObserver, 1000); // detect replacement smoothly without heavy work
   });
 })();
 </script>
