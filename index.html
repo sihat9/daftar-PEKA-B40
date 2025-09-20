@@ -36,36 +36,7 @@
       }
     };
   })();
-  window.__sejarahRowsCache = window.__sejarahRowsCache || {};
-
-function renderSejarahRows(rows, q){
-  const tbody = document.getElementById('sejarahTable'); if (!tbody) return;
-  const filtered = (rows||[]).filter(r=>{
-    const s = ((r.nama||'') + ' ' + (r.noIC||'') + ' ' + (r.noTelefon||'') + ' ' + (r.alamat||'') + ' ' + (r.status||'')).toLowerCase();
-    return !q || s.includes(q);
-  });
-  tbody.innerHTML = filtered.map((r,i)=>`
-    <tr>
-      <td>${i+1}</td><td>${r.nama||''}</td><td>${r.noIC||''}</td><td>${r.noTelefon||''}</td><td>${r.alamat||''}</td>
-      <td>${r.status||''}</td><td>${r.bp||''}</td><td>${r.pr||''}</td><td>${r.dxt||''}</td><td>${r.bmi||''}</td>
-      <td>${r.tcaDate||''} ${r.tcaTime||''}</td><td>${r.tcaStaff||''}</td><td>${r.remark||''}</td>
-    </tr>
-  `).join('') || '<tr><td colspan="13" class="text-center text-muted">Tiada padanan carian.</td></tr>';
-}
-let __sejarahSearchDebounce;
-function filterSejarahTable(){
-  clearTimeout(__sejarahSearchDebounce);
-  __sejarahSearchDebounce = setTimeout(()=>{
-    const q = (document.getElementById('sejarahSearch')?.value || '').toLowerCase();
-    const current = document.querySelector('#programList .list-group-item.active') || document.querySelector('#programList .list-group-item');
-    if (!current) return;
-    const aid = current.getAttribute('data-activity-id');
-    const rows = (window.__sejarahRowsCache||{})[aid] || [];
-    renderSejarahRows(rows, q);
-  }, 120);
-}
-
-</script>
+  </script>
 
 <!-- Injected: Robust fetch interceptor (adds id_token; coerces HTML errors to JSON to avoid SyntaxError) -->
 <script>
@@ -4679,25 +4650,6 @@ const saveNadiStateDebounced = debounce(saveNadiState, 400);
       const j = await jsonSafe(res);
       if (!j || j.status!=='success') throw new Error(j && (j.message||j.code) || 'Gagal ambil detail');
       const rows = Array.isArray(j.data) ? j.data : [];
-      window.__sejarahRowsCache = window.__sejarahRowsCache || {};
-      window.__sejarahRowsCache[activityId] = rows; // cache
-      if (!rows.length){ tbody.innerHTML = '<tr><td colspan="13" class="text-center text-muted">Tiada data.</td></tr>'; return; }
-      const btn = document.querySelector(`[data-activity-id="${activityId}"]`);
-      if (btn){
-        titleLabel.textContent = btn.querySelector('.fw-semibold')?.textContent || 'Maklumat Program';
-        dateLabel.textContent = (btn.querySelector('.small')?.textContent || '').split('·')[0].trim();
-      }
-      const q = (document.getElementById('sejarahSearch')?.value || '').toLowerCase();
-      renderSejarahRows(rows, q);
-    }catch(e){
-      tbody.innerHTML = '<tr><td colspan="13" class="text-center text-danger">Ralat memuat maklumat.</td></tr>';
-    }
-}
-);
-      const res = await fetch(`${window.SCRIPT_URL}?${qs.toString()}`);
-      const j = await jsonSafe(res);
-      if (!j || j.status!=='success') throw new Error(j && (j.message||j.code) || 'Gagal ambil detail');
-      const rows = Array.isArray(j.data) ? j.data : [];
       if (!rows.length){ tbody.innerHTML = '<tr><td colspan="13" class="text-center text-muted">Tiada data.</td></tr>'; return; }
       // Set tajuk & tarikh (kita tak dapat terus; ambil dari butang terpilih)
       const btn = document.querySelector(`[data-activity-id="${activityId}"]`);
@@ -6734,7 +6686,7 @@ function __toVoucherPayload(payload){
     return byId('programDetail') || q('#programDetailContainer') || q('[data-role="program-detail"]') || q('#programTable');
   }
 
-  async async function loadSejarahOnce(){
+  async function loadSejarahOnce(){
     const listEl = programListPane();
     const detEl  = detailPane();
     mountLoader(listEl); mountLoader(detEl);
@@ -6853,7 +6805,7 @@ function __toVoucherPayload(payload){
     try{ if (where && where.__loaderMounted){ where.__loaderMounted.remove(); where.__loaderMounted=null; } }catch(e){}
   }
 
-  async async function loadSejarahOnce(){
+  async function loadSejarahOnce(){
     const listEl = programListPane();
     const detEl  = detailPane();
     mountLoader(listEl); mountLoader(detEl);
@@ -6964,6 +6916,128 @@ function __toVoucherPayload(payload){
       return res;
     };
   })();
+})();
+</script>
+
+
+<!-- === Patch v3: No-reload search filter + Sejarah autoload after sign-in (ES5 safe) === -->
+<style>
+  .sejarah-hide-row { display: none; }
+  .sejarah-lock-height { min-height: 220px; }
+</style>
+<script>
+(function(){
+  // DOM ready helper
+  function onReady(fn){ if(document.readyState!=='loading') fn(); else document.addEventListener('DOMContentLoaded', fn); }
+
+  onReady(function(){
+    var search = document.getElementById('sejarahSearch');
+    var tbody  = document.getElementById('sejarahTable');
+
+    // Stabilize card height (optional)
+    try{
+      var cardBody = tbody ? (tbody.closest('.card-body') || tbody.parentElement) : null;
+      if (cardBody) cardBody.classList.add('sejarah-lock-height');
+    }catch(_e){}
+
+    // --------- 1) Prevent reloads on search input; filter only current rows ---------
+    if (search && tbody){
+      var rafId = null;
+      var lastTypeAt = 0;
+
+      function rowText(row){
+        // cache haystack to reduce work
+        if (row.__haystack) return row.__haystack;
+        var t = (row.textContent || '').toLowerCase();
+        row.__haystack = t;
+        return t;
+      }
+      function applyFilter(){
+        rafId = null;
+        var q = (search.value || '').toLowerCase().trim();
+        var rows = tbody.querySelectorAll('tr');
+        for (var i=0; i<rows.length; i++){
+          var r = rows[i];
+          // skip placeholder/loader rows
+          if (r.children && r.children.length===1 && r.querySelector('td[colspan]')) continue;
+          var match = !q || rowText(r).indexOf(q) >= 0;
+          if (match){
+            if (r.classList.contains('sejarah-hide-row')) r.classList.remove('sejarah-hide-row');
+          } else {
+            if (!r.classList.contains('sejarah-hide-row')) r.classList.add('sejarah-hide-row');
+          }
+        }
+      }
+      function schedule(){
+        lastTypeAt = Date.now();
+        if (rafId) cancelAnimationFrame(rafId);
+        rafId = requestAnimationFrame(applyFilter);
+      }
+
+      // Capture-phase listener to stop other handlers from triggering backend reloads
+      var stopper = function(ev){ ev.stopImmediatePropagation(); };
+      search.addEventListener('input', stopper, true);
+      search.addEventListener('input', function(){ schedule(); }, false);
+
+      // Rebuild cache when tbody changes (sort/refresh)
+      var mo = new MutationObserver(function(){
+        var rows = tbody.querySelectorAll('tr');
+        for (var i=0;i<rows.length;i++){ rows[i].__haystack = null; }
+        schedule();
+      });
+      mo.observe(tbody, { childList:true, subtree:true });
+
+      // Initial run (in case of pre-filled query)
+      schedule();
+
+      // Expose a flag so other scripts can avoid refetch during active typing
+      window.__sejarahSearchLastTypeAt = function(){ return lastTypeAt; };
+    }
+
+    // --------- 2) Autoload Sejarah after sign-in ---------
+    var triedAuto = false;
+    function isTyping(){ return (typeof window.__sejarahSearchLastTypeAt==='function') && ((Date.now() - window.__sejarahSearchLastTypeAt()) < 500); }
+    function pickFirstProgram(){
+      try{
+        var first = document.querySelector('#programList .list-group-item');
+        if (first && first.click){ first.click(); }
+      }catch(_e){}
+    }
+    function triggerSejarah(){
+      if (triedAuto) return; triedAuto = true;
+      try {
+        if (typeof window.triggerSejarahLoad === 'function'){ window.triggerSejarahLoad(); }
+        else if (typeof window.autoSejarah === 'function'){ window.autoSejarah(); }
+        else if (typeof window.loadSejarahOnce === 'function'){ window.loadSejarahOnce(); }
+        else {
+          var tab = document.querySelector('[data-bs-target="#tab-sejarah"], #tab-sejarah-link, a[href="#tab-sejarah"]');
+          if (tab && tab.click) tab.click();
+        }
+        setTimeout(pickFirstProgram, 400);
+      } catch(_e){}
+    }
+
+    // Hook handleCredentialResponse safely (no async)
+    if (typeof window.handleCredentialResponse === 'function'){
+      var __origHandle = window.handleCredentialResponse;
+      window.handleCredentialResponse = function(){
+        try { return __origHandle.apply(this, arguments); }
+        finally { triggerSejarah(); }
+      };
+    }
+
+    // If already signed in (token present), autoload
+    if (window.ID_TOKEN){ setTimeout(triggerSejarah, 300); }
+
+    // --------- 3) Gentle auto-refresh programs list (only when idle & visible) ---------
+    setInterval(function(){
+      if (document.hidden) return;
+      if (isTyping()) return;
+      try{
+        if (typeof window.triggerSejarahLoad === 'function'){ window.triggerSejarahLoad(); }
+      }catch(_e){}
+    }, 45000);
+  });
 })();
 </script>
 
