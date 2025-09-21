@@ -1303,6 +1303,22 @@
               <input class="form-check-input" type="radio" name="th_lab" id="th_lab_no" value="no" checked>
               <label class="form-check-label" for="th_lab_no">Tidak</label>
             </div>
+<div id="th_second_container" class="mt-3 border-top pt-3 d-none">
+  <div class="row g-2">
+    <div class="col-12">
+      <div class="small text-muted mb-2"><i class="fa-solid fa-circle-2"></i> Second Visit</div>
+    </div>
+    <div class="col-sm-6">
+      <label for="th_tca_date" class="form-label">Tarikh TCA (Second Visit)</label>
+      <input type="date" class="form-control" id="th_tca_date" />
+    </div>
+    <div class="col-sm-6">
+      <label for="th_tca_time" class="form-label">Masa TCA</label>
+      <input type="time" class="form-control" id="th_tca_time" />
+    </div>
+  </div>
+</div>
+
           </div>
         </div>
         <div class="modal-footer">
@@ -6117,7 +6133,11 @@ if (btn) {
     document.getElementById('th_date').value = '';
     document.getElementById('th_file').value = '';
     document.getElementById('th_lab_no').checked = true;
-    m.show();
+    document.getElementById("th_lab_no").checked = true;
+var sec=document.getElementById("th_second_container"); if(sec) sec.classList.add("d-none");
+var dt=document.getElementById("th_tca_date"); if(dt) dt.value="";
+var tm=document.getElementById("th_tca_time"); if(tm) tm.value="";
+m.show();
   }
   async function fileToBase64(file){
     return new Promise((resolve,reject)=>{
@@ -6254,7 +6274,16 @@ function injectTelahHadirButtons(){
 // Observers
   window.addEventListener('DOMContentLoaded', ()=>{
     const sejarahTbody = document.getElementById('sejarahTable');
-    if (sejarahTbody){ sejarahObserver.observe(sejarahTbody, { childList:true }); }
+    if (sejarahTbody){ sejarahObserver.observe(sejarahTbody, { childList:true 
+    // Toggle second-visit inputs when lab YES/NO changes
+    const labYes = document.getElementById("th_lab_yes");
+    const labNo  = document.getElementById("th_lab_no");
+    const secBox = document.getElementById("th_second_container");
+    function toggleSecond(){ if (secBox) secBox.classList.toggle("d-none", !labYes?.checked); }
+    labYes && labYes.addEventListener("change", toggleSecond);
+    labNo  && labNo.addEventListener("change", toggleSecond);
+    toggleSecond();
+});}
     const firstVisitTbody = document.getElementById('firstVisitList');
     // Inject padam/arkib butang pada pelbagai jadual
     injectArchiveButtons();
@@ -6458,8 +6487,16 @@ function injectTelahHadirButtons(){
     applyTCABadges();
     augmentArchiveTable();
     const tcaTb = document.getElementById('tcaCallTable');
-    if (tcaTb) _observer.observe(tcaTb, { childList:true, subtree:true });
-    const tcaList = document.getElementById('tcaCallList');
+    if (tcaTb) _observer.observe(tcaTb, { childList:true, subtree:true 
+    // Toggle second-visit inputs when lab YES/NO changes
+    const labYes = document.getElementById("th_lab_yes");
+    const labNo  = document.getElementById("th_lab_no");
+    const secBox = document.getElementById("th_second_container");
+    function toggleSecond(){ if (secBox) secBox.classList.toggle("d-none", !labYes?.checked); }
+    labYes && labYes.addEventListener("change", toggleSecond);
+    labNo  && labNo.addEventListener("change", toggleSecond);
+    toggleSecond();
+});const tcaList = document.getElementById('tcaCallList');
     if (tcaList) _observer.observe(tcaList, { childList:true, subtree:true });
     const archTb = document.getElementById('archiveTable');
     if (archTb) _observer.observe(archTb, { childList:true, subtree:true });
