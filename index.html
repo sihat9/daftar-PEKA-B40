@@ -1305,6 +1305,25 @@
             </div>
           </div>
         </div>
+        <!-- Second Visit fields (visible when Lab = Ya) -->
+        <div id="th_second_wrapper" class="mt-3 d-none">
+          <div class="row g-2">
+            <div class="col-md-6">
+              <label for="th2_date" class="form-label">Tarikh Second Visit</label>
+              <input type="date" id="th2_date" class="form-control" />
+            </div>
+            <div class="col-md-6">
+              <label for="th2_time" class="form-label">Masa Second Visit</label>
+              <input type="time" id="th2_time" class="form-control" />
+            </div>
+            <div class="col-12">
+              <label for="th2_staff" class="form-label">Staff (opsyenal)</label>
+              <input type="text" id="th2_staff" class="form-control" placeholder="Nama staff" />
+            </div>
+          </div>
+          <div class="form-text">Medan ini dipaparkan hanya apabila keputusan makmal = <strong>Ya</strong>.</div>
+        </div>
+
         <div class="modal-footer">
           <button class="btn btn-secondary" data-bs-dismiss="modal">Batal</button>
           <button class="btn btn-primary" id="th_submit"><i class="fa-solid fa-save me-1"></i> Simpan</button>
@@ -6133,168 +6152,55 @@ if (btn) {
       r.readAsDataURL(file);
     });
   }
-  async function submitTelahHadir(){
-    try{
-      const noIC = document.getElementById('th_noIC').value.trim();
-      const dateIso = document.getElementById('th_date').value;
-      const fileEl = document.getElementById('th_file');
-      const labDone = document.getElementById('th_lab_yes').checked;
-      if (!noIC){ toast('IC tidak sah', 'warning'); return; }
-      if (!dateIso){ toast('Sila pilih tarikh hadir', 'warning'); return; }
-      if (!fileEl.files || !fileEl.files[0]){ toast('Sila muat naik PDPA', 'warning'); return; }
-      const f = fileEl.files[0];
-      const b64 = await fileToBase64(f);
-      // 1) Upload PDPA
-      const up = await postForm({ action:'uploadPDPA', noIC, fileName:f.name, fileType:(f.type||'application/octet-stream'), fileBase64:b64 }, { msg:'Memuat naik PDPA…' });
-      if (!up || up.status!=='success') throw new Error(up && (up.message||up.code)||'Gagal upload PDPA');
-      
-      // 2) Tandakan Telah Hadir (tarikh sebenar) + kemaskini lab jika perlu
-      // Selaras backend: updateStatus(op:'firstVisit') dan jika labDone → updateLabStatus('DONE')
-      const r1 = await postForm({ action:'updateStatus', noIC, op:'firstVisit' }, { msg:'Mengemaskini status…' });
-      if (!r1 || r1.status!=='success') throw new Error((r1 && (r1.message||r1.code)) || 'Gagal kemas kini status (first visit)');
-      if (labDone){
-        const r2 = await postForm({ action:'updateLabStatus', noIC, status:'DONE' }, { msg:'Menanda status lab…' });
-        if (!r2 || r2.status!=='success') throw new Error((r2 && (r2.message||r2.code)) || 'Gagal menanda status lab');
-      }
-
-      toast('Ditandakan Telah Hadir');
-      // Refresh & navigasi
-      window.loadFirstVisitData && window.loadFirstVisitData();
-      setTimeout(()=>{
-        if (labDone){ location.hash = '#second-visit'; window.loadSecondVisitData && window.loadSecondVisitData(); }
-        else { location.hash = '#lab-followup'; window.loadLabFollowUp && window.loadLabFollowUp(); }
-      }, 200);
-    }catch(e){
-      console.error(e);
-      toast('Ralat: '+(e.message||e), 'danger');
-    }
-  }
-
   
-  function pickDateStr(s){
-    const m = /(\d{2}\/\d{2}\/\d{4})/.exec(String(s||''));
-    return m ? m[1] : String(s||'');
-  }
-  function parseAsDate(ddmmyyyy){
-    if (typeof parseDDMMYYYY === 'function') return parseDDMMYYYY(ddmmyyyy);
-    const mm = /^(\d{2})\/(\d{2})\/(\d{4})$/.exec(ddmmyyyy||'');
-    if (!mm) return null;
-    const d = parseInt(mm[1],10), m = parseInt(mm[2],10)-1, y = parseInt(mm[3],10);
-    return new Date(y,m,d);
-  }
-  function isTcaOverdue(text){
-    const s = pickDateStr(text);
-    const d = parseAsDate(s);
-    if (!d) return false;
-    const end = new Date(d.getFullYear(), d.getMonth(), d.getDate(), 23,59,59,999);
-    return new Date() > end;
-  }
-  function isTcaToday(text){
-    const s = pickDateStr(text);
-    const d = parseAsDate(s);
-    if (!d) return false;
-    const now = new Date();
-    return d.getFullYear()===now.getFullYear() && d.getMonth()===now.getMonth() && d.getDate()===now.getDate();
-  }
-function injectTelahHadirButtons(){
-    document.querySelectorAll('#firstVisitList tr').forEach(tr=>{
-      if (tr.dataset._th_injected==='1') return;
-      if (tr.querySelector('td[colspan]')) return;
-      tr.dataset._th_injected = '1';
-      const tds = tr.querySelectorAll('td');
-      // First Visit table order: Nama, NoIC, Alamat, Tarikh TCA, PDPA, Status, Tindakan
-      const icCell = tds[1];
-      const tcaCell = tds[3];
-      const statusCell = tds[tds.length-2];
-      const tindakanCell = tds[tds.length-1];
-      const ic = (icCell?.textContent||'').trim();
-      const statusTxt = (statusCell?.textContent||'').toLowerCase();
-      const tcaStr = (tcaCell?.textContent||'').trim();
-      if (/belum/.test(statusTxt) && tindakanCell && ic){ if (tindakanCell && tindakanCell.textContent && tindakanCell.textContent.toLowerCase().includes('hadir')) { return; }
-        if (isTcaToday(tcaStr)) { return; } const overdue = isTcaOverdue(tcaStr);
-        const cls = overdue ? 'btn-warning' : 'btn-secondary'; // kelabu jika belum terlepas, kuning jika sudah terlepas
-        const btn = document.createElement('button');
-        btn.className = 'btn btn-sm '+cls+' me-1';
-        btn.innerHTML = '<i class="fa-solid fa-user-check me-1"></i> Telah Hadir';
-        btn.addEventListener('click', ()=> openTelahHadir(ic));
-        tindakanCell.prepend(btn);
+async function submitTelahHadir(){
+  const ic     = byId('th_ic').value.trim();
+  const hadir  = byId('th_hadir_yes').checked;
+  const labYes = byId('th_lab_yes').checked;
+  const note   = byId('th_note').value.trim();
+
+  if (!ic){ alert('NoIC hilang. Sila buka semula borang.'); return; }
+  if (!hadir){ alert('Sahkan kehadiran dahulu.'); return; }
+
+  const btn = byId('th_submit');
+  const orig = btn.innerHTML;
+  btn.disabled = true; btn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>Simpan...';
+
+  try{
+    // 1) Tandakan FIRST VISIT hadir
+    await postForm('updateStatus', { noIC: ic, op: 'firstVisit' });
+
+    // 2) Jika lab = Ya, tandakan lab DONE
+    if (labYes){
+      await postForm('updateLabStatus', { noIC: ic, status: 'DONE' });
+
+      // 3) Jika tarikh & masa second visit diisi, set terus (perlu PDPA sedia ada)
+      const d = (byId('th2_date')?.value || '').trim();
+      const t = (byId('th2_time')?.value || '').trim();
+      const staff = (byId('th2_staff')?.value || '').trim();
+      if (d && t){
+        await postForm('updatePatient', { noIC: ic, tarikhTCA: d, masaTCA: t, staff });
       }
-    });
-  }
-
-  
-  function extractICFromRow(tr){
-    if (!tr) return '';
-    if (tr.dataset && tr.dataset.ic) return String(tr.dataset.ic||'').trim();
-    const td2 = tr.querySelectorAll('td')[1];
-    return (td2 && td2.textContent) ? td2.textContent.trim() : '';
-  }
-  async function archiveByIC(ic){
-    if (!ic) { toast('IC tidak sah', 'warning'); return; }
-    if (!confirm('Padam/Arkibkan pesakit ini?')) return;
-    const res = await postForm({ action:'archivePatient', noIC: ic }, { msg:'Mengarkibkan…' });
-    if (!res || res.status!=='success'){ toast('Gagal arkib', 'danger'); return; }
-    toast('Pesakit telah diarkibkan');
-    // Cuba muat semula beberapa paparan yang mungkin terlibat
-    window.loadFirstVisitData && window.loadFirstVisitData();
-    window.loadSecondVisitData && window.loadSecondVisitData();
-    window.loadLabFollowUp && window.loadLabFollowUp();
-    window.loadCompletedData && window.loadCompletedData();
-    window.loadTCACall && window.loadTCACall();
-  }
-  function addArchiveBtnToRow(tr){
-    if (!tr) return;
-    const tds = tr.querySelectorAll('td'); if (!tds.length) return;
-    const tindakanCell = tds[tds.length-1];
-    if (!tindakanCell) return;
-    if (tindakanCell.querySelector('[data-action="archive"]')) return; // sudah ada
-    const ic = extractICFromRow(tr); if (!ic) return;
-    const btn = document.createElement('button');
-    btn.className = 'btn btn-sm btn-outline-danger me-1';
-    btn.setAttribute('data-action','archive');
-    btn.innerHTML = '<i class="fa-solid fa-trash"></i> Padam';
-    btn.addEventListener('click', ()=> archiveByIC(ic));
-    tindakanCell.prepend(btn);
-  }
-  function injectArchiveButtons(){
-    ['firstVisitList','secondVisitList','labFollowupTable','completedTable','tcaCallList'].forEach(id=>{
-      const tb = document.getElementById(id);
-      if (!tb) return;
-      tb.querySelectorAll('tr').forEach(addArchiveBtnToRow);
-    });
-  }
-// Observers
-  window.addEventListener('DOMContentLoaded', ()=>{
-    const sejarahTbody = document.getElementById('sejarahTable');
-    if (sejarahTbody){ sejarahObserver.observe(sejarahTbody, { childList:true }); }
-    const firstVisitTbody = document.getElementById('firstVisitList');
-    // Inject padam/arkib butang pada pelbagai jadual
-    injectArchiveButtons();
-    const observeIds = ['firstVisitList','secondVisitList','labFollowupTable','completedTable','tcaCallList'];
-    observeIds.forEach(id=>{
-      const el = document.getElementById(id);
-      if (!el) return;
-      const ob = new MutationObserver(injectArchiveButtons);
-      ob.observe(el, { childList:true });
-    });
-
-    if (firstVisitTbody){
-      const obs = new MutationObserver(injectTelahHadirButtons);
-      obs.observe(firstVisitTbody, { childList:true });
     }
-    document.getElementById('th_submit')?.addEventListener('click', submitTelahHadir);
 
-    // Pastikan kiraan NADI bermula pada 0 (defensif) sehingga checkbox ditanda
-    if (typeof updateNadiSummary === 'function') updateNadiSummary();
-  });
+    // Alert ringkas
+    toast('Disimpan','Kehadiran direkodkan'+(labYes?' & Lab=Ya.':'')+' '+(byId('th2_date')?.value&&byId('th2_time')?.value?' Second visit ditetapkan.':''));
 
-  // Simpan aktivitiId bila klik program
-  document.addEventListener('click', (e)=>{
-    const item = e.target.closest('#programList .list-group-item');
-    if (item) window.CURRENT_ACTIVITY_ID = item.getAttribute('data-activity-id') || '';
-  });
+    // Tutup modal secara automatik
+    const modalEl = document.getElementById('telahHadirModal');
+    const m = bootstrap.Modal.getInstance(modalEl) || new bootstrap.Modal(modalEl);
+    m.hide();
 
-})();
+    // Segarkan senarai First Visit
+    reloadFirstVisit && reloadFirstVisit();
+  } catch(err){
+    console.error(err);
+    alert('Gagal simpan: '+(err?.message||err));
+  } finally {
+    btn.disabled = false; btn.innerHTML = orig;
+  }
+}
+)();
 </script>
 
 
@@ -7060,3 +6966,14 @@ function __toVoucherPayload(payload){
 
 </body>
 </html>
+
+// Auto toggle Second Visit fields in Telah Hadir modal
+(function(){
+  const yes = document.getElementById('th_lab_yes');
+  const no  = document.getElementById('th_lab_no');
+  const wrap= document.getElementById('th_second_wrapper');
+  function sync(){ if (yes && wrap){ wrap.classList[ yes.checked ? 'remove' : 'add' ]('d-none'); } }
+  yes && yes.addEventListener('change', sync);
+  no  && no.addEventListener('change', sync);
+  sync();
+})();
