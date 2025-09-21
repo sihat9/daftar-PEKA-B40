@@ -1303,23 +1303,31 @@
               <input class="form-check-input" type="radio" name="th_lab" id="th_lab_no" value="no" checked>
               <label class="form-check-label" for="th_lab_no">Tidak</label>
             </div>
-<div id="th_second_container" class="mt-3 border-top pt-3 d-none">
-  <div class="row g-2">
-    <div class="col-12">
-      <div class="small text-muted mb-2"><i class="fa-solid fa-circle-2"></i> Second Visit</div>
-    </div>
-    <div class="col-sm-6">
-      <label for="th_tca_date" class="form-label">Tarikh TCA (Second Visit)</label>
-      <input type="date" class="form-control" id="th_tca_date" />
-    </div>
-    <div class="col-sm-6">
-      <label for="th_tca_time" class="form-label">Masa TCA</label>
-      <input type="time" class="form-control" id="th_tca_time" />
-    </div>
-  </div>
-</div>
-
           </div>
+          <!-- Seksyen TCA Second (muncul jika Lab = Ya) -->
+          <div id="th_second_section" class="border rounded p-3 mt-3 d-none">
+            <div class="fw-semibold mb-2"><i class="fa-solid fa-calendar-check me-1"></i> TCA Second Visit</div>
+            <div class="row g-3">
+              <div class="col-12 col-md-6">
+                <label class="form-label">Tarikh TCA (Second)</label>
+                <input type="date" id="th_second_date" class="form-control" />
+              </div>
+              <div class="col-12 col-md-6">
+                <label class="form-label">Masa TCA</label>
+                <input type="time" id="th_second_time" class="form-control" />
+              </div>
+              <div class="col-12">
+                <label class="form-label">Staff TCA</label>
+                <input type="text" id="th_second_staff" class="form-control" placeholder="Nama staff yang tetapkan TCA" />
+          <div class="modal-footer">
+            <button class="btn btn-secondary" data-bs-dismiss="modal">Tutup</button>
+            <button class="btn btn-primary" id="th_submit"><i class="fa-solid fa-floppy-disk me-1"></i>Simpan</button>
+          </div>
+        
+              </div>
+            </div>
+          </div>
+
         </div>
         <div class="modal-footer">
           <button class="btn btn-secondary" data-bs-dismiss="modal">Batal</button>
@@ -6133,11 +6141,7 @@ if (btn) {
     document.getElementById('th_date').value = '';
     document.getElementById('th_file').value = '';
     document.getElementById('th_lab_no').checked = true;
-    document.getElementById("th_lab_no").checked = true;
-var sec=document.getElementById("th_second_container"); if(sec) sec.classList.add("d-none");
-var dt=document.getElementById("th_tca_date"); if(dt) dt.value="";
-var tm=document.getElementById("th_tca_time"); if(tm) tm.value="";
-m.show();
+    m.show();
   }
   async function fileToBase64(file){
     return new Promise((resolve,reject)=>{
@@ -6274,16 +6278,7 @@ function injectTelahHadirButtons(){
 // Observers
   window.addEventListener('DOMContentLoaded', ()=>{
     const sejarahTbody = document.getElementById('sejarahTable');
-    if (sejarahTbody){ sejarahObserver.observe(sejarahTbody, { childList:true 
-    // Toggle second-visit inputs when lab YES/NO changes
-    const labYes = document.getElementById("th_lab_yes");
-    const labNo  = document.getElementById("th_lab_no");
-    const secBox = document.getElementById("th_second_container");
-    function toggleSecond(){ if (secBox) secBox.classList.toggle("d-none", !labYes?.checked); }
-    labYes && labYes.addEventListener("change", toggleSecond);
-    labNo  && labNo.addEventListener("change", toggleSecond);
-    toggleSecond();
-});}
+    if (sejarahTbody){ sejarahObserver.observe(sejarahTbody, { childList:true }); }
     const firstVisitTbody = document.getElementById('firstVisitList');
     // Inject padam/arkib butang pada pelbagai jadual
     injectArchiveButtons();
@@ -6487,16 +6482,8 @@ function injectTelahHadirButtons(){
     applyTCABadges();
     augmentArchiveTable();
     const tcaTb = document.getElementById('tcaCallTable');
-    if (tcaTb) _observer.observe(tcaTb, { childList:true, subtree:true 
-    // Toggle second-visit inputs when lab YES/NO changes
-    const labYes = document.getElementById("th_lab_yes");
-    const labNo  = document.getElementById("th_lab_no");
-    const secBox = document.getElementById("th_second_container");
-    function toggleSecond(){ if (secBox) secBox.classList.toggle("d-none", !labYes?.checked); }
-    labYes && labYes.addEventListener("change", toggleSecond);
-    labNo  && labNo.addEventListener("change", toggleSecond);
-    toggleSecond();
-});const tcaList = document.getElementById('tcaCallList');
+    if (tcaTb) _observer.observe(tcaTb, { childList:true, subtree:true });
+    const tcaList = document.getElementById('tcaCallList');
     if (tcaList) _observer.observe(tcaList, { childList:true, subtree:true });
     const archTb = document.getElementById('archiveTable');
     if (archTb) _observer.observe(archTb, { childList:true, subtree:true });
@@ -7080,6 +7067,109 @@ function __toVoucherPayload(payload){
     bindObserver();
     setInterval(bindObserver, 1000); // detect replacement smoothly without heavy work
   });
+})();
+</script>
+
+
+<script>
+(function(){
+  function updateSecondSection(){
+    var yes = document.getElementById('th_lab_yes');
+    var box = document.getElementById('th_second_section');
+    if (!yes || !box) return;
+    box.classList.toggle('d-none', !yes.checked);
+  }
+  document.addEventListener('change', function(e){
+    if (e.target && (e.target.id === 'th_lab_yes' || e.target.id === 'th_lab_no')){
+      updateSecondSection();
+    }
+  });
+  var thModalEl = document.getElementById('telahHadirModal');
+  if (thModalEl){
+    thModalEl.addEventListener('show.bs.modal', function(){
+      try{
+        var yes = document.getElementById('th_lab_yes'), no = document.getElementById('th_lab_no');
+        if (yes) yes.checked = false;
+        if (no)  no.checked  = false;
+        var sd = document.getElementById('th_second_date');
+        var st = document.getElementById('th_second_time');
+        var ss = document.getElementById('th_second_staff');
+        if (sd) sd.value = '';
+        if (st) st.value = '';
+        if (ss) ss.value = '';
+        updateSecondSection();
+      }catch(_e){}
+    });
+  }
+  function fileToBase64(file){
+    return new Promise(function(res, rej){
+      var r = new FileReader();
+      r.onload = function(){ res(String(r.result).split(',')[1] || ''); };
+      r.onerror = rej;
+      r.readAsDataURL(file);
+    });
+  }
+  function goLabFollowUp(){
+    try{
+      var anchor = document.querySelector('[data-bs-target="#labFollowUpTab"], a[href="#labFollowUpTab"], a[href="#labFollowUp"], #tab-labFollowUp');
+      if (anchor && window.bootstrap && bootstrap.Tab){
+        var tab = new bootstrap.Tab(anchor);
+        tab.show();
+      } else {
+        location.hash = '#labFollowUp';
+      }
+    }catch(_e){}
+  }
+  async function postJSON(payload){
+    var url = (window.SCRIPT_URL || (window.APP && APP.scriptUrl)) + '?action=' + encodeURIComponent(payload.action);
+    delete payload.action;
+    var token = (window.AUTH && AUTH.id_token) || (window.GOOGLE_ID_TOKEN) || '';
+    if (token){
+      url += '&id_token=' + encodeURIComponent(token);
+    }
+    const r = await fetch(url, { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(payload) });
+    return r.json();
+  }
+  document.addEventListener('click', async function(e){
+    if (!e.target || e.target.id !== 'th_submit') return;
+    try{
+      var noIC = (document.getElementById('th_noIC') || {}).value || '';
+      var date = (document.getElementById('th_date') || {}).value || '';
+      var file = (document.getElementById('th_file') || {}).files?.[0];
+      var labYes = (document.getElementById('th_lab_yes') || {}).checked || false;
+      var labNo  = (document.getElementById('th_lab_no')  || {}).checked || false;
+      if (!noIC || !date){ alert('Sila isi NoIC dan Tarikh hadir.'); return; }
+      if (!file){ alert('Fail PDPA diperlukan.'); return; }
+      var base64 = await fileToBase64(file);
+      var up = await postJSON({ action:'uploadPDPA', id:noIC, noIC:noIC, fileBase64: base64, fileName: file.name, fileType: file.type });
+      if (up.status !== 'success'){ alert('Gagal upload PDPA: ' + (up.message||up.status)); return; }
+      var fv = await postJSON({ action:'updateStatus', op:'firstVisit', noIC:noIC, staff: (window.CURRENT_USER && CURRENT_USER.email) || '' });
+      if (fv.status !== 'success'){ alert('Gagal tandakan hadir: ' + (fv.message||fv.status)); return; }
+      if (labYes){
+        var sd = (document.getElementById('th_second_date') || {}).value || '';
+        var st = (document.getElementById('th_second_time') || {}).value || '';
+        if (!sd || !st){ alert('Sila isi tarikh & masa TCA untuk Second Visit.'); return; }
+        await postJSON({ action:'updateLabStatus', noIC:noIC, status:'DONE' });
+        var ss = (document.getElementById('th_second_staff') || {}).value || '';
+        var set2 = await postJSON({ action:'updatePatient', noIC:noIC, tarikhTCA: sd, masaTCA: st, staff: ss });
+        if (set2.status !== 'success'){ alert('Gagal set TCA Second: ' + (set2.message||set2.status)); return; }
+        var mdl = document.getElementById('telahHadirModal');
+        if (mdl && window.bootstrap){ var inst = bootstrap.Modal.getInstance(mdl) || new bootstrap.Modal(mdl); inst.hide(); }
+        document.dispatchEvent(new CustomEvent('refreshLists',{detail:{from:'firstVisitDoneWithLab'}}));
+      } else if (labNo){
+        await postJSON({ action:'updateLabStatus', noIC:noIC, status:'PENDING' });
+        var mdl = document.getElementById('telahHadirModal');
+        if (mdl && window.bootstrap){ var inst = bootstrap.Modal.getInstance(mdl) || new bootstrap.Modal(mdl); inst.hide(); }
+        goLabFollowUp();
+      } else {
+        alert('Sila pilih status keputusan lab (Ya atau Tidak).');
+      }
+    }catch(err){
+      console.error(err);
+      alert('Ralat tidak dijangka semasa menyimpan. Sila cuba lagi.');
+    }
+  });
+  document.addEventListener('DOMContentLoaded', updateSecondSection);
 })();
 </script>
 
