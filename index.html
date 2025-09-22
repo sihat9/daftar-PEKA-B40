@@ -2,87 +2,6 @@
 <html lang="ms">
 <head>
 
-<script>
-// ===== Backend URL & Token helpers (robust) =====
-(function(){
-  function getBackendUrl(){
-    try{
-      var meta = document.querySelector('meta[name="apps-script-url"]');
-      var v = (localStorage.getItem('backendUrl') || (window.APP_SCRIPT_URL||'') || (meta?meta.content:'') || '').trim();
-      if (!v || /undefined/i.test(v) || /^https:\/\/sihat9\.github\.io/i.test(v)) return '';
-      return v.replace(/\?$/, '');
-    }catch(e){ return ''; }
-  }
-  function ensureBackendUrl(){
-    var u = getBackendUrl();
-    if (u) { window.BACKEND_URL = u; return u; }
-    // Show a very small setup prompt once
-    var once = sessionStorage.getItem('askedBackendUrl');
-    if (!once){
-      sessionStorage.setItem('askedBackendUrl','1');
-      var input = prompt('Masukkan URL Web App Google Apps Script anda (https://script.google.com/.../exec):','');
-      if (input && input.trim()){
-        localStorage.setItem('backendUrl', input.trim());
-        location.reload();
-        return;
-      }
-    }
-    window.BACKEND_URL = '';
-    return '';
-  }
-  window.getBackendUrl = getBackendUrl;
-  window.ensureBackendUrl = ensureBackendUrl;
-
-  // id_token helpers
-  async function getIdToken(){
-    try{
-      var t = localStorage.getItem('id_token')||'';
-      if (t) return t;
-      // If Google One Tap is available, it will fill later; for now return ''.
-      return '';
-    }catch(e){ return ''; }
-  }
-  window.getIdToken = getIdToken;
-
-  window.apiUrl = function(action, params){
-    var base = window.getBackendUrl();
-    if (!base){ throw new Error('BACKEND_URL_NOT_SET'); }
-    var url = base + (base.indexOf('?')>=0?'&':'?') + 'action=' + encodeURIComponent(action);
-    if (params){
-      Object.keys(params).forEach(function(k){
-        if (params[k]!==undefined && params[k]!==null){
-          url += '&' + encodeURIComponent(k) + '=' + encodeURIComponent(String(params[k]));
-        }
-      });
-    }
-    return url;
-  };
-  window.apiGet = async function(action, params){
-    var t = await getIdToken();
-    var qp = Object.assign({}, params||{});
-    if (t) qp.id_token = t;
-    var url = apiUrl(action, qp);
-    var r = await fetch(url, { credentials:'omit' });
-    return r.json();
-  };
-  window.apiPost = async function(action, body){
-    var t = await getIdToken();
-    var base = window.getBackendUrl();
-    if (!base) throw new Error('BACKEND_URL_NOT_SET');
-    var url = base + (base.indexOf('?')>=0?'&':'?') + 'action=' + encodeURIComponent(action);
-    var payload = Object.assign({}, body||{});
-    if (t && !payload.id_token) payload.id_token = t;
-    var r = await fetch(url, {
-      method:'POST',
-      headers:{ 'Content-Type':'application/json' },
-      body: JSON.stringify(payload)
-    });
-    return r.json();
-  };
-})();
-</script>
-
-
 <style>
 #appToast{position:fixed;right:16px;bottom:16px;z-index:9999;display:none;min-width:260px;max-width:360px}
 .appToast-card{background:#111827;color:#fff;border-radius:10px;box-shadow:0 10px 24px rgba(0,0,0,.2);padding:12px 14px;font-size:14px;display:flex;gap:10px;align-items:flex-start}
@@ -4702,9 +4621,7 @@ const saveNadiStateDebounced = debounce(saveNadiState, 400);
         }
       }
 
-      // Buang baris voucher dari jadual sebelum simpan aktiviti rasmi, supaya tidak dihitung sebagai "layak"
-      document.querySelectorAll('#nadiContainer tr').forEach(tr=>{
-        if (tr.querySelector('input[name="voucher"]')?.checked) { /* row kept: tr.remove(); */ }});
+            // Kekalkan baris voucher dalam jadual (jangan buang)
       saveNadiState();
     }
     // Teruskan handler asal (jika ada) – kita tidak preventDefault
@@ -7671,86 +7588,145 @@ function __toVoucherPayload(payload){
 
 <script>
 (function(){
-  // Debounced filter for "Lihat Sejarah Saringan" participants table
-  const qInput = document.getElementById('sejarahSearch');
-  function normalize(s){ return (s||'').toString().toLowerCase().trim(); }
+  // === Config & helpers ===
+  const API_BASE = (window.GAS_BASE_URL || '').trim(); // pastikan sudah set semasa login
+  const ID_TOKEN = (window.ID_TOKEN || '').trim();
+  const headers = () => ({}); // do GET with token in query to avoid CORS preflight
 
-  function filterAndSort(){
-    const q = normalize(qInput && qInput.value);
-    const table = document.querySelector('.sejarah-detail-table');
-    if (!table){ return; }
-    const tbody = table.querySelector('tbody');
-    if (!tbody){ return; }
-    const rows = Array.from(tbody.querySelectorAll('tr'));
-    if (!rows.length){ return; }
+  const qs = (sel, el=document) => el.querySelector(sel);
+  const qsa = (sel, el=document) => Array.from(el.querySelectorAll(sel));
+  const el = (tag, attrs={}) => Object.assign(document.createElement(tag), attrs);
+  const debounce = (fn, ms=120)=>{ let t; return (...a)=>{ clearTimeout(t); t=setTimeout(()=>fn(...a), ms); }; };
 
-    // Compute scores and show/hide
-    const scored = [];
-    rows.forEach(tr=>{
-      const txt = normalize(tr.textContent);
-      const idx = q ? txt.indexOf(q) : -1;
-      const match = q ? (idx >= 0) : true;
-      tr.style.display = match ? '' : 'none';
-      if (match){
-        const score = idx < 0 ? 1e9 : idx;
-        scored.append ? scored.append([score, tr]) : scored.push([score, tr]);
-      }
-    });
-
-    // Sort visible rows by score (closest match first), stable fallback by original order
-    scored.sort((a,b)=> a[0]-b[0]);
-    const frag = document.createDocumentFragment();
-    scored.forEach(([_, tr])=> frag.appendChild(tr));
-    tbody.appendChild(frag);
-  }
-
-  const deb = (fn, ms)=> {
-    let t; return function(){ clearTimeout(t); t = setTimeout(fn, ms); };
+  // === Inject UI ===
+  const ensureUI = ()=>{
+    if (qs('#qs-toggle')) return;
+    const style = el('style', {textContent: "\n/* === QUICK SEARCH (SEJARAH PESERTA) === */\n#qs-toggle{position:fixed;right:16px;bottom:16px;z-index:9999;padding:.6rem .9rem;border-radius:9999px;box-shadow:0 4px 16px rgba(0,0,0,.25);border:0;cursor:pointer}\n#qs-panel{position:fixed;inset:auto 16px 80px auto;right:16px;bottom:80px;width:min(680px,95vw);max-height:70vh;background:#fff;border:1px solid #e5e7eb;border-radius:14px;box-shadow:0 10px 30px rgba(0,0,0,.25);z-index:9998;display:none;overflow:hidden}\n#qs-panel header{display:flex;align-items:center;gap:.75rem;padding:.75rem .9rem;border-bottom:1px solid #e5e7eb;background:#fafafa}\n#qs-panel header input{flex:1 1 auto;padding:.6rem .8rem;border:1px solid #d1d5db;border-radius:10px;font-size:14px}\n#qs-panel header .meta{font-size:12px;color:#6b7280;white-space:nowrap}\n#qs-panel .qs-body{padding:.5rem .5rem 1rem .5rem;overflow:auto;max-height:calc(70vh - 52px)}\n#qs-list{width:100%;border-collapse:collapse}\n#qs-list thead th{position:sticky;top:0;background:#f9fafb;border-bottom:1px solid #e5e7eb;text-align:left;padding:.5rem;font-size:12px;color:#374151}\n#qs-list tbody tr{border-bottom:1px solid #f3f4f6}\n#qs-list td{padding:.45rem .5rem;font-size:13px;vertical-align:top}\n#qs-empty{padding:1rem;color:#6b7280;font-size:13px}\n@media (max-width:640px){#qs-panel{inset:auto 8px 80px auto;width:95vw} #qs-list .hide-sm{display:none}}\n" });
+    document.head.appendChild(style);
+    const wrap = el('div'); wrap.innerHTML = "\n<button id=\"qs-toggle\" title=\"Cari Sejarah Peserta\">Cari \ud83d\udd0e</button>\n<div id=\"qs-panel\" role=\"dialog\" aria-modal=\"true\" aria-label=\"Cari Sejarah Peserta\">\n  <header>\n    <input id=\"qs-input\" type=\"search\" placeholder=\"Cari (Nama / IC / Telefon / Alamat / Status / Program) \u2014 tekan Enter untuk fokus semula\" autocomplete=\"off\" />\n    <div class=\"meta\"><span id=\"qs-count\">0</span> rekod</div>\n    <button id=\"qs-close\" aria-label=\"Tutup\">\u2715</button>\n  </header>\n  <div class=\"qs-body\">\n    <table id=\"qs-list\">\n      <thead>\n        <tr>\n          <th>No</th>\n          <th>Nama</th>\n          <th class=\"hide-sm\">IC</th>\n          <th>Telefon</th>\n          <th class=\"hide-sm\">Alamat</th>\n          <th>Status</th>\n          <th class=\"hide-sm\">Program (Tarikh)</th>\n        </tr>\n      </thead>\n      <tbody id=\"qs-tbody\"></tbody>\n    </table>\n    <div id=\"qs-empty\" style=\"display:none\">Tiada padanan. Cuba kata kunci lain.</div>\n  </div>\n</div>\n" ;
+    document.body.appendChild(wrap);
   };
-  const run = deb(filterAndSort, 120);
 
-  if (qInput){
-    qInput.removeEventListener && qInput.removeEventListener('input', run);
-    qInput.addEventListener('input', run);
+  // === Data store ===
+  let index = [];  // {no, nama, ic, tel, alamat, status, programTitle, programDate, activityId, rowNo}
+  let loaded = false;
+
+  async function fetchJSON(url){
+    const res = await fetch(url, { method:'GET' });
+    if (!res.ok) throw new Error('HTTP '+res.status);
+    return await res.json();
   }
 
-  // Hook after detail render: monkey-patch renderDetail if present
-  try{
-    const oldRender = window.renderDetail;
-    if (typeof oldRender === 'function'){
-      window.renderDetail = function(){
-        const res = oldRender.apply(this, arguments);
-        filterAndSort();
-        return res;
-      };
-    } else {
-      // Fallback: try to run after small delay (for first load)
-      setTimeout(filterAndSort, 400);
+  async function loadAll(){
+    if (loaded) return;
+    loaded = true;
+    try{
+      const listUrl = API_BASE + '?action=getNadiActivities&id_token=' + encodeURIComponent(ID_TOKEN);
+      const list = await fetchJSON(listUrl);
+      const acts = (list && list.data) ? list.data : [];
+      const byId = acts.map(a => ({
+        id: a.activityId || a.activity_id || a.id,
+        title: a.title || a.ProgramTitle || 'Program',
+        date: a.programDate || a.ProgramDate || ''
+      })).filter(x => x.id);
+
+      const batchSize = 6;
+      const acc = [];
+      for (let i=0; i<byId.length; i+=batchSize){
+        const slice = byId.slice(i, i+batchSize);
+        const details = await Promise.all(slice.map(async it=>{
+          const url = API_BASE + '?action=getNadiActivityDetail&id=' + encodeURIComponent(it.id) + '&id_token=' + encodeURIComponent(ID_TOKEN);
+          const r = await fetchJSON(url);
+          return { meta: it, rows: (r && (r.rows||r.data||r.items)) ? (r.rows||r.data||r.items) : [] };
+        }));
+        details.forEach(d=>{
+          (d.rows||[]).forEach((r)=>{
+            acc.push({
+              programTitle: d.meta.title,
+              programDate: d.meta.date,
+              activityId: d.meta.id,
+              rowNo: String(r.no || r.No || ''),
+              nama: String(r.nama || r.Nama || ''),
+              ic: String(r.noIC || r.NoIC || r.ic || ''),
+              tel: String(r.noTelefon || r.NoTelefon || r.phone || r.tel || ''),
+              alamat: String(r.alamat || r.Alamat || ''),
+              status: String(r.status || r.Status || ''),
+            });
+          });
+        });
+      }
+      index = acc;
+      render(index);
+    }catch(err){
+      console.error('QuickSearch loadAll failed:', err);
+      qs('#qs-count').textContent = '0';
+      qs('#qs-empty').style.display = 'block';
     }
-  }catch(e){ setTimeout(filterAndSort, 400); }
-})();
-</script>
-
-
-<style>
-  #backend-setup-banner{display:none;position:fixed;bottom:10px;left:10px;right:10px;background:#fff3cd;border:1px solid #ffeeba;padding:10px;border-radius:8px;z-index:9999;font-size:.95rem}
-  #backend-setup-banner b{color:#8a6d3b}
-</style>
-<div id="backend-setup-banner">
-  <b>Konfigurasi diperlukan:</b> Sila tetapkan URL Web App Google Apps Script anda.
-  <button id="btn-set-backend" style="margin-left:10px">Set sekarang</button>
-</div>
-<script>
-(function(){
-  var ok = ensureBackendUrl();
-  if (!ok){
-    var el = document.getElementById('backend-setup-banner');
-    if (el) el.style.display = 'block';
-    document.getElementById('btn-set-backend').addEventListener('click', function(){
-      sessionStorage.removeItem('askedBackendUrl');
-      ensureBackendUrl();
-    });
   }
+
+  function match(q, row){
+    const s = q.toLowerCase();
+    return (row.nama||'').toLowerCase().includes(s)
+        || (row.ic||'').toLowerCase().includes(s)
+        || (row.tel||'').toLowerCase().includes(s)
+        || (row.alamat||'').toLowerCase().includes(s)
+        || (row.status||'').toLowerCase().includes(s)
+        || (row.programTitle||'').toLowerCase().includes(s);
+  }
+
+  function render(rows){
+    const tb = qs('#qs-tbody');
+    tb.innerHTML = '';
+    const empty = qs('#qs-empty');
+    if (!rows.length){ empty.style.display='block'; qs('#qs-count').textContent='0'; return; }
+    empty.style.display='none';
+    // sort by programDate desc, then nama asc
+    rows.sort((a,b)=> (b.programDate||'').localeCompare(a.programDate||'') || (a.nama||'').localeCompare(b.nama||''));
+    const frag = document.createDocumentFragment();
+    rows.slice(0,500).forEach((r,i)=>{
+      const tr = el('tr');
+      tr.appendChild(el('td',{textContent:String(i+1)}));
+      tr.appendChild(el('td',{textContent:r.nama||''}));
+      tr.appendChild(el('td',{textContent:r.ic||'', className:'hide-sm'}));
+      tr.appendChild(el('td',{textContent:r.tel||''}));
+      tr.appendChild(el('td',{textContent:r.alamat||'', className:'hide-sm'}));
+      tr.appendChild(el('td',{textContent:r.status||''}));
+      tr.appendChild(el('td',{textContent:(r.programTitle||'')+' ('+(r.programDate||'')+')', className:'hide-sm'}));
+      frag.appendChild(tr);
+    });
+    tb.appendChild(frag);
+    qs('#qs-count').textContent = String(rows.length);
+  }
+
+  const onSearch = debounce(function(ev){
+    const q = String(qs('#qs-input').value||'').trim();
+    if (!q){ render(index); return; }
+    const filtered = index.filter(r=>match(q,r));
+    render(filtered);
+  }, 120);
+
+  function openPanel(){
+    qs('#qs-panel').style.display='block';
+    qs('#qs-input').focus();
+    loadAll();
+  }
+  function closePanel(){
+    qs('#qs-panel').style.display='none';
+  }
+
+  // Boot
+  document.addEventListener('DOMContentLoaded', ()=>{
+    ensureUI();
+    const t = qs('#qs-toggle'), c = qs('#qs-close'), i = qs('#qs-input');
+    t.addEventListener('click', openPanel);
+    c.addEventListener('click', closePanel);
+    i.addEventListener('input', onSearch);
+    window.addEventListener('keydown', (e)=>{
+      if (e.key==='/' && !e.ctrlKey && !e.metaKey && !e.altKey){
+        e.preventDefault(); openPanel();
+      } else if (e.key==='Escape'){ closePanel(); }
+    });
+  });
 })();
 </script>
 
