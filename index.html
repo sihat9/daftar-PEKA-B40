@@ -4621,7 +4621,10 @@ const saveNadiStateDebounced = debounce(saveNadiState, 400);
         }
       }
 
-            // Kekalkan baris voucher dalam jadual (jangan buang)
+      // Buang baris voucher dari jadual sebelum simpan aktiviti rasmi, supaya tidak dihitung sebagai "layak"
+      document.querySelectorAll('#nadiContainer tr').forEach(tr=>{
+        if (tr.querySelector('input[name="voucher"]')?.checked) /* row kept: tr.remove(); */
+      });
       saveNadiState();
     }
     // Teruskan handler asal (jika ada) – kita tidak preventDefault
@@ -4634,7 +4637,34 @@ const saveNadiStateDebounced = debounce(saveNadiState, 400);
   });
 
   // ====== Sejarah Saringan ======
-  async function loadPrograms(){
+  
+// --- Auth readiness helper (prevents fetch with undefined URL/token) ---
+function ensureAuthReady() {
+  // Try several keys to maximize compatibility
+  let base = (window.SCRIPT_URL || window.GAS_BASE_URL || '').trim();
+  if (!base) {
+    base = (localStorage.getItem('SCRIPT_URL') || localStorage.getItem('gas_base_url') || '').trim();
+  }
+  // Guard against literal 'undefined' or relative value
+  if (base && (base === 'undefined' || !/^https?:\/\//i.test(base))) {
+    base = '';
+  }
+  let token = (window.ID_TOKEN || '').trim();
+  if (!token) token = (localStorage.getItem('id_token') || '').trim();
+  const ok = !!(base && token);
+  if (ok) {
+    window.SCRIPT_URL = base; // normalize global
+    window.ID_TOKEN = token;
+  }
+  return { ok, base, token };
+}
+async function loadPrograms(){
+  const auth = ensureAuthReady();
+  if (!auth.ok) {
+    console.info('[loadPrograms] Auth not ready; skipping for now.');
+    return;
+  }
+
     const list = document.getElementById('programList');
     if (!list) return;
     list.innerHTML = '<div class="text-muted text-center p-3">Memuat program…</div>';
@@ -4660,6 +4690,12 @@ const saveNadiStateDebounced = debounce(saveNadiState, 400);
   }
 
   async function loadProgramDetail(activityId){
+  const auth = ensureAuthReady();
+  if (!auth.ok) {
+    console.info('[loadProgramDetail] Auth not ready; skipping for now.');
+    return;
+  }
+
     const tbody = document.getElementById('sejarahTable');
     const titleLabel = document.getElementById('programTitleLabel');
     const dateLabel = document.getElementById('programDateLabel');
@@ -7187,548 +7223,21 @@ function __toVoucherPayload(payload){
     })();
     </script>
     
-
-<!-- Sejarah Search + Autosort Patch (non-intrusive) -->
-<script id="sejarahSearchPatchV2">
-(function(){
-  'use strict';
-  if (window.__SEJARAH_SEARCH_PATCH_V2__) return;
-  window.__SEJARAH_SEARCH_PATCH_V2__ = true;
-
-  function $(sel, root){ return (root||document).querySelector(sel); }
-  function $all(sel, root){ return Array.from((root||document).querySelectorAll(sel)); }
-  function debounce(fn, ms){
-    let t; return function(){ clearTimeout(t); const args=arguments, ctx=this; t=setTimeout(()=>fn.apply(ctx,args), ms); };
-  }
-  function text(el){
-    return (el ? (el.innerText || el.textContent || '') : '').trim();
-  }
-  function lower(s){ return String(s||'').toLowerCase(); }
-  function digits(s){ return String(s||'').replace(/\D+/g,''); }
-
-  const tbodySel = '#sejarahTable';
-  const inputSel = '#sejarahSearch';
-
-  const state = {
-    rows: [],             // [{tr, cells, name, ic, phone, addr, status, staff, tca, remark, icDigits, phoneDigits, index}]
-    origOrder: [],        // original <tr> order for restore
-    origHtml: null,
-    lastQuery: '',
-    building: false
-  };
-
-  function collectRows(){
-    const tb = $(tbodySel);
-    if (!tb) return;
-    const trs = $all(':scope > tr', tb);
-    const rows = [];
-    let idx = 0;
-    for (const tr of trs){
-      const tds = $all('td', tr);
-      if (tds.length < 5) continue; // skip placeholder rows
-      // Expected columns: 0:#, 1:Nama, 2:IC, 3:Telefon, 4:Alamat, 5:Status, 6:BP, 7:PR, 8:DXT, 9:BMI, 10:TCA, 11:Staff, 12:Remark
-      const name   = lower(text(tds[1]));
-      const ic     = lower(text(tds[2]));
-      const phone  = lower(text(tds[3]));
-      const addr   = lower(text(tds[4] || ''));
-      const status = lower(text(tds[5] || ''));
-      const tca    = lower(text(tds[10] || ''));
-      const staff  = lower(text(tds[11] || ''));
-      const remark = lower(text(tds[12] || ''));
-      rows.push({
-        tr, cells: tds, name, ic, phone, addr, status, tca, staff, remark,
-        icDigits: digits(ic), phoneDigits: digits(phone),
-        index: idx++
-      });
-    }
-    state.rows = rows;
-    state.origOrder = rows.map(r => r.tr);
-  }
-
-  function setNoMatchRow(show){
-    const tb = $(tbodySel);
-    if (!tb) return;
-    let row = $('#sejarahNoMatchRow');
-    if (show){
-      if (!row){
-        const colSpan = ($all('thead th', tb.closest('table')) || []).length || 13;
-        row = document.createElement('tr');
-        row.id = 'sejarahNoMatchRow';
-        const td = document.createElement('td');
-        td.colSpan = colSpan;
-        td.className = 'text-center text-muted py-3';
-        td.textContent = 'Tiada padanan carian.';
-        row.appendChild(td);
-      }
-      // remove all normal rows from view; then show the message row
-      $all(':scope > tr', tb).forEach(tr => tr.remove());
-      tb.appendChild(row);
-    } else {
-      if (row) row.remove();
-    }
-  }
-
-  function renumber(){
-    // Set sequential numbers for visible rows
-    let no = 1;
-    for (const r of state.rows){
-      if (r.tr.parentElement){
-        if (r.cells[0]) r.cells[0].textContent = String(no++);
-      }
-    }
-  }
-
-  function scoreRow(r, tokens){
-    if (!tokens.length) return 0;
-    let score = 0;
-    for (const tok of tokens){
-      if (!tok) continue;
-      const t = lower(tok);
-      const td = digits(tok);
-      let hit = false;
-
-      // Strong matches (IC / phone digit contains)
-      if (td && td.length >= 3){
-        if (r.icDigits.indexOf(td) >= 0) { score += 220; hit = true; }
-        else if (r.phoneDigits.indexOf(td) >= 0) { score += 150; hit = true; }
-      }
-
-      // Name
-      if (r.name.startsWith(t))        { score += 160; hit = true; }
-      else if (r.name.indexOf(t) >= 0) { score += 100; hit = true; }
-
-      // IC / Phone textual
-      if (!hit && r.ic.indexOf(t) >= 0){ score += 120; hit = true; }
-      if (!hit && r.phone.indexOf(t) >= 0){ score += 100; hit = true; }
-
-      // Address / status / staff / remark / tca
-      if (!hit && r.addr.indexOf(t) >= 0){ score += 40; hit = true; }
-      if (!hit && r.status.indexOf(t) >= 0){ score += 35; hit = true; }
-      if (!hit && r.staff.indexOf(t) >= 0){ score += 32; hit = true; }
-      if (!hit && r.remark.indexOf(t) >= 0){ score += 25; hit = true; }
-      if (!hit && r.tca.indexOf(t) >= 0){ score += 20; hit = true; }
-
-      if (!hit) return -1e9; // token not found anywhere -> filter out
-    }
-    return score;
-  }
-
-  function applyFilterSort(q){
-    const tb = $(tbodySel);
-    if (!tb) return;
-
-    const query = (q||'').trim();
-    state.lastQuery = query;
-
-    // Clear "no match" row if any
-    setNoMatchRow(false);
-
-    if (!query){
-      // restore original order and show all
-      $all(':scope > tr', tb).forEach(tr => tr.remove());
-      for (const tr of state.origOrder) tb.appendChild(tr);
-      renumber();
-      return;
-    }
-
-    const tokens = query.split(/\s+/).map(s => s.trim()).filter(Boolean);
-    const items = [];
-    for (const r of state.rows){
-      const s = scoreRow(r, tokens);
-      if (s > -1e8) items.push({ s, r });
-    }
-
-    if (!items.length){
-      setNoMatchRow(true);
-      return;
-    }
-
-    // Sort by score desc, then name asc, then original index asc
-    items.sort((a,b) => {
-      if (b.s !== a.s) return b.s - a.s;
-      if (a.r.name !== b.r.name) return a.r.name.localeCompare(b.r.name, 'ms');
-      return a.r.index - b.r.index;
-    });
-
-    // Rebuild tbody with matched rows only
-    $all(':scope > tr', tb).forEach(tr => tr.remove());
-    for (const it of items) tb.appendChild(it.r.tr);
-    renumber();
-  }
-
-  const debouncedApply = debounce(applyFilterSort, 80);
-
-  function init(){
-    const tb = $(tbodySel);
-    const inp = $(inputSel);
-    if (!tb || !inp) return;
-
-    // Build initial cache
-    collectRows();
-
-    // Listen to input
-    inp.addEventListener('input', (e)=> {
-      debouncedApply(e.target.value || '');
-    });
-
-    // Observe changes to tbody to rebuild cache (e.g., when user selects different program)
-    const mo = new MutationObserver(debounce(function(muts){
-      // Avoid reacting to our own reorders frequently; rebuild cache cautiously
-      collectRows();
-      if (state.lastQuery) applyFilterSort(state.lastQuery);
-    }, 120));
-    mo.observe(tb, { childList: true, subtree: false });
-
-    // Also if page becomes visible later, ensure cache
-    document.addEventListener('visibilitychange', function(){
-      if (document.visibilityState === 'visible'){
-        collectRows();
-        if (state.lastQuery) applyFilterSort(state.lastQuery);
-      }
-    });
-  }
-
-  if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', init);
-  } else {
-    init();
-  }
-})();
-</script>
-
-
-<!-- Sejarah search & autosort (stable, ASCII-only) -->
-<script>
-(function(){
-  "use strict";
-
-  // Helper: safe query + debounce
-  function $(sel, root){ return (root||document).querySelector(sel); }
-  function $all(sel, root){ return Array.prototype.slice.call((root||document).querySelectorAll(sel)); }
-  function debounce(fn, wait){
-    var t; return function(){
-      var ctx=this, args=arguments;
-      clearTimeout(t); t=setTimeout(function(){ fn.apply(ctx,args); }, wait||150);
-    };
-  }
-  // Normalize string for loose search (strip accents, casefold, trim)
-  function norm(s){
-    return (s||"").toString()
-      .normalize ? s.normalize("NFD").replace(/[\u0300-\u036f]/g,"").toLowerCase().trim()
-                 : (s||"").toString().toLowerCase().trim();
-  }
-
-  // Guard: run after Sejarah table exists
-  function init(){
-    // Known containers (try a few common ids/classes used in previous versions)
-    var root = document.getElementById("sejarah-section")
-            || document.getElementById("sejarahSaringan")
-            || document.querySelector('[data-section="sejarah"]')
-            || document.body;
-    var table = root.querySelector("table#tblSejarah, table.sejarah-table, table[data-role='sejarah']") || root.querySelector("table");
-    if (!table) return false;
-
-    // If an existing input is present, reuse; else create one (user allowed change of input look)
-    var searchWrap = root.querySelector("#sejarahSearchWrap");
-    var input = root.querySelector("#sejarahSearch")
-             || root.querySelector("input.sejarah-search")
-             || (searchWrap ? searchWrap.querySelector("input") : null);
-
-    if (!input){
-      // Create a non-intrusive bar above the table without breaking layout
-      searchWrap = document.createElement("div");
-      searchWrap.id = "sejarahSearchWrap";
-      searchWrap.style.margin = "8px 0";
-      searchWrap.style.display = "flex";
-      searchWrap.style.gap = "8px";
-      var label = document.createElement("label");
-      label.setAttribute("for","sejarahSearch");
-      label.textContent = "Cari (nama / IC / telefon / alamat / status):";
-      label.style.fontSize = "0.95rem";
-      input = document.createElement("input");
-      input.type = "search";
-      input.id = "sejarahSearch";
-      input.placeholder = "Taip untuk tapis & susun…";
-      input.autocomplete = "off";
-      input.style.flex = "1";
-      input.style.padding = "6px 10px";
-      input.style.border = "1px solid #ddd";
-      input.style.borderRadius = "6px";
-      searchWrap.appendChild(label);
-      searchWrap.appendChild(input);
-      // Insert right before table
-      table.parentNode.insertBefore(searchWrap, table);
-    }
-
-    // Cache original order and a text index for each row
-    var tbody = table.tBodies && table.tBodies[0] ? table.tBodies[0] : table.querySelector("tbody") || table;
-    var rows = $all("tr", tbody).filter(function(tr){
-      // Skip header rows accidentally placed in tbody
-      return !tr.querySelector("th");
-    });
-    // If table has THEAD, prefer that for columns
-    var thead = table.tHead || table.querySelector("thead");
-
-    // Determine which columns to join for search (by header names if available)
-    var searchCols = null;
-    if (thead){
-      var heads = $all("th", thead).map(function(th){ return norm(th.textContent); });
-      // pick columns: nama, ic, telefon, alamat, status if present
-      searchCols = {
-        nama: heads.findIndex(function(t){ return /nama/.test(t); }),
-        ic: heads.findIndex(function(t){ return /(ic|k\/?p)/.test(t); }),
-        tel: heads.findIndex(function(t){ return /(telefon|phone|tel|msisdn)/.test(t); }),
-        alamat: heads.findIndex(function(t){ return /alamat|address|addr/.test(t); }),
-        status: heads.findIndex(function(t){ return /status/.test(t); })
-      };
-    }
-
-    // Build index
-    var meta = rows.map(function(tr, i){
-      var cells = $all("td", tr);
-      function pick(idx){
-        if (idx == null || idx < 0 || idx >= cells.length) return "";
-        return norm(cells[idx].textContent || "");
-      }
-      var joined;
-      if (searchCols){
-        joined = [
-          pick(searchCols.nama),
-          pick(searchCols.ic),
-          pick(searchCols.tel),
-          pick(searchCols.alamat),
-          pick(searchCols.status),
-          norm(tr.textContent || "")
-        ].join(" | ");
-      } else {
-        joined = norm(tr.textContent || "");
-      }
-      return {
-        tr: tr,
-        originalIndex: i,
-        indexText: joined
-      };
-    });
-
-    function scoreRow(text, q){
-      if (!q) return 0;
-      var s = 0;
-      // exact ic or phone match: +100
-      if (/\b\d{6,}\b/.test(q)){
-        if (new RegExp("\\b"+q.replace(/[.*+?^${}()|[\]\\]/g,"\\$&")+"\\b").test(text)) s += 100;
-      }
-      // starts with on name: +40
-      var m = /^([^\|]+)/.exec(text); // the first part usually Nama
-      if (m && m[1].indexOf(q) === 0) s += 40;
-      // substring anywhere
-      if (text.indexOf(q) >= 0) s += 10;
-      return s;
-    }
-
-    function apply(q){
-      var query = norm(q);
-      if (!query){
-        // restore original order and show all
-        meta.forEach(function(m){ m.tr.style.display = ""; });
-        meta.sort(function(a,b){ return a.originalIndex - b.originalIndex; });
-      } else {
-        // filter + score
-        meta.forEach(function(m){
-          var sc = scoreRow(m.indexText, query);
-          m._score = sc;
-          m.tr.style.display = sc > 0 ? "" : "none";
-        });
-        // sort by score desc, then by original index
-        meta.sort(function(a,b){
-          var d = (b._score||0) - (a._score||0);
-          return d !== 0 ? d : (a.originalIndex - b.originalIndex);
-        });
-      }
-      // reorder DOM according to meta order while keeping only visible
-      var frag = document.createDocumentFragment();
-      meta.forEach(function(m){
-        if (m.tr.style.display !== "none") frag.appendChild(m.tr);
-      });
-      tbody.appendChild(frag);
-
-      // re-number "No." column if exists (first column containing only digits)
-      $all("tr", tbody).forEach(function(tr, idx){
-        var td = tr.querySelector("td");
-        if (!td) return;
-        var txt = (td.textContent || "").trim();
-        if (/^\d+$/.test(txt)) td.textContent = String(idx+1);
-      });
-    }
-
-    input.addEventListener("input", debounce(function(e){ apply(this.value); }, 120));
-    // expose minimal API for debug
-    window.__SEJARAH_SEARCH__ = { apply: apply };
-    return true;
-  }
-
-  // Wait until DOM ready and after data render (in case table is filled async)
-  function ready(fn){
-    if (document.readyState === "complete" || document.readyState === "interactive") { setTimeout(fn,0); }
-    else { document.addEventListener("DOMContentLoaded", fn); }
-  }
-  ready(function(){
-    var ok = init();
-    if (!ok){
-      // Try a few times for SPA-style rendering
-      var tries = 40, timer = setInterval(function(){
-        if (init()){ clearInterval(timer); }
-        if (--tries <= 0) clearInterval(timer);
-      }, 250);
-    }
-  });
-})();
-</script>
-<!-- END sejarah-search -->
-
-
-<script>
-(function(){
-  // === Config & helpers ===
-  const API_BASE = (window.GAS_BASE_URL || '').trim(); // pastikan sudah set semasa login
-  const ID_TOKEN = (window.ID_TOKEN || '').trim();
-  const headers = () => ({}); // do GET with token in query to avoid CORS preflight
-
-  const qs = (sel, el=document) => el.querySelector(sel);
-  const qsa = (sel, el=document) => Array.from(el.querySelectorAll(sel));
-  const el = (tag, attrs={}) => Object.assign(document.createElement(tag), attrs);
-  const debounce = (fn, ms=120)=>{ let t; return (...a)=>{ clearTimeout(t); t=setTimeout(()=>fn(...a), ms); }; };
-
-  // === Inject UI ===
-  const ensureUI = ()=>{
-    if (qs('#qs-toggle')) return;
-    const style = el('style', {textContent: "\n/* === QUICK SEARCH (SEJARAH PESERTA) === */\n#qs-toggle{position:fixed;right:16px;bottom:16px;z-index:9999;padding:.6rem .9rem;border-radius:9999px;box-shadow:0 4px 16px rgba(0,0,0,.25);border:0;cursor:pointer}\n#qs-panel{position:fixed;inset:auto 16px 80px auto;right:16px;bottom:80px;width:min(680px,95vw);max-height:70vh;background:#fff;border:1px solid #e5e7eb;border-radius:14px;box-shadow:0 10px 30px rgba(0,0,0,.25);z-index:9998;display:none;overflow:hidden}\n#qs-panel header{display:flex;align-items:center;gap:.75rem;padding:.75rem .9rem;border-bottom:1px solid #e5e7eb;background:#fafafa}\n#qs-panel header input{flex:1 1 auto;padding:.6rem .8rem;border:1px solid #d1d5db;border-radius:10px;font-size:14px}\n#qs-panel header .meta{font-size:12px;color:#6b7280;white-space:nowrap}\n#qs-panel .qs-body{padding:.5rem .5rem 1rem .5rem;overflow:auto;max-height:calc(70vh - 52px)}\n#qs-list{width:100%;border-collapse:collapse}\n#qs-list thead th{position:sticky;top:0;background:#f9fafb;border-bottom:1px solid #e5e7eb;text-align:left;padding:.5rem;font-size:12px;color:#374151}\n#qs-list tbody tr{border-bottom:1px solid #f3f4f6}\n#qs-list td{padding:.45rem .5rem;font-size:13px;vertical-align:top}\n#qs-empty{padding:1rem;color:#6b7280;font-size:13px}\n@media (max-width:640px){#qs-panel{inset:auto 8px 80px auto;width:95vw} #qs-list .hide-sm{display:none}}\n" });
-    document.head.appendChild(style);
-    const wrap = el('div'); wrap.innerHTML = "\n<button id=\"qs-toggle\" title=\"Cari Sejarah Peserta\">Cari \ud83d\udd0e</button>\n<div id=\"qs-panel\" role=\"dialog\" aria-modal=\"true\" aria-label=\"Cari Sejarah Peserta\">\n  <header>\n    <input id=\"qs-input\" type=\"search\" placeholder=\"Cari (Nama / IC / Telefon / Alamat / Status / Program) \u2014 tekan Enter untuk fokus semula\" autocomplete=\"off\" />\n    <div class=\"meta\"><span id=\"qs-count\">0</span> rekod</div>\n    <button id=\"qs-close\" aria-label=\"Tutup\">\u2715</button>\n  </header>\n  <div class=\"qs-body\">\n    <table id=\"qs-list\">\n      <thead>\n        <tr>\n          <th>No</th>\n          <th>Nama</th>\n          <th class=\"hide-sm\">IC</th>\n          <th>Telefon</th>\n          <th class=\"hide-sm\">Alamat</th>\n          <th>Status</th>\n          <th class=\"hide-sm\">Program (Tarikh)</th>\n        </tr>\n      </thead>\n      <tbody id=\"qs-tbody\"></tbody>\n    </table>\n    <div id=\"qs-empty\" style=\"display:none\">Tiada padanan. Cuba kata kunci lain.</div>\n  </div>\n</div>\n" ;
-    document.body.appendChild(wrap);
-  };
-
-  // === Data store ===
-  let index = [];  // {no, nama, ic, tel, alamat, status, programTitle, programDate, activityId, rowNo}
-  let loaded = false;
-
-  async function fetchJSON(url){
-    const res = await fetch(url, { method:'GET' });
-    if (!res.ok) throw new Error('HTTP '+res.status);
-    return await res.json();
-  }
-
-  async function loadAll(){
-    if (loaded) return;
-    loaded = true;
-    try{
-      const listUrl = API_BASE + '?action=getNadiActivities&id_token=' + encodeURIComponent(ID_TOKEN);
-      const list = await fetchJSON(listUrl);
-      const acts = (list && list.data) ? list.data : [];
-      const byId = acts.map(a => ({
-        id: a.activityId || a.activity_id || a.id,
-        title: a.title || a.ProgramTitle || 'Program',
-        date: a.programDate || a.ProgramDate || ''
-      })).filter(x => x.id);
-
-      const batchSize = 6;
-      const acc = [];
-      for (let i=0; i<byId.length; i+=batchSize){
-        const slice = byId.slice(i, i+batchSize);
-        const details = await Promise.all(slice.map(async it=>{
-          const url = API_BASE + '?action=getNadiActivityDetail&id=' + encodeURIComponent(it.id) + '&id_token=' + encodeURIComponent(ID_TOKEN);
-          const r = await fetchJSON(url);
-          return { meta: it, rows: (r && (r.rows||r.data||r.items)) ? (r.rows||r.data||r.items) : [] };
-        }));
-        details.forEach(d=>{
-          (d.rows||[]).forEach((r)=>{
-            acc.push({
-              programTitle: d.meta.title,
-              programDate: d.meta.date,
-              activityId: d.meta.id,
-              rowNo: String(r.no || r.No || ''),
-              nama: String(r.nama || r.Nama || ''),
-              ic: String(r.noIC || r.NoIC || r.ic || ''),
-              tel: String(r.noTelefon || r.NoTelefon || r.phone || r.tel || ''),
-              alamat: String(r.alamat || r.Alamat || ''),
-              status: String(r.status || r.Status || ''),
-            });
-          });
-        });
-      }
-      index = acc;
-      render(index);
-    }catch(err){
-      console.error('QuickSearch loadAll failed:', err);
-      qs('#qs-count').textContent = '0';
-      qs('#qs-empty').style.display = 'block';
-    }
-  }
-
-  function match(q, row){
-    const s = q.toLowerCase();
-    return (row.nama||'').toLowerCase().includes(s)
-        || (row.ic||'').toLowerCase().includes(s)
-        || (row.tel||'').toLowerCase().includes(s)
-        || (row.alamat||'').toLowerCase().includes(s)
-        || (row.status||'').toLowerCase().includes(s)
-        || (row.programTitle||'').toLowerCase().includes(s);
-  }
-
-  function render(rows){
-    const tb = qs('#qs-tbody');
-    tb.innerHTML = '';
-    const empty = qs('#qs-empty');
-    if (!rows.length){ empty.style.display='block'; qs('#qs-count').textContent='0'; return; }
-    empty.style.display='none';
-    // sort by programDate desc, then nama asc
-    rows.sort((a,b)=> (b.programDate||'').localeCompare(a.programDate||'') || (a.nama||'').localeCompare(b.nama||''));
-    const frag = document.createDocumentFragment();
-    rows.slice(0,500).forEach((r,i)=>{
-      const tr = el('tr');
-      tr.appendChild(el('td',{textContent:String(i+1)}));
-      tr.appendChild(el('td',{textContent:r.nama||''}));
-      tr.appendChild(el('td',{textContent:r.ic||'', className:'hide-sm'}));
-      tr.appendChild(el('td',{textContent:r.tel||''}));
-      tr.appendChild(el('td',{textContent:r.alamat||'', className:'hide-sm'}));
-      tr.appendChild(el('td',{textContent:r.status||''}));
-      tr.appendChild(el('td',{textContent:(r.programTitle||'')+' ('+(r.programDate||'')+')', className:'hide-sm'}));
-      frag.appendChild(tr);
-    });
-    tb.appendChild(frag);
-    qs('#qs-count').textContent = String(rows.length);
-  }
-
-  const onSearch = debounce(function(ev){
-    const q = String(qs('#qs-input').value||'').trim();
-    if (!q){ render(index); return; }
-    const filtered = index.filter(r=>match(q,r));
-    render(filtered);
-  }, 120);
-
-  function openPanel(){
-    qs('#qs-panel').style.display='block';
-    qs('#qs-input').focus();
-    loadAll();
-  }
-  function closePanel(){
-    qs('#qs-panel').style.display='none';
-  }
-
-  // Boot
-  document.addEventListener('DOMContentLoaded', ()=>{
-    ensureUI();
-    const t = qs('#qs-toggle'), c = qs('#qs-close'), i = qs('#qs-input');
-    t.addEventListener('click', openPanel);
-    c.addEventListener('click', closePanel);
-    i.addEventListener('input', onSearch);
-    window.addEventListener('keydown', (e)=>{
-      if (e.key==='/' && !e.ctrlKey && !e.metaKey && !e.altKey){
-        e.preventDefault(); openPanel();
-      } else if (e.key==='Escape'){ closePanel(); }
-    });
-  });
-})();
-</script>
-
 </body>
 </html>
+
+
+// Retry loading Sejarah Saringan after sign-in
+window.addEventListener('app:signed-in', function(){
+  try{
+    const auth = ensureAuthReady();
+    if (auth.ok) { loadPrograms(); }
+  }catch(e){ console.warn('retry loadPrograms after sign-in failed', e); }
+});
+// Also try once DOM is ready (e.g., token restored from localStorage)
+document.addEventListener('DOMContentLoaded', function(){
+  try{
+    const auth = ensureAuthReady();
+    if (auth.ok) { loadPrograms(); }
+  }catch(e){}
+});
