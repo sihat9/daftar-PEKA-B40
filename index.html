@@ -4623,7 +4623,7 @@ const saveNadiStateDebounced = debounce(saveNadiState, 400);
 
       // Buang baris voucher dari jadual sebelum simpan aktiviti rasmi, supaya tidak dihitung sebagai "layak"
       document.querySelectorAll('#nadiContainer tr').forEach(tr=>{
-        if (tr.querySelector(\'input[name="voucher"]\')?.checked) { /* row kept: tr.remove(); */ }});
+        if (tr.querySelector('input[name="voucher"]')?.checked) { /* row kept: tr.remove(); */ }});
       saveNadiState();
     }
     // Teruskan handler asal (jika ada) – kita tidak preventDefault
@@ -7586,6 +7586,69 @@ function __toVoucherPayload(payload){
 })();
 </script>
 <!-- END sejarah-search -->
+
+
+<script>
+(function(){
+  // Debounced filter for "Lihat Sejarah Saringan" participants table
+  const qInput = document.getElementById('sejarahSearch');
+  function normalize(s){ return (s||'').toString().toLowerCase().trim(); }
+
+  function filterAndSort(){
+    const q = normalize(qInput && qInput.value);
+    const table = document.querySelector('.sejarah-detail-table');
+    if (!table){ return; }
+    const tbody = table.querySelector('tbody');
+    if (!tbody){ return; }
+    const rows = Array.from(tbody.querySelectorAll('tr'));
+    if (!rows.length){ return; }
+
+    // Compute scores and show/hide
+    const scored = [];
+    rows.forEach(tr=>{
+      const txt = normalize(tr.textContent);
+      const idx = q ? txt.indexOf(q) : -1;
+      const match = q ? (idx >= 0) : true;
+      tr.style.display = match ? '' : 'none';
+      if (match){
+        const score = idx < 0 ? 1e9 : idx;
+        scored.append ? scored.append([score, tr]) : scored.push([score, tr]);
+      }
+    });
+
+    // Sort visible rows by score (closest match first), stable fallback by original order
+    scored.sort((a,b)=> a[0]-b[0]);
+    const frag = document.createDocumentFragment();
+    scored.forEach(([_, tr])=> frag.appendChild(tr));
+    tbody.appendChild(frag);
+  }
+
+  const deb = (fn, ms)=> {
+    let t; return function(){ clearTimeout(t); t = setTimeout(fn, ms); };
+  };
+  const run = deb(filterAndSort, 120);
+
+  if (qInput){
+    qInput.removeEventListener && qInput.removeEventListener('input', run);
+    qInput.addEventListener('input', run);
+  }
+
+  // Hook after detail render: monkey-patch renderDetail if present
+  try{
+    const oldRender = window.renderDetail;
+    if (typeof oldRender === 'function'){
+      window.renderDetail = function(){
+        const res = oldRender.apply(this, arguments);
+        filterAndSort();
+        return res;
+      };
+    } else {
+      // Fallback: try to run after small delay (for first load)
+      setTimeout(filterAndSort, 400);
+    }
+  }catch(e){ setTimeout(filterAndSort, 400); }
+})();
+</script>
 
 </body>
 </html>
