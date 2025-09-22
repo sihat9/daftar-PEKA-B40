@@ -1892,7 +1892,7 @@ async function handleCredentialResponse(resp){
     bootstrapApp(); // muat data awal
 
     // Tambah 3 baris ini
-    location.hash = '#dashboard';
+    location.hash = '#sejarah';
     const dashLink = document.querySelector('.nav-link[href="#dashboard"]');
     if (dashLink) dashLink.click();
 
@@ -2050,7 +2050,7 @@ function toast(title, message, variant = 'primary') {
 
   const cleanup = () => {
     window.removeEventListener('resize', onResize);
-    el.remove();
+    /* row kept: el.remove(); */
   };
 
   try {
@@ -2190,7 +2190,7 @@ async function sendWhatsAppReportImageFlow(msisdn) {
   const url = URL.createObjectURL(blob);
   const a = document.createElement('a');
   a.href = url; a.download = `laporan_nadi_${Date.now()}.png`;
-  document.body.appendChild(a); a.click(); a.remove(); URL.revokeObjectURL(url);
+  document.body.appendChild(a); a.click(); /* row kept: a.remove(); */ URL.revokeObjectURL(url);
   toast('Makluman', 'Imej dimuat turun. Lampirkan imej itu dalam chat WhatsApp dan hantar.', 'warning');
 }
 
@@ -2641,7 +2641,7 @@ async function daftarFromExcel(rowId, encNama, encIC, msisdn, encAlamat){
     }, { msg:'Mendaftar pesakit…' });
     if (res.status==='success'){
       toast('Berjaya',`Pesakit ${nama} didaftarkan ke TCA`, 'success');
-      tr.remove();
+      /* row kept: tr.remove(); */
       loadDashboardData(); loadTCACallData();
     } else throw new Error(res.message||'Gagal daftar');
   }catch(e){ toast('Ralat',e.message,'danger'); }
@@ -2655,7 +2655,7 @@ let nadiRows = []; // Array to store all NADI rows data
 
 function setupNADI(){
   const container = document.getElementById('nadiContainer');
-  container.innerHTML = '';
+  /* kept rows: disabled clear */
   addNadiRow();
   document.getElementById('btnNadiExportCsv').addEventListener('click', exportNadiCSV);
 
@@ -3053,7 +3053,7 @@ function addNadiRow(){
   // Buang
   row.querySelector('.nadi-buang').addEventListener('click', () => {
     if (confirm('Adakah anda pasti ingin membuang baris ini?')) {
-      row.remove();
+      /* row kept: row.remove(); */
       updateNadiRowNumbers();
       updateNadiSummary();
     }
@@ -3391,7 +3391,7 @@ async function exportNadiCSV() {
     href: url,
     download: `aktiviti_program_${programDate}.csv`
   });
-  document.body.appendChild(a); a.click(); a.remove(); URL.revokeObjectURL(url);
+  document.body.appendChild(a); a.click(); /* row kept: a.remove(); */ URL.revokeObjectURL(url);
   toast('Export','Fail CSV dimuat turun','success');
 }
 
@@ -4274,7 +4274,7 @@ async function daftarPesakit(){
       a.download = `pesakit_selesai_${new Date().toISOString().slice(0,10)}.csv`;
       document.body.appendChild(a);
       a.click();
-      a.remove();
+      /* row kept: a.remove(); */
       URL.revokeObjectURL(url);
 
       toast('Export', 'CSV selesai dimuat turun', 'success');
@@ -4623,7 +4623,7 @@ const saveNadiStateDebounced = debounce(saveNadiState, 400);
 
       // Buang baris voucher dari jadual sebelum simpan aktiviti rasmi, supaya tidak dihitung sebagai "layak"
       document.querySelectorAll('#nadiContainer tr').forEach(tr=>{
-        if (tr.querySelector('input[name="voucher"]')?.checked) tr.remove();
+        if (tr.querySelector('input[name="voucher"]')?.checked) /* row kept: tr.remove(); */
       });
       saveNadiState();
     }
@@ -5005,7 +5005,7 @@ if (btn) {
       const res = await getJSON({ action:'getNadiLive', sessionId }, { silent:false });
       const container = document.getElementById('nadiContainer');
       if (!container) return;
-      container.innerHTML = '';
+      /* kept rows: disabled clear */
       // Reset row counter if defined
       if (typeof nadiRowCounter !== 'undefined') { nadiRowCounter = 0; }
       if (res && res.status==='success' && Array.isArray(res.items)){
@@ -5044,7 +5044,7 @@ if (btn) {
           row.firstElementChild?.appendChild(badge);
         }
       } else if (badge){
-        badge.remove();
+        /* row kept: badge.remove(); */
       }
     });
   }
@@ -5731,7 +5731,7 @@ if (btn) {
     a.download = `export_${title}_${new Date().toISOString().slice(0,10)}.csv`;
     document.body.appendChild(a);
     a.click();
-    setTimeout(()=>{ URL.revokeObjectURL(url); a.remove(); }, 0);
+    setTimeout(()=>{ URL.revokeObjectURL(url); /* row kept: a.remove(); */ }, 0);
   }
 
   // ===== Feed Poll =====
@@ -6119,7 +6119,7 @@ if (btn) {
       if (!confirm('Padam peserta ini daripada aktiviti? Tindakan ini tidak boleh diundur.')) return;
       const res = await postForm({ action:'deleteNadiParticipant', activityId, no }, { msg:'Memadam peserta…' });
       if (!res || res.status!=='success') throw new Error(res && (res.message||res.code)||'Gagal padam');
-      tr.remove();
+      /* row kept: tr.remove(); */
       toast('Peserta telah dipadam');
     }catch(e){
       console.error(e);
@@ -6335,7 +6335,7 @@ function injectTelahHadirButtons(){
       if (res?.status!=='success') throw new Error(res?.message||res?.code||'Gagal padam kekal');
       _toast('Pesakit dipadam kekal');
       const tr = document.querySelector('#archiveTable tr[data-ic="'+ic+'"]');
-      if (tr) tr.remove();
+      if (tr) /* row kept: tr.remove(); */
       if (!document.querySelector('#archiveTable tr')){ 
         const row = document.createElement('tr'); 
         row.innerHTML = '<td colspan="8" class="text-center text-muted">Tiada rekod arkib</td>'; 
@@ -6701,7 +6701,7 @@ function __toVoucherPayload(payload){
     }catch(e){}
   }
   function unmountLoader(where){
-    try{ if (where && where.__loaderMounted){ where.__loaderMounted.remove(); where.__loaderMounted=null; } }catch(e){}
+    try{ if (where && where.__loaderMounted){ /* row kept: where.__loaderMounted.remove(); */ where.__loaderMounted=null; } }catch(e){}
   }
   function programListPane(){
     return byId('programList') || q('#programListContainer') || q('[data-role="program-list"]') || q('#sejarahCard .card-body');
@@ -6826,7 +6826,7 @@ function __toVoucherPayload(payload){
     }catch(e){}
   }
   function unmountLoader(where){
-    try{ if (where && where.__loaderMounted){ where.__loaderMounted.remove(); where.__loaderMounted=null; } }catch(e){}
+    try{ if (where && where.__loaderMounted){ /* row kept: where.__loaderMounted.remove(); */ where.__loaderMounted=null; } }catch(e){}
   }
 
   async function loadSejarahOnce(){
@@ -7174,33 +7174,21 @@ function __toVoucherPayload(payload){
 </script>
 
 
-<!-- Auto-open Sejarah after sign-in (patch) -->
-<script>
-(function(){
-  try{
-    var already = false;
-    function openSejarahIfSignedIn(){
-      if (already) return;
-      var tok = '';
-      try { tok = (window.ID_TOKEN || localStorage.getItem('id_token') || localStorage.getItem('ID_TOKEN') || '').trim(); } catch(e){}
-      if (tok){
-        already = true;
-        if (!location.hash || location.hash === '#dashboard' || location.hash === '#'){
-          location.hash = '#sejarah';
-        }
-        setTimeout(function(){ window.dispatchEvent(new HashChangeEvent('hashchange')); }, 50);
-      }
-    }
-    openSejarahIfSignedIn();
-    var iv = setInterval(function(){
-      if (already) { clearInterval(iv); return; }
-      openSejarahIfSignedIn();
-    }, 400);
-    setTimeout(function(){ clearInterval(iv); }, 8000);
-    window.addEventListener('auth:ready', openSejarahIfSignedIn);
-  }catch(e){}
-})();
-</script>
-
+    <script>
+    (function(){
+      window.refreshSejarahAfterSave = async function(){
+        try {
+          const sec = document.getElementById('sejarahSaringanSection') || document.querySelector('[data-view="sejarah"]');
+          if (!sec) return;
+          if (typeof loadSejarahSaringan === 'function') {
+            await loadSejarahSaringan();
+          } else if (typeof loadSejarah === 'function') {
+            await loadSejarah();
+          }
+        } catch(e) {}
+      };
+    })();
+    </script>
+    
 </body>
 </html>
