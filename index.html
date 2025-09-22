@@ -7173,5 +7173,34 @@ function __toVoucherPayload(payload){
 })();
 </script>
 
+
+<!-- Auto-open Sejarah after sign-in (patch) -->
+<script>
+(function(){
+  try{
+    var already = false;
+    function openSejarahIfSignedIn(){
+      if (already) return;
+      var tok = '';
+      try { tok = (window.ID_TOKEN || localStorage.getItem('id_token') || localStorage.getItem('ID_TOKEN') || '').trim(); } catch(e){}
+      if (tok){
+        already = true;
+        if (!location.hash || location.hash === '#dashboard' || location.hash === '#'){
+          location.hash = '#sejarah';
+        }
+        setTimeout(function(){ window.dispatchEvent(new HashChangeEvent('hashchange')); }, 50);
+      }
+    }
+    openSejarahIfSignedIn();
+    var iv = setInterval(function(){
+      if (already) { clearInterval(iv); return; }
+      openSejarahIfSignedIn();
+    }, 400);
+    setTimeout(function(){ clearInterval(iv); }, 8000);
+    window.addEventListener('auth:ready', openSejarahIfSignedIn);
+  }catch(e){}
+})();
+</script>
+
 </body>
 </html>
