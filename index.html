@@ -2,6 +2,87 @@
 <html lang="ms">
 <head>
 
+<script>
+// ===== Backend URL & Token helpers (robust) =====
+(function(){
+  function getBackendUrl(){
+    try{
+      var meta = document.querySelector('meta[name="apps-script-url"]');
+      var v = (localStorage.getItem('backendUrl') || (window.APP_SCRIPT_URL||'') || (meta?meta.content:'') || '').trim();
+      if (!v || /undefined/i.test(v) || /^https:\/\/sihat9\.github\.io/i.test(v)) return '';
+      return v.replace(/\?$/, '');
+    }catch(e){ return ''; }
+  }
+  function ensureBackendUrl(){
+    var u = getBackendUrl();
+    if (u) { window.BACKEND_URL = u; return u; }
+    // Show a very small setup prompt once
+    var once = sessionStorage.getItem('askedBackendUrl');
+    if (!once){
+      sessionStorage.setItem('askedBackendUrl','1');
+      var input = prompt('Masukkan URL Web App Google Apps Script anda (https://script.google.com/.../exec):','');
+      if (input && input.trim()){
+        localStorage.setItem('backendUrl', input.trim());
+        location.reload();
+        return;
+      }
+    }
+    window.BACKEND_URL = '';
+    return '';
+  }
+  window.getBackendUrl = getBackendUrl;
+  window.ensureBackendUrl = ensureBackendUrl;
+
+  // id_token helpers
+  async function getIdToken(){
+    try{
+      var t = localStorage.getItem('id_token')||'';
+      if (t) return t;
+      // If Google One Tap is available, it will fill later; for now return ''.
+      return '';
+    }catch(e){ return ''; }
+  }
+  window.getIdToken = getIdToken;
+
+  window.apiUrl = function(action, params){
+    var base = window.getBackendUrl();
+    if (!base){ throw new Error('BACKEND_URL_NOT_SET'); }
+    var url = base + (base.indexOf('?')>=0?'&':'?') + 'action=' + encodeURIComponent(action);
+    if (params){
+      Object.keys(params).forEach(function(k){
+        if (params[k]!==undefined && params[k]!==null){
+          url += '&' + encodeURIComponent(k) + '=' + encodeURIComponent(String(params[k]));
+        }
+      });
+    }
+    return url;
+  };
+  window.apiGet = async function(action, params){
+    var t = await getIdToken();
+    var qp = Object.assign({}, params||{});
+    if (t) qp.id_token = t;
+    var url = apiUrl(action, qp);
+    var r = await fetch(url, { credentials:'omit' });
+    return r.json();
+  };
+  window.apiPost = async function(action, body){
+    var t = await getIdToken();
+    var base = window.getBackendUrl();
+    if (!base) throw new Error('BACKEND_URL_NOT_SET');
+    var url = base + (base.indexOf('?')>=0?'&':'?') + 'action=' + encodeURIComponent(action);
+    var payload = Object.assign({}, body||{});
+    if (t && !payload.id_token) payload.id_token = t;
+    var r = await fetch(url, {
+      method:'POST',
+      headers:{ 'Content-Type':'application/json' },
+      body: JSON.stringify(payload)
+    });
+    return r.json();
+  };
+})();
+</script>
+
+
 <style>
 #appToast{position:fixed;right:16px;bottom:16px;z-index:9999;display:none;min-width:260px;max-width:360px}
 .appToast-card{background:#111827;color:#fff;border-radius:10px;box-shadow:0 10px 24px rgba(0,0,0,.2);padding:12px 14px;font-size:14px;display:flex;gap:10px;align-items:flex-start}
@@ -7647,6 +7728,29 @@ function __toVoucherPayload(payload){
       setTimeout(filterAndSort, 400);
     }
   }catch(e){ setTimeout(filterAndSort, 400); }
+})();
+</script>
+
+
+<style>
+  #backend-setup-banner{display:none;position:fixed;bottom:10px;left:10px;right:10px;background:#fff3cd;border:1px solid #ffeeba;padding:10px;border-radius:8px;z-index:9999;font-size:.95rem}
+  #backend-setup-banner b{color:#8a6d3b}
+</style>
+<div id="backend-setup-banner">
+  <b>Konfigurasi diperlukan:</b> Sila tetapkan URL Web App Google Apps Script anda.
+  <button id="btn-set-backend" style="margin-left:10px">Set sekarang</button>
+</div>
+<script>
+(function(){
+  var ok = ensureBackendUrl();
+  if (!ok){
+    var el = document.getElementById('backend-setup-banner');
+    if (el) el.style.display = 'block';
+    document.getElementById('btn-set-backend').addEventListener('click', function(){
+      sessionStorage.removeItem('askedBackendUrl');
+      ensureBackendUrl();
+    });
+  }
 })();
 </script>
 
