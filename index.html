@@ -1892,7 +1892,7 @@ async function handleCredentialResponse(resp){
     bootstrapApp(); // muat data awal
 
     // Tambah 3 baris ini
-    location.hash = '#sejarah';
+    location.hash = '#dashboard';
     const dashLink = document.querySelector('.nav-link[href="#dashboard"]');
     if (dashLink) dashLink.click();
 
@@ -2050,7 +2050,7 @@ function toast(title, message, variant = 'primary') {
 
   const cleanup = () => {
     window.removeEventListener('resize', onResize);
-    /* row kept: el.remove(); */
+    el.remove();
   };
 
   try {
@@ -2190,7 +2190,7 @@ async function sendWhatsAppReportImageFlow(msisdn) {
   const url = URL.createObjectURL(blob);
   const a = document.createElement('a');
   a.href = url; a.download = `laporan_nadi_${Date.now()}.png`;
-  document.body.appendChild(a); a.click(); /* row kept: a.remove(); */ URL.revokeObjectURL(url);
+  document.body.appendChild(a); a.click(); a.remove(); URL.revokeObjectURL(url);
   toast('Makluman', 'Imej dimuat turun. Lampirkan imej itu dalam chat WhatsApp dan hantar.', 'warning');
 }
 
@@ -2641,7 +2641,7 @@ async function daftarFromExcel(rowId, encNama, encIC, msisdn, encAlamat){
     }, { msg:'Mendaftar pesakit…' });
     if (res.status==='success'){
       toast('Berjaya',`Pesakit ${nama} didaftarkan ke TCA`, 'success');
-      /* row kept: tr.remove(); */
+      tr.remove();
       loadDashboardData(); loadTCACallData();
     } else throw new Error(res.message||'Gagal daftar');
   }catch(e){ toast('Ralat',e.message,'danger'); }
@@ -2655,7 +2655,7 @@ let nadiRows = []; // Array to store all NADI rows data
 
 function setupNADI(){
   const container = document.getElementById('nadiContainer');
-  /* kept rows: disabled clear */
+  container.innerHTML = '';
   addNadiRow();
   document.getElementById('btnNadiExportCsv').addEventListener('click', exportNadiCSV);
 
@@ -3053,7 +3053,7 @@ function addNadiRow(){
   // Buang
   row.querySelector('.nadi-buang').addEventListener('click', () => {
     if (confirm('Adakah anda pasti ingin membuang baris ini?')) {
-      /* row kept: row.remove(); */
+      row.remove();
       updateNadiRowNumbers();
       updateNadiSummary();
     }
@@ -3391,7 +3391,7 @@ async function exportNadiCSV() {
     href: url,
     download: `aktiviti_program_${programDate}.csv`
   });
-  document.body.appendChild(a); a.click(); /* row kept: a.remove(); */ URL.revokeObjectURL(url);
+  document.body.appendChild(a); a.click(); a.remove(); URL.revokeObjectURL(url);
   toast('Export','Fail CSV dimuat turun','success');
 }
 
@@ -4274,7 +4274,7 @@ async function daftarPesakit(){
       a.download = `pesakit_selesai_${new Date().toISOString().slice(0,10)}.csv`;
       document.body.appendChild(a);
       a.click();
-      /* row kept: a.remove(); */
+      a.remove();
       URL.revokeObjectURL(url);
 
       toast('Export', 'CSV selesai dimuat turun', 'success');
@@ -4623,7 +4623,7 @@ const saveNadiStateDebounced = debounce(saveNadiState, 400);
 
       // Buang baris voucher dari jadual sebelum simpan aktiviti rasmi, supaya tidak dihitung sebagai "layak"
       document.querySelectorAll('#nadiContainer tr').forEach(tr=>{
-        if (tr.querySelector('input[name="voucher"]')?.checked) { tr.remove(); }
+        if (tr.querySelector('input[name="voucher"]')?.checked) tr.remove();
       });
       saveNadiState();
     }
@@ -5005,7 +5005,7 @@ if (btn) {
       const res = await getJSON({ action:'getNadiLive', sessionId }, { silent:false });
       const container = document.getElementById('nadiContainer');
       if (!container) return;
-      /* kept rows: disabled clear */
+      container.innerHTML = '';
       // Reset row counter if defined
       if (typeof nadiRowCounter !== 'undefined') { nadiRowCounter = 0; }
       if (res && res.status==='success' && Array.isArray(res.items)){
@@ -5044,7 +5044,7 @@ if (btn) {
           row.firstElementChild?.appendChild(badge);
         }
       } else if (badge){
-        /* row kept: badge.remove(); */
+        badge.remove();
       }
     });
   }
@@ -5420,7 +5420,7 @@ if (btn) {
     if (!tbody) return;
     if (!activityId){ tbody.innerHTML = '<tr><td colspan="13" class="text-center text-muted">Tiada program dipilih.</td></tr>'; return; }
 
-    const q = (document.getElementById('sejarahSearch')?.value || '').toLowerCase().trim();
+    const q = ($('#sejarahSearch')?.value || '').toLowerCase().trim();
     tbody.innerHTML = '<tr><td colspan="13" class="text-center text-muted">Memuat data…</td></tr>';
     try{
       const qs = new URLSearchParams({ action:'getNadiActivityDetail', id: activityId, id_token: window.ID_TOKEN||'' });
@@ -5657,161 +5657,87 @@ if (btn) {
     renderDetail();
   }
 
-  function renderDetail(){
-    const tbody = $('#sejarahTable');
-    const q = (document.getElementById('sejarahSearch')?.value || '').toLowerCase().trim();
-    const rows = state.rows.filter(r => {
-      if (!q) return true;
-      const blob = `${r.nama||''}|${r.noIC||''}|${r.noTelefon||''}|${r.alamat||''}|${r.status||''}|${r.bp||''}|${r.pr||''}|${r.dxt||''}|${r.bmi||''}|${r.tcaDate||''}|${r.tcaTime||''}|${r.tcaStaff||''}|${r.remark||''}`.toLowerCase();
-      return blob.includes(q);
-    });
+  
+function renderDetail(){
+  const tbody = $('#sejarahTable');
+  const qRaw = ($('#sejarahSearch')?.value || '').trim();
+  const q = qRaw.toLowerCase();
 
-    // Summary
-    const total = rows.length;
-    let layak=0, tak=0;
-    rows.forEach(r=>{
-      const s = String(r.status||'').toUpperCase();
-      if (s==='LAYAK') layak++;
-      else if (s==='TAK LAYAK') tak++;
-    });
-    $('#sumTotal').textContent = total;
-    $('#sumLayak').textContent = layak;
-    $('#sumTakLayak').textContent = tak;
-
-    const activeBtn = $('#programList .list-group-item.active');
-    $('#sejarahTitle').textContent = activeBtn ? activeBtn.querySelector('.fw-semibold')?.textContent || 'Maklumat Program' : 'Maklumat Program';
-    $('#programDateLabel').textContent = activeBtn ? (activeBtn.querySelector('.meta')?.textContent || '') : '';
-
-    const col = state.colVisible;
-    tbody.innerHTML = rows.map((r, i)=>{
-      const tca = [r.tcaDate||'', r.tcaTime||''].filter(Boolean).join(' ');
-      return `<tr>
-        <td>${i+1}</td>
-        <td>${fmt.esc(r.nama||'')}</td>
-        <td>${fmt.esc(r.noIC||'')}</td>
-        <td>${fmt.esc(r.noTelefon||'')}</td>
-        <td class="col-alamat ${col.alamat?'':'hide'}">${fmt.esc(r.alamat||'')}</td>
-        <td>${fmt.esc(r.status||'')}</td>
-        <td class="col-bp ${col.bp?'':'hide'}">${fmt.esc(r.bp||'')}</td>
-        <td class="col-pr ${col.pr?'':'hide'}">${fmt.esc(r.pr||'')}</td>
-        <td class="col-dxt ${col.dxt?'':'hide'}">${fmt.esc(r.dxt||'')}</td>
-        <td class="col-bmi ${col.bmi?'':'hide'}">${fmt.esc(r.bmi||'')}</td>
-        <td class="col-tca ${col.tca?'':'hide'}">${fmt.esc(tca)}</td>
-        <td class="col-staff ${col.staff?'':'hide'}">${fmt.esc(r.tcaStaff||'')}</td>
-        <td class="col-remark ${col.remark?'':'hide'}">${fmt.esc(r.remark||'')}</td>
-      </tr>`;
-    }).join('') || '<tr><td colspan="13" class="text-center text-muted">Tiada padanan carian.</td></tr>';
-  }
-
-  // ===== Export CSV =====
-  function exportCsv(){
-    const rows = [['#','Nama','IC','Telefon','Alamat','Status','BP','PR','DXT','BMI','TCA','Staff','Remark']];
-    const q = (document.getElementById('sejarahSearch')?.value || '').toLowerCase().trim();
-    const filtered = state.rows.filter(r=>{
-      if (!q) return true;
-      const blob = `${r.nama||''}|${r.noIC||''}|${r.noTelefon||''}|${r.alamat||''}|${r.status||''}|${r.bp||''}|${r.pr||''}|${r.dxt||''}|${r.bmi||''}|${r.tcaDate||''}|${r.tcaTime||''}|${r.tcaStaff||''}|${r.remark||''}`.toLowerCase();
-      return blob.includes(q);
-    });
-    filtered.forEach((r,i)=>{
-      rows.push([
-        String(i+1),
-        r.nama||'', r.noIC||'', r.noTelefon||'', r.alamat||'', r.status||'',
-        r.bp||'', r.pr||'', r.dxt||'', r.bmi||'',
-        [r.tcaDate||'', r.tcaTime||''].filter(Boolean).join(' ').trim(),
-        r.tcaStaff||'',
-        r.remark||''
-      ]);
-    });
-    const csv = rows.map(a => a.map(v=>`"${String(v).replace(/"/g,'""')}"`).join(',')).join('\n');
-    const blob = new Blob([csv], {type: 'text/csv;charset=utf-8;'});
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    const title = ($('#sejarahTitle')?.textContent||'sejarah').replace(/\s+/g,'_');
-    a.download = `export_${title}_${new Date().toISOString().slice(0,10)}.csv`;
-    document.body.appendChild(a);
-    a.click();
-    setTimeout(()=>{ URL.revokeObjectURL(url); /* row kept: a.remove(); */ }, 0);
-  }
-
-  // ===== Feed Poll =====
-  let FEED_TIMER = null;
-  async function pollFeed(){
-    if (needAuthWarning()) return;
-    const j = await jget({ action:'programFeedSince', since: String(state.lastFeedTs||0), limit: '50' }).catch(()=>null);
-    if (!j || j.status!=='success') return;
-    const data = Array.isArray(j.data) ? j.data : [];
-    if (!data.length) return;
-    state.lastFeedTs = Number(String(j.latest || data[data.length-1]?.ts || state.lastFeedTs));
-    const activeId = state.activeId;
-    let touchesActive = false;
-    for (const ev of data){ if (ev && ev.activityId && activeId && ev.activityId === activeId){ touchesActive = true; break; } }
-    await loadPrograms();
-    if (activeId){
-      const btn = $('#programList .list-group-item[data-activity-id="'+CSS.escape(activeId)+'"]');
-      if (btn){ btn.classList.add('active'); }
-      if (touchesActive){ await loadProgramDetail(activeId); }
-    }
-  }
-  function startFeed(){ stopFeed(); state.lastFeedTs = Date.now(); FEED_TIMER = setInterval(pollFeed, 7000); $('#sejarahLiveDot')?.classList.remove('d-none'); }
-  function stopFeed(){ if (FEED_TIMER){ clearInterval(FEED_TIMER); FEED_TIMER=null; } $('#sejarahLiveDot')?.classList.add('d-none'); }
-
-  // ===== Interactions =====
-  document.addEventListener('click', (e)=>{
-    const li = e.target.closest('#programList .list-group-item');
-    if (li){
-      $$('#programList .list-group-item').forEach(x=>x.classList.remove('active'));
-      li.classList.add('active');
-      loadProgramDetail(li.getAttribute('data-activity-id'));
-    }
+  let rows = state.rows.filter(r => {
+    if (!q) return true;
+    const blob = `${r.nama||''}|${r.noIC||''}|${r.noTelefon||''}|${r.alamat||''}|${r.status||''}|${r.bp||''}|${r.pr||''}|${r.dxt||''}|${r.bmi||''}|${r.tcaDate||''}|${r.tcaTime||''}|${r.tcaStaff||''}|${r.remark||''}`.toLowerCase();
+    return blob.includes(q);
   });
-  document.addEventListener('input', (e)=>{
-    if (e.target?.id==='programFilter'){ renderProgramList(); }
-  });
-  (function(){
-    let t=null;
-    document.addEventListener('input', (e)=>{
-      if (e.target?.id==='sejarahSearch'){
-        clearTimeout(t);
-        t = setTimeout(renderDetail, 250);
+
+  if (q){
+    const getScore = (r) => {
+      const fields = [
+        {v:String(r.nama||'').toLowerCase(), w:8},
+        {v:String(r.noIC||'').toLowerCase(), w:9},
+        {v:String(r.noTelefon||'').toLowerCase(), w:7},
+        {v:String(r.alamat||'').toLowerCase(), w:5},
+        {v:String(r.status||'').toLowerCase(), w:6},
+        {v:String(r.remark||'').toLowerCase(), w:4},
+        {v:String(r.tcaDate||'').toLowerCase(), w:3},
+        {v:String(r.tcaTime||'').toLowerCase(), w:3},
+        {v:String(r.tcaStaff||'').toLowerCase(), w:3},
+        {v:String(r.bp||'').toLowerCase(), w:2},
+        {v:String(r.pr||'').toLowerCase(), w:2},
+        {v:String(r.dxt||'').toLowerCase(), w:2},
+        {v:String(r.bmi||'').toLowerCase(), w:1}
+      ];
+      let best = -1e9;
+      for (const f of fields){
+        const idx = f.v.indexOf(q);
+        if (idx === -1) continue;
+        const starts = f.v.startsWith(q) ? 1 : 0;
+        const score = (starts*1000) + Math.max(0, 200-idx) + (f.w*10);
+        if (score > best) best = score;
       }
-    });
-  })();
-
-  // Column toggles
-  document.addEventListener('change', (e)=>{
-    if (e.target?.classList.contains('col-toggle')){
-      const key = e.target.getAttribute('data-col');
-      state.colVisible[key] = !!e.target.checked;
-      // toggle header th
-      const th = $('.col-'+key);
-      if (th){ if (e.target.checked) th.classList.remove('hide'); else th.classList.add('hide'); }
-      // toggle body tds
-      $$('#sejarahTable .col-'+key).forEach(td => {
-        if (e.target.checked) td.classList.remove('hide'); else td.classList.add('hide');
-      });
-    }
-  });
-
-  $('#programSort')?.addEventListener('change', (e)=>{
-    state.sort = e.target.value || 'date_desc';
-    renderProgramList();
-  });
-
-  $('#btnExportCsv')?.addEventListener('click', exportCsv);
-
-  // ===== Hash routing =====
-  function onHash(){
-    const show = location.hash === '#sejarah' || location.hash.startsWith('#sejarah?');
-    if (show){ loadPrograms(); startFeed(); } else { stopFeed(); }
+      return best;
+    };
+    rows = rows
+      .map(r => ({...r, _sc:getScore(r)}))
+      .sort((a,b)=> (b._sc - a._sc) || String(a.nama||'').localeCompare(String(b.nama||'')))
+      .map(({_sc, ...rest})=>rest);
   }
-  window.addEventListener('hashchange', onHash);
-  if (document.readyState === 'loading'){ document.addEventListener('DOMContentLoaded', onHash); } else { onHash(); }
 
-  // Expose globals expected by other code (compatibility)
-  window.loadPrograms = loadPrograms;
-  window.loadProgramDetail = loadProgramDetail;
-})();
+  const total = rows.length;
+  let layak=0, tak=0;
+  rows.forEach(r=>{
+    const s = String(r.status||'').toUpperCase();
+    if (s==='LAYAK') layak++;
+    else if (s==='TAK LAYAK') tak++;
+  });
+  $('#sumTotal').textContent = total;
+  $('#sumLayak').textContent = layak;
+  $('#sumTakLayak').textContent = tak;
+
+  const activeBtn = $('#programList .list-group-item.active');
+  $('#sejarahTitle').textContent = activeBtn ? activeBtn.querySelector('.fw-semibold')?.textContent || 'Maklumat Program' : 'Maklumat Program';
+  $('#programDateLabel').textContent = activeBtn ? (activeBtn.querySelector('.meta')?.textContent || '') : '';
+
+  const col = state.colVisible;
+  tbody.innerHTML = rows.map((r, i)=>{
+    const tca = [r.tcaDate||'', r.tcaTime||''].filter(Boolean).join(' ');
+    return `<tr>
+      <td>${i+1}</td>
+      <td>${fmt.esc(r.nama||'')}</td>
+      <td>${fmt.esc(r.noIC||'')}</td>
+      <td>${fmt.esc(r.noTelefon||'')}</td>
+      <td class="col-alamat ${col.alamat?'':'hide'}">${fmt.esc(r.alamat||'')}</td>
+      <td>${fmt.esc(r.status||'')}</td>
+      <td class="col-bp ${col.bp?'':'hide'}">${fmt.esc(r.bp||'')}</td>
+      <td class="col-pr ${col.pr?'':'hide'}">${fmt.esc(r.pr||'')}</td>
+      <td class="col-dxt ${col.dxt?'':'hide'}">${fmt.esc(r.dxt||'')}</td>
+      <td class="col-bmi ${col.bmi?'':'hide'}">${fmt.esc(r.bmi||'')}</td>
+      <td class="col-tca ${col.tca?'':'hide'}">${fmt.esc(tca)}</td>
+      <td class="col-staff ${col.staff?'':'hide'}">${fmt.esc(r.tcaStaff||'')}</td>
+      <td class="col-remark ${col.remark?'':'hide'}">${fmt.esc(r.remark||'')}</td>
+    </tr>`;
+  }).join('');
+}
+)();
 </script>
 
 
@@ -6119,7 +6045,7 @@ if (btn) {
       if (!confirm('Padam peserta ini daripada aktiviti? Tindakan ini tidak boleh diundur.')) return;
       const res = await postForm({ action:'deleteNadiParticipant', activityId, no }, { msg:'Memadam peserta…' });
       if (!res || res.status!=='success') throw new Error(res && (res.message||res.code)||'Gagal padam');
-      /* row kept: tr.remove(); */
+      tr.remove();
       toast('Peserta telah dipadam');
     }catch(e){
       console.error(e);
@@ -6335,7 +6261,7 @@ function injectTelahHadirButtons(){
       if (res?.status!=='success') throw new Error(res?.message||res?.code||'Gagal padam kekal');
       _toast('Pesakit dipadam kekal');
       const tr = document.querySelector('#archiveTable tr[data-ic="'+ic+'"]');
-      if (tr) /* row kept: tr.remove(); */
+      if (tr) tr.remove();
       if (!document.querySelector('#archiveTable tr')){ 
         const row = document.createElement('tr'); 
         row.innerHTML = '<td colspan="8" class="text-center text-muted">Tiada rekod arkib</td>'; 
@@ -6701,7 +6627,7 @@ function __toVoucherPayload(payload){
     }catch(e){}
   }
   function unmountLoader(where){
-    try{ if (where && where.__loaderMounted){ /* row kept: where.__loaderMounted.remove(); */ where.__loaderMounted=null; } }catch(e){}
+    try{ if (where && where.__loaderMounted){ where.__loaderMounted.remove(); where.__loaderMounted=null; } }catch(e){}
   }
   function programListPane(){
     return byId('programList') || q('#programListContainer') || q('[data-role="program-list"]') || q('#sejarahCard .card-body');
@@ -6826,7 +6752,7 @@ function __toVoucherPayload(payload){
     }catch(e){}
   }
   function unmountLoader(where){
-    try{ if (where && where.__loaderMounted){ /* row kept: where.__loaderMounted.remove(); */ where.__loaderMounted=null; } }catch(e){}
+    try{ if (where && where.__loaderMounted){ where.__loaderMounted.remove(); where.__loaderMounted=null; } }catch(e){}
   }
 
   async function loadSejarahOnce(){
@@ -7170,104 +7096,6 @@ function __toVoucherPayload(payload){
     }
   });
   document.addEventListener('DOMContentLoaded', updateSecondSection);
-})();
-</script>
-
-
-    <script>
-    (function(){
-      window.refreshSejarahAfterSave = async function(){
-        try {
-          const sec = document.getElementById('sejarahSaringanSection') || document.querySelector('[data-view="sejarah"]');
-          if (!sec) return;
-          if (typeof loadSejarahSaringan === 'function') {
-            await loadSejarahSaringan();
-          } else if (typeof loadSejarah === 'function') {
-            await loadSejarah();
-          }
-        } catch(e) {}
-      };
-    })();
-    </script>
-    
-
-<!-- Sejarah: carian & autosort – patch -->
-<script>
-(function(){
-  // Utility: normalize text
-  function norm(s){ return (s||'').toString().toLowerCase(); }
-  function getEl(id){ return document.getElementById(id); }
-
-  // Filter peserta table (kanan)
-  function filterPesertaTable(q){
-    var tb = document.querySelector('#sejarahTable tbody');
-    if (!tb) return 0;
-    var rows = Array.from(tb.querySelectorAll('tr'));
-    var count = 0;
-    rows.forEach(function(tr){
-      var txt = norm(tr.textContent);
-      var show = !q || txt.indexOf(q)>=0;
-      tr.style.display = show ? '' : 'none';
-      if (show) count++;
-    });
-    return count;
-  }
-
-  // Reorder/sort program list (kiri) putting items with matches first
-  function sortProgramListByQuery(q){
-    var list = document.getElementById('programList');
-    if (!list) return;
-    var items = Array.from(list.querySelectorAll('.list-group-item'));
-    if (!q){
-      // restore original order by data-index if present
-      items.sort(function(a,b){
-        var ia = parseInt(a.getAttribute('data-index')||'0',10);
-        var ib = parseInt(b.getAttribute('data-index')||'0',10);
-        return ia-ib;
-      });
-    } else {
-      items.forEach(function(li){
-        var title = norm(li.textContent);
-        var score = title.indexOf(q)>=0 ? 1 : 0;
-        li.setAttribute('data-score', String(score));
-      });
-      items.sort(function(a,b){
-        var sa = parseInt(a.getAttribute('data-score')||'0',10);
-        var sb = parseInt(b.getAttribute('data-score')||'0',10);
-        if (sb!==sa) return sb-sa;
-        var ia = parseInt(a.getAttribute('data-index')||'0',10);
-        var ib = parseInt(b.getAttribute('data-index')||'0',10);
-        return ia-ib;
-      });
-    }
-    items.forEach(function(li){ list.appendChild(li); });
-  }
-
-  // Master apply function
-  function applySejarahSearch(){
-    var q = norm((getEl('sejarahSearch') && getEl('sejarahSearch').value) || '');
-    // 1) filter peserta table
-    filterPesertaTable(q);
-    // 2) sort kiri
-    sortProgramListByQuery(q);
-  }
-
-  // Hook input
-  var input = getEl('sejarahSearch');
-  if (input){
-    input.addEventListener('input', function(){ applySejarahSearch(); });
-  }
-
-  // Auto-load Sejarah after auth ready & ensure search applies after load
-  window.addEventListener('auth-ready', function(){
-    try {
-      if (typeof triggerSejarahLoad === 'function'){ triggerSejarahLoad(); }
-      setTimeout(applySejarahSearch, 500);
-    } catch(e){}
-  });
-
-  // Expose for debug
-  window.applySejarahSearch = applySejarahSearch;
 })();
 </script>
 
