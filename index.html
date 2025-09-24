@@ -4152,8 +4152,7 @@ async function uploadPDPA(){
     const res = await fetch(SCRIPT_URL, {
       method: 'POST',
       headers: { 'Content-Type':'application/x-www-form-urlencoded' },
-      body: new URLSearchParams({
-        action: 'uploadPDPA',
+      body: new URLSearchParams({ action:'uploadPDPA', id_token: (function(){var t=getIdToken(); return t||'';})(),
         // id_token tidak dihantar di sini; interceptor anda akan suntik jika perlu
         noIC,
         staff: (typeof STAFF_EMAIL!=='undefined' && STAFF_EMAIL) ? STAFF_EMAIL : 'SYSTEM',
@@ -4186,10 +4185,11 @@ async function uploadPDPA(){
       try{ loadSecondVisitData(); }catch(_){}
       try{ loadCompletedData(); }catch(_){}
     } else {
-      const msg = (json && (json.message || json.code)) ? (json.message || json.code) : 'Gagal muat naik PDPA';
-      const finalMsg = /unauthorized|akses ditolak|forbidden|no_token|bad_aud|bad_token/i.test(String(msg))
-        ? 'Akses ditolak. Sila sign in semula atau hubungi admin untuk allowlist.'
-        : String(msg);
+      let msg = (json && (json.message || json.code)) ? (json.message || json.code) : 'Gagal muat naik PDPA';
+    if (json && json.code){ msg += ' ('+json.code+')'; }
+    const finalMsg = /unauthorized|akses ditolak|forbidden|no_token|bad_aud|bad_token/i.test(String(msg))
+      ? 'Akses ditolak. Sila sign in semula atau hubungi admin untuk allowlist.'
+      : String(msg);
       toast('Ralat', finalMsg, 'danger');
     }
   }catch(e){
@@ -7445,7 +7445,9 @@ async function verifyPdpaByIC(noIC){
       const base = (typeof SCRIPT_URL!=='undefined' && SCRIPT_URL) ? SCRIPT_URL
                   : (window.APP && APP.scriptUrl) ? APP.scriptUrl : '';
       if (!base) return '';
-      return base + '?' + new URLSearchParams(params).toString();
+      var q = Object.assign({}, params);
+      var t = getIdToken(); if (t) q.id_token = t;
+      return base + '?' + new URLSearchParams(q).toString();
     };
     const parse = async (u) => {
       if (!u) return {status:'error'};
