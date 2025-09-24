@@ -4147,55 +4147,24 @@ async function uploadPDPA(){
 
   showLoader('Memuat naik PDPA…');
   try{
-    const base64 = await fileToBase64(file);
-    const pure64 = String(base64).split(',').pop();
+    const base64 = await fileToBase64(file); const pure64 = base64.split(',').pop();
     const res = await fetch(SCRIPT_URL, {
       method: 'POST',
       headers: { 'Content-Type':'application/x-www-form-urlencoded' },
-      body: new URLSearchParams({ action:'uploadPDPA', id_token: (function(){var t=getIdToken(); return t||'';})(),
-        // id_token tidak dihantar di sini; interceptor anda akan suntik jika perlu
-        noIC,
-        staff: (typeof STAFF_EMAIL!=='undefined' && STAFF_EMAIL) ? STAFF_EMAIL : 'SYSTEM',
-        fileBase64: pure64,
-        fileName: file.name || ('PDPA_'+(noIC||'')+'.pdf'),
-        fileType: file.type || 'application/pdf'
+      body: new URLSearchParams({
+        action: 'uploadPDPA', id_token: ID_TOKEN, noIC, staff: STAFF_EMAIL,
+        fileBase64: pure64, fileName: file.name, fileType: file.type || 'application/octet-stream'
       })
     });
     const json = await jsonSafe(res);
-
-    if (json && json.status === 'success'){
-      hideLoader();
-      const modalEl = document.getElementById('pdpaModal');
-      try{ (bootstrap.Modal.getInstance(modalEl) || new bootstrap.Modal(modalEl)).hide(); }catch(_){}
-      toast('Berjaya','PDPA berjaya dimuat naik'+(file.name?(' ('+file.name+')'):'') ,'success');
-      try{ loadFirstVisitData(); }catch(_){}
-      try{ loadSecondVisitData(); }catch(_){}
-      try{ loadCompletedData(); }catch(_){}
-      return;
-    }
-
-    // Jika respons bukan success, cuba pengesahan semula
-    const verified = await verifyPdpaByIC(noIC);
-    hideLoader();
-    if (verified){
-      const modalEl = document.getElementById('pdpaModal');
-      try{ (bootstrap.Modal.getInstance(modalEl) || new bootstrap.Modal(modalEl)).hide(); }catch(_){}
-      toast('Berjaya','PDPA dimuat naik (disahkan)', 'success');
-      try{ loadFirstVisitData(); }catch(_){}
-      try{ loadSecondVisitData(); }catch(_){}
-      try{ loadCompletedData(); }catch(_){}
-    } else {
-      let msg = (json && (json.message || json.code)) ? (json.message || json.code) : 'Gagal muat naik PDPA';
-    if (json && json.code){ msg += ' ('+json.code+')'; }
-    const finalMsg = /unauthorized|akses ditolak|forbidden|no_token|bad_aud|bad_token/i.test(String(msg))
-      ? 'Akses ditolak. Sila sign in semula atau hubungi admin untuk allowlist.'
-      : String(msg);
-      toast('Ralat', finalMsg, 'danger');
-    }
-  }catch(e){
-    hideLoader();
-    toast('Ralat', String(e && e.message || 'Gagal muat naik PDPA'), 'danger');
-  }
+    if (json.status === 'success'){
+      pdpaModal.hide();
+      toast('Berjaya','PDPA dimuat naik','success');
+      loadFirstVisitData(); loadSecondVisitData(); loadCompletedData();
+    } else { throw new Error(json.message || 'Gagal muat naik PDPA'); }
+  } catch(e){
+    toast('Ralat', e.message, 'danger');
+  } finally { hideLoader(); }
 }
 function fileToBase64(file){
   return new Promise((resolve, reject)=>{
@@ -7435,38 +7404,35 @@ function __toVoucherPayload(payload){
 })();
 </script>
 
+
+<!-- PATCH: Ensure global getIdToken + verifyPdpaByIC to prevent 'is not defined' errors -->
 <script>
-// --- Helper: semak semula kewujudan PDPA di server (noIC) ---
-async function verifyPdpaByIC(noIC){
-  try{
-    const ic = String(noIC||'').trim();
-    if (!ic) return false;
-    const mkUrl = (params) => {
-      const base = (typeof SCRIPT_URL!=='undefined' && SCRIPT_URL) ? SCRIPT_URL
-                  : (window.APP && APP.scriptUrl) ? APP.scriptUrl : '';
-      if (!base) return '';
-      var q = Object.assign({}, params);
-      var t = getIdToken(); if (t) q.id_token = t;
-      return base + '?' + new URLSearchParams(q).toString();
-    };
-    const parse = async (u) => {
-      if (!u) return {status:'error'};
-      const r = await fetch(u);
-      try{ return await r.json(); }catch(e){ return {status:'error'}; }
-    };
-    const [a,b,c] = await Promise.all([
-      parse(mkUrl({action:'getFirstVisit'})),
-      parse(mkUrl({action:'getSecondVisit'})),
-      parse(mkUrl({action:'getCompleted'})),
-    ]);
-    const has = (resp)=> resp && resp.status==='success' && Array.isArray(resp.data) && resp.data.some(
-      (row)=> String(row.noIC||row.id||'').trim()===ic && String(row.pdpaFileId||'').length>0
-    );
-    return has(a) || has(b) || has(c);
-  }catch(e){
-    return false;
-  }
-}
+(function(){
+  try {
+    if (!window.getIdToken) {
+      window.getIdToken = function(){
+        try {
+          return (window.ID_TOKEN || localStorage.getItem('id_token') || localStorage.getItem('ID_TOKEN') || '').trim();
+        } catch(e){ return ''; }
+      };
+    }
+    if (typeof window.verifyPdpaByIC !== 'function') {
+      window.verifyPdpaByIC = async function(ic){
+        try{
+          if (!ic) return { status:'error', message:'IC tidak sah' };
+          if (window.RUMUS && typeof window.RUMUS.get === 'function'){
+            const t = (typeof window.getIdToken === 'function') ? window.getIdToken() : (window.ID_TOKEN || '');
+            const res = await window.RUMUS.get('verifyPdpaByIC', { ic: String(ic||'').trim(), id_token: t });
+            return res;
+          }
+          return { status:'error', message:'RUMUS tidak sedia' };
+        }catch(err){
+          return { status:'error', message:String(err) };
+        }
+      };
+    }
+  } catch(e) { /* no-op */ }
+})();
 </script>
 </body>
 </html>
