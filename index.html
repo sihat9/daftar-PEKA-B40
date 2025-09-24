@@ -4161,7 +4161,7 @@ async function uploadPDPA(){
       pdpaModal.hide();
       toast('Berjaya','PDPA dimuat naik','success');
       loadFirstVisitData(); loadSecondVisitData(); loadCompletedData();
-    } else { throw new Error(json.message || 'Gagal muat naik PDPA'); }
+    } else { throw new Error(json.message || 'Berjaya muat naik PDPA'); }
   } catch(e){
     toast('Ralat', e.message, 'danger');
   } finally { hideLoader(); }
