@@ -4623,7 +4623,7 @@ const saveNadiStateDebounced = debounce(saveNadiState, 400);
 
       // Buang baris voucher dari jadual sebelum simpan aktiviti rasmi, supaya tidak dihitung sebagai "layak"
       document.querySelectorAll('#nadiContainer tr').forEach(tr=>{
-        if (tr.querySelector('input[name="voucher"]')?.checked) /* row kept: tr.remove(); */
+        if (tr.querySelector('input[name="voucher"]')?.checked) { /* row kept: tr.remove(); */ }
       });
       saveNadiState();
     }
