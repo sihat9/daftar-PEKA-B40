@@ -7128,10 +7128,9 @@ function __toVoucherPayload(payload){
   async function postJSON(payload){
     var url = (window.SCRIPT_URL || (window.APP && APP.scriptUrl)) + '?action=' + encodeURIComponent(payload.action);
     delete payload.action;
-    var token = (window.AUTH && AUTH.id_token) || (window.GOOGLE_ID_TOKEN) || (window.ID_TOKEN) || localStorage.getItem('id_token') || localStorage.getItem('credential') || '';
+    var token = (window.AUTH && AUTH.id_token) || (window.GOOGLE_ID_TOKEN) || '';
     if (token){
       url += '&id_token=' + encodeURIComponent(token);
-      payload.id_token = token;
     }
     const r = await fetch(url, { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(payload) });
     return r.json();
@@ -7147,17 +7146,9 @@ function __toVoucherPayload(payload){
       if (!noIC || !date){ alert('Sila isi NoIC dan Tarikh hadir.'); return; }
       if (!file){ alert('Fail PDPA diperlukan.'); return; }
       var base64 = await fileToBase64(file);
-      
-      var up = await postJSON({ action:'uploadPDPA', id:noIC, noIC:noIC, staff: (window.CURRENT_USER && CURRENT_USER.email) || '', fileBase64: base64, fileName: file.name, fileType: file.type });
-      if (up.status !== 'success'){
-        try{
-          var ok = (typeof verifyPdpaByIC==='function') ? await verifyPdpaByIC(noIC) : false;
-          if (!ok){ alert('Gagal upload PDPA: ' + (up.message||up.status)); return; }
-        }catch(_){
-          alert('Gagal upload PDPA: ' + (up.message||up.status)); return;
-        }
-      }
-var fv = await postJSON({ action:'updateStatus', op:'firstVisit', noIC:noIC, staff: (window.CURRENT_USER && CURRENT_USER.email) || '' });
+      var up = await postJSON({ action:'uploadPDPA', id:noIC, noIC:noIC, fileBase64: base64, fileName: file.name, fileType: file.type });
+      if (up.status !== 'success'){ alert('Gagal upload PDPA: ' + (up.message||up.status)); return; }
+      var fv = await postJSON({ action:'updateStatus', op:'firstVisit', noIC:noIC, staff: (window.CURRENT_USER && CURRENT_USER.email) || '' });
       if (fv.status !== 'success'){ alert('Gagal tandakan hadir: ' + (fv.message||fv.status)); return; }
       if (labYes){
         var sd = (document.getElementById('th_second_date') || {}).value || '';
@@ -7413,87 +7404,129 @@ var fv = await postJSON({ action:'updateStatus', op:'firstVisit', noIC:noIC, sta
 })();
 </script>
 
+
+<script>
+
+window.getIdToken = window.getIdToken || function(){
+  try{
+    if (window.ID_TOKEN && String(window.ID_TOKEN).length>10) return String(window.ID_TOKEN);
+  }catch(_){}
+  try{
+    const a = localStorage.getItem('id_token'); if (a && a.length>10) return a;
+  }catch(_){}
+  try{
+    const b = localStorage.getItem('credential'); if (b && b.length>10) return b;
+  }catch(_){}
+  return '';
+};
+
+</script>
+
+<script>
+
+window.verifyPdpaByIC = window.verifyPdpaByIC || async function(noIC){
+  try{
+    const base = (typeof SCRIPT_URL!=='undefined' && SCRIPT_URL) ? SCRIPT_URL : (window.APP && APP.scriptUrl) ? APP.scriptUrl : '';
+    if (!base) return false;
+    const t = (typeof getIdToken==='function') ? getIdToken() : '';
+    const mk = (action) => base + '?' + new URLSearchParams({ action, id_token: t }).toString();
+    const parse = async (u)=>{ const r=await fetch(u); try{ return await r.json(); }catch(e){ return {status:'error'}; } };
+    const [a,b,c] = await Promise.all([ parse(mk('getFirstVisit')), parse(mk('getSecondVisit')), parse(mk('getCompleted')) ]);
+    const eq = (x)=> String(x||'').replace(/\D/g,''); // compare IC normalized
+    const has = (resp)=> resp && resp.status==='success' && Array.isArray(resp.data) && resp.data.some(
+      row => eq(row.noIC||row.id)===eq(noIC) && String(row.pdpaFileId||'').length>0
+    );
+    return has(a) || has(b) || has(c);
+  }catch(e){ return false; }
+};
+
+</script>
+
+<script>
+
+window.toIsoFromDisplay = window.toIsoFromDisplay || function(ddmmyyyy){
+  if (!ddmmyyyy) return '';
+  var m = /^\s*(\d{2})\/(\d{2})\/(\d{4})\s*$/.exec(String(ddmmyyyy));
+  return m ? (m[3]+'-'+m[2]+'-'+m[1]) : String(ddmmyyyy);
+};
+
+</script>
 </body>
 </html>
 
 <script>
 
-document.getElementById('th_submit').addEventListener('click', async function (ev) {
+document.getElementById('th_submit').addEventListener('click', async function(ev){
   ev.preventDefault();
-  try{
-    const ic = (document.getElementById('th_noIC').value||'').trim() || (document.getElementById('pdpaIC')?document.getElementById('pdpaIC').value.trim():'');
-    const fileInput = document.getElementById('pdpaFile');
-    const haveFile = fileInput && fileInput.files && fileInput.files[0];
-    const token = (typeof getIdToken==='function') ? getIdToken() : (window.ID_TOKEN||'');
+  const token = (typeof getIdToken==='function') ? getIdToken() : (window.ID_TOKEN||'');
+  const ic = (document.getElementById('th_noIC') && document.getElementById('th_noIC').value || '').trim()
+          || (document.getElementById('pdpaIC') && document.getElementById('pdpaIC').value || '').trim();
+  if (!ic){ alert('No IC tidak ditemui.'); return; }
 
-    // 1) Upload PDPA jika ada fail
-    if (haveFile){
+  // ========== 1) Upload PDPA jika fail dipilih ==========
+  try{
+    const fileInput = document.getElementById('pdpaFile');
+    if (fileInput && fileInput.files && fileInput.files[0]){
       const f = fileInput.files[0];
-      const base64 = await fileToBase64(f);
-      const pure64 = String(base64).split(',').pop();
+      const b64 = await fileToBase64(f);
+      const pure64 = String(b64).split(',').pop();
       const res = await fetch(SCRIPT_URL, {
         method:'POST',
         headers:{'Content-Type':'application/x-www-form-urlencoded'},
-        body: new URLSearchParams({
-          action:'uploadPDPA',
-          id_token: token || '',
-          noIC: ic,
-          staff: (typeof STAFF_EMAIL!=='undefined'&&STAFF_EMAIL)?STAFF_EMAIL:'SYSTEM',
-          fileBase64: pure64,
-          fileName: f.name || ('PDPA_'+ic+'.pdf'),
-          fileType: f.type || 'application/pdf'
+        body:new URLSearchParams({
+          action:'uploadPDPA', id_token: token||'', noIC: ic,
+          staff:(typeof STAFF_EMAIL!=='undefined'&&STAFF_EMAIL)?STAFF_EMAIL:'SYSTEM',
+          fileBase64:pure64, fileName:f.name||('PDPA_'+ic+'.pdf'), fileType:f.type||'application/pdf'
         })
       });
       const j = await jsonSafe(res);
       if (!j || j.status!=='success'){
-        // fallback verify
         const ok = await verifyPdpaByIC(ic);
-        if (!ok){
-          const msg = (j && (j.message||j.code)) ? (j.message||j.code) : 'Gagal upload PDPA';
-          alert('Gagal upload PDPA: '+msg);
-          return;
-        }
+        if (!ok){ alert('Gagal upload PDPA: '+(j && (j.message||j.code) || 'unknown')); return; }
       }
     }
-
-    // 2) Teruskan flow "Telah Hadir"
-    // Ambil nilai dari modal
-    const hadirDate = (document.getElementById('th_date')||{}).value || '';
-    const labDone = document.querySelector('input[name=\"th_lab_done\"]:checked');
-    const labYes = labDone && /ya|yes|true|1/i.test(labDone.value||'');
-
-    // First visit hadir
-    let r1 = await fetch(SCRIPT_URL, { method:'POST', headers:{'Content-Type':'application/x-www-form-urlencoded'},
-      body:new URLSearchParams({ action:'updateStatus', id_token: token||'', noIC: ic, op:'firstVisit' })});
-    let j1 = await jsonSafe(r1); if(!j1||j1.status!=='success'){ throw new Error('Gagal set First Visit'); }
-
-    // Lab status
-    let r2 = await fetch(SCRIPT_URL, { method:'POST', headers:{'Content-Type':'application/x-www-form-urlencoded'},
-      body:new URLSearchParams({ action:'updateLabStatus', id_token: token||'', noIC: ic, status: labYes?'DONE':'PENDING' })});
-    let j2 = await jsonSafe(r2); if(!j2||j2.status!=='success'){ throw new Error('Gagal kemaskini Lab Status'); }
-
-    // Second Visit (jika Ya)
-    if (labYes){
-      const tca = (document.getElementById('th_tca_date')||{}).value || '';
-      const masa = (document.getElementById('th_tca_time')||{}).value || '';
-      const staff = (document.getElementById('th_tca_staff')||{}).value || '';
-      if (tca || masa){
-        let r3 = await fetch(SCRIPT_URL, { method:'POST', headers:{'Content-Type':'application/x-www-form-urlencoded'},
-          body:new URLSearchParams({ action:'updatePatient', id_token: token||'', noIC: ic, tarikhTCA: tca, masaTCA: masa, staff: staff })});
-        let j3 = await jsonSafe(r3); if(!j3||j3.status!=='success'){ throw new Error('Gagal set TCA Second'); }
-      }
-    }
-
-    // Berjaya
-    alert('Berjaya: rekod telah dikemaskini.');
-    try{ loadFirstVisitData(); }catch(_){}
-    try{ loadSecondVisitData(); }catch(_){}
-    try{ loadCompletedData(); }catch(_){}
-    try{ bootstrap.Modal.getInstance(document.getElementById('pdpaModal')).hide(); }catch(_){}
-    try{ bootstrap.Modal.getInstance(document.getElementById('telahHadirModal')).hide(); }catch(_){}
   }catch(e){
-    alert('Ralat: '+(e && e.message ? e.message : e));
+    console.error('Upload PDPA error', e);
+    const ok = await verifyPdpaByIC(ic);
+    if (!ok){ alert('Gagal upload PDPA: '+(e && e.message || e)); return; }
   }
+
+  // Nilai dari modal
+  const labChoice = document.querySelector('input[name=\"th_lab_done\"]:checked');
+  const labYes = !!(labChoice && /ya|yes|true|1/i.test(labChoice.value||''));
+  const tcaDisp = (document.getElementById('th_tca_date') && document.getElementById('th_tca_date').value) || '';
+  const tcaIso  = window.toIsoFromDisplay ? window.toIsoFromDisplay(tcaDisp) : tcaDisp;
+  const masa    = (document.getElementById('th_tca_time') && document.getElementById('th_tca_time').value) || '';
+  const staff   = (document.getElementById('th_tca_staff') && document.getElementById('th_tca_staff').value) || '';
+
+  // ========== 2) Tanda First Visit HADIR ==========
+  let r1 = await fetch(SCRIPT_URL, { method:'POST', headers:{'Content-Type':'application/x-www-form-urlencoded'},
+    body:new URLSearchParams({ action:'updateStatus', id_token: token||'', noIC: ic, op:'firstVisit' })});
+  let j1 = await jsonSafe(r1); if (!j1 || j1.status!=='success'){ alert('Gagal set First Visit'); return; }
+
+  // ========== 3) Kemas kini Lab Status (DONE/PENDING) ==========
+  let r2 = await fetch(SCRIPT_URL, { method:'POST', headers:{'Content-Type':'application/x-www-form-urlencoded'},
+    body:new URLSearchParams({ action:'updateLabStatus', id_token: token||'', noIC: ic, status: (labYes?'DONE':'PENDING') })});
+  let j2 = await jsonSafe(r2); if (!j2 || j2.status!=='success'){ alert('Gagal kemaskini Lab Status'); return; }
+
+  // ========== 4) Tetapkan TCA Second (TIDAK tanda hadir di sini) ==========
+  if (labYes && (tcaIso || masa || staff)){
+    let r3 = await fetch(SCRIPT_URL, { method:'POST', headers:{'Content-Type':'application/x-www-form-urlencoded'},
+      body:new URLSearchParams({ action:'updatePatient', id_token: token||'', noIC: ic, tarikhTCA: tcaIso, masaTCA: masa, staff: staff })});
+    let j3 = await jsonSafe(r3);
+    if (!j3 || j3.status!=='success'){
+      alert('Gagal menetapkan TCA Second: '+(j3 && (j3.message||j3.code) || 'unknown'));
+      return;
+    }
+  }
+
+  // Selesai
+  try{ bootstrap.Modal.getInstance(document.getElementById('telahHadirModal')).hide(); }catch(_){}
+  try{ bootstrap.Modal.getInstance(document.getElementById('pdpaModal')).hide(); }catch(_){}
+  alert('Berjaya: Rekod dikemas kini.');
+  try{ loadFirstVisitData(); }catch(_){}
+  try{ loadSecondVisitData(); }catch(_){}
+  try{ loadCompletedData(); }catch(_){}
 });
 
 </script>
