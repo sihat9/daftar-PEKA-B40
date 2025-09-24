@@ -4147,33 +4147,81 @@ async function uploadPDPA(){
 
   showLoader('Memuat naik PDPA…');
   try{
-    const base64 = await fileToBase64(file); const pure64 = base64.split(',').pop();
+    const base64 = await fileToBase64(file); 
+    const pure64 = base64.split(',').pop();
     const res = await fetch(SCRIPT_URL, {
       method: 'POST',
       headers: { 'Content-Type':'application/x-www-form-urlencoded' },
-      body: new URLSearchParams({ action:'uploadPDPA', noIC, staff: STAFF_EMAIL,
+      body: new URLSearchParams({
+        action: 'uploadPDPA', id_token: ID_TOKEN, noIC, staff: STAFF_EMAIL,
         fileBase64: pure64, fileName: file.name, fileType: file.type || 'application/octet-stream'
       })
     });
     const json = await jsonSafe(res);
+
+    // Sesetengah persekitaran memulangkan HTML (login page) yang dipaksa jadi {status:'unauthorized'}
+    // Walaupun begitu, fail sebenarnya mungkin telah berjaya dimuat naik oleh Apps Script.
     if (json && json.status === 'success'){
       pdpaModal.hide();
-      const okName = (file && file.name) ? (' '+file.name) : '';
-      toast('Berjaya','PDPA berjaya dimuat naik'+okName,'success');
-      // Segarkan jadual yang berkaitan sahaja
-      try{ loadFirstVisitData(); }catch(_){}
-      try{ loadSecondVisitData(); }catch(_){}
-      try{ loadCompletedData(); }catch(_){}
-    } else {
-      const code = (json && (json.code||json.aud||json.hint)) ? ' ['+ (json.code||json.aud||json.hint) +']' : '';
-      throw new Error((json && (json.message||json.code)) ? (json.message+code) : 'Gagal muat naik PDPA');
+      toast('Berjaya','PDPA dimuat naik','success');
+      // Segarkan paparan
+      loadFirstVisitData(); loadSecondVisitData(); loadCompletedData();
+      return;
     }
+
+    // Fallback pengesahan: semak semula daripada server jika PDPA memang sudah wujud
+    // (mengelak notifikasi palsu "Akses ditolak" walaupun upload berjaya)
+    const verified = await verifyPdpaByIC(noIC);
+    if (verified){
+      pdpaModal.hide();
+      toast('Berjaya (disahkan)','PDPA dimuat naik & dikemaskini.','success');
+      loadFirstVisitData(); loadSecondVisitData(); loadCompletedData();
+      return;
+    }
+
+    // Jika benar-benar gagal
+    throw new Error(json && (json.message || json.code) || 'Gagal muat naik PDPA');
+
   } catch(e){
-    let msg = String(e && e.message || 'Gagal muat naik PDPA');
-    if (/unauthorized|akses ditolak|forbidden|no_token|bad_aud|bad_token/i.test(msg)){
-      msg = 'Akses ditolak. Sila sign in semula atau hubungi admin untuk allowlist.';
-    }
-    toast('Ralat', msg, 'danger');
+    toast('Ralat', String(e && e.message || e), 'danger');
+  } finally { hideLoader(); }
+}
+
+// Semak semula melalui API sama ada pesakit noIC sudah mempunyai PDPA
+async function verifyPdpaByIC(noIC){
+  try{
+    // Cuba cari di First Visit, Second Visit dan Completed
+    const [f, s, c] = await Promise.all([
+      getJSON({ action:'getFirstVisit' }, { silent:true }),
+      getJSON({ action:'getSecondVisit' }, { silent:true }),
+      getJSON({ action:'getCompleted' }, { silent:true })
+    ]);
+    const has = (arr)=> Array.isArray(arr?.data) && arr.data.some(p => String(p.noIC||'')===String(noIC||'') && p.pdpaFileId);
+    return has(f) || has(s) || has(c);
+  }catch(err){
+    console.warn('verifyPdpaByIC failed', err);
+    return false;
+  }
+}
+  showLoader('Memuat naik PDPA…');
+  try{
+    const base64 = await fileToBase64(file); const pure64 = base64.split(',').pop();
+    const res = await fetch(SCRIPT_URL, {
+      method: 'POST',
+      headers: { 'Content-Type':'application/x-www-form-urlencoded' },
+      body: new URLSearchParams({
+        action: 'uploadPDPA', id_token: ID_TOKEN, noIC, staff: STAFF_EMAIL,
+        fileBase64: pure64, fileName: file.name, fileType: file.type || 'application/octet-stream'
+      })
+    });
+    const json = await jsonSafe(res);
+    if (json.status === 'success'){
+      pdpaModal.hide();
+      toast('Berjaya','PDPA dimuat naik','success');
+      loadFirstVisitData(); loadSecondVisitData(); loadCompletedData();
+    } else { throw new Error(json.message || 'Gagal muat naik PDPA'); }
+  } catch(e){
+    toast('Ralat', e.message, 'danger');
   } finally { hideLoader(); }
 }
 function fileToBase64(file){
