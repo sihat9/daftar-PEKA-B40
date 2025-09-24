@@ -4151,7 +4151,8 @@ async function uploadPDPA(){
     const res = await fetch(SCRIPT_URL, {
       method: 'POST',
       headers: { 'Content-Type':'application/x-www-form-urlencoded' },
-      body: new URLSearchParams({ action:'uploadPDPA', noIC, staff: STAFF_EMAIL,
+      body: new URLSearchParams({
+        action: 'uploadPDPA', id_token: ID_TOKEN, noIC, staff: STAFF_EMAIL,
         fileBase64: pure64, fileName: file.name, fileType: file.type || 'application/octet-stream'
       })
     });
@@ -7125,16 +7126,12 @@ function __toVoucherPayload(payload){
     }catch(_e){}
   }
   async function postJSON(payload){
-  // Hantar sebagai application/x-www-form-urlencoded supaya serasi dengan Apps Script & interceptor
-  // Jangan letak id_token di sini; interceptor akan tambah secara automatik
-  var url = (window.SCRIPT_URL || (window.APP && APP.scriptUrl));
-  if (!url) throw new Error('SCRIPT_URL belum ditetapkan');
-  var form = new URLSearchParams();
-  // Jika caller pass 'action', biarkan di body (Apps Script doPost akan baca p.action)
-  Object.keys(payload||{}).forEach(function(k){ form.set(k, payload[k]); });
-  const r = await fetch(url, { method:'POST', headers:{'Content-Type':'application/x-www-form-urlencoded'}, body: form });
-  return r.json();
-}
+    var url = (window.SCRIPT_URL || (window.APP && APP.scriptUrl)) + '?action=' + encodeURIComponent(payload.action);
+    delete payload.action;
+    var token = (window.AUTH && AUTH.id_token) || (window.GOOGLE_ID_TOKEN) || '';
+    if (token){
+      url += '&id_token=' + encodeURIComponent(token);
+    }
     const r = await fetch(url, { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(payload) });
     return r.json();
   }
