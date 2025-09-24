@@ -5420,7 +5420,7 @@ if (btn) {
     if (!tbody) return;
     if (!activityId){ tbody.innerHTML = '<tr><td colspan="13" class="text-center text-muted">Tiada program dipilih.</td></tr>'; return; }
 
-    const q = ($('#sejarahSearch')?.value || '').toLowerCase().trim();
+    const q = (document.getElementById('sejarahSearch')?.value || '').toLowerCase().trim();
     tbody.innerHTML = '<tr><td colspan="13" class="text-center text-muted">Memuat data…</td></tr>';
     try{
       const qs = new URLSearchParams({ action:'getNadiActivityDetail', id: activityId, id_token: window.ID_TOKEN||'' });
@@ -5659,7 +5659,7 @@ if (btn) {
 
   function renderDetail(){
     const tbody = $('#sejarahTable');
-    const q = ($('#sejarahSearch')?.value || '').toLowerCase().trim();
+    const q = (document.getElementById('sejarahSearch')?.value || '').toLowerCase().trim();
     const rows = state.rows.filter(r => {
       if (!q) return true;
       const blob = `${r.nama||''}|${r.noIC||''}|${r.noTelefon||''}|${r.alamat||''}|${r.status||''}|${r.bp||''}|${r.pr||''}|${r.dxt||''}|${r.bmi||''}|${r.tcaDate||''}|${r.tcaTime||''}|${r.tcaStaff||''}|${r.remark||''}`.toLowerCase();
@@ -5706,7 +5706,7 @@ if (btn) {
   // ===== Export CSV =====
   function exportCsv(){
     const rows = [['#','Nama','IC','Telefon','Alamat','Status','BP','PR','DXT','BMI','TCA','Staff','Remark']];
-    const q = ($('#sejarahSearch')?.value || '').toLowerCase().trim();
+    const q = (document.getElementById('sejarahSearch')?.value || '').toLowerCase().trim();
     const filtered = state.rows.filter(r=>{
       if (!q) return true;
       const blob = `${r.nama||''}|${r.noIC||''}|${r.noTelefon||''}|${r.alamat||''}|${r.status||''}|${r.bp||''}|${r.pr||''}|${r.dxt||''}|${r.bmi||''}|${r.tcaDate||''}|${r.tcaTime||''}|${r.tcaStaff||''}|${r.remark||''}`.toLowerCase();
@@ -7190,5 +7190,86 @@ function __toVoucherPayload(payload){
     })();
     </script>
     
+
+<!-- Sejarah: carian & autosort – patch -->
+<script>
+(function(){
+  // Utility: normalize text
+  function norm(s){ return (s||'').toString().toLowerCase(); }
+  function getEl(id){ return document.getElementById(id); }
+
+  // Filter peserta table (kanan)
+  function filterPesertaTable(q){
+    var tb = document.querySelector('#sejarahTable tbody');
+    if (!tb) return 0;
+    var rows = Array.from(tb.querySelectorAll('tr'));
+    var count = 0;
+    rows.forEach(function(tr){
+      var txt = norm(tr.textContent);
+      var show = !q || txt.indexOf(q)>=0;
+      tr.style.display = show ? '' : 'none';
+      if (show) count++;
+    });
+    return count;
+  }
+
+  // Reorder/sort program list (kiri) putting items with matches first
+  function sortProgramListByQuery(q){
+    var list = document.getElementById('programList');
+    if (!list) return;
+    var items = Array.from(list.querySelectorAll('.list-group-item'));
+    if (!q){
+      // restore original order by data-index if present
+      items.sort(function(a,b){
+        var ia = parseInt(a.getAttribute('data-index')||'0',10);
+        var ib = parseInt(b.getAttribute('data-index')||'0',10);
+        return ia-ib;
+      });
+    } else {
+      items.forEach(function(li){
+        var title = norm(li.textContent);
+        var score = title.indexOf(q)>=0 ? 1 : 0;
+        li.setAttribute('data-score', String(score));
+      });
+      items.sort(function(a,b){
+        var sa = parseInt(a.getAttribute('data-score')||'0',10);
+        var sb = parseInt(b.getAttribute('data-score')||'0',10);
+        if (sb!==sa) return sb-sa;
+        var ia = parseInt(a.getAttribute('data-index')||'0',10);
+        var ib = parseInt(b.getAttribute('data-index')||'0',10);
+        return ia-ib;
+      });
+    }
+    items.forEach(function(li){ list.appendChild(li); });
+  }
+
+  // Master apply function
+  function applySejarahSearch(){
+    var q = norm((getEl('sejarahSearch') && getEl('sejarahSearch').value) || '');
+    // 1) filter peserta table
+    filterPesertaTable(q);
+    // 2) sort kiri
+    sortProgramListByQuery(q);
+  }
+
+  // Hook input
+  var input = getEl('sejarahSearch');
+  if (input){
+    input.addEventListener('input', function(){ applySejarahSearch(); });
+  }
+
+  // Auto-load Sejarah after auth ready & ensure search applies after load
+  window.addEventListener('auth-ready', function(){
+    try {
+      if (typeof triggerSejarahLoad === 'function'){ triggerSejarahLoad(); }
+      setTimeout(applySejarahSearch, 500);
+    } catch(e){}
+  });
+
+  // Expose for debug
+  window.applySejarahSearch = applySejarahSearch;
+})();
+</script>
+
 </body>
 </html>
