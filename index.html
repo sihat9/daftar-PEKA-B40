@@ -7128,9 +7128,10 @@ function __toVoucherPayload(payload){
   async function postJSON(payload){
     var url = (window.SCRIPT_URL || (window.APP && APP.scriptUrl)) + '?action=' + encodeURIComponent(payload.action);
     delete payload.action;
-    var token = (window.AUTH && AUTH.id_token) || (window.GOOGLE_ID_TOKEN) || '';
+    var token = (window.AUTH && AUTH.id_token) || (window.GOOGLE_ID_TOKEN) || (window.ID_TOKEN) || localStorage.getItem('id_token') || localStorage.getItem('credential') || '';
     if (token){
       url += '&id_token=' + encodeURIComponent(token);
+      payload.id_token = token;
     }
     const r = await fetch(url, { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(payload) });
     return r.json();
@@ -7146,9 +7147,17 @@ function __toVoucherPayload(payload){
       if (!noIC || !date){ alert('Sila isi NoIC dan Tarikh hadir.'); return; }
       if (!file){ alert('Fail PDPA diperlukan.'); return; }
       var base64 = await fileToBase64(file);
-      var up = await postJSON({ action:'uploadPDPA', id:noIC, noIC:noIC, fileBase64: base64, fileName: file.name, fileType: file.type });
-      if (up.status !== 'success'){ alert('Gagal upload PDPA: ' + (up.message||up.status)); return; }
-      var fv = await postJSON({ action:'updateStatus', op:'firstVisit', noIC:noIC, staff: (window.CURRENT_USER && CURRENT_USER.email) || '' });
+      
+      var up = await postJSON({ action:'uploadPDPA', id:noIC, noIC:noIC, staff: (window.CURRENT_USER && CURRENT_USER.email) || '', fileBase64: base64, fileName: file.name, fileType: file.type });
+      if (up.status !== 'success'){
+        try{
+          var ok = (typeof verifyPdpaByIC==='function') ? await verifyPdpaByIC(noIC) : false;
+          if (!ok){ alert('Gagal upload PDPA: ' + (up.message||up.status)); return; }
+        }catch(_){
+          alert('Gagal upload PDPA: ' + (up.message||up.status)); return;
+        }
+      }
+var fv = await postJSON({ action:'updateStatus', op:'firstVisit', noIC:noIC, staff: (window.CURRENT_USER && CURRENT_USER.email) || '' });
       if (fv.status !== 'success'){ alert('Gagal tandakan hadir: ' + (fv.message||fv.status)); return; }
       if (labYes){
         var sd = (document.getElementById('th_second_date') || {}).value || '';
@@ -7404,35 +7413,5 @@ function __toVoucherPayload(payload){
 })();
 </script>
 
-
-<!-- PATCH: Ensure global getIdToken + verifyPdpaByIC to prevent 'is not defined' errors -->
-<script>
-(function(){
-  try {
-    if (!window.getIdToken) {
-      window.getIdToken = function(){
-        try {
-          return (window.ID_TOKEN || localStorage.getItem('id_token') || localStorage.getItem('ID_TOKEN') || '').trim();
-        } catch(e){ return ''; }
-      };
-    }
-    if (typeof window.verifyPdpaByIC !== 'function') {
-      window.verifyPdpaByIC = async function(ic){
-        try{
-          if (!ic) return { status:'error', message:'IC tidak sah' };
-          if (window.RUMUS && typeof window.RUMUS.get === 'function'){
-            const t = (typeof window.getIdToken === 'function') ? window.getIdToken() : (window.ID_TOKEN || '');
-            const res = await window.RUMUS.get('verifyPdpaByIC', { ic: String(ic||'').trim(), id_token: t });
-            return res;
-          }
-          return { status:'error', message:'RUMUS tidak sedia' };
-        }catch(err){
-          return { status:'error', message:String(err) };
-        }
-      };
-    }
-  } catch(e) { /* no-op */ }
-})();
-</script>
 </body>
 </html>
