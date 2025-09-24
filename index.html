@@ -7415,3 +7415,85 @@ var fv = await postJSON({ action:'updateStatus', op:'firstVisit', noIC:noIC, sta
 
 </body>
 </html>
+
+<script>
+
+document.getElementById('th_submit').addEventListener('click', async function (ev) {
+  ev.preventDefault();
+  try{
+    const ic = (document.getElementById('th_noIC').value||'').trim() || (document.getElementById('pdpaIC')?document.getElementById('pdpaIC').value.trim():'');
+    const fileInput = document.getElementById('pdpaFile');
+    const haveFile = fileInput && fileInput.files && fileInput.files[0];
+    const token = (typeof getIdToken==='function') ? getIdToken() : (window.ID_TOKEN||'');
+
+    // 1) Upload PDPA jika ada fail
+    if (haveFile){
+      const f = fileInput.files[0];
+      const base64 = await fileToBase64(f);
+      const pure64 = String(base64).split(',').pop();
+      const res = await fetch(SCRIPT_URL, {
+        method:'POST',
+        headers:{'Content-Type':'application/x-www-form-urlencoded'},
+        body: new URLSearchParams({
+          action:'uploadPDPA',
+          id_token: token || '',
+          noIC: ic,
+          staff: (typeof STAFF_EMAIL!=='undefined'&&STAFF_EMAIL)?STAFF_EMAIL:'SYSTEM',
+          fileBase64: pure64,
+          fileName: f.name || ('PDPA_'+ic+'.pdf'),
+          fileType: f.type || 'application/pdf'
+        })
+      });
+      const j = await jsonSafe(res);
+      if (!j || j.status!=='success'){
+        // fallback verify
+        const ok = await verifyPdpaByIC(ic);
+        if (!ok){
+          const msg = (j && (j.message||j.code)) ? (j.message||j.code) : 'Gagal upload PDPA';
+          alert('Gagal upload PDPA: '+msg);
+          return;
+        }
+      }
+    }
+
+    // 2) Teruskan flow "Telah Hadir"
+    // Ambil nilai dari modal
+    const hadirDate = (document.getElementById('th_date')||{}).value || '';
+    const labDone = document.querySelector('input[name=\"th_lab_done\"]:checked');
+    const labYes = labDone && /ya|yes|true|1/i.test(labDone.value||'');
+
+    // First visit hadir
+    let r1 = await fetch(SCRIPT_URL, { method:'POST', headers:{'Content-Type':'application/x-www-form-urlencoded'},
+      body:new URLSearchParams({ action:'updateStatus', id_token: token||'', noIC: ic, op:'firstVisit' })});
+    let j1 = await jsonSafe(r1); if(!j1||j1.status!=='success'){ throw new Error('Gagal set First Visit'); }
+
+    // Lab status
+    let r2 = await fetch(SCRIPT_URL, { method:'POST', headers:{'Content-Type':'application/x-www-form-urlencoded'},
+      body:new URLSearchParams({ action:'updateLabStatus', id_token: token||'', noIC: ic, status: labYes?'DONE':'PENDING' })});
+    let j2 = await jsonSafe(r2); if(!j2||j2.status!=='success'){ throw new Error('Gagal kemaskini Lab Status'); }
+
+    // Second Visit (jika Ya)
+    if (labYes){
+      const tca = (document.getElementById('th_tca_date')||{}).value || '';
+      const masa = (document.getElementById('th_tca_time')||{}).value || '';
+      const staff = (document.getElementById('th_tca_staff')||{}).value || '';
+      if (tca || masa){
+        let r3 = await fetch(SCRIPT_URL, { method:'POST', headers:{'Content-Type':'application/x-www-form-urlencoded'},
+          body:new URLSearchParams({ action:'updatePatient', id_token: token||'', noIC: ic, tarikhTCA: tca, masaTCA: masa, staff: staff })});
+        let j3 = await jsonSafe(r3); if(!j3||j3.status!=='success'){ throw new Error('Gagal set TCA Second'); }
+      }
+    }
+
+    // Berjaya
+    alert('Berjaya: rekod telah dikemaskini.');
+    try{ loadFirstVisitData(); }catch(_){}
+    try{ loadSecondVisitData(); }catch(_){}
+    try{ loadCompletedData(); }catch(_){}
+    try{ bootstrap.Modal.getInstance(document.getElementById('pdpaModal')).hide(); }catch(_){}
+    try{ bootstrap.Modal.getInstance(document.getElementById('telahHadirModal')).hide(); }catch(_){}
+  }catch(e){
+    alert('Ralat: '+(e && e.message ? e.message : e));
+  }
+});
+
+</script>
