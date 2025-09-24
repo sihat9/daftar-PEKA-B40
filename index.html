@@ -4641,10 +4641,13 @@ const saveNadiStateDebounced = debounce(saveNadiState, 400);
   async function loadPrograms(){
     const list = document.getElementById('programList');
     if (!list) return;
+    // elak 404 bila SCRIPT_URL belum ditetapkan / belum login
+    const BASE = (window.SCRIPT_URL && String(window.SCRIPT_URL).trim()) || '';
+    if (!BASE) { list.innerHTML = '<div class="text-warning text-center p-3">Sila log masuk / tetapkan SCRIPT_URL untuk memuat program.</div>'; return; }
     list.innerHTML = '<div class="text-muted text-center p-3">Memuat program…</div>';
     try{
       const qs = new URLSearchParams({ action:'getNadiActivities', id_token: (window.ID_TOKEN||'') });
-      const res = await fetch(`${window.SCRIPT_URL}?${qs.toString()}`);
+      const res = await fetch(`${BASE}?${qs.toString()}`);
       const j = await jsonSafe(res);
       if (!j || j.status!=='success') throw new Error(j && (j.message||j.code) || 'Gagal ambil program');
       const data = Array.isArray(j.data) ? j.data : [];
