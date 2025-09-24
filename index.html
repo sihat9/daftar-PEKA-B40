@@ -4811,7 +4811,7 @@ if (btn) {
       const m = v.match(/(\d{2,3})\s*[\/\-]\s*(\d{2,3})/);
       if (!m){ elView.textContent = v; return; }
       const sys = parseInt(m[1],10), dia = parseInt(m[2],10);
-      const level = (sys>=140 || dia>=90) ? 'high' : ((sys<120 && dia<80)?'ok':'warn');
+      const level = (sys>=140 || dia>=90) ? 'high' : ((sys<140 && dia<90)?'ok':'warn');
       mark(level); elView.textContent = `${sys}/${dia}`; return;
     }
     if (kind==='pr'){
