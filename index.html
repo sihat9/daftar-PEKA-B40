@@ -1321,7 +1321,7 @@
                 <input type="text" id="th_second_staff" class="form-control" placeholder="Nama staff yang tetapkan TCA" />
           <div class="modal-footer">
             <button class="btn btn-secondary" data-bs-dismiss="modal">Tutup</button>
-            <button class="btn btn-primary" id="th_submit"><i class="fa-solid fa-floppy-disk me-1"></i>Simpan</button>
+            <button class="btn btn-primary" id="th_second_submit"><i class="fa-solid fa-floppy-disk me-1"></i>Simpan</button>
           </div>
         
               </div>
@@ -1559,7 +1559,7 @@ async function refreshMonitorNow(){
 }
 
 async function loadMonitor(dateStr) {
-  const container = document.getElementById('monitorAllContainer');
+  const container = document.getElementById('monitorCards');
   if (!container) return;
 
   // Tarikh dari input jika tidak diberi
@@ -6368,7 +6368,7 @@ function injectTelahHadirButtons(){
       if (res?.status!=='success') throw new Error(res?.message||res?.code||'Gagal padam kekal');
       _toast('Pesakit dipadam kekal');
       const tr = document.querySelector('#archiveTable tr[data-ic="'+ic+'"]');
-      if (tr) /* row kept: tr.remove(); */
+      if (tr){ /* row kept: tr.remove(); */ }
       if (!document.querySelector('#archiveTable tr')){ 
         const row = document.createElement('tr'); 
         row.innerHTML = '<td colspan="8" class="text-center text-muted">Tiada rekod arkib</td>'; 
@@ -7225,19 +7225,3 @@ function __toVoucherPayload(payload){
     
 </body>
 </html>
-
-
-// Retry loading Sejarah Saringan after sign-in
-window.addEventListener('app:signed-in', function(){
-  try{
-    const auth = ensureAuthReady();
-    if (auth.ok) { loadPrograms(); }
-  }catch(e){ console.warn('retry loadPrograms after sign-in failed', e); }
-});
-// Also try once DOM is ready (e.g., token restored from localStorage)
-document.addEventListener('DOMContentLoaded', function(){
-  try{
-    const auth = ensureAuthReady();
-    if (auth.ok) { loadPrograms(); }
-  }catch(e){}
-});
