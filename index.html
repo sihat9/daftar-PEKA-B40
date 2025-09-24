@@ -1321,7 +1321,7 @@
                 <input type="text" id="th_second_staff" class="form-control" placeholder="Nama staff yang tetapkan TCA" />
           <div class="modal-footer">
             <button class="btn btn-secondary" data-bs-dismiss="modal">Tutup</button>
-            <button class="btn btn-primary" id="th_second_submit"><i class="fa-solid fa-floppy-disk me-1"></i>Simpan</button>
+            <button class="btn btn-primary" id="th_submit"><i class="fa-solid fa-floppy-disk me-1"></i>Simpan</button>
           </div>
         
               </div>
@@ -1559,7 +1559,7 @@ async function refreshMonitorNow(){
 }
 
 async function loadMonitor(dateStr) {
-  const container = document.getElementById('monitorCards');
+  const container = document.getElementById('monitorAllContainer');
   if (!container) return;
 
   // Tarikh dari input jika tidak diberi
@@ -4623,7 +4623,7 @@ const saveNadiStateDebounced = debounce(saveNadiState, 400);
 
       // Buang baris voucher dari jadual sebelum simpan aktiviti rasmi, supaya tidak dihitung sebagai "layak"
       document.querySelectorAll('#nadiContainer tr').forEach(tr=>{
-        if (tr.querySelector('input[name="voucher"]')?.checked) { /* row kept: tr.remove(); */ }
+        if (tr.querySelector('input[name="voucher"]')?.checked) /* row kept: tr.remove(); */
       });
       saveNadiState();
     }
@@ -4637,34 +4637,7 @@ const saveNadiStateDebounced = debounce(saveNadiState, 400);
   });
 
   // ====== Sejarah Saringan ======
-  
-// --- Auth readiness helper (prevents fetch with undefined URL/token) ---
-function ensureAuthReady() {
-  // Try several keys to maximize compatibility
-  let base = (window.SCRIPT_URL || window.GAS_BASE_URL || '').trim();
-  if (!base) {
-    base = (localStorage.getItem('SCRIPT_URL') || localStorage.getItem('gas_base_url') || '').trim();
-  }
-  // Guard against literal 'undefined' or relative value
-  if (base && (base === 'undefined' || !/^https?:\/\//i.test(base))) {
-    base = '';
-  }
-  let token = (window.ID_TOKEN || '').trim();
-  if (!token) token = (localStorage.getItem('id_token') || '').trim();
-  const ok = !!(base && token);
-  if (ok) {
-    window.SCRIPT_URL = base; // normalize global
-    window.ID_TOKEN = token;
-  }
-  return { ok, base, token };
-}
-async function loadPrograms(){
-  const auth = ensureAuthReady();
-  if (!auth.ok) {
-    console.info('[loadPrograms] Auth not ready; skipping for now.');
-    return;
-  }
-
+  async function loadPrograms(){
     const list = document.getElementById('programList');
     if (!list) return;
     list.innerHTML = '<div class="text-muted text-center p-3">Memuat program…</div>';
@@ -4690,12 +4663,6 @@ async function loadPrograms(){
   }
 
   async function loadProgramDetail(activityId){
-  const auth = ensureAuthReady();
-  if (!auth.ok) {
-    console.info('[loadProgramDetail] Auth not ready; skipping for now.');
-    return;
-  }
-
     const tbody = document.getElementById('sejarahTable');
     const titleLabel = document.getElementById('programTitleLabel');
     const dateLabel = document.getElementById('programDateLabel');
@@ -6368,7 +6335,7 @@ function injectTelahHadirButtons(){
       if (res?.status!=='success') throw new Error(res?.message||res?.code||'Gagal padam kekal');
       _toast('Pesakit dipadam kekal');
       const tr = document.querySelector('#archiveTable tr[data-ic="'+ic+'"]');
-      if (tr){ /* row kept: tr.remove(); */ }
+      if (tr) /* row kept: tr.remove(); */
       if (!document.querySelector('#archiveTable tr')){ 
         const row = document.createElement('tr'); 
         row.innerHTML = '<td colspan="8" class="text-center text-muted">Tiada rekod arkib</td>'; 
@@ -7223,5 +7190,214 @@ function __toVoucherPayload(payload){
     })();
     </script>
     
+
+<!-- Sejarah Search + Autosort Patch (non-intrusive) -->
+<script id="sejarahSearchPatchV2">
+(function(){
+  'use strict';
+  if (window.__SEJARAH_SEARCH_PATCH_V2__) return;
+  window.__SEJARAH_SEARCH_PATCH_V2__ = true;
+
+  function $(sel, root){ return (root||document).querySelector(sel); }
+  function $all(sel, root){ return Array.from((root||document).querySelectorAll(sel)); }
+  function debounce(fn, ms){
+    let t; return function(){ clearTimeout(t); const args=arguments, ctx=this; t=setTimeout(()=>fn.apply(ctx,args), ms); };
+  }
+  function text(el){
+    return (el ? (el.innerText || el.textContent || '') : '').trim();
+  }
+  function lower(s){ return String(s||'').toLowerCase(); }
+  function digits(s){ return String(s||'').replace(/\D+/g,''); }
+
+  const tbodySel = '#sejarahTable';
+  const inputSel = '#sejarahSearch';
+
+  const state = {
+    rows: [],             // [{tr, cells, name, ic, phone, addr, status, staff, tca, remark, icDigits, phoneDigits, index}]
+    origOrder: [],        // original <tr> order for restore
+    origHtml: null,
+    lastQuery: '',
+    building: false
+  };
+
+  function collectRows(){
+    const tb = $(tbodySel);
+    if (!tb) return;
+    const trs = $all(':scope > tr', tb);
+    const rows = [];
+    let idx = 0;
+    for (const tr of trs){
+      const tds = $all('td', tr);
+      if (tds.length < 5) continue; // skip placeholder rows
+      // Expected columns: 0:#, 1:Nama, 2:IC, 3:Telefon, 4:Alamat, 5:Status, 6:BP, 7:PR, 8:DXT, 9:BMI, 10:TCA, 11:Staff, 12:Remark
+      const name   = lower(text(tds[1]));
+      const ic     = lower(text(tds[2]));
+      const phone  = lower(text(tds[3]));
+      const addr   = lower(text(tds[4] || ''));
+      const status = lower(text(tds[5] || ''));
+      const tca    = lower(text(tds[10] || ''));
+      const staff  = lower(text(tds[11] || ''));
+      const remark = lower(text(tds[12] || ''));
+      rows.push({
+        tr, cells: tds, name, ic, phone, addr, status, tca, staff, remark,
+        icDigits: digits(ic), phoneDigits: digits(phone),
+        index: idx++
+      });
+    }
+    state.rows = rows;
+    state.origOrder = rows.map(r => r.tr);
+  }
+
+  function setNoMatchRow(show){
+    const tb = $(tbodySel);
+    if (!tb) return;
+    let row = $('#sejarahNoMatchRow');
+    if (show){
+      if (!row){
+        const colSpan = ($all('thead th', tb.closest('table')) || []).length || 13;
+        row = document.createElement('tr');
+        row.id = 'sejarahNoMatchRow';
+        const td = document.createElement('td');
+        td.colSpan = colSpan;
+        td.className = 'text-center text-muted py-3';
+        td.textContent = 'Tiada padanan carian.';
+        row.appendChild(td);
+      }
+      // remove all normal rows from view; then show the message row
+      $all(':scope > tr', tb).forEach(tr => tr.remove());
+      tb.appendChild(row);
+    } else {
+      if (row) row.remove();
+    }
+  }
+
+  function renumber(){
+    // Set sequential numbers for visible rows
+    let no = 1;
+    for (const r of state.rows){
+      if (r.tr.parentElement){
+        if (r.cells[0]) r.cells[0].textContent = String(no++);
+      }
+    }
+  }
+
+  function scoreRow(r, tokens){
+    if (!tokens.length) return 0;
+    let score = 0;
+    for (const tok of tokens){
+      if (!tok) continue;
+      const t = lower(tok);
+      const td = digits(tok);
+      let hit = false;
+
+      // Strong matches (IC / phone digit contains)
+      if (td && td.length >= 3){
+        if (r.icDigits.indexOf(td) >= 0) { score += 220; hit = true; }
+        else if (r.phoneDigits.indexOf(td) >= 0) { score += 150; hit = true; }
+      }
+
+      // Name
+      if (r.name.startsWith(t))        { score += 160; hit = true; }
+      else if (r.name.indexOf(t) >= 0) { score += 100; hit = true; }
+
+      // IC / Phone textual
+      if (!hit && r.ic.indexOf(t) >= 0){ score += 120; hit = true; }
+      if (!hit && r.phone.indexOf(t) >= 0){ score += 100; hit = true; }
+
+      // Address / status / staff / remark / tca
+      if (!hit && r.addr.indexOf(t) >= 0){ score += 40; hit = true; }
+      if (!hit && r.status.indexOf(t) >= 0){ score += 35; hit = true; }
+      if (!hit && r.staff.indexOf(t) >= 0){ score += 32; hit = true; }
+      if (!hit && r.remark.indexOf(t) >= 0){ score += 25; hit = true; }
+      if (!hit && r.tca.indexOf(t) >= 0){ score += 20; hit = true; }
+
+      if (!hit) return -1e9; // token not found anywhere -> filter out
+    }
+    return score;
+  }
+
+  function applyFilterSort(q){
+    const tb = $(tbodySel);
+    if (!tb) return;
+
+    const query = (q||'').trim();
+    state.lastQuery = query;
+
+    // Clear "no match" row if any
+    setNoMatchRow(false);
+
+    if (!query){
+      // restore original order and show all
+      $all(':scope > tr', tb).forEach(tr => tr.remove());
+      for (const tr of state.origOrder) tb.appendChild(tr);
+      renumber();
+      return;
+    }
+
+    const tokens = query.split(/\s+/).map(s => s.trim()).filter(Boolean);
+    const items = [];
+    for (const r of state.rows){
+      const s = scoreRow(r, tokens);
+      if (s > -1e8) items.push({ s, r });
+    }
+
+    if (!items.length){
+      setNoMatchRow(true);
+      return;
+    }
+
+    // Sort by score desc, then name asc, then original index asc
+    items.sort((a,b) => {
+      if (b.s !== a.s) return b.s - a.s;
+      if (a.r.name !== b.r.name) return a.r.name.localeCompare(b.r.name, 'ms');
+      return a.r.index - b.r.index;
+    });
+
+    // Rebuild tbody with matched rows only
+    $all(':scope > tr', tb).forEach(tr => tr.remove());
+    for (const it of items) tb.appendChild(it.r.tr);
+    renumber();
+  }
+
+  const debouncedApply = debounce(applyFilterSort, 80);
+
+  function init(){
+    const tb = $(tbodySel);
+    const inp = $(inputSel);
+    if (!tb || !inp) return;
+
+    // Build initial cache
+    collectRows();
+
+    // Listen to input
+    inp.addEventListener('input', (e)=> {
+      debouncedApply(e.target.value || '');
+    });
+
+    // Observe changes to tbody to rebuild cache (e.g., when user selects different program)
+    const mo = new MutationObserver(debounce(function(muts){
+      // Avoid reacting to our own reorders frequently; rebuild cache cautiously
+      collectRows();
+      if (state.lastQuery) applyFilterSort(state.lastQuery);
+    }, 120));
+    mo.observe(tb, { childList: true, subtree: false });
+
+    // Also if page becomes visible later, ensure cache
+    document.addEventListener('visibilitychange', function(){
+      if (document.visibilityState === 'visible'){
+        collectRows();
+        if (state.lastQuery) applyFilterSort(state.lastQuery);
+      }
+    });
+  }
+
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', init);
+  } else {
+    init();
+  }
+})();
+</script>
+
 </body>
 </html>
