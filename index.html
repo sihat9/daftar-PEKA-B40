@@ -7435,5 +7435,36 @@ function __toVoucherPayload(payload){
 })();
 </script>
 
+<script>
+// --- Helper: semak semula kewujudan PDPA di server (noIC) ---
+async function verifyPdpaByIC(noIC){
+  try{
+    const ic = String(noIC||'').trim();
+    if (!ic) return false;
+    const mkUrl = (params) => {
+      const base = (typeof SCRIPT_URL!=='undefined' && SCRIPT_URL) ? SCRIPT_URL
+                  : (window.APP && APP.scriptUrl) ? APP.scriptUrl : '';
+      if (!base) return '';
+      return base + '?' + new URLSearchParams(params).toString();
+    };
+    const parse = async (u) => {
+      if (!u) return {status:'error'};
+      const r = await fetch(u);
+      try{ return await r.json(); }catch(e){ return {status:'error'}; }
+    };
+    const [a,b,c] = await Promise.all([
+      parse(mkUrl({action:'getFirstVisit'})),
+      parse(mkUrl({action:'getSecondVisit'})),
+      parse(mkUrl({action:'getCompleted'})),
+    ]);
+    const has = (resp)=> resp && resp.status==='success' && Array.isArray(resp.data) && resp.data.some(
+      (row)=> String(row.noIC||row.id||'').trim()===ic && String(row.pdpaFileId||'').length>0
+    );
+    return has(a) || has(b) || has(c);
+  }catch(e){
+    return false;
+  }
+}
+</script>
 </body>
 </html>
