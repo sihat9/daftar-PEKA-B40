@@ -4151,19 +4151,29 @@ async function uploadPDPA(){
     const res = await fetch(SCRIPT_URL, {
       method: 'POST',
       headers: { 'Content-Type':'application/x-www-form-urlencoded' },
-      body: new URLSearchParams({
-        action: 'uploadPDPA', id_token: ID_TOKEN, noIC, staff: STAFF_EMAIL,
+      body: new URLSearchParams({ action:'uploadPDPA', noIC, staff: STAFF_EMAIL,
         fileBase64: pure64, fileName: file.name, fileType: file.type || 'application/octet-stream'
       })
     });
     const json = await jsonSafe(res);
-    if (json.status === 'success'){
+    if (json && json.status === 'success'){
       pdpaModal.hide();
-      toast('Berjaya','PDPA dimuat naik','success');
-      loadFirstVisitData(); loadSecondVisitData(); loadCompletedData();
-    } else { throw new Error(json.message || 'Berjaya muat naik PDPA'); }
+      const okName = (file && file.name) ? (' '+file.name) : '';
+      toast('Berjaya','PDPA berjaya dimuat naik'+okName,'success');
+      // Segarkan jadual yang berkaitan sahaja
+      try{ loadFirstVisitData(); }catch(_){}
+      try{ loadSecondVisitData(); }catch(_){}
+      try{ loadCompletedData(); }catch(_){}
+    } else {
+      const code = (json && (json.code||json.aud||json.hint)) ? ' ['+ (json.code||json.aud||json.hint) +']' : '';
+      throw new Error((json && (json.message||json.code)) ? (json.message+code) : 'Gagal muat naik PDPA');
+    }
   } catch(e){
-    toast('Ralat', e.message, 'danger');
+    let msg = String(e && e.message || 'Gagal muat naik PDPA');
+    if (/unauthorized|akses ditolak|forbidden|no_token|bad_aud|bad_token/i.test(msg)){
+      msg = 'Akses ditolak. Sila sign in semula atau hubungi admin untuk allowlist.';
+    }
+    toast('Ralat', msg, 'danger');
   } finally { hideLoader(); }
 }
 function fileToBase64(file){
@@ -4811,7 +4821,7 @@ if (btn) {
       const m = v.match(/(\d{2,3})\s*[\/\-]\s*(\d{2,3})/);
       if (!m){ elView.textContent = v; return; }
       const sys = parseInt(m[1],10), dia = parseInt(m[2],10);
-      const level = (sys>=140 || dia>=90) ? 'high' : ((sys<140 && dia<90)?'ok':'warn');
+      const level = (sys>=140 || dia>=90) ? 'high' : ((sys<120 && dia<80)?'ok':'warn');
       mark(level); elView.textContent = `${sys}/${dia}`; return;
     }
     if (kind==='pr'){
